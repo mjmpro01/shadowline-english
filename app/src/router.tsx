@@ -1,0 +1,34 @@
+import { Navigate, createBrowserRouter } from 'react-router-dom'
+import { AppShell } from './components/AppShell'
+import { RequireAuth } from './components/RequireAuth'
+import { AnalysisScreen } from './screens/AnalysisScreen'
+import { DubScreen } from './screens/DubScreen'
+import { LibraryScreen } from './screens/LibraryScreen'
+import { LoginScreen } from './screens/LoginScreen'
+import { PracticeScreen } from './screens/PracticeScreen'
+import { ProfileScreen } from './screens/ProfileScreen'
+import { ProgressScreen } from './screens/ProgressScreen'
+import { VocabularyScreen } from './screens/VocabularyScreen'
+
+export const router = createBrowserRouter([
+  { path: '/login', element: <LoginScreen /> },
+  {
+    path: '/',
+    element: (
+      <RequireAuth>
+        <AppShell />
+      </RequireAuth>
+    ),
+    children: [
+      { index: true, element: <Navigate to="/library" replace /> },
+      { path: 'library', element: <LibraryScreen /> },
+      { path: 'library/:videoId', element: <AnalysisScreen /> },
+      { path: 'library/:videoId/practice', element: <PracticeScreen /> },
+      { path: 'library/:videoId/dub', element: <DubScreen /> },
+      { path: 'vocabulary', element: <VocabularyScreen /> },
+      { path: 'progress', element: <ProgressScreen /> },
+      { path: 'profile', element: <ProfileScreen /> },
+      { path: '*', element: <Navigate to="/library" replace /> },
+    ],
+  },
+])
