@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <link rel="stylesheet" href="_ds/organic-e0b8ea18-2da4-49f7-9f71-7b43a3ecec4b/styles.css">
+  <script src="_ds/organic-e0b8ea18-2da4-49f7-9f71-7b43a3ecec4b/_ds_bundle.js"></script>
+  <script src="./image-slot.js"></script>
+  <style>
+    *{box-sizing:border-box;}
+    body{margin:0;}
+    :root{
+      --color-bg:#201e1d;
+      --color-text:#f5ead8;
+      --color-surface:#2c2a27;
+      --color-divider:rgba(245,234,216,0.14);
+      --color-accent:#d9a433;
+      --color-accent-100:#3a2f14;
+      --color-accent-200:#4a3a16;
+      --color-accent-300:#6b551c;
+      --color-accent-400:#a67f22;
+      --color-accent-500:#d9a433;
+      --color-accent-600:#e9b94f;
+      --color-accent-700:#f6d17e;
+      --color-accent-800:#fbe6ae;
+      --color-accent-900:#fdf3d9;
+    }
+    ::selection{background:color-mix(in srgb, var(--color-accent) 30%, transparent);}
+    @keyframes pulseScore{0%,100%{transform:scale(1);opacity:0.85;}50%{transform:scale(1.15);opacity:1;}}
+  </style>
+</helmet>
+
+<div style="min-height:100vh;background:var(--color-bg);color:var(--color-text);">
+
+  <sc-if value="{{isLogin}}" hint-placeholder-val="{{false}}">
+    <div style="min-height:100vh;width:100%;display:flex;align-items:center;justify-content:center;padding:24px;">
+      <div style="width:100%;max-width:360px;display:flex;flex-direction:column;align-items:flex-start;gap:22px;">
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <h1 style="font-size:34px;margin:0;">Shadowline</h1>
+          <div style="font-size:14px;color:var(--color-text);opacity:0.65;">pronunciation & rhythm practice, for yourself</div>
+        </div>
+        <button onClick="{{continueGoogle}}" class="btn btn-secondary btn-block" style="justify-content:center;">Continue with Google</button>
+        <div style="display:flex;align-items:center;gap:12px;width:100%;">
+          <div style="flex:1;height:1px;background:var(--color-divider);"></div>
+          <div style="font-size:12px;color:var(--color-text);opacity:0.5;">or</div>
+          <div style="flex:1;height:1px;background:var(--color-divider);"></div>
+        </div>
+        <sc-if value="{{!showEmailForm}}" hint-placeholder-val="{{true}}">
+          <button onClick="{{toggleEmailForm}}" class="btn btn-ghost">Use email</button>
+        </sc-if>
+        <sc-if value="{{showEmailForm}}" hint-placeholder-val="{{false}}">
+          <div style="width:100%;display:flex;flex-direction:column;gap:12px;">
+            <div class="field"><label>Email</label><input type="email" class="input" placeholder="you@example.com"/></div>
+            <div class="field"><label>Password</label><input type="password" class="input" placeholder="••••••••"/></div>
+            <button onClick="{{continueGoogle}}" class="btn btn-primary btn-block">Sign in</button>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{showApp}}" hint-placeholder-val="{{true}}">
+   <div style="display:flex;align-items:flex-start;">
+    <div style="width:{{sidebarWidth}};flex-shrink:0;padding:var(--space-6) var(--space-3);display:flex;flex-direction:column;gap:var(--space-6);position:sticky;top:12px;height:calc(100vh - 24px);margin:12px 0 12px 12px;background:var(--color-surface);border:1px solid var(--color-divider);border-radius:var(--radius-lg);transition:width 0.15s ease;overflow:hidden;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <sc-if value="{{sidebarExpanded}}" hint-placeholder-val="{{true}}">
+          <div class="nav-brand" style="font-size:20px;white-space:nowrap;">Shadowline</div>
+        </sc-if>
+        <button onClick="{{toggleSidebar}}" class="btn btn-icon btn-ghost" style="flex-shrink:0;" title="{{sidebarToggleTitle}}">
+          <sc-if value="{{sidebarExpanded}}" hint-placeholder-val="{{true}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><polyline points="15 18 9 12 15 6"/></svg></sc-if>
+          <sc-if value="{{sidebarCollapsed}}" hint-placeholder-val="{{false}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><polyline points="9 18 15 12 9 6"/></svg></sc-if>
+        </button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:var(--space-1);">
+        <a href="#" onClick="{{goDashboard}}" style="color:{{dashboardTabColor}};background:{{dashboardTabBg}};font-weight:600;text-decoration:none;padding:10px 14px;border-radius:var(--radius-md);display:flex;align-items:center;gap:8px;white-space:nowrap;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px;flex-shrink:0;"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg><sc-if value="{{sidebarExpanded}}" hint-placeholder-val="{{true}}">Dashboard</sc-if></a>
+        <a href="#" onClick="{{goArena}}" style="color:{{arenaTabColor}};background:{{arenaTabBg}};font-weight:600;text-decoration:none;padding:10px 14px;border-radius:var(--radius-md);display:flex;align-items:center;gap:8px;white-space:nowrap;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px;flex-shrink:0;"><polygon points="12 2 20 7 20 13 12 22 4 13 4 7"/></svg><sc-if value="{{sidebarExpanded}}" hint-placeholder-val="{{true}}">Arena</sc-if></a>
+        <a href="#" onClick="{{goLibrary}}" style="color:{{libraryTabColor}};background:{{libraryTabBg}};font-weight:600;text-decoration:none;padding:10px 14px;border-radius:var(--radius-md);display:flex;align-items:center;gap:8px;white-space:nowrap;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px;flex-shrink:0;"><path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/></svg><sc-if value="{{sidebarExpanded}}" hint-placeholder-val="{{true}}">Library</sc-if></a>
+        <a href="#" onClick="{{goVocab}}" style="color:{{vocabTabColor}};background:{{vocabTabBg}};font-weight:600;text-decoration:none;padding:10px 14px;border-radius:var(--radius-md);display:flex;align-items:center;gap:8px;white-space:nowrap;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px;flex-shrink:0;"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg><sc-if value="{{sidebarExpanded}}" hint-placeholder-val="{{true}}">Vocabulary</sc-if></a>
+        <a href="#" onClick="{{goProgress}}" style="color:{{progressTabColor}};background:{{progressTabBg}};font-weight:600;text-decoration:none;padding:10px 14px;border-radius:var(--radius-md);display:flex;align-items:center;gap:8px;white-space:nowrap;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px;flex-shrink:0;"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg><sc-if value="{{sidebarExpanded}}" hint-placeholder-val="{{true}}">Progress</sc-if></a>
+      </div>
+      <div style="margin-top:auto;display:flex;align-items:center;gap:4px;">
+        <a href="#" onClick="{{goProfile}}" style="flex:1;min-width:0;color:{{profileTabColor}};background:{{profileTabBg}};font-weight:600;text-decoration:none;padding:10px 14px;border-radius:var(--radius-md);display:flex;align-items:center;gap:8px;white-space:nowrap;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px;flex-shrink:0;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><sc-if value="{{sidebarExpanded}}" hint-placeholder-val="{{true}}">Profile</sc-if></a>
+        <sc-if value="{{sidebarExpanded}}" hint-placeholder-val="{{true}}">
+          <button onClick="{{logout}}" class="btn btn-icon btn-ghost" title="Log out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
+        </sc-if>
+      </div>
+    </div>
+
+    <div style="flex:1;min-width:0;max-width:900px;margin:0 auto;padding:var(--space-8) var(--space-4) 60px;">
+
+      <sc-if value="{{isArenaMenu}}" hint-placeholder-val="{{false}}">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:var(--space-8);max-width:420px;margin:60px auto 0;text-align:center;">
+          <div>
+            <div class="card-meta">Arena</div>
+            <h1 style="margin:6px 0 0;">Ready to battle?</h1>
+          </div>
+          <div class="card elev-sm" style="width:100%;flex-direction:row;align-items:center;justify-content:space-between;">
+            <div style="text-align:left;">
+              <div class="card-title">{{arenaMenu.points}} points</div>
+              <div class="card-meta">{{arenaMenu.wins}} wins</div>
+            </div>
+            <div style="width:44px;height:44px;border-radius:50%;background:var(--color-accent);"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:var(--space-3);width:100%;">
+            <button onClick="{{arenaMenu.start}}" class="btn btn-primary btn-block">Start</button>
+            <button onClick="{{arenaMenu.openEquipment}}" class="btn btn-secondary btn-block">Equipment</button>
+            <button onClick="{{arenaMenu.openHistory}}" class="btn btn-secondary btn-block">Match history</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isEquipment}}" hint-placeholder-val="{{false}}">
+        <div style="display:flex;flex-direction:column;gap:var(--space-6);max-width:480px;margin:0 auto;">
+          <button onClick="{{arenaMenu.backToMenu}}" class="btn btn-ghost" style="align-self:flex-start;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><polyline points="15 18 9 12 15 6"/></svg>Arena</button>
+          <h1 style="margin:0;">Equipment</h1>
+          <div style="display:flex;flex-direction:column;gap:var(--space-3);">
+            <sc-for list="{{equipment}}" as="eq" hint-placeholder-count="3">
+              <div class="card elev-sm" style="flex-direction:row;align-items:center;justify-content:space-between;">
+                <div style="display:flex;align-items:center;gap:var(--space-3);">
+                  <div style="width:40px;height:40px;border-radius:50%;background:var(--color-accent-100);display:flex;align-items:center;justify-content:center;">{{eq.icon}}</div>
+                  <div style="text-align:left;">
+                    <div class="card-title" style="font-size:15px;">{{eq.name}}</div>
+                    <div class="card-meta">{{eq.effect}}</div>
+                  </div>
+                </div>
+                <button onClick="{{eq.toggle}}" class="{{eq.btnClass}}">{{eq.btnLabel}}</button>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isMatchHistory}}" hint-placeholder-val="{{false}}">
+        <div style="display:flex;flex-direction:column;gap:var(--space-6);max-width:480px;margin:0 auto;">
+          <button onClick="{{arenaMenu.backToMenu}}" class="btn btn-ghost" style="align-self:flex-start;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><polyline points="15 18 9 12 15 6"/></svg>Arena</button>
+          <h1 style="margin:0;">Match history</h1>
+          <sc-if value="{{matchHistory.empty}}" hint-placeholder-val="{{true}}">
+            <div class="card-meta">No matches yet — head to the Arena to start one.</div>
+          </sc-if>
+          <div style="display:flex;flex-direction:column;gap:var(--space-2);">
+            <sc-for list="{{matchHistory.items}}" as="m" hint-placeholder-count="0">
+              <div class="card elev-sm" style="gap:var(--space-2);">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                  <div style="text-align:left;">
+                    <div class="card-title" style="font-size:14px;">vs {{m.oppName}}</div>
+                    <div class="card-meta">3 rounds</div>
+                  </div>
+                  <div class="{{m.resultTagClass}}">{{m.resultLabel}}</div>
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                  <sc-for list="{{m.words}}" as="w" hint-placeholder-count="3">
+                    <button onClick="{{w.add}}" disabled="{{w.added}}" class="{{w.addBtnClass}}" style="font-size:12px;">{{w.text}} · {{w.addLabel}}</button>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isArena}}" hint-placeholder-val="{{false}}">
+        <div style="position:relative;width:100%;height:calc(100vh - 48px);background:#0d0e10;border-radius:var(--radius-lg);overflow:hidden;">
+          <svg viewBox="0 0 800 500" style="width:100%;height:100%;display:block;">
+            <rect x="0" y="0" width="800" height="500" fill="#0d0e10"/>
+            <sc-for list="{{arena.bushes}}" as="b" hint-placeholder-count="16">
+              <circle cx="{{b.cx}}" cy="{{b.cy}}" r="{{b.r}}" fill="#1c2b22" opacity="0.7"/>
+            </sc-for>
+            <sc-for list="{{arena.rocks}}" as="r" hint-placeholder-count="8">
+              <polygon points="{{r.points}}" fill="#17181b" stroke="#2a2c30" stroke-width="1.5"/>
+            </sc-for>
+            <sc-for list="{{arena.paths}}" as="p" hint-placeholder-count="4">
+              <path d="{{p.d}}" fill="none" stroke="#26302b" stroke-width="2" stroke-dasharray="2,6"/>
+            </sc-for>
+            <sc-for list="{{arena.monsters}}" as="mon" hint-placeholder-count="5">
+              <g>
+                <circle cx="{{mon.x}}" cy="{{mon.y}}" r="9" fill="#7a3f4f" stroke="#c96a7f" stroke-width="1.5"/>
+                <text x="{{mon.x}}" y="{{mon.y}}" fill="#f0d8de" font-size="11" text-anchor="middle" dy="4">Q</text>
+              </g>
+            </sc-for>
+            <sc-for list="{{arena.bots}}" as="bot" hint-placeholder-count="6">
+              <g>
+                <circle cx="{{bot.x}}" cy="{{bot.y}}" r="7" fill="{{bot.color}}"/>
+                <line x1="{{bot.x}}" y1="{{bot.y}}" x2="{{bot.dirX}}" y2="{{bot.dirY}}" stroke="{{bot.color}}" stroke-width="2"/>
+                <text x="{{bot.x}}" y="{{bot.labelY}}" fill="#8b8d93" font-size="11" font-family="monospace" text-anchor="middle">{{bot.name}}</text>
+              </g>
+            </sc-for>
+            <g>
+              <circle cx="{{arena.player.x}}" cy="{{arena.player.y}}" r="8" fill="var(--color-accent)"/>
+              <line x1="{{arena.player.x}}" y1="{{arena.player.y}}" x2="{{arena.player.dirX}}" y2="{{arena.player.dirY}}" stroke="var(--color-accent)" stroke-width="2.5"/>
+            </g>
+          </svg>
+
+          <div style="position:absolute;top:12px;left:12px;font-family:monospace;font-size:12px;color:#c9cbd0;background:rgba(0,0,0,0.4);padding:6px 10px;border-radius:8px;">{{arena.onlineCount}} online</div>
+          <div style="position:absolute;top:12px;right:12px;display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.4);padding:6px 10px;border-radius:999px;">
+            <div style="width:22px;height:22px;border-radius:50%;background:var(--color-accent);"></div>
+            <div style="font-size:12px;color:#c9cbd0;">{{profileName}}</div>
+          </div>
+          <div style="position:absolute;bottom:14px;right:14px;font-size:11px;color:#6b6d73;font-family:monospace;">Arrow keys / WASD to move</div>
+
+          <sc-if value="{{arena.nearBot}}" hint-placeholder-val="{{false}}">
+            <button onClick="{{arena.challengeNear}}" style="position:absolute;left:{{arena.nearBotBtnX}}px;top:{{arena.nearBotBtnY}}px;transform:translate(-50%,-140%);" class="btn btn-primary">Challenge</button>
+          </sc-if>
+
+          <sc-if value="{{arena.nearMonster}}" hint-placeholder-val="{{false}}">
+            <button onClick="{{arena.farmMonster}}" style="position:absolute;left:{{arena.nearMonBtnX}}px;top:{{arena.nearMonBtnY}}px;transform:translate(-50%,-140%);" class="btn btn-secondary">Farm</button>
+          </sc-if>
+
+          <sc-if value="{{arena.farmToast}}" hint-placeholder-val="{{false}}">
+            <div style="position:absolute;top:50px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.5);color:var(--color-accent);font-family:monospace;font-size:13px;padding:4px 10px;border-radius:8px;">{{arena.farmToast}}</div>
+          </sc-if>
+
+          <sc-if value="{{arena.incoming}}" hint-placeholder-val="{{false}}">
+            <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;background:var(--color-surface);border:1px solid var(--color-divider);border-radius:var(--radius-md);padding:8px 14px;box-shadow:var(--shadow-md);">
+              <div style="font-size:13px;">{{arena.incoming.name}} wants to challenge you</div>
+              <button onClick="{{arena.declineChallenge}}" class="btn btn-ghost">Decline</button>
+              <button onClick="{{arena.acceptChallenge}}" class="btn btn-primary">Accept</button>
+            </div>
+          </sc-if>
+
+          <div style="position:absolute;left:20px;bottom:20px;width:96px;height:96px;border-radius:50%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);" onPointerDown="{{arena.joyDown}}" onPointerMove="{{arena.joyMove}}" onPointerUp="{{arena.joyUp}}" onPointerLeave="{{arena.joyUp}}">
+            <div style="position:absolute;left:{{arena.knobX}}px;top:{{arena.knobY}}px;width:40px;height:40px;border-radius:50%;background:var(--color-accent);opacity:0.85;"></div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isBattle}}" hint-placeholder-val="{{false}}">
+        <div style="display:flex;flex-direction:column;gap:var(--space-6);max-width:720px;margin:0 auto;">
+          <div style="display:flex;align-items:center;justify-content:center;gap:16px;">
+            <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+              <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="font-weight:700;">{{battle.mine.name}}</span><span style="font-family:monospace;color:{{battle.mine.healthColor}};">{{battle.mine.health}}/100</span></div>
+              <div style="height:6px;background:var(--color-neutral-200);border-radius:99px;"><div style="height:100%;width:{{battle.mine.healthPct}}%;background:{{battle.mine.healthColor}};border-radius:99px;transition:width 0.4s ease;"></div></div>
+            </div>
+            <div class="tag tag-neutral" style="font-family:monospace;">Round {{battle.roundLabel}}</div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+              <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="font-family:monospace;color:{{battle.opp.healthColor}};">{{battle.opp.health}}/100</span><span style="font-weight:700;">{{battle.opp.name}}</span></div>
+              <div style="height:6px;background:var(--color-neutral-200);border-radius:99px;"><div style="height:100%;width:{{battle.opp.healthPct}}%;background:{{battle.opp.healthColor}};border-radius:99px;margin-left:auto;transition:width 0.4s ease;"></div></div>
+            </div>
+          </div>
+
+          <sc-if value="{{battle.isInput}}" hint-placeholder-val="{{true}}">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:var(--space-3);">
+              <input class="input" value="{{battle.wordInput}}" onChange="{{battle.setWordInput}}" placeholder="Enter a word for your opponent to read" style="max-width:320px;text-align:center;"/>
+              <div class="card-meta">00:{{battle.inputSeconds}}</div>
+              <button onClick="{{battle.submitWord}}" class="btn btn-primary">Send word</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{battle.isWaiting}}" hint-placeholder-val="{{false}}">
+            <div style="text-align:center;font-size:14px;opacity:0.7;">Waiting for opponent's word...</div>
+          </sc-if>
+          <sc-if value="{{battle.isRead}}" hint-placeholder-val="{{false}}">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:var(--space-4);">
+              <div style="font-family:monospace;font-size:32px;font-weight:700;">{{battle.readWord}}</div>
+              <div style="position:relative;width:96px;height:96px;">
+                <svg viewBox="0 0 100 100" style="position:absolute;inset:0;"><circle cx="50" cy="50" r="46" fill="none" stroke="var(--color-neutral-200)" stroke-width="4"/><circle cx="50" cy="50" r="46" fill="none" stroke="var(--color-accent)" stroke-width="4" stroke-dasharray="289" stroke-dashoffset="{{battle.readRingOffset}}" transform="rotate(-90 50 50)"/></svg>
+                <button onClick="{{battle.record}}" style="position:absolute;inset:10px;border-radius:50%;background:var(--color-accent);border:none;cursor:pointer;"></button>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{battle.isScoring}}" hint-placeholder-val="{{false}}">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:var(--space-3);">
+              <div style="width:64px;height:64px;border-radius:50%;background:var(--color-accent);animation:pulseScore 1s ease-in-out infinite;"></div>
+              <div style="font-size:13px;opacity:0.7;">Scoring pronunciation...</div>
+            </div>
+          </sc-if>
+          <sc-if value="{{battle.isResult}}" hint-placeholder-val="{{false}}">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:var(--space-4);">
+              <div style="display:flex;align-items:center;gap:24px;">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+                  <div style="font-family:var(--font-heading);font-size:44px;color:{{battle.result.mineColor}};">{{battle.result.mineScore}}</div>
+                  <sc-if value="{{battle.result.mineCrit}}" hint-placeholder-val="{{false}}"><div class="tag tag-accent">CRITICAL</div></sc-if>
+                </div>
+                <div style="font-family:var(--font-heading);font-size:20px;opacity:0.5;">VS</div>
+                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+                  <div style="font-family:var(--font-heading);font-size:44px;color:{{battle.result.oppColor}};">{{battle.result.oppScore}}</div>
+                  <sc-if value="{{battle.result.oppCrit}}" hint-placeholder-val="{{false}}"><div class="tag tag-accent">CRITICAL</div></sc-if>
+                </div>
+              </div>
+              <div style="font-size:14px;font-weight:600;color:var(--color-accent-700);">-{{battle.result.damage}} damage to {{battle.result.loserName}}</div>
+              <button onClick="{{battle.nextRound}}" class="btn btn-primary">{{battle.nextLabel}}</button>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isBattleResult}}" hint-placeholder-val="{{false}}">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:var(--space-6);max-width:480px;margin:0 auto;text-align:center;">
+          <div>
+            <div class="card-meta">Match result</div>
+            <h1 style="margin:6px 0 0;">{{battleResult.winnerName}} wins</h1>
+          </div>
+          <div style="display:flex;gap:16px;width:100%;">
+            <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+              <div style="font-size:13px;">{{battleResult.mineName}}</div>
+              <div style="height:8px;background:var(--color-neutral-200);border-radius:99px;"><div style="height:100%;width:{{battleResult.minePct}}%;background:{{battleResult.mineColor}};border-radius:99px;"></div></div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+              <div style="font-size:13px;">{{battleResult.oppName}}</div>
+              <div style="height:8px;background:var(--color-neutral-200);border-radius:99px;"><div style="height:100%;width:{{battleResult.oppPct}}%;background:{{battleResult.oppColor}};border-radius:99px;"></div></div>
+            </div>
+          </div>
+          <div class="card elev-sm" style="width:100%;gap:6px;">
+            <sc-for list="{{battleResult.rounds}}" as="rr" hint-placeholder-count="3">
+              <div style="display:flex;justify-content:space-between;font-family:monospace;font-size:13px;"><span>Round {{rr.n}}</span><span>{{rr.mine}} — {{rr.opp}}</span></div>
+            </sc-for>
+          </div>
+          <div class="tag tag-accent-2" style="font-family:monospace;">+{{battleResult.arenaPoints}} arena points</div>
+          <div style="display:flex;gap:10px;width:100%;">
+            <button onClick="{{battleResult.rematch}}" class="btn btn-secondary btn-block">Rematch</button>
+            <button onClick="{{battleResult.backToArena}}" class="btn btn-primary btn-block">Back to Arena</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isDashboard}}" hint-placeholder-val="{{false}}">
+        <div style="display:flex;flex-direction:column;gap:var(--space-8);">
+          <div>
+            <h1 style="margin-bottom:2px;">Dashboard</h1>
+            <div class="card-meta">Featured clips and how you rank against other learners</div>
+          </div>
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2);">
+              <div class="card-kicker" style="margin:0;">Leaderboard</div>
+              <div class="seg">
+                <label class="seg-opt"><input type="radio" name="lbmode" onClick="{{setLbPractice}}" checked="{{lbIsPractice}}"/>Practice</label>
+                <label class="seg-opt"><input type="radio" name="lbmode" onClick="{{setLbArena}}" checked="{{lbIsArena}}"/>Arena</label>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-3);margin-bottom:var(--space-3);">
+              <sc-for list="{{topThree}}" as="l" hint-placeholder-count="3">
+                <div class="card elev-sm" style="align-items:center;text-align:center;gap:6px;background:{{l.rowBg}};">
+                  <div style="width:38px;height:38px;flex-shrink:0;border-radius:50%;display:flex;align-items:center;justify-content:center;background:{{l.rankBg}};color:{{l.rankColor}};">
+                    <sc-if value="{{l.isFirst}}" hint-placeholder-val="{{false}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;"><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7Z"/></svg></sc-if>
+                    <sc-if value="{{!l.isFirst}}" hint-placeholder-val="{{true}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px;"><path d="M7.21 15 2.66 7.14a2 2 0 0 1 .13-2.2L4.4 2.8A2 2 0 0 1 6 2h12a2 2 0 0 1 1.6.8l1.6 2.14a2 2 0 0 1 .14 2.2L16.79 15"/><circle cx="12" cy="17" r="5"/></svg></sc-if>
+                  </div>
+                  <div style="width:40px;height:40px;border-radius:50%;background:var(--color-accent-100);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;">{{l.initial}}</div>
+                  <div style="font-weight:{{l.rowWeight}};font-size:13px;">{{l.name}}</div>
+                  <div style="font-family:var(--font-heading);font-size:26px;color:{{l.scoreColor}};">{{l.avgScore}}</div>
+                  <div style="display:flex;align-items:center;gap:4px;font-size:11px;opacity:0.65;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>{{l.streak}}</div>
+                </div>
+              </sc-for>
+            </div>
+            <div class="card elev-sm" style="padding:0;overflow:hidden;border-radius:0;">
+              <table class="table" style="margin:0;">
+                <thead><tr><th>Rank</th><th>Learner</th><th>{{lbScoreLabel}}</th><th>{{lbStreakLabel}}</th></tr></thead>
+                <tbody>
+                  <sc-for list="{{restOfLeaderboard}}" as="l" hint-placeholder-count="2">
+                    <tr style="background:{{l.rowBg}};font-weight:{{l.rowWeight}};">
+                      <td>{{l.rank}}</td>
+                      <td>{{l.name}}</td>
+                      <td style="color:{{l.scoreColor}};font-family:var(--font-heading);">{{l.avgScore}}</td>
+                      <td>{{l.streak}}</td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div>
+            <div class="card-kicker" style="margin-bottom:var(--space-2);">Featured for you</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:var(--space-4);">
+              <sc-for list="{{featured}}" as="f" hint-placeholder-count="4">
+                <div class="card elev-sm" style="padding:var(--space-2);">
+                  <div style="position:relative;width:100%;aspect-ratio:9/16;background:var(--color-accent-100);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-accent-500);width:26px;height:26px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    <div class="tag tag-accent" style="position:absolute;left:8px;top:8px;">{{f.pushedBy}}</div>
+                  </div>
+                  <div class="card-title" style="font-size:14px;margin-top:var(--space-2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">{{f.title}}</div>
+                  <div class="card-meta">{{f.source}}</div>
+                  <button onClick="{{f.addToLibrary}}" disabled="{{f.added}}" class="{{f.addBtnClass}} btn-block" style="margin-top:2px;"><i data-lucide="{{f.addIcon}}" style="width:14px;height:14px;" stroke-width="2.75"></i>{{f.addLabel}}</button>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isLibrary}}" hint-placeholder-val="{{true}}">
+        <div style="display:flex;flex-direction:column;gap:var(--space-6);">
+          <h1>Library</h1>
+          <div style="display:flex;gap:var(--space-2);flex-wrap:wrap;">
+            <input type="text" class="input" placeholder="Paste a YouTube Shorts / clip URL" style="flex:1;min-width:220px;"/>
+            <button class="btn btn-primary">Import</button>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:var(--space-4);">
+            <sc-for list="{{videos}}" as="v" hint-placeholder-count="5">
+              <div class="card elev-sm" style="padding:var(--space-2);">
+                <div onClick="{{v.select}}" style="cursor:pointer;position:relative;width:100%;aspect-ratio:9/16;background:var(--color-accent-100);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-accent-500);width:28px;height:28px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  <div class="tag tag-neutral" style="position:absolute;right:8px;bottom:8px;">{{v.duration}}</div>
+                </div>
+                <div onClick="{{v.select}}" style="cursor:pointer;">
+                  <div class="card-title" style="font-size:15px;margin-top:var(--space-2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">{{v.title}}</div>
+                  <div class="card-meta">{{v.source}}</div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:2px;">
+                    <div style="font-family:var(--font-heading);font-size:24px;color:{{v.color}};">{{v.lastScore}}</div>
+                    <svg width="56" height="20" viewBox="0 0 56 20"><polyline points="{{v.sparkPoints}}" fill="none" stroke="{{v.color}}" stroke-width="2"/></svg>
+                  </div>
+                  <div class="card-meta">{{v.attempts}} takes</div>
+                </div>
+                <button onClick="{{v.practice}}" class="btn btn-primary btn-block" style="margin-top:2px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>Practice</button>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isPractice}}" hint-placeholder-val="{{false}}">
+        <div style="display:flex;flex-direction:column;gap:var(--space-4);max-width:820px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+            <h2 style="margin:0;">{{prac.title}}</h2>
+            <div class="tag tag-neutral">{{prac.clipLabel}}</div>
+          </div>
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) 180px;gap:var(--space-4);align-items:start;">
+            <div style="display:flex;flex-direction:column;gap:var(--space-3);">
+              <div style="position:relative;width:100%;aspect-ratio:16/10;background:var(--color-accent-100);border-radius:var(--radius-lg);display:flex;align-items:center;justify-content:center;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-accent-500);width:34px;height:34px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              </div>
+              <div style="font-size:16px;font-style:italic;text-align:center;">
+                “<sc-for list="{{prac.captionWords}}" as="cw" hint-placeholder-count="8"><span onClick="{{cw.add}}" style="cursor:pointer;border-bottom:{{cw.underline}};margin-right:3px;">{{cw.text}}</span></sc-for>”
+              </div>
+              <div style="font-size:11px;text-align:center;opacity:0.5;">Tap a word to auto-translate it into Vocabulary — tap again to undo</div>
+              <div style="font-size:13px;text-align:center;opacity:0.6;">{{prac.ipa}}</div>
+              <sc-if value="{{prac.hasPopup}}" hint-placeholder-val="{{false}}">
+                <div class="card elev-md" style="position:relative;align-self:center;width:min(280px,100%);">
+                  <button onClick="{{prac.popup.close}}" class="btn btn-icon btn-ghost" style="position:absolute;top:6px;right:6px;width:26px;height:26px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg></button>
+                  <div class="card-title">{{prac.popup.word}}</div>
+                  <div style="font-size:13px;opacity:0.6;font-style:italic;">{{prac.popup.ipa}}</div>
+                  <div class="card-body">{{prac.popup.meaning}}</div>
+                  <div class="tag tag-accent-2" style="align-self:flex-start;">{{prac.popup.statusLabel}}</div>
+                </div>
+              </sc-if>
+              <div style="border:2px solid {{prac.waveBorder}};border-radius:var(--radius-md);padding:var(--space-3);background:var(--color-surface);">
+                <svg width="100%" height="64" viewBox="0 0 300 64" preserveAspectRatio="none">
+                  <sc-for list="{{prac.wave}}" as="b" hint-placeholder-count="30">
+                    <rect x="{{b.x}}" y="{{b.y}}" width="{{b.w}}" height="{{b.h}}" fill="{{b.color}}" rx="2"/>
+                  </sc-for>
+                </svg>
+              </div>
+              <sc-if value="{{prac.recorded}}" hint-placeholder-val="{{false}}">
+                <div class="card elev-sm" style="flex-direction:row;align-items:center;justify-content:space-between;">
+                  <div>
+                    <div class="card-kicker">Pitch match score</div>
+                    <div style="font-size:13px;opacity:0.75;">{{prac.scoreLabel}} — re-record to improve</div>
+                  </div>
+                  <div style="font-family:var(--font-heading);font-size:32px;color:{{prac.scoreColor}};">{{prac.score}}</div>
+                </div>
+              </sc-if>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <button class="btn btn-secondary btn-block">Hear clip again</button>
+              <button onClick="{{prac.record}}" class="{{prac.recordClass}} btn-block">{{prac.recordLabel}}</button>
+              <div style="height:1px;background:var(--color-divider);margin:4px 0;"></div>
+              <button onClick="{{prac.next}}" disabled="{{prac.disabled}}" class="btn btn-secondary btn-block">Next</button>
+              <button onClick="{{prac.watch}}" disabled="{{prac.disabled}}" class="btn btn-secondary btn-block">Watch</button>
+              <button onClick="{{prac.saveDub}}" disabled="{{prac.disabled}}" class="btn btn-secondary btn-block">Save dub</button>
+              <div style="height:1px;background:var(--color-divider);margin:4px 0;"></div>
+              <button onClick="{{prac.resetMic}}" class="btn btn-ghost btn-block">Reset mic</button>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <button onClick="{{goLibrary}}" class="btn btn-ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Exit</button>
+            <button class="btn btn-secondary">Options</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isAnalysis}}" hint-placeholder-val="{{false}}">
+        <div style="display:flex;flex-direction:column;gap:var(--space-6);max-width:720px;">
+          <button onClick="{{goLibrary}}" class="btn btn-ghost" style="align-self:flex-start;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><polyline points="15 18 9 12 15 6"/></svg>Library</button>
+          <div>
+            <h2 style="margin-bottom:4px;">{{sel.title}}</h2>
+            <div class="card-meta">{{sel.source}} · {{sel.timestamp}}</div>
+          </div>
+          <div class="seg">
+            <sc-for list="{{sel.takes}}" as="t" hint-placeholder-count="4">
+              <label class="seg-opt"><input type="radio" name="take" onClick="{{t.select}}" checked="{{t.active}}"/>Take {{t.n}}</label>
+            </sc-for>
+          </div>
+          <div style="font-size:19px;line-height:2.1;">
+            <sc-for list="{{sel.transcript}}" as="w" hint-placeholder-count="8">
+              <span style="border-bottom:3px solid {{w.color}};padding:2px 3px;margin-right:2px;cursor:pointer;">{{w.text}}</span>
+            </sc-for>
+          </div>
+          <div class="card elev-sm">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+              <div class="card-kicker">Pitch contour</div>
+              <div style="display:flex;gap:8px;">
+                <button class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>Original</button>
+                <button class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>My take</button>
+              </div>
+            </div>
+            <svg width="100%" viewBox="0 0 640 200" style="display:block;">
+              <path d="{{sel.chart.bandPath}}" style="fill:var(--color-neutral-300);" opacity="0.5" stroke="none"/>
+              <sc-for list="{{sel.chart.gridLines}}" as="g" hint-placeholder-count="5">
+                <line x1="30" y1="{{g.y}}" x2="630" y2="{{g.y}}" style="stroke:var(--color-divider);" stroke-width="1"/>
+              </sc-for>
+              <text x="4" y="14" style="fill:var(--color-text);" opacity="0.5" font-size="11" font-weight="600" font-family="Figtree, sans-serif">+6</text>
+              <text x="4" y="55" style="fill:var(--color-text);" opacity="0.5" font-size="11" font-weight="600" font-family="Figtree, sans-serif">+3</text>
+              <text x="4" y="97" style="fill:var(--color-text);" opacity="0.5" font-size="11" font-weight="600" font-family="Figtree, sans-serif">0</text>
+              <text x="4" y="138" style="fill:var(--color-text);" opacity="0.5" font-size="11" font-weight="600" font-family="Figtree, sans-serif">-3</text>
+              <text x="4" y="180" style="fill:var(--color-text);" opacity="0.5" font-size="11" font-weight="600" font-family="Figtree, sans-serif">-6</text>
+              <polyline points="{{sel.chart.refPoints}}" fill="none" style="stroke:var(--color-neutral-600);" stroke-width="1.5" stroke-dasharray="4,4"/>
+              <sc-for list="{{sel.chart.segments}}" as="seg" hint-placeholder-count="30">
+                <line x1="{{seg.x1}}" y1="{{seg.y1}}" x2="{{seg.x2}}" y2="{{seg.y2}}" style="stroke:{{seg.color}};" stroke-width="3" stroke-linecap="round"/>
+              </sc-for>
+            </svg>
+            <div style="display:flex;justify-content:space-between;margin-top:2px;">
+              <sc-for list="{{sel.chart.xLabels}}" as="xl" hint-placeholder-count="4">
+                <span style="font-size:11px;color:var(--color-neutral-600);">{{xl.label}}</span>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:16px;margin-top:var(--space-2);">
+              <div style="display:flex;align-items:center;gap:6px;"><div style="width:14px;height:2px;background:var(--color-neutral-600);"></div><span style="font-size:12px;opacity:0.7;">Source (±1 semitone)</span></div>
+              <div style="display:flex;align-items:center;gap:6px;"><div style="width:14px;height:3px;background:var(--color-accent-2-700);border-radius:2px;"></div><span style="font-size:12px;opacity:0.7;">You</span></div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:var(--space-3);">
+            <sc-for list="{{sel.scoreCards}}" as="c" hint-placeholder-count="4">
+              <div class="card elev-sm" style="gap:var(--space-1);">
+                <div class="card-kicker">{{c.label}}</div>
+                <div style="font-family:var(--font-heading);font-size:28px;color:{{c.color}};">{{c.value}}</div>
+                <div style="width:100%;height:5px;background:var(--color-neutral-200);border-radius:99px;"><div style="height:100%;width:{{c.width}};background:{{c.color}};border-radius:99px;"></div></div>
+              </div>
+            </sc-for>
+          </div>
+          <div class="card elev-sm">
+            <div class="card-kicker">Summary</div>
+            <div style="font-size:15px;line-height:1.6;">{{sel.summary}}</div>
+          </div>
+          <button onClick="{{goDub}}" class="btn btn-primary" style="align-self:flex-start;">Watch dub playback</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isDub}}" hint-placeholder-val="{{false}}">
+        <div style="display:flex;flex-direction:column;gap:var(--space-4);">
+          <button onClick="{{goAnalysis}}" class="btn btn-ghost" style="align-self:flex-start;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><polyline points="15 18 9 12 15 6"/></svg>Analysis</button>
+          <div style="display:flex;flex-direction:column;gap:var(--space-4);max-width:400px;margin:0 auto;width:100%;">
+          <h3 style="margin:0;">{{sel.title}}</h3>
+          <div style="position:relative;width:100%;aspect-ratio:9/16;background:var(--color-accent-100);border-radius:var(--radius-lg);display:flex;align-items:center;justify-content:center;">
+            <div class="tag tag-neutral" style="position:absolute;top:10px;left:10px;">original audio muted</div>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-accent-500);width:32px;height:32px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
+          <div class="seg" style="align-self:flex-start;">
+            <label class="seg-opt"><input type="radio" name="audiosrc" onClick="{{setMine}}" checked="{{isMine}}"/><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>My voice</label>
+            <label class="seg-opt"><input type="radio" name="audiosrc" onClick="{{setOriginal}}" checked="{{isOriginal}}"/><i data-lucide="volume-2" style="width:14px;height:14px;" stroke-width="2.75"></i>Original</label>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <input type="range" min="0" max="100" defaultValue="35" style="width:100%;accent-color:var(--color-accent);"/>
+            <div style="display:flex;justify-content:space-between;font-size:12px;opacity:0.65;"><span>0:15</span><span>{{sel.duration}}</span></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div class="card-kicker">Takes</div>
+            <div style="display:flex;gap:6px;overflow-x:auto;">
+              <sc-for list="{{sel.takes}}" as="t" hint-placeholder-count="4">
+                <button onClick="{{t.select}}" class="{{t.chipClass}}" style="flex-shrink:0;">Take {{t.n}}</button>
+              </sc-for>
+            </div>
+          </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isProgress}}" hint-placeholder-val="{{false}}">
+        <div style="display:flex;flex-direction:column;gap:var(--space-6);">
+          <h1>Progress</h1>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <sc-for list="{{progressFilters}}" as="f" hint-placeholder-count="5">
+              <button onClick="{{f.select}}" class="{{f.chipClass}}">{{f.label}}</button>
+            </sc-for>
+          </div>
+          <div class="card elev-sm">
+            <svg width="100%" viewBox="0 0 640 180" style="display:block;">
+              <line x1="30" y1="20" x2="630" y2="20" style="stroke:var(--color-divider);"/>
+              <line x1="30" y1="90" x2="630" y2="90" style="stroke:var(--color-divider);"/>
+              <line x1="30" y1="156" x2="630" y2="156" style="stroke:var(--color-divider);"/>
+              <text x="4" y="24" style="fill:var(--color-text);" opacity="0.5" font-size="11" font-weight="600">100</text>
+              <text x="8" y="94" style="fill:var(--color-text);" opacity="0.5" font-size="11" font-weight="600">50</text>
+              <text x="10" y="160" style="fill:var(--color-text);" opacity="0.5" font-size="11" font-weight="600">0</text>
+              <polyline points="{{weeklyPoints}}" fill="none" style="stroke:var(--color-accent-2-700);" stroke-width="2.5"/>
+              <sc-for list="{{weeklyDots}}" as="d" hint-placeholder-count="10">
+                <circle cx="{{d.cx}}" cy="{{d.cy}}" r="4" fill="{{d.color}}"/>
+              </sc-for>
+            </svg>
+            <div style="display:flex;justify-content:space-between;margin-top:2px;">
+              <sc-for list="{{weeklyLabels}}" as="wl" hint-placeholder-count="10">
+                <span style="font-size:10px;color:var(--color-neutral-600);">{{wl.label}}</span>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:var(--space-2);">
+            <div class="card-kicker">Need practice</div>
+            <sc-for list="{{needPractice}}" as="n" hint-placeholder-count="3">
+              <div class="card elev-sm" style="flex-direction:row;align-items:center;justify-content:space-between;gap:var(--space-3);">
+                <div>
+                  <div class="card-title" style="font-size:15px;">{{n.title}}</div>
+                  <div class="card-meta">{{n.detail}}</div>
+                </div>
+                <button onClick="{{n.practice}}" class="btn btn-secondary" style="flex-shrink:0;">Practice now</button>
+              </div>
+            </sc-for>
+          </div>
+          <div>
+            <div class="card-kicker" style="margin-bottom:var(--space-2);">Next up</div>
+            <div onClick="{{suggested.select}}" class="card elev-sm" style="cursor:pointer;flex-direction:row;align-items:center;gap:var(--space-3);">
+              <div style="width:52px;height:88px;flex-shrink:0;background:var(--color-accent-100);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-accent-500);width:20px;height:20px;"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+              <div style="min-width:0;">
+                <div class="card-title" style="font-size:15px;">{{suggested.title}}</div>
+                <div class="card-meta">{{suggested.source}}</div>
+                <div style="font-size:13px;opacity:0.75;margin-top:4px;">Recommended — your stress score has been lowest this week.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isVocab}}" hint-placeholder-val="{{false}}">
+        <div style="display:flex;flex-direction:column;gap:var(--space-6);">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+            <h1 style="margin:0;">Vocabulary</h1>
+            <button onClick="{{startFlashcards}}" class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>Memory practice</button>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <sc-for list="{{vocabFilters}}" as="f" hint-placeholder-count="4">
+              <button onClick="{{f.select}}" class="{{f.chipClass}}">{{f.label}}</button>
+            </sc-for>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:var(--space-4);">
+            <sc-for list="{{filteredVocab}}" as="w" hint-placeholder-count="8">
+              <div class="card elev-sm">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                  <div class="card-title">{{w.word}}</div>
+                  <div class="{{w.tagClass}}">{{w.statusLabel}}</div>
+                </div>
+                <div style="font-size:13px;opacity:0.6;font-style:italic;">{{w.ipa}}</div>
+                <div class="card-body">{{w.meaning}}</div>
+                <div onClick="{{w.jump}}" class="btn btn-ghost" style="padding-inline:0;justify-content:flex-start;font-size:12px;text-align:left;white-space:normal;height:auto;">from “{{w.videoTitle}}”</div>
+                <button onClick="{{w.toggleLearned}}" class="{{w.learnedBtnClass}} btn-block" style="margin-top:2px;"><i data-lucide="{{w.learnedIcon}}" style="width:14px;height:14px;" stroke-width="2.75"></i>{{w.learnedLabel}}</button>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isFlashcards}}" hint-placeholder-val="{{false}}">
+        <div style="display:flex;flex-direction:column;gap:var(--space-6);max-width:380px;margin:0 auto;align-items:center;text-align:center;">
+          <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+            <button onClick="{{flash.exit}}" class="btn btn-ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><polyline points="15 18 9 12 15 6"/></svg>Vocabulary</button>
+            <div class="tag tag-neutral">{{flash.progressLabel}}</div>
+          </div>
+          <sc-if value="{{flash.done}}" hint-placeholder-val="{{false}}">
+            <div class="card elev-md" style="width:100%;align-items:center;gap:var(--space-3);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-accent-2-600);width:36px;height:36px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              <div class="card-title">{{flash.summary}}</div>
+              <button onClick="{{flash.restart}}" class="btn btn-primary btn-block">Practice again</button>
+              <button onClick="{{flash.exit}}" class="btn btn-secondary btn-block">Back to Vocabulary</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{!flash.done}}" hint-placeholder-val="{{true}}">
+            <div class="card elev-md" style="width:100%;gap:var(--space-3);min-height:220px;justify-content:center;align-items:center;">
+              <div style="font-family:var(--font-heading);font-size:28px;">{{flash.word.word}}</div>
+              <div style="font-size:13px;opacity:0.6;font-style:italic;">{{flash.word.ipa}}</div>
+              <sc-if value="{{flash.revealed}}" hint-placeholder-val="{{false}}">
+                <div class="card-body" style="text-align:center;">{{flash.word.meaning}}</div>
+                <div style="height:1px;background:var(--color-divider);width:100%;"></div>
+                <div style="font-size:14px;font-style:italic;text-align:center;">“{{flash.example}}”</div>
+                <button onClick="{{flash.toggleSpoke}}" class="{{flash.speakBtnClass}}"><i data-lucide="{{flash.speakIcon}}" style="width:14px;height:14px;" stroke-width="2.75"></i>{{flash.speakLabel}}</button>
+              </sc-if>
+              <sc-if value="{{!flash.revealed}}" hint-placeholder-val="{{true}}">
+                <button onClick="{{flash.reveal}}" class="btn btn-secondary">Reveal meaning</button>
+              </sc-if>
+            </div>
+            <sc-if value="{{flash.revealed}}" hint-placeholder-val="{{false}}">
+              <div style="display:flex;gap:8px;width:100%;">
+                <button onClick="{{flash.markLearning}}" class="btn btn-secondary btn-block">Still learning</button>
+                <button onClick="{{flash.markKnown}}" class="btn btn-primary btn-block">Got it</button>
+              </div>
+            </sc-if>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isProfile}}" hint-placeholder-val="{{false}}">
+        <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:var(--space-6);max-width:420px;margin:0 auto;">
+          <h1>Profile</h1>
+          <div class="card elev-sm" style="width:100%;flex-direction:row;align-items:center;justify-content:center;gap:var(--space-3);">
+            <div style="width:56px;height:56px;flex-shrink:0;">
+              <image-slot id="profile-avatar" shape="circle" placeholder="Avatar"></image-slot>
+            </div>
+            <div style="text-align:left;">
+              <div class="card-title">{{profileName}}</div>
+              <div class="card-meta">{{profileEmail}}</div>
+            </div>
+          </div>
+          <div class="card elev-sm" style="width:100%;gap:var(--space-2);text-align:left;">
+            <div class="card-kicker">Account</div>
+            <div style="display:flex;justify-content:space-between;font-size:14px;"><span style="opacity:0.7;">Videos imported</span><span>5</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:14px;"><span style="opacity:0.7;">Total takes</span><span>24</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:14px;"><span style="opacity:0.7;">Words tracked</span><span>8</span></div>
+          </div>
+          <div style="display:flex;gap:8px;width:100%;">
+            <button onClick="{{openEditProfile}}" class="btn btn-primary btn-block">Edit profile</button>
+            <button onClick="{{logout}}" class="btn btn-secondary btn-block"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Log out</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{editingProfile}}" hint-placeholder-val="{{false}}">
+        <div class="dialog-backdrop">
+          <div class="dialog">
+            <div class="dialog-title">Edit profile</div>
+            <div class="dialog-body" style="display:flex;flex-direction:column;gap:var(--space-4);">
+              <div style="display:flex;align-items:center;gap:var(--space-3);">
+                <div style="width:64px;height:64px;flex-shrink:0;">
+                  <image-slot id="profile-avatar-edit" shape="circle" placeholder="Avatar"></image-slot>
+                </div>
+                <div style="font-size:12px;opacity:0.6;">Drag an image onto the avatar to replace it</div>
+              </div>
+              <div class="field"><label>Name</label><input class="input" value="{{editName}}" onChange="{{setEditName}}"/></div>
+              <div class="field"><label>Email</label><input class="input" type="email" value="{{editEmail}}" onChange="{{setEditEmail}}"/></div>
+            </div>
+            <div class="dialog-actions">
+              <button onClick="{{closeEditProfile}}" class="btn btn-secondary">Cancel</button>
+              <button onClick="{{saveEditProfile}}" class="btn btn-primary">Save</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+   </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    this.state = {
+      screen:'login', showEmailForm:false,
+      selectedVideoId:'v1', selectedTake:4, audioSource:'mine',
+      progressFilter:'All', vocabFilter:'All',
+      practiceVideoId:'v1', practiceIndex:4, practiceRecorded:false,
+      sidebarCollapsed:false, customVocab:[], wordPopup:null, customVideos:[], addedFeatured:{},
+      profileName:'Mai Nguyen', profileEmail:'mai.nguyen@gmail.com',
+      editingProfile:false, editName:'Mai Nguyen', editEmail:'mai.nguyen@gmail.com',
+      arenaPlayer:{x:400, y:250, dirX:420, dirY:250}, arenaPoints:0, arenaWins:0,
+      arenaMonsters:['m1','m2','m3','m4','m5'], arenaFarmToast:null,
+      leaderboardMode:'practice', matchHistory:[],
+      equipEquipped:{helmet:false, amulet:false, boots:true},
+      arenaIncoming:null, arenaOpponent:null,
+      joyActive:false, joyKnob:{x:28,y:28}, joyVec:{x:0,y:0},
+      battleRound:1, battleMyHealth:100, battleOppHealth:100, battleRoundState:'input',
+      battleWordInput:'', battleReadWord:'', battleHistory:[], battleLastResult:null,
+      battleFinal:null,
+      vocabOverrides:{}, screenBeforeFlash:'vocab',
+      flashIndex:0, flashRevealed:false, flashResults:{}, flashSpoke:false
+    };
+    this.EXAMPLES = {
+      brilliant: "The team came up with a brilliant plan to fix the bug.",
+      honestly: "Honestly, I don't think we have enough time.",
+      exactly: "That's exactly what I was thinking.",
+      energy: "She brings so much energy to every rehearsal.",
+      "showing up": "Showing up on time matters more than talking about it.",
+      "at the end of the day": "At the end of the day, we just want the client happy.",
+      expect: "I didn't expect the meeting to run so long.",
+      "kind of": "It's kind of hard to explain without seeing it."
+    };
+    this.MOCK_TRANSLATE = {
+      "expecting":{ipa:"/ɪkˈspektɪŋ/", meaning:"anticipating that something will happen"},
+      "reaction":{ipa:"/riˈækʃən/", meaning:"a response to something that happens"},
+      "winning":{ipa:"/ˈwɪnɪŋ/", meaning:"succeeding or coming first in a contest"},
+      "showing":{ipa:"/ˈʃəʊɪŋ/", meaning:"letting something be seen"},
+      "consistency":{ipa:"/kənˈsɪstənsi/", meaning:"acting the same way over time"},
+      "finished":{ipa:"/ˈfɪnɪʃt/", meaning:"completed; done with something"},
+      "minute":{ipa:"/ˈmɪnɪt/", meaning:"a short period of time"},
+      "little":{ipa:"/ˈlɪtl/", meaning:"small in size or amount"},
+      "question":{ipa:"/ˈkwestʃən/", meaning:"something you ask to get information"},
+      "worth":{ipa:"/wɜːθ/", meaning:"deserving of the time or effort"},
+      "step":{ipa:"/step/", meaning:"one stage in a process"},
+      "myself":{ipa:"/maɪˈself/", meaning:"used to refer back to the speaker"},
+      "consistency.":{ipa:"/kənˈsɪstənsi/", meaning:"acting the same way over time"}
+    };
+    this.CAPTIONS = [
+      "I honestly wasn't expecting that reaction.",
+      "It's not about winning, it's about showing up.",
+      "Actually, I think it's brilliant.",
+      "You know, at the end of the day, it's about consistency.",
+      "That's exactly the kind of energy we need.",
+      "I'm almost finished, just give me a minute.",
+      "We should talk about this a little more.",
+      "That's a really good question, honestly.",
+      "It took a while, but it was worth it.",
+      "Let's just take it one step at a time.",
+      "I couldn't have said it better myself."
+    ];
+    this.IPA_CAPTIONS = [
+      "/aɪ ˈɒnɪstli ˈwɒznt ɪkˈspektɪŋ ðæt riˈækʃən/",
+      "/ɪts nɒt əˈbaʊt ˈwɪnɪŋ ɪts əˈbaʊt ˈʃəʊɪŋ ʌp/",
+      "/ˈæktʃuəli aɪ θɪŋk ɪts ˈbrɪljənt/",
+      "/juː nəʊ ət ði end əv ðə deɪ ɪts əˈbaʊt kənˈsɪstənsi/",
+      "/ðæts ɪɡˈzæktli ðə kaɪnd əv ˈenədʒi wiː niːd/",
+      "/aɪm ˈɔːlməʊst ˈfɪnɪʃt dʒʌst ɡɪv miː ə ˈmɪnɪt/",
+      "/wiː ʃʊd tɔːk əˈbaʊt ðɪs ə ˈlɪtl mɔː/",
+      "/ðæts ə ˈrɪəli ɡʊd ˈkwestʃən ˈɒnɪstli/",
+      "/ɪt tʊk ə waɪl bʌt ɪt wəz wɜːθ ɪt/",
+      "/lets dʒʌst teɪk ɪt wʌn step ət ə taɪm/",
+      "/aɪ ˈkʊdnt həv sed ɪt ˈbetə maɪˈself/"
+    ];
+    this.GOOD='#a8c17e'; this.MEDIUM='#c9bfae'; this.ATTENTION='#e2905a';
+    this.GOOD_TAG='tag tag-accent-2'; this.MEDIUM_TAG='tag tag-neutral'; this.ATTENTION_TAG='tag tag-accent';
+
+    this.VIDEOS_RAW = [
+      {id:'v1', title:"Actually, I think it's brilliant", source:'Jimmy Fallon Interview', timestamp:'00:12–00:42', duration:'0:42', lastScore:82, attempts:6,
+        sparkline:[61,68,74,79,76,82], scores:{Intonation:84,Rhythm:79,Stress:88,Variation:71},
+        summary:'Your pitch rises correctly on the question, but stress lands one syllable early on "brilliant" — compare with take 4.'},
+      {id:'v2', title:"That's exactly the kind of energy we need", source:'TED Shorts', timestamp:'00:03–00:35', duration:'0:35', lastScore:58, attempts:3,
+        sparkline:[50,55,58], scores:{Intonation:61,Rhythm:54,Stress:66,Variation:49},
+        summary:'Rhythm drags on "exactly" — the stressed syllable should land about 100ms earlier to match the source.'},
+      {id:'v3', title:"I honestly didn't expect that to happen", source:'BBC Interview', timestamp:'00:18–00:51', duration:'0:51', lastScore:39, attempts:2,
+        sparkline:[35,39], scores:{Intonation:44,Rhythm:38,Stress:41,Variation:33},
+        summary:'Pitch stays flat where the source falls sharply on "happen" — try exaggerating the drop.'},
+      {id:'v4', title:"You know, at the end of the day, it's about consistency", source:'Joe Rogan Podcast', timestamp:'00:55–01:59', duration:'1:04', lastScore:91, attempts:9,
+        sparkline:[70,76,81,85,88,86,90,89,91], scores:{Intonation:92,Rhythm:90,Stress:93,Variation:87},
+        summary:'Excellent match across the whole line — variation on "consistency" is now within tolerance.'},
+      {id:'v5', title:"It's not about winning, it's about showing up", source:'Ted Lasso Shorts', timestamp:'00:08–00:36', duration:'0:28', lastScore:67, attempts:4,
+        sparkline:[52,60,63,67], scores:{Intonation:70,Rhythm:64,Stress:72,Variation:61},
+        summary:'Good improvement on stress placement — variation on "showing up" still reads a bit monotone.'}
+    ];
+
+    this.VOCAB_RAW = [
+      {id:'w1', word:'brilliant', ipa:'/ˈbrɪl.jənt/', meaning:'extremely impressive, talented, or intelligent', status:'known', videoId:'v1'},
+      {id:'w2', word:'honestly', ipa:'/ˈɒn.ɪst.li/', meaning:'used to emphasize that you are being sincere', status:'learning', videoId:'v3'},
+      {id:'w3', word:'exactly', ipa:'/ɪɡˈzækt.li/', meaning:'used to emphasize precise agreement', status:'new', videoId:'v2'},
+      {id:'w4', word:'energy', ipa:'/ˈen.ə.dʒi/', meaning:'enthusiasm, liveliness, and drive', status:'learning', videoId:'v2'},
+      {id:'w5', word:'showing up', ipa:'/ˈʃəʊ.ɪŋ ʌp/', meaning:'being present, engaged, and dependable', status:'new', videoId:'v5'},
+      {id:'w6', word:'at the end of the day', ipa:'/ət ði end əv ðə deɪ/', meaning:'when everything has been considered', status:'learning', videoId:'v4'},
+      {id:'w7', word:'expect', ipa:'/ɪkˈspekt/', meaning:'to think something is likely to happen', status:'known', videoId:'v3'},
+      {id:'w8', word:'kind of', ipa:'/kaɪnd əv/', meaning:'somewhat; to a certain extent', status:'new', videoId:'v1'}
+    ];
+
+    this.NEED_PRACTICE_RAW = [
+      {id:'n1', title:'Question-final stress', detail:'Missed in 6/10 recent attempts', videoId:'v1'},
+      {id:'n2', title:'Linking consonant → vowel across words', detail:'Missed in 5/9 recent attempts', videoId:'v4'},
+      {id:'n3', title:'Falling intonation on statements', detail:'Missed in 4/8 recent attempts', videoId:'v2'}
+    ];
+
+    this.WEEKLY = [58,61,65,63,70,74,72,79,81,84];
+
+    this.FEATURED_RAW = [
+      {id:'f1', title:"We're not so different, you and I.", source:'Marvel Interview Clips', duration:'0:31', pushedBy:'Curated by Shadowline'},
+      {id:'f2', title:"I've made a lot of mistakes, but this wasn't one of them.", source:'Late Night Talk Show', duration:'0:38', pushedBy:'Shared by @linh.tran'},
+      {id:'f3', title:"Practice doesn't make perfect, it makes permanent.", source:'Coaching Podcast', duration:'0:24', pushedBy:'Curated by Shadowline'},
+      {id:'f4', title:"Give it everything, or don't give it at all.", source:'Sports Documentary', duration:'0:19', pushedBy:'Shared by @minh.le'}
+    ];
+    this.LEADERBOARD_RAW = [
+      {id:'u1', name:'Linh Tran', avgScore:91, streak:'18 days'},
+      {id:'u2', name:'Mai Nguyen', avgScore:84, streak:'12 days', isYou:true},
+      {id:'u3', name:'Minh Le', avgScore:79, streak:'9 days'},
+      {id:'u4', name:'Anh Pham', avgScore:73, streak:'5 days'},
+      {id:'u5', name:'Duc Vo', avgScore:66, streak:'3 days'}
+    ];
+    this.ARENA_LEADERBOARD_RAW = [
+      {id:'u2', name:'Mai Nguyen', points:0, wins:'0 wins', isYou:true},
+      {id:'u1', name:'Linh Tran', points:340, wins:'14 wins'},
+      {id:'u3', name:'Minh Le', points:265, wins:'11 wins'},
+      {id:'u4', name:'Anh Pham', points:190, wins:'7 wins'},
+      {id:'u5', name:'Duc Vo', points:120, wins:'5 wins'}
+    ];
+
+    this.ARENA_BOTS_RAW = [
+      {id:'bot1', name:'linh_tran', x:180, y:140},
+      {id:'bot2', name:'minh_le', x:560, y:110},
+      {id:'bot3', name:'anh_pham', x:420, y:340},
+      {id:'bot4', name:'duc_vo', x:650, y:400},
+      {id:'bot5', name:'thu_ha', x:120, y:400}
+    ];
+    this.ARENA_MONSTER_SPOTS = [
+      {id:'m1', x:280, y:340}, {id:'m2', x:640, y:220}, {id:'m3', x:90, y:80},
+      {id:'m4', x:460, y:420}, {id:'m5', x:340, y:60}
+    ];
+    this.ARENA_BUSHES = Array.from({length:16}, (_,i) => ({
+      cx: 40 + (i%8)*100 + (i%3)*10, cy: 60 + Math.floor(i/8)*380, r: 14 + (i%4)*3
+    }));
+    this.ARENA_ROCKS = Array.from({length:8}, (_,i) => {
+      const cx = 100 + i*90, cy = i%2===0 ? 250 : 230;
+      return { points: [[cx-10,cy+8],[cx,cy-10],[cx+10,cy+8]].map(p=>p.join(',')).join(' ') };
+    });
+    this.ARENA_PATHS = [
+      {d:'M0,250 C200,230 400,270 800,250'},
+      {d:'M400,0 C420,150 380,350 400,500'}
+    ];
+    this.WORD_BANK = ['brilliant','exactly','honestly','consistency','energy','expect'];
+  }
+
+  colorFor(score){ return score>=75?this.GOOD:score>=50?this.MEDIUM:this.ATTENTION; }
+  healthColor(h){ return h>=60?this.GOOD:h>=30?this.MEDIUM:this.ATTENTION; }
+
+  joyDown(e){
+    const rect = e.currentTarget.getBoundingClientRect();
+    this._joyCenter = {x:rect.left+rect.width/2, y:rect.top+rect.height/2, r:rect.width/2-20};
+    this.setState({joyActive:true});
+    if(this._joyInterval) clearInterval(this._joyInterval);
+    this._joyInterval = setInterval(() => {
+      const v = this.state.joyVec;
+      if(!v.x && !v.y) return;
+      const st = this.state.arenaPlayer;
+      let x = Math.max(20, Math.min(780, st.x + v.x*0.5));
+      let y = Math.max(20, Math.min(480, st.y + v.y*0.5));
+      this.setState({arenaPlayer:{x, y, dirX:x+v.x*2, dirY:y+v.y*2}});
+    }, 60);
+  }
+  joyMove(e){
+    if(!this.state.joyActive || !this._joyCenter) return;
+    const c = this._joyCenter;
+    let dx = e.clientX - c.x, dy = e.clientY - c.y;
+    const dist = Math.hypot(dx,dy) || 1;
+    const clamped = Math.min(dist, c.r);
+    dx = dx/dist*clamped; dy = dy/dist*clamped;
+    this.setState({joyVec:{x:dx,y:dy}, joyKnob:{x:28+dx, y:28+dy}});
+  }
+  joyUp(){
+    if(this._joyInterval) clearInterval(this._joyInterval);
+    this.setState({joyActive:false, joyVec:{x:0,y:0}, joyKnob:{x:28,y:28}});
+  }
+  hashStr(str){ let h=0; for(let i=0;i<str.length;i++) h+=str.charCodeAt(i)*(i+7); return h; }
+  clampVal(v,a,b){ return Math.max(a,Math.min(b,v)); }
+
+  genPitch(seed, lastScore, n){
+    const ref=[], user=[];
+    const acc = lastScore/100;
+    const amp = (1-acc)*3 + 0.4;
+    for(let i=0;i<n;i++){
+      const t=i/(n-1);
+      const r = Math.sin(t*Math.PI*2.3+seed)*2.6 + Math.sin(t*Math.PI*5.2+seed*1.7)*0.7;
+      ref.push(r);
+      user.push(r + Math.sin(i*0.9+seed*3)*amp);
+    }
+    return {ref,user};
+  }
+
+  buildChart(video){
+    const n=28, W=640,H=200,padL=30,padR=10,padT=10,padB=24;
+    const plotW=W-padL-padR, plotH=H-padT-padB;
+    const seed = this.hashStr(video.id)%10;
+    const {ref,user} = this.genPitch(seed, video.lastScore, n);
+    const mapX = i => padL + (i/(n-1))*plotW;
+    const mapY = v => padT + (6-this.clampVal(v,-6,6))/12*plotH;
+    const refPoints = ref.map((v,i)=>mapX(i)+','+mapY(v).toFixed(1)).join(' ');
+    let upper='M', lower=[];
+    ref.forEach((v,i)=>{
+      const x=mapX(i);
+      upper += (i===0?'':'L')+x+','+mapY(v+1).toFixed(1)+' ';
+      lower.unshift(x+','+mapY(v-1).toFixed(1));
+    });
+    const bandPath = upper + 'L'+lower.join(' L')+' Z';
+    const segments=[];
+    for(let i=0;i<n-1;i++){
+      const dev = (Math.abs(user[i]-ref[i])+Math.abs(user[i+1]-ref[i+1]))/2;
+      const color = dev<=1?this.GOOD:dev<=2?this.MEDIUM:this.ATTENTION;
+      segments.push({x1:mapX(i).toFixed(1),y1:mapY(user[i]).toFixed(1),x2:mapX(i+1).toFixed(1),y2:mapY(user[i+1]).toFixed(1),color});
+    }
+    const gridLines = [-6,-3,0,3,6].map(sVal=>({y:mapY(sVal).toFixed(1), ty:(mapY(sVal)+3).toFixed(1), label:(sVal>0?'+':'')+sVal}));
+    const xLabels=['0:00','0:10','0:20','0:30'].map(l=>({label:l}));
+    return {refPoints, bandPath, segments, gridLines, xLabels};
+  }
+
+  sparkPoints(scores){
+    const w=56,h=20,pad=2;
+    return scores.map((sVal,i)=>{
+      const x = pad + (i/(scores.length-1||1))*(w-pad*2);
+      const y = h-pad - ((sVal-0)/100)*(h-pad*2);
+      return x.toFixed(1)+','+y.toFixed(1);
+    }).join(' ');
+  }
+
+  componentDidMount(){
+    this._onKeyDown = (e) => {
+      if(this.state.screen !== 'arena') return;
+      const step = 14;
+      const st = this.state.arenaPlayer;
+      let {x,y} = st;
+      if(e.key==='ArrowUp'||e.key==='w') y -= step;
+      else if(e.key==='ArrowDown'||e.key==='s') y += step;
+      else if(e.key==='ArrowLeft'||e.key==='a') x -= step;
+      else if(e.key==='ArrowRight'||e.key==='d') x += step;
+      else return;
+      x = Math.max(20, Math.min(780, x));
+      y = Math.max(20, Math.min(480, y));
+      const dirX = x + (x-st.x || 20), dirY = y + (y-st.y || 0);
+      this.setState({arenaPlayer:{x,y,dirX,dirY}});
+    };
+    window.addEventListener('keydown', this._onKeyDown);
+  }
+  componentWillUnmount(){
+    window.removeEventListener('keydown', this._onKeyDown);
+    if(this._joyInterval) clearInterval(this._joyInterval);
+  }
+
+
+  computeArena(s){
+    const p = s.arenaPlayer;
+    const bots = this.ARENA_BOTS_RAW.map(b => ({
+      ...b, dirX:b.x+16, dirY:b.y, labelY:b.y-14, color:'#5c7a68'
+    }));
+    let nearest=null, nearestDist=999;
+    bots.forEach(b => {
+      const d = Math.hypot(b.x-p.x, b.y-p.y);
+      if(d<70 && d<nearestDist){ nearest=b; nearestDist=d; }
+    });
+    const challengeNear = () => { if(nearest) this.startBattle(nearest); };
+    const monsters = this.ARENA_MONSTER_SPOTS.filter(m => s.arenaMonsters.includes(m.id));
+    let nearestMon=null, nearestMonDist=999;
+    monsters.forEach(m => {
+      const d = Math.hypot(m.x-p.x, m.y-p.y);
+      if(d<60 && d<nearestMonDist){ nearestMon=m; nearestMonDist=d; }
+    });
+    const farmMonster = () => {
+      if(!nearestMon) return;
+      const gained = 5 + Math.floor(Math.random()*11);
+      this.setState({
+        arenaPoints: this.state.arenaPoints+gained,
+        arenaMonsters: this.state.arenaMonsters.filter(id=>id!==nearestMon.id),
+        arenaFarmToast: '+'+gained+' points'
+      });
+      setTimeout(()=>this.setState({arenaFarmToast:null}), 1200);
+      const spotId = nearestMon.id;
+      setTimeout(() => {
+        if(!this.state.arenaMonsters.includes(spotId)) this.setState({arenaMonsters:[...this.state.arenaMonsters, spotId]});
+      }, 10000);
+    };
+    if(!s.arenaIncoming && !this._incomingScheduled){
+      this._incomingScheduled = true;
+      setTimeout(() => { if(this.state.screen==='arena') this.setState({arenaIncoming:this.ARENA_BOTS_RAW[2]}); }, 6000);
+    }
+    return {
+      player: p, bots, onlineCount: bots.length+1,
+      bushes: this.ARENA_BUSHES, rocks: this.ARENA_ROCKS, paths: this.ARENA_PATHS,
+      monsters, nearMonster: !!nearestMon, nearMonBtnX: nearestMon?nearestMon.x*0.5:0, nearMonBtnY: nearestMon?nearestMon.y*0.5:0,
+      farmMonster, farmToast: s.arenaFarmToast,
+      nearBot: !!nearest, nearBotBtnX: nearest?nearest.x*0.5: 0, nearBotBtnY: nearest?nearest.y*0.5:0,
+      challengeNear,
+      incoming: s.arenaIncoming,
+      acceptChallenge: () => { const b=s.arenaIncoming; this.setState({arenaIncoming:null}); this.startBattle(b); },
+      declineChallenge: () => this.setState({arenaIncoming:null}),
+      joyDown: this.joyDown.bind(this), joyMove: this.joyMove.bind(this), joyUp: this.joyUp.bind(this),
+      knobX: s.joyKnob.x, knobY: s.joyKnob.y
+    };
+  }
+
+  startBattle(bot){
+    this.setState({
+      screen:'battle', arenaOpponent:bot, battleRound:1, battleMyHealth:100, battleOppHealth:100,
+      battleRoundState:'input', battleWordInput:'', battleReadWord:'', battleHistory:[]
+    });
+  }
+
+  computeBattle(s){
+    const opp = s.arenaOpponent || this.ARENA_BOTS_RAW[0];
+    const mineHealth = s.battleMyHealth, oppHealth = s.battleOppHealth;
+    const submitWord = () => {
+      this.setState({battleRoundState:'waiting'});
+      setTimeout(() => {
+        const oppPick = this.WORD_BANK[Math.floor(Math.random()*this.WORD_BANK.length)];
+        this.setState({battleRoundState:'read', battleReadWord:oppPick, battleOppWord:oppPick});
+      }, 900);
+    };
+    const record = () => {
+      this.setState({battleRoundState:'scoring'});
+      setTimeout(() => {
+        const mine = this.clampVal(55 + Math.floor(Math.random()*45), 40, 99);
+        const theirs = this.clampVal(50 + Math.floor(Math.random()*45), 40, 99);
+        const loserIsMe = mine < theirs;
+        const damage = Math.max(6, Math.abs(mine-theirs));
+        let newMine = mineHealth, newOpp = oppHealth;
+        if(loserIsMe) newMine = Math.max(0, mineHealth-damage); else newOpp = Math.max(0, oppHealth-damage);
+        this.setState({
+          battleRoundState:'result', battleMyHealth:newMine, battleOppHealth:newOpp,
+          battleLastResult:{mine, theirs, damage, loserIsMe},
+          battleHistory:[...s.battleHistory, {n:s.battleRound, mine, opp:theirs, myWord:s.battleWordInput, oppWord:s.battleOppWord}]
+        });
+      }, 1200);
+    };
+    const nextRound = () => {
+      const done = s.battleRound>=3 || s.battleMyHealth<=0 || s.battleOppHealth<=0;
+      if(done){ this.setState({screen:'battleResult'}); return; }
+      this.setState({battleRound:s.battleRound+1, battleRoundState:'input', battleWordInput:'', battleReadWord:''});
+    };
+    const r = s.battleLastResult || {mine:0,theirs:0,damage:0,loserIsMe:false};
+    return {
+      mine: {name:'You', health:mineHealth, healthPct:mineHealth, healthColor:this.healthColor(mineHealth)},
+      opp: {name:opp.name, health:oppHealth, healthPct:oppHealth, healthColor:this.healthColor(oppHealth)},
+      roundLabel: s.battleRound+'/3',
+      isInput: s.battleRoundState==='input', isWaiting: s.battleRoundState==='waiting',
+      isRead: s.battleRoundState==='read', isScoring: s.battleRoundState==='scoring', isResult: s.battleRoundState==='result',
+      wordInput: s.battleWordInput, setWordInput: (e)=>this.setState({battleWordInput:e.target.value}),
+      inputSeconds: '15', submitWord, readWord: s.battleReadWord, readRingOffset: 90, record,
+      result: {
+        mineScore:r.mine, oppScore:r.theirs, mineColor:this.colorFor(r.mine), oppColor:this.colorFor(r.theirs),
+        mineCrit:r.mine>=90, oppCrit:r.theirs>=90, damage:r.damage,
+        loserName: r.loserIsMe ? 'You' : opp.name
+      },
+      nextLabel: (s.battleRound>=3 || s.battleMyHealth<=0 || s.battleOppHealth<=0) ? 'View result' : 'Next round',
+      nextRound
+    };
+  }
+
+  computeBattleResult(s){
+    const opp = s.arenaOpponent || this.ARENA_BOTS_RAW[0];
+    const mineWon = s.battleMyHealth >= s.battleOppHealth;
+    if(!this._pointsAwarded){
+      this._pointsAwarded = true;
+      const gained = mineWon ? 30 : 10;
+      this.setState({
+        arenaPoints: s.arenaPoints+gained, arenaWins: mineWon ? s.arenaWins+1 : s.arenaWins,
+        matchHistory: [{id:Date.now(), oppName:opp.name, won:mineWon, words: [...new Set(s.battleHistory.flatMap(h=>[h.myWord,h.oppWord]).filter(Boolean))]}, ...s.matchHistory]
+      });
+    }
+    return {
+      winnerName: mineWon ? 'You' : opp.name,
+      mineName:'You', oppName:opp.name,
+      minePct: s.battleMyHealth, oppPct: s.battleOppHealth,
+      mineColor: this.healthColor(s.battleMyHealth), oppColor: this.healthColor(s.battleOppHealth),
+      rounds: s.battleHistory, arenaPoints: mineWon ? 30 : 10,
+      rematch: () => { this._pointsAwarded=false; this.startBattle(opp); },
+      backToArena: () => { this._pointsAwarded=false; this.setState({screen:'arena'}); }
+    };
+  }
+
+  renderVals(){
+    const s = this.state;
+    const screen = s.screen;
+    const isLogin = screen==='login';
+    const showApp = !isLogin;
+    const activeTab = (screen==='analysis'||screen==='dub'||screen==='practice') ? 'library' : (screen==='flashcards' ? 'vocab' : (screen==='battle'||screen==='battleResult'||screen==='arenaMenu'||screen==='equipment'||screen==='matchHistory') ? 'arena' : screen);
+    const ACCENT='#e9b94f', TEXT='#f5ead8';
+
+    const allVideosRaw = [...this.VIDEOS_RAW, ...s.customVideos];
+    const videos = allVideosRaw.map(v => ({
+      ...v, color: this.colorFor(v.lastScore), sparkPoints: this.sparkPoints(v.sparkline),
+      select: () => this.setState({selectedVideoId:v.id, selectedTake:v.attempts, screen:'analysis'}),
+      practice: () => this.setState({practiceVideoId:v.id, practiceIndex:1, practiceRecorded:false, screen:'practice'})
+    }));
+
+    const pVideo = allVideosRaw.find(v=>v.id===s.practiceVideoId) || allVideosRaw[0];
+    const pTotal = this.CAPTIONS.length;
+    const waveSeed = this.hashStr(pVideo.id)%10 + s.practiceIndex;
+    const wave = Array.from({length:30}, (_,i) => {
+      const amp = s.practiceRecorded ? (8 + (Math.sin(i*1.3+waveSeed)*0.5+0.5)*46) : 3;
+      return { x:(i*10)+1, y:(32-amp/2).toFixed(1), w:7, h:amp.toFixed(1), color: s.practiceRecorded ? this.GOOD : 'var(--color-neutral-400)' };
+    });
+    const capIdx = (s.practiceIndex-1)%pTotal;
+    const dictFor = clean => {
+      const base = this.VOCAB_RAW.find(v=>v.word===clean);
+      if(base) return {ipa:base.ipa, meaning:base.meaning};
+      return this.MOCK_TRANSLATE[clean] || {ipa:'/'+clean+'/', meaning:'Auto-translated definition (via Google Translate)'};
+    };
+    const toggleVocab = (rawWord) => {
+      const clean = rawWord.toLowerCase().replace(/[^a-z']/g,'');
+      if(!clean) return;
+      const t = dictFor(clean);
+      const inBase = this.VOCAB_RAW.some(v=>v.word===clean);
+      const existing = s.customVocab.find(v=>v.word===clean);
+      if(inBase){
+        this.setState({wordPopup:{word:clean, ipa:t.ipa, meaning:t.meaning, status:'already known'}});
+        return;
+      }
+      if(existing){
+        this.setState({customVocab: s.customVocab.filter(v=>v.word!==clean), wordPopup:{word:clean, ipa:t.ipa, meaning:t.meaning, status:'removed'}});
+      } else {
+        this.setState({customVocab: [...s.customVocab, {id:'c-'+clean, word:clean, ipa:t.ipa, meaning:t.meaning, status:'new', videoId:pVideo.id}], wordPopup:{word:clean, ipa:t.ipa, meaning:t.meaning, status:'added'}});
+      }
+    };
+    const captionWords = this.CAPTIONS[capIdx].replace(/[.]$/,'').split(' ').map(w => {
+      const clean = w.toLowerCase().replace(/[^a-z']/g,'');
+      const inBase = this.VOCAB_RAW.some(v=>v.word===clean);
+      const addedByUser = s.customVocab.some(v=>v.word===clean);
+      const added = inBase || addedByUser;
+      return {text:w, added, underline: added ? '2px solid '+this.GOOD : '1px dashed var(--color-accent)', add: () => toggleVocab(w)};
+    });
+    const popupStatusLabel = { added:'Added to Vocabulary', removed:'Removed from Vocabulary', 'already known':'Already in Vocabulary' };
+    const wordPopup = s.wordPopup ? {
+      ...s.wordPopup, statusLabel: popupStatusLabel[s.wordPopup.status] || '',
+      close: () => this.setState({wordPopup:null})
+    } : null;
+    const pScore = this.clampVal(58 + (this.hashStr(pVideo.id+'-'+s.practiceIndex)%40), 45, 98);
+    const pScoreLabel = pScore>=75 ? 'Great shadowing' : pScore>=50 ? 'Getting there — try again' : 'Needs another take';
+    const prac = {
+      title: pVideo.title, index: s.practiceIndex, total: pTotal,
+      clipLabel: 'On clip ' + s.practiceIndex + ' of ' + pTotal,
+      caption: this.CAPTIONS[capIdx], ipa: this.IPA_CAPTIONS[capIdx], captionWords,
+      hasPopup: !!wordPopup, popup: wordPopup,
+      wave, waveBorder: s.practiceRecorded ? this.GOOD : 'var(--color-divider)',
+      recordClass: s.practiceRecorded ? 'btn btn-secondary' : 'btn btn-primary',
+      recordLabel: s.practiceRecorded ? 'Re-record' : 'Record',
+      record: () => this.setState({practiceRecorded:true}),
+      resetMic: () => this.setState({practiceRecorded:false}),
+      disabled: !s.practiceRecorded,
+      recorded: s.practiceRecorded, score: pScore, scoreColor: this.colorFor(pScore), scoreLabel: pScoreLabel,
+      next: () => this.setState({practiceIndex: s.practiceIndex<pTotal ? s.practiceIndex+1 : s.practiceIndex, practiceRecorded:false, wordPopup:null}),
+      watch: () => this.setState({screen:'dub', selectedVideoId:pVideo.id, selectedTake:pVideo.attempts}),
+      saveDub: () => this.setState({screen:'analysis', selectedVideoId:pVideo.id, selectedTake:pVideo.attempts})
+    };
+
+    const rawSel = allVideosRaw.find(v=>v.id===s.selectedVideoId) || allVideosRaw[0];
+    const takes = Array.from({length: rawSel.attempts}, (_,i)=>i+1).map(n => ({
+      n, active: n===s.selectedTake,
+      chipClass: n===s.selectedTake ? 'btn btn-primary' : 'btn btn-secondary',
+      select: () => this.setState({selectedTake:n})
+    }));
+    const transcript = rawSel.title.split(' ').map(w => {
+      const clean = w.replace(/[^a-zA-Z']/g,'');
+      const score = this.clampVal(rawSel.lastScore + (this.hashStr(clean)%40)-20, 8, 99);
+      return {text:w, color: this.colorFor(score)};
+    });
+    const scoreCards = Object.keys(rawSel.scores).map(label => {
+      const value = rawSel.scores[label];
+      return {label:label.toUpperCase(), value, color: this.colorFor(value), width: value+'%'};
+    });
+    const sel = {
+      ...rawSel, takes, transcript, scoreCards,
+      chart: this.buildChart(rawSel)
+    };
+
+    const weeklyN = this.WEEKLY.length;
+    const wPadL=30, wPadR=10, wPadT=20, wPadB=24, wW=640, wH=180;
+    const wPlotW=wW-wPadL-wPadR, wPlotH=wH-wPadT-wPadB;
+    const weeklyDots = this.WEEKLY.map((val,i)=>{
+      const cx = wPadL + (i/(weeklyN-1))*wPlotW;
+      const cy = wPadT + (1-val/100)*wPlotH;
+      return {cx:cx.toFixed(1), cy:cy.toFixed(1), color: this.colorFor(val)};
+    });
+    const weeklyPoints = weeklyDots.map(d=>d.cx+','+d.cy).join(' ');
+    const weeklyLabels = this.WEEKLY.map((_,i)=>({label:'W'+(i+1)}));
+
+    const progressFilterOpts = ['All','Intonation','Rhythm','Stress','Variation'];
+    const progressFilters = progressFilterOpts.map(label => ({
+      label, chipClass: s.progressFilter===label ? 'btn btn-primary' : 'btn btn-secondary',
+      select: () => this.setState({progressFilter:label})
+    }));
+    const needPractice = this.NEED_PRACTICE_RAW.map(n => ({
+      ...n, practice: () => this.setState({practiceVideoId:n.videoId, practiceIndex:1, practiceRecorded:false, screen:'practice'})
+    }));
+    const suggestedRaw = this.VIDEOS_RAW.find(v=>v.id==='v5');
+    const suggested = {
+      title: suggestedRaw.title, source: suggestedRaw.source,
+      select: () => this.setState({practiceVideoId:suggestedRaw.id, practiceIndex:1, practiceRecorded:false, screen:'practice'})
+    };
+
+    const vocabFilterOpts = ['All','New','Learning','Known'];
+    const vocabFilters = vocabFilterOpts.map(label => ({
+      label, chipClass: s.vocabFilter===label ? 'btn btn-primary' : 'btn btn-secondary',
+      select: () => this.setState({vocabFilter:label})
+    }));
+    const tagFor = st => st==='known'?this.GOOD_TAG:st==='learning'?'tag tag-accent':'tag tag-neutral';
+    const labelFor = st => st==='known'?'Known':st==='learning'?'Learning':'New';
+    const allVocabBase = [...this.VOCAB_RAW, ...s.customVocab].map(w => ({...w, status: s.vocabOverrides[w.word] || w.status}));
+    const toggleLearned = (word) => {
+      const cur = s.vocabOverrides[word] || (this.VOCAB_RAW.find(v=>v.word===word)||s.customVocab.find(v=>v.word===word)||{}).status;
+      const next = cur==='known' ? 'learning' : 'known';
+      this.setState({vocabOverrides: {...s.vocabOverrides, [word]: next}});
+    };
+    const filteredVocab = allVocabBase.filter(w => s.vocabFilter==='All' || w.status===s.vocabFilter.toLowerCase())
+      .map(w => {
+        const vid = this.VIDEOS_RAW.find(v=>v.id===w.videoId);
+        return {...w, tagClass: tagFor(w.status), statusLabel: labelFor(w.status), videoTitle: vid?vid.title:'',
+          learned: w.status==='known',
+          learnedLabel: w.status==='known' ? 'Learned' : 'Mark learned',
+          learnedBtnClass: w.status==='known' ? 'btn btn-secondary' : 'btn btn-ghost',
+          learnedIcon: w.status==='known' ? 'check-circle' : 'circle',
+          toggleLearned: () => toggleLearned(w.word),
+          jump: () => this.setState({selectedVideoId:w.videoId, selectedTake:(vid||{}).attempts||1, screen:'analysis'})};
+      });
+
+    const flashDeck = allVocabBase;
+    const flashTotal = flashDeck.length;
+    const flashDone = s.flashIndex >= flashTotal;
+    const flashWord = !flashDone ? flashDeck[s.flashIndex] : null;
+    const flashCorrectCount = Object.values(s.flashResults).filter(r=>r==='known').length;
+    const flash = {
+      total: flashTotal, index: s.flashIndex, done: flashDone,
+      progressLabel: !flashDone ? ('Card ' + (s.flashIndex+1) + ' of ' + flashTotal) : '',
+      word: flashWord, revealed: s.flashRevealed,
+      example: flashWord ? (this.EXAMPLES[flashWord.word] || ('Try using "' + flashWord.word + '" in your own sentence.')) : '',
+      spoke: s.flashSpoke,
+      toggleSpoke: () => this.setState({flashSpoke:!s.flashSpoke}),
+      speakBtnClass: s.flashSpoke ? 'btn btn-secondary' : 'btn btn-ghost',
+      speakIcon: s.flashSpoke ? 'check' : 'mic',
+      speakLabel: s.flashSpoke ? 'Practiced saying it' : 'Practice saying it aloud',
+      reveal: () => this.setState({flashRevealed:true}),
+      markKnown: () => this.setState({flashResults:{...s.flashResults, [flashWord.word]:'known'}, vocabOverrides:{...s.vocabOverrides, [flashWord.word]:'known'}, flashIndex:s.flashIndex+1, flashRevealed:false, flashSpoke:false}),
+      markLearning: () => this.setState({flashResults:{...s.flashResults, [flashWord.word]:'learning'}, vocabOverrides:{...s.vocabOverrides, [flashWord.word]:'learning'}, flashIndex:s.flashIndex+1, flashRevealed:false, flashSpoke:false}),
+      summary: flashDone ? ('Reviewed ' + flashTotal + ' words — ' + flashCorrectCount + ' marked known') : '',
+      restart: () => this.setState({flashIndex:0, flashRevealed:false, flashResults:{}, flashSpoke:false}),
+      exit: () => this.setState({screen:'vocab'})
+    };
+    const startFlashcards = () => this.setState({screen:'flashcards', flashIndex:0, flashRevealed:false, flashResults:{}});
+
+    const addFeatured = (f) => {
+      this.setState({
+        addedFeatured: {...s.addedFeatured, [f.id]:true},
+        customVideos: [...s.customVideos, {id:'added-'+f.id, title:f.title, source:f.source, timestamp:'00:00–'+f.duration, duration:f.duration, lastScore:0, attempts:0, sparkline:[0], scores:{Intonation:0,Rhythm:0,Stress:0,Variation:0}, summary:'No takes recorded yet — practice this clip to see your pitch analysis.'}]
+      });
+    };
+    const featured = this.FEATURED_RAW.map(f => {
+      const added = !!s.addedFeatured[f.id];
+      return {...f, added, addLabel: added?'Added to Library':'Add to Library', addIcon: added?'check':'plus',
+        addBtnClass: added?'btn btn-secondary':'btn btn-primary', addToLibrary: () => addFeatured(f)};
+    });
+    const leaderboard = this.LEADERBOARD_RAW.map((l, i) => {
+      const rank = i+1;
+      return {
+        ...l, rank, rowBg: l.isYou ? 'var(--color-accent-100)' : 'transparent', rowWeight: l.isYou ? 700 : 400,
+        name: l.isYou ? l.name+' (You)' : l.name, scoreColor: this.colorFor(l.avgScore),
+        initial: l.name.charAt(0), isFirst: rank===1,
+        rankBg: rank===1 ? 'var(--color-accent)' : rank<=3 ? 'var(--color-accent-300)' : 'var(--color-neutral-200)',
+        rankColor: rank<=3 ? 'var(--color-bg)' : 'var(--color-neutral-700)'
+      };
+    });
+    const arenaLbRaw = this.ARENA_LEADERBOARD_RAW.map(l => l.isYou ? {...l, points:s.arenaPoints, wins:s.arenaWins+' wins'} : l)
+      .sort((a,b)=>b.points-a.points);
+    const arenaLeaderboard = arenaLbRaw.map((l,i) => {
+      const rank=i+1;
+      return {
+        ...l, rank, rowBg: l.isYou ? 'var(--color-accent-100)' : 'transparent', rowWeight: l.isYou ? 700 : 400,
+        name: l.isYou ? l.name+' (You)' : l.name, avgScore: l.points, streak: l.wins,
+        scoreColor: 'var(--color-accent-700)', initial: l.name.charAt(0), isFirst: rank===1,
+        rankBg: rank===1 ? 'var(--color-accent)' : rank<=3 ? 'var(--color-accent-300)' : 'var(--color-neutral-200)',
+        rankColor: rank<=3 ? 'var(--color-bg)' : 'var(--color-neutral-700)'
+      };
+    });
+    const lbIsPractice = s.leaderboardMode==='practice';
+    const activeLeaderboard = lbIsPractice ? leaderboard : arenaLeaderboard;
+    const topThree = activeLeaderboard.slice(0,3);
+    const restOfLeaderboard = activeLeaderboard.slice(3);
+
+    const tabColor = t => activeTab===t ? 'var(--color-bg)' : TEXT;
+    const tabBg = t => activeTab===t ? 'var(--color-accent)' : 'transparent';
+
+    return {
+      isLogin, showApp, showEmailForm: s.showEmailForm,
+      toggleEmailForm: () => this.setState({showEmailForm:!s.showEmailForm}),
+      continueGoogle: () => this.setState({screen:'library'}),
+      isLibrary: showApp && screen==='library', isAnalysis: showApp && screen==='analysis',
+      isDub: showApp && screen==='dub', isProgress: showApp && screen==='progress', isVocab: showApp && screen==='vocab',
+      isPractice: showApp && screen==='practice', prac,
+      isProfile: showApp && screen==='profile',
+      profileName: s.profileName, profileEmail: s.profileEmail,
+      editingProfile: s.editingProfile, editName: s.editName, editEmail: s.editEmail,
+      openEditProfile: () => this.setState({editingProfile:true, editName:s.profileName, editEmail:s.profileEmail}),
+      closeEditProfile: () => this.setState({editingProfile:false}),
+      saveEditProfile: () => this.setState({editingProfile:false, profileName:s.editName, profileEmail:s.editEmail}),
+      setEditName: (e) => this.setState({editName:e.target.value}),
+      setEditEmail: (e) => this.setState({editEmail:e.target.value}),
+      isFlashcards: showApp && screen==='flashcards', flash, startFlashcards,
+      isDashboard: showApp && screen==='dashboard', featured, leaderboard, topThree, restOfLeaderboard,
+      lbIsPractice, lbIsArena: !lbIsPractice,
+      lbScoreLabel: lbIsPractice ? 'Avg score' : 'Points', lbStreakLabel: lbIsPractice ? 'Streak' : 'Wins',
+      setLbPractice: () => this.setState({leaderboardMode:'practice'}),
+      setLbArena: () => this.setState({leaderboardMode:'arena'}),
+      isArena: showApp && screen==='arena', isBattle: showApp && screen==='battle', isBattleResult: showApp && screen==='battleResult',
+      isArenaMenu: showApp && screen==='arenaMenu', isEquipment: showApp && screen==='equipment', isMatchHistory: showApp && screen==='matchHistory',
+      goArena: () => this.setState({screen:'arenaMenu'}),
+      arenaTabColor: tabColor('arena'), arenaTabBg: tabBg('arena'),
+      arena: this.computeArena(s), battle: this.computeBattle(s), battleResult: this.computeBattleResult(s),
+      arenaMenu: {
+        points: s.arenaPoints, wins: s.arenaWins,
+        start: () => this.setState({screen:'arena'}),
+        openEquipment: () => this.setState({screen:'equipment'}),
+        openHistory: () => this.setState({screen:'matchHistory'}),
+        backToMenu: () => this.setState({screen:'arenaMenu'})
+      },
+      equipment: [
+        {id:'helmet', name:'Focus Helm', effect:'+5% intonation score', icon:'🎧', equipped:s.equipEquipped.helmet},
+        {id:'amulet', name:'Calm Amulet', effect:'-10% damage taken', icon:'🔮', equipped:s.equipEquipped.amulet},
+        {id:'boots', name:'Agile Boots', effect:'+1 word swap per match', icon:'👟', equipped:s.equipEquipped.boots}
+      ].map(eq => ({
+        ...eq, btnLabel: eq.equipped?'Equipped':'Equip',
+        btnClass: eq.equipped?'btn btn-secondary':'btn btn-ghost',
+        toggle: () => this.setState({equipEquipped:{...s.equipEquipped, [eq.id]:!eq.equipped}})
+      })),
+      matchHistory: {
+        empty: s.matchHistory.length===0,
+        items: s.matchHistory.map(m => ({
+          ...m, resultLabel: m.won?'Win':'Loss', resultTagClass: m.won?'tag tag-accent-2':'tag tag-neutral',
+          words: (m.words||[]).map(w => {
+            const clean = w.toLowerCase().replace(/[^a-z']/g,'');
+            const inBase = this.VOCAB_RAW.some(v=>v.word===clean);
+            const added = inBase || s.customVocab.some(v=>v.word===clean);
+            return {text:w, added, addLabel: added?'Added':'Add',
+              addBtnClass: added?'btn btn-secondary':'btn btn-ghost',
+              add: () => {
+                if(added) return;
+                const t = this.MOCK_TRANSLATE[clean] || {ipa:'/'+clean+'/', meaning:'Auto-translated definition (via Google Translate)'};
+                this.setState({customVocab:[...this.state.customVocab, {id:'c-'+clean, word:clean, ipa:t.ipa, meaning:t.meaning, status:'new', videoId:null}]});
+              }};
+          })
+        }))
+      },
+      goDashboard: () => this.setState({screen:'dashboard'}),
+      dashboardTabColor: tabColor('dashboard'), dashboardTabBg: tabBg('dashboard'),
+      goProfile: () => this.setState({screen:'profile'}),
+      profileTabColor: tabColor('profile'), profileTabBg: tabBg('profile'),
+      logout: () => this.setState({screen:'login', selectedVideoId:'v1', selectedTake:4, progressFilter:'All', vocabFilter:'All'}),
+      sidebarExpanded: !s.sidebarCollapsed, sidebarCollapsed: s.sidebarCollapsed,
+      sidebarWidth: s.sidebarCollapsed ? '64px' : '200px',
+      sidebarToggleTitle: s.sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar',
+      toggleSidebar: () => this.setState({sidebarCollapsed: !s.sidebarCollapsed}),
+      goLibrary: () => this.setState({screen:'library'}),
+      goVocab: () => this.setState({screen:'vocab'}),
+      goProgress: () => this.setState({screen:'progress'}),
+      goAnalysis: () => this.setState({screen:'analysis'}),
+      goDub: () => this.setState({screen:'dub'}),
+      libraryTabColor: tabColor('library'), vocabTabColor: tabColor('vocab'), progressTabColor: tabColor('progress'),
+      libraryTabBg: tabBg('library'), vocabTabBg: tabBg('vocab'), progressTabBg: tabBg('progress'),
+      videos, sel,
+      isMine: s.audioSource==='mine', isOriginal: s.audioSource==='original',
+      setMine: () => this.setState({audioSource:'mine'}), setOriginal: () => this.setState({audioSource:'original'}),
+      weeklyPoints, weeklyDots, weeklyLabels, progressFilters, needPractice, suggested,
+      vocabFilters, filteredVocab
+    };
+  }
+}
+
+</script>
+</body>
+</html>
