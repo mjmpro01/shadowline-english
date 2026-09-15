@@ -1,3 +1,8 @@
+> **Implementation status:** the designs in this bundle have been built in [`app/`](app/) —
+> a Vite + React + TypeScript app covering Login, Library, Practice, Analysis, Dub Review,
+> Progress, Vocabulary and Profile. See [`app/README.md`](app/README.md) for what is wired up
+> for real and what is still a stand-in. The notes below are the original handoff brief.
+
 # CODING AGENTS: READ THIS FIRST
 
 This is a **handoff bundle** from Claude Design (claude.ai/design).
