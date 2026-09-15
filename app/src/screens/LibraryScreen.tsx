@@ -38,7 +38,7 @@ export function LibraryScreen() {
       <div className="grid-cards">
         {data.videos.map((video) => {
           const stats = statsFor(video.id)
-          const color = colorFor(stats.lastScore)
+          const color = stats.lastScore === null ? 'var(--color-neutral-500)' : colorFor(stats.lastScore)
           return (
             <div className="card elev-sm" key={video.id} style={{ padding: 'var(--space-2)' }}>
               <button
@@ -63,7 +63,7 @@ export function LibraryScreen() {
                 <span className="card-meta">{video.source}</span>
                 <span className="row between gap-2" style={{ marginTop: 2 }}>
                   <span className="score-big" style={{ color }}>
-                    {stats.lastScore}
+                    {stats.lastScore ?? '—'}
                   </span>
                   <svg width="56" height="20" viewBox="0 0 56 20" aria-hidden="true">
                     <polyline points={sparkPoints(stats.sparkline)} fill="none" stroke={color} strokeWidth="2" />

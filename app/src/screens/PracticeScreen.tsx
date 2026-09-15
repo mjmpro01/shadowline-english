@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { Icon } from '../components/Icon'
 import type { Take } from '../data/types'
 import { colorFor, scoreLabel } from '../lib/score'
+import { useBlobUrl } from '../lib/useAudioUrl'
 import { useRecorder } from '../lib/useRecorder'
 import { normalizeWord } from '../lib/text'
 import { useApp } from '../store/context'
@@ -44,15 +45,19 @@ function waveBars(levels: number[], live: boolean) {
 export function PracticeScreen() {
   const { videoId } = useParams()
   const navigate = useNavigate()
-  const { data, addTake, toggleVocabWord } = useApp()
+  const { data, addTake, attachSourceAudio, toggleVocabWord } = useApp()
   const recorder = useRecorder()
 
   const [lineIndex, setLineIndex] = useState(0)
   const [take, setTake] = useState<Take | null>(null)
   const [capturedLevels, setCapturedLevels] = useState<number[]>([])
   const [popup, setPopup] = useState<Popup | null>(null)
+  const [analysing, setAnalysing] = useState(false)
+  const sourceInput = useRef<HTMLInputElement>(null)
+  const sourcePlayer = useRef<HTMLAudioElement>(null)
 
   const video = data.videos.find((v) => v.id === videoId)
+  const sourceUrl = useBlobUrl(video?.sourceAudioKey ?? null)
   const line = video?.captions[Math.min(lineIndex, (video?.captions.length ?? 1) - 1)]
 
   const words =
@@ -80,12 +85,22 @@ export function PracticeScreen() {
     if (recording) {
       const blob = await recorder.stop()
       setCapturedLevels(recorder.levels)
-      setTake(addTake(video.id, blob))
+      setAnalysing(true)
+      try {
+        setTake(await addTake(video.id, blob))
+      } finally {
+        setAnalysing(false)
+      }
       return
     }
     setTake(null)
     setCapturedLevels([])
     await recorder.start()
+  }
+
+  const attachSource = async (file: File | undefined) => {
+    if (!file) return
+    await attachSourceAudio(video.id, file)
   }
 
   const resetMic = () => {
@@ -186,7 +201,9 @@ export function PracticeScreen() {
             </div>
           )}
 
-          {take && (
+          {analysing && <div style={{ fontSize: 13, textAlign: 'center', opacity: 0.7 }}>Measuring your pitch…</div>}
+
+          {take && take.score !== null && (
             <div className="card elev-sm row between">
               <div>
                 <div className="card-kicker">Pitch match score</div>
@@ -197,12 +214,33 @@ export function PracticeScreen() {
               </div>
             </div>
           )}
+
+          {take && take.score === null && (
+            <div className="card elev-sm stack gap-2">
+              <div className="card-kicker">{take.analysis ? 'Take measured' : 'Nothing to measure'}</div>
+              <div style={{ fontSize: 13, opacity: 0.75 }}>
+                {take.analysis
+                  ? "Your pitch contour was recorded. Attach this clip's original audio to score the take against it."
+                  : 'The recording was too short or too quiet to track a pitch — try again closer to the mic.'}
+              </div>
+              <button type="button" className="btn btn-secondary" style={{ alignSelf: 'flex-start' }} onClick={() => sourceInput.current?.click()}>
+                Attach source audio
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="stack gap-2">
-          <button type="button" className="btn btn-secondary btn-block" disabled title="Source clip audio isn't wired up yet">
+          <button
+            type="button"
+            className="btn btn-secondary btn-block"
+            disabled={!sourceUrl}
+            title={sourceUrl ? "Play the clip's original audio" : 'Attach the original audio first'}
+            onClick={() => sourcePlayer.current?.play()}
+          >
             Hear clip again
           </button>
+          {sourceUrl && <audio ref={sourcePlayer} src={sourceUrl} />}
           <button
             type="button"
             className={`btn ${recording ? 'btn-secondary' : 'btn-primary'} btn-block`}
@@ -237,6 +275,16 @@ export function PracticeScreen() {
             See analysis
           </button>
           <div className="divider" style={{ margin: '4px 0' }} />
+          <button type="button" className="btn btn-ghost btn-block" onClick={() => sourceInput.current?.click()}>
+            {video.sourceAudioKey ? 'Replace source audio' : 'Attach source audio'}
+          </button>
+          <input
+            ref={sourceInput}
+            type="file"
+            accept="audio/*,video/*"
+            hidden
+            onChange={(e) => void attachSource(e.target.files?.[0])}
+          />
           <button type="button" className="btn btn-ghost btn-block" onClick={resetMic}>
             Reset mic
           </button>

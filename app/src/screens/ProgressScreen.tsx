@@ -23,6 +23,7 @@ export function ProgressScreen() {
   const series = useMemo(() => {
     const byDay = new Map<string, number[]>()
     for (const take of data.takes) {
+      if (take.score === null || take.scores === null) continue
       const day = take.recordedAt.slice(0, 10)
       const value = filter === 'All' ? take.score : take.scores[filter]
       byDay.set(day, [...(byDay.get(day) ?? []), value])

@@ -21,16 +21,31 @@ npm run lint
 Login → Library → Practice → Analysis → Dub Review, plus Vocabulary, Progress and Profile.
 Navigation is a collapsible sidebar on desktop and a bottom tab bar on phones.
 
-## What is real and what is not
+## Scoring
 
-Real: microphone capture (`MediaRecorder`), the loudness bars drawn from the live signal,
-playback of your own takes, vocabulary and take history, and every number on the Progress
-and Profile screens.
+Takes are measured, not simulated. `src/lib/dsp/` tracks fundamental frequency with YIN
+(40ms frames every 10ms), expresses it in semitones around each speaker's own median — so
+a low voice shadowing a high one is judged on delivery, not register — and aligns the two
+contours with banded dynamic time warping. From that:
 
-Stand-ins: the pronunciation **score** and the **pitch contour** are generated, seeded off
-the take id so they stay stable rather than re-rolling on each render — the F0 extraction
-and alignment pipeline is a later phase. Source-clip audio and video are not bundled, so
-"Original" playback is disabled. Sign-in is a local flag, not real Google OAuth.
+- **Intonation** — mean semitone distance between the contours on a shared time axis.
+  Measured on shape rather than on the warped alignment, so a monotone reading cannot hide
+  behind time warping.
+- **Rhythm** — how far the alignment had to wander from the diagonal, plus how closely the
+  two utterances match in length.
+- **Stress** — correlation of the two loudness envelopes at the aligned points.
+- **Variation** — the ratio of the two pitch ranges (10th–90th percentile).
+
+Scoring needs the clip's original audio to compare against, and this repo ships no media.
+Attach a file on the Practice screen ("Attach source audio") and takes are scored against
+it; without one, a take is still measured and its contour drawn, but no match score is
+invented — the Analysis screen offers to score it once a source exists.
+
+## What is still a stand-in
+
+Sign-in is a local flag rather than real Google OAuth, clip import records the URL without
+fetching anything from it, and the seeded practice history keeps illustrative scores and
+curves (marked `sample` on the Analysis chart, against `measured` for real takes).
 
 ## Data
 

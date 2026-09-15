@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { LOOKUP } from '../data/seed'
 import type { AppData, Take, Video, VocabStatus, VocabWord } from '../data/types'
-import { invalidateBlobUrl, putBlob } from '../lib/blobStore'
-import { mockScoreForTake } from '../lib/score'
+import { getBlob, invalidateBlobUrl, putBlob } from '../lib/blobStore'
+import { analyseTake } from '../lib/dsp/analyse'
 import { normalizeWord } from '../lib/text'
 import { repository } from '../repository'
 import { AppContext, type Store, type VideoStats } from './context'
@@ -18,6 +18,12 @@ const EMPTY: AppData = {
 export function AppProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AppData>(EMPTY)
   const [ready, setReady] = useState(false)
+  // Async analysis reads the latest records without re-creating every callback.
+  const dataRef = useRef<AppData>(EMPTY)
+
+  useEffect(() => {
+    dataRef.current = data
+  }, [data])
 
   useEffect(() => {
     repository.loadAll().then((loaded) => {
@@ -48,6 +54,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       captions: [
         { text: 'Tap record and shadow the speaker line by line.', ipa: '/tæp rɪˈkɔːd ənd ˈʃædəʊ ðə ˈspiːkə/' },
       ],
+      sourceAudioKey: null,
     }
     setData((prev) => {
       const videos = [video, ...prev.videos]
@@ -57,18 +64,65 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return video
   }, [])
 
-  const addTake = useCallback((videoId: string, audio: Blob | null): Take => {
+  const addTake = useCallback(async (videoId: string, audio: Blob | null): Promise<Take> => {
     const id = `${videoId}-u${Date.now()}`
-    const { score, scores } = mockScoreForTake(id)
     const audioKey = audio ? `take-${id}` : null
-    if (audio && audioKey) void putBlob(audioKey, audio)
-    const take: Take = { id, videoId, score, scores, recordedAt: new Date().toISOString(), audioKey }
+    if (audio && audioKey) await putBlob(audioKey, audio)
+
+    let result = null
+    if (audio) {
+      const video = dataRef.current.videos.find((v) => v.id === videoId)
+      const reference = video?.sourceAudioKey ? ((await getBlob(video.sourceAudioKey)) ?? null) : null
+      result = await analyseTake(audio, reference)
+    }
+
+    const take: Take = {
+      id,
+      videoId,
+      score: result?.score ?? null,
+      scores: result?.scores ?? null,
+      recordedAt: new Date().toISOString(),
+      audioKey,
+      analysis: result?.analysis ?? null,
+    }
     setData((prev) => {
       const takes = [...prev.takes, take]
       void repository.saveTakes(takes)
       return { ...prev, takes }
     })
     return take
+  }, [])
+
+  const attachSourceAudio = useCallback(async (videoId: string, audio: Blob) => {
+    const key = `source-${videoId}-${Date.now()}`
+    await putBlob(key, audio)
+    setData((prev) => {
+      const videos = prev.videos.map((v) => (v.id === videoId ? { ...v, sourceAudioKey: key } : v))
+      void repository.saveVideos(videos)
+      return { ...prev, videos }
+    })
+  }, [])
+
+  /** Re-measures an existing take — used once a clip finally has its original audio. */
+  const scoreTake = useCallback(async (takeId: string) => {
+    const current = dataRef.current
+    const take = current.takes.find((t) => t.id === takeId)
+    if (!take?.audioKey) return
+    const video = current.videos.find((v) => v.id === take.videoId)
+    if (!video?.sourceAudioKey) return
+
+    const [takeBlob, referenceBlob] = await Promise.all([getBlob(take.audioKey), getBlob(video.sourceAudioKey)])
+    if (!takeBlob || !referenceBlob) return
+    const result = await analyseTake(takeBlob, referenceBlob)
+    if (!result) return
+
+    setData((prev) => {
+      const takes = prev.takes.map((t) =>
+        t.id === takeId ? { ...t, score: result.score, scores: result.scores, analysis: result.analysis } : t,
+      )
+      void repository.saveTakes(takes)
+      return { ...prev, takes }
+    })
   }, [])
 
   const toggleVocabWord = useCallback<Store['toggleVocabWord']>((raw, videoId) => {
@@ -128,11 +182,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const statsFor = useCallback(
     (videoId: string): VideoStats => {
       const takes = data.takes.filter((t) => t.videoId === videoId)
-      const sparkline = takes.map((t) => t.score)
+      const scored = takes.filter((t): t is Take & { score: number } => t.score !== null)
+      const sparkline = scored.map((t) => t.score)
       return {
         takes,
         attempts: takes.length,
-        lastScore: sparkline.length ? sparkline[sparkline.length - 1] : 0,
+        lastScore: sparkline.length ? sparkline[sparkline.length - 1] : null,
         sparkline: sparkline.length ? sparkline : [0],
       }
     },
@@ -147,12 +202,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
       logout,
       importVideo,
       addTake,
+      attachSourceAudio,
+      scoreTake,
       toggleVocabWord,
       setVocabStatus,
       updateProfile,
       statsFor,
     }),
-    [data, ready, login, logout, importVideo, addTake, toggleVocabWord, setVocabStatus, updateProfile, statsFor],
+    [
+      data,
+      ready,
+      login,
+      logout,
+      importVideo,
+      addTake,
+      attachSourceAudio,
+      scoreTake,
+      toggleVocabWord,
+      setVocabStatus,
+      updateProfile,
+      statsFor,
+    ],
   )
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

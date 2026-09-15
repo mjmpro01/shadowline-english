@@ -58,6 +58,7 @@ function seedTakes(): Take[] {
         scores: metricsForTake(video.metrics, score, latest),
         recordedAt: new Date(Date.now() - (video.history.length - i) * 86400000).toISOString(),
         audioKey: null,
+        analysis: null,
       })
     })
   }

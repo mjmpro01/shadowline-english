@@ -2,6 +2,8 @@ import { useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { Icon } from '../components/Icon'
 import { METRIC_NAMES } from '../data/types'
+import { chartFromAnalysis } from '../lib/dsp/chart'
+import { summariseTake } from '../lib/dsp/summary'
 import { buildChart, colorFor, wordScore } from '../lib/score'
 import { useBlobUrl } from '../lib/useAudioUrl'
 import { useApp } from '../store/context'
@@ -9,9 +11,10 @@ import { useApp } from '../store/context'
 export function AnalysisScreen() {
   const { videoId } = useParams()
   const navigate = useNavigate()
-  const { data, statsFor } = useApp()
+  const { data, statsFor, scoreTake } = useApp()
   const [selected, setSelected] = useState<{ videoId: string; takeId: string } | null>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
+  const sourceRef = useRef<HTMLAudioElement>(null)
 
   const video = data.videos.find((v) => v.id === videoId)
   const stats = statsFor(videoId ?? '')
@@ -19,8 +22,14 @@ export function AnalysisScreen() {
     selected && selected.videoId === videoId ? stats.takes.find((t) => t.id === selected.takeId) : undefined
   const take = chosen ?? stats.takes[stats.takes.length - 1]
 
-  const chart = buildChart(`${video?.id ?? ''}-${take?.id ?? ''}`, take?.score ?? 0)
+  // A take the learner actually recorded carries its measured contour; the
+  // seeded practice history has none, so that keeps the illustrative curve.
+  const measured = take?.analysis ?? null
+  const chart = measured
+    ? chartFromAnalysis(measured)
+    : buildChart(`${video?.id ?? ''}-${take?.id ?? ''}`, take?.score ?? 0)
   const myVoiceUrl = useBlobUrl(take?.audioKey ?? null)
+  const sourceUrl = useBlobUrl(video?.sourceAudioKey ?? null)
 
   if (!video) return <Navigate to="/library" replace />
 
@@ -75,7 +84,7 @@ export function AnalysisScreen() {
           <span
             key={`${word}-${i}`}
             style={{
-              borderBottom: `3px solid ${colorFor(wordScore(word, take.score))}`,
+              borderBottom: `3px solid ${colorFor(wordScore(word, take.score ?? 60))}`,
               padding: '2px 3px',
               marginRight: 2,
             }}
@@ -87,12 +96,24 @@ export function AnalysisScreen() {
 
       <div className="card elev-sm">
         <div className="row between wrap gap-2">
-          <div className="card-kicker">Pitch contour</div>
           <div className="row gap-2">
-            <button type="button" className="btn btn-secondary" disabled title="Source clip audio isn't wired up yet">
+            <div className="card-kicker">Pitch contour</div>
+            <span className={measured ? 'tag tag-accent-2' : 'tag tag-neutral'}>
+              {measured ? 'measured' : 'sample'}
+            </span>
+          </div>
+          <div className="row gap-2">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              disabled={!sourceUrl}
+              title={sourceUrl ? "Play the clip's original audio" : 'No original audio attached to this clip'}
+              onClick={() => sourceRef.current?.play()}
+            >
               <Icon name="play" size={14} />
               Original
             </button>
+            {sourceUrl && <audio ref={sourceRef} src={sourceUrl} />}
             <button
               type="button"
               className="btn btn-secondary"
@@ -153,10 +174,12 @@ export function AnalysisScreen() {
         </div>
 
         <div className="row gap-4" style={{ marginTop: 'var(--space-2)' }}>
-          <div className="row gap-2">
-            <div style={{ width: 14, height: 2, background: 'var(--color-neutral-600)' }} />
-            <span style={{ fontSize: 12, opacity: 0.7 }}>Source (±1 semitone)</span>
-          </div>
+          {chart.refPoints && (
+            <div className="row gap-2">
+              <div style={{ width: 14, height: 2, background: 'var(--color-neutral-600)' }} />
+              <span style={{ fontSize: 12, opacity: 0.7 }}>Source (±1 semitone)</span>
+            </div>
+          )}
           <div className="row gap-2">
             <div style={{ width: 14, height: 3, background: 'var(--score-good)', borderRadius: 2 }} />
             <span style={{ fontSize: 12, opacity: 0.7 }}>You</span>
@@ -164,26 +187,60 @@ export function AnalysisScreen() {
         </div>
       </div>
 
-      <div className="grid-scores">
-        {METRIC_NAMES.map((name) => {
-          const value = take.scores[name]
-          return (
-            <div className="card elev-sm gap-1" key={name}>
-              <div className="card-kicker">{name}</div>
-              <div className="mono" style={{ fontSize: 28, color: colorFor(value) }}>
-                {value}
+      {take.scores ? (
+        <div className="grid-scores">
+          {METRIC_NAMES.map((name) => {
+            const value = (take.scores as Record<string, number>)[name]
+            return (
+              <div className="card elev-sm gap-1" key={name}>
+                <div className="card-kicker">{name}</div>
+                <div className="mono" style={{ fontSize: 28, color: colorFor(value) }}>
+                  {value}
+                </div>
+                <div className="meter">
+                  <span style={{ width: `${value}%`, background: colorFor(value) }} />
+                </div>
               </div>
-              <div className="meter">
-                <span style={{ width: `${value}%`, background: colorFor(value) }} />
-              </div>
-            </div>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
+      ) : (
+        <div className="card elev-sm stack gap-2">
+          <div className="card-kicker">Not scored yet</div>
+          <div style={{ fontSize: 14, opacity: 0.8 }}>
+            {video.sourceAudioKey
+              ? 'This clip now has its original audio — score this take against it.'
+              : "Scores compare your delivery with the clip's original audio. Attach it on the Practice screen to measure this take."}
+          </div>
+          {video.sourceAudioKey ? (
+            <button
+              type="button"
+              className="btn btn-primary"
+              style={{ alignSelf: 'flex-start' }}
+              onClick={() => void scoreTake(take.id)}
+            >
+              Score this take
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{ alignSelf: 'flex-start' }}
+              onClick={() => navigate(`/library/${video.id}/practice`)}
+            >
+              Go to Practice
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="card elev-sm">
         <div className="card-kicker">Summary</div>
-        <div style={{ fontSize: 15, lineHeight: 1.6 }}>{video.summary}</div>
+        <div style={{ fontSize: 15, lineHeight: 1.6 }}>
+          {take.scores
+            ? summariseTake(take.scores, take.analysis?.meanDeviation ?? null)
+            : video.summary}
+        </div>
       </div>
 
       <button

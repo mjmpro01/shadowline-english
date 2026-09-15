@@ -8,10 +8,6 @@ export function colorFor(score: number): string {
   return score >= 75 ? GOOD : score >= 50 ? MEDIUM : ATTENTION
 }
 
-export function tagClassFor(score: number): string {
-  return score >= 75 ? 'tag tag-accent-2' : score >= 50 ? 'tag tag-neutral' : 'tag tag-accent'
-}
-
 export function hashStr(str: string): number {
   let h = 0
   for (let i = 0; i < str.length; i++) h += str.charCodeAt(i) * (i + 7)
@@ -126,19 +122,6 @@ export function metricsForTake(profile: MetricScores, takeScore: number, latestS
     out[name] = clamp(Math.round(profile[name] + delta + jitter), 5, 99)
   }
   return out
-}
-
-/**
- * Stand-in for the pronunciation scorer. Seeded off the take id so a recorded
- * take keeps its score for good, rather than re-rolling on every render.
- */
-export function mockScoreForTake(takeId: string): { score: number; scores: MetricScores } {
-  const score = clamp(58 + (hashStr(takeId) % 40), 45, 98)
-  const scores = {} as MetricScores
-  for (const name of METRIC_NAMES) {
-    scores[name] = clamp(score + ((hashStr(takeId + name) % 17) - 8), 20, 99)
-  }
-  return { score, scores }
 }
 
 export function scoreLabel(score: number): string {
