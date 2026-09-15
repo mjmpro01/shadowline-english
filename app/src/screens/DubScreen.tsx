@@ -17,6 +17,11 @@ export function DubScreen() {
   const navigate = useNavigate()
   const { data, statsFor } = useApp()
   const audioRef = useRef<HTMLAudioElement>(null)
+  /** Live playhead, captured when swapping voices — `position` only ticks a few times a second. */
+  const resumeAt = useRef(0)
+  /** Set while a swap is in flight: the reload resets currentTime to 0 and
+      fires timeupdate, which would otherwise wipe the position we just saved. */
+  const swapping = useRef(false)
 
   const [source, setSource] = useState<'mine' | 'original'>('mine')
   const [takeId, setTakeId] = useState<string | null>(null)
@@ -28,26 +33,32 @@ export function DubScreen() {
   const stats = statsFor(videoId ?? '')
   const take = stats.takes.find((t) => t.id === takeId) ?? stats.takes[stats.takes.length - 1]
   const myVoiceUrl = useBlobUrl(take?.audioKey ?? null)
+  const originalUrl = useBlobUrl(video?.sourceAudioKey ?? null)
 
   if (!video) return <Navigate to="/library" replace />
 
+  const activeUrl = source === 'mine' ? myVoiceUrl : originalUrl
+  const canPlay = !!activeUrl
+
   const rewind = () => {
     audioRef.current?.pause()
+    resumeAt.current = 0
     setPosition(0)
     setPlaying(false)
+  }
+
+  /** Both voices share one timeline, so switching keeps your place in the line. */
+  const selectSource = (value: 'mine' | 'original') => {
+    if (value === source) return
+    resumeAt.current = audioRef.current?.currentTime ?? position
+    swapping.current = true
+    setSource(value)
   }
 
   const selectTake = (id: string) => {
     setTakeId(id)
     rewind()
   }
-
-  const selectSource = (value: 'mine' | 'original') => {
-    setSource(value)
-    rewind()
-  }
-
-  const canPlay = source === 'mine' && !!myVoiceUrl
 
   const togglePlay = () => {
     const el = audioRef.current
@@ -62,6 +73,7 @@ export function DubScreen() {
   }
 
   const seek = (value: number) => {
+    resumeAt.current = value
     setPosition(value)
     if (audioRef.current) audioRef.current.currentTime = value
   }
@@ -122,7 +134,7 @@ export function DubScreen() {
               className="btn btn-primary btn-icon"
               onClick={togglePlay}
               disabled={!canPlay}
-              title={canPlay ? 'Play your take' : 'Only recorded takes can be played back in this build'}
+              title={canPlay ? 'Play' : source === 'mine' ? 'This take has no recording' : 'No original audio attached'}
             >
               <Icon name={playing ? 'square' : 'play'} size={14} />
             </button>
@@ -142,19 +154,29 @@ export function DubScreen() {
             <span>{clock(position)}</span>
             <span>{canPlay ? clock(duration) : video.duration}</span>
           </div>
-          {source === 'original' && (
+          {source === 'original' && !originalUrl && (
             <div style={{ fontSize: 12, opacity: 0.6 }}>
-              The source clip's audio isn't bundled in this build — switch to “My voice” to hear your take.
+              No original audio for this clip yet — attach it on the Practice screen to compare by ear.
             </div>
           )}
         </div>
 
-        {myVoiceUrl && (
+        {activeUrl && (
           <audio
             ref={audioRef}
-            src={myVoiceUrl}
-            onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-            onTimeUpdate={(e) => setPosition(e.currentTarget.currentTime)}
+            src={activeUrl}
+            onLoadedMetadata={(e) => {
+              setDuration(e.currentTarget.duration)
+              // Swapping voices reloads the element; drop back onto the shared timeline.
+              e.currentTarget.currentTime = Math.min(resumeAt.current, e.currentTarget.duration)
+              swapping.current = false
+              if (playing) void e.currentTarget.play()
+            }}
+            onTimeUpdate={(e) => {
+              if (swapping.current) return
+              resumeAt.current = e.currentTarget.currentTime
+              setPosition(e.currentTarget.currentTime)
+            }}
             onEnded={() => setPlaying(false)}
           />
         )}
