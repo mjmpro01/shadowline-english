@@ -11,10 +11,15 @@ prototype applies on top of it.
 
 ```bash
 npm install
-npm run dev      # http://localhost:5173
-npm run build    # type-check + production build
+npm run dev       # http://localhost:5173
+npm run build     # type-check + production build
 npm run lint
+npm test          # unit tests (Vitest)
+npm run test:e2e  # browser tests (Playwright)
 ```
+
+The e2e run needs a Chromium; set `CHROMIUM_PATH` to reuse one already on the
+machine instead of Playwright's own download.
 
 ## Screens
 
@@ -46,6 +51,15 @@ invented — the Analysis screen offers to score it once a source exists.
 Sign-in is a local flag rather than real Google OAuth, clip import records the URL without
 fetching anything from it, and the seeded practice history keeps illustrative scores and
 curves (marked `sample` on the Analysis chart, against `measured` for real takes).
+
+## Tests
+
+`test/` checks the signal processing against synthesised tones whose melody is
+known in advance (`test/tone.ts`): a steady tone's fundamental is recovered, the
+same melody an octave down still scores full marks, a monotone reading of a
+melodic line is marked down, and a slow delivery keeps its intonation while
+losing rhythm. `e2e/` drives the real browser with a WAV file fed in as the
+microphone, covering record → measure → score and the shared dub timeline.
 
 ## Data
 
