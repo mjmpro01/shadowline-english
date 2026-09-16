@@ -70,7 +70,11 @@ function seedTakes(): Take[] {
 class LocalRepository implements Repository {
   async loadAll(): Promise<AppData> {
     return {
-      videos: read(KEYS.videos, seedVideos()),
+      videos: read(KEYS.videos, seedVideos()).map((video) => ({
+        ...video,
+        playlist: video.playlist ?? '',
+        categories: video.categories ?? [],
+      })),
       takes: read(KEYS.takes, seedTakes()),
       vocab: read(KEYS.vocab, SEED_VOCAB),
       profile: read<Profile>(KEYS.profile, DEFAULT_PROFILE),

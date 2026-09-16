@@ -1,17 +1,21 @@
 import { useRef, useState } from 'react'
 import { Icon } from '../components/Icon'
+import { SegmentedControl } from '../components/SegmentedControl'
 import { WaveformEditor } from '../components/WaveformEditor'
 import { MAX_CLIP_SECONDS } from '../data/types'
 import { decodeFile, peaks as computePeaks } from '../lib/audio/decode'
 import { proposeSegments, type Segment } from '../lib/audio/segment'
+import { formatCategories, parseCategories, searchClips } from '../lib/clips'
 import { sliceToWav } from '../lib/audio/wav'
 import { useApp } from '../store/context'
 
 const WAVEFORM_COLUMNS = 900
 
 interface Line {
+  title: string
   text: string
   ipa: string
+  categories: string
 }
 
 interface Loaded {
@@ -31,14 +35,20 @@ function lengthLabel(seconds: number): string {
   return (Math.floor(seconds * 10) / 10).toFixed(1)
 }
 
+type Tab = 'cut' | 'clips'
+
 export function AdminScreen() {
-  const { addClips } = useApp()
+  const { data, addClips, updateClip, deleteClip } = useApp()
+  const [tab, setTab] = useState<Tab>('cut')
+  const [manageQuery, setManageQuery] = useState('')
   const fileInput = useRef<HTMLInputElement>(null)
   const player = useRef<HTMLAudioElement>(null)
 
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [segments, setSegments] = useState<Segment[]>([])
   const [lines, setLines] = useState<Line[]>([])
+  const [playlist, setPlaylist] = useState('')
+  const [batchCategories, setBatchCategories] = useState('')
   const [selected, setSelected] = useState<number | null>(null)
   const [playhead, setPlayhead] = useState<number | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -59,8 +69,10 @@ export function AdminScreen() {
         peaks: computePeaks(samples, WAVEFORM_COLUMNS),
       })
       setSegments(proposal)
-      setLines(proposal.map(() => ({ text: '', ipa: '' })))
+      setLines(proposal.map(() => ({ title: '', text: '', ipa: '', categories: batchCategories })))
       setSelected(proposal.length ? 0 : null)
+      // A playlist per upload is the common case, so name it after the file.
+      setPlaylist((current) => current || file.name.replace(/\.[^.]+$/, ''))
     } catch {
       setBusy(null)
       setLoaded(null)
@@ -101,6 +113,8 @@ export function AdminScreen() {
     setSelected(null)
   }
 
+  const applyCategoriesToAll = () => setLines((prev) => prev.map((line) => ({ ...line, categories: batchCategories })))
+
   const mergeWithNext = (index: number) => {
     setSegments((prev) =>
       prev
@@ -110,7 +124,7 @@ export function AdminScreen() {
     setLines((prev) =>
       prev
         .map((line, i) =>
-          i === index ? { text: [line.text, prev[index + 1].text].filter(Boolean).join(' '), ipa: line.ipa } : line,
+          i === index ? { ...line, text: [line.text, prev[index + 1].text].filter(Boolean).join(' ') } : line,
         )
         .filter((_, i) => i !== index + 1),
     )
@@ -126,7 +140,12 @@ export function AdminScreen() {
       { start: playhead, end: segment.end },
       ...prev.slice(selected + 1),
     ])
-    setLines((prev) => [...prev.slice(0, selected), prev[selected], { text: '', ipa: '' }, ...prev.slice(selected + 1)])
+    setLines((prev) => [
+      ...prev.slice(0, selected),
+      prev[selected],
+      { title: '', text: '', ipa: '', categories: prev[selected].categories },
+      ...prev.slice(selected + 1),
+    ])
   }
 
   const publish = async () => {
@@ -134,9 +153,12 @@ export function AdminScreen() {
     setBusy('Saving…')
     await addClips(
       segments.map((segment, index) => ({
+        title: lines[index].title.trim(),
         line: lines[index].text.trim(),
         ipa: lines[index].ipa.trim(),
         source: loaded.name,
+        playlist: playlist.trim() || loaded.name,
+        categories: parseCategories(lines[index].categories),
         start: segment.start,
         end: segment.end,
         audio: sliceToWav(loaded.samples, loaded.sampleRate, segment.start, segment.end),
@@ -161,6 +183,80 @@ export function AdminScreen() {
         </div>
       </div>
 
+      <SegmentedControl
+        name="admin-tab"
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: 'cut', label: 'Cut a recording' },
+          { value: 'clips', label: `Clips (${data.videos.length})` },
+        ]}
+      />
+
+      {tab === 'clips' && (
+        <div className="stack gap-3">
+          <input
+            className="input"
+            placeholder="Find a clip by name, line, playlist or category"
+            value={manageQuery}
+            onChange={(e) => setManageQuery(e.target.value)}
+            aria-label="Find a clip"
+          />
+          {searchClips(data.videos, { query: manageQuery }).map((video) => (
+            <div className="card elev-sm stack gap-2" key={video.id}>
+              <div className="row between wrap gap-2">
+                <span className="card-meta mono">
+                  {video.source} · {video.timestamp} · {video.duration}
+                </span>
+                <button type="button" className="btn btn-ghost" onClick={() => deleteClip(video.id)}>
+                  Delete clip
+                </button>
+              </div>
+              <div className="row gap-3 wrap">
+                <div className="field" style={{ flex: '1 1 220px' }}>
+                  <label htmlFor={`name-${video.id}`}>Name</label>
+                  <input
+                    id={`name-${video.id}`}
+                    className="input"
+                    value={video.title}
+                    onChange={(e) => updateClip(video.id, { title: e.target.value })}
+                  />
+                </div>
+                <div className="field" style={{ flex: '1 1 160px' }}>
+                  <label htmlFor={`playlist-${video.id}`}>Playlist</label>
+                  <input
+                    id={`playlist-${video.id}`}
+                    className="input"
+                    value={video.playlist}
+                    onChange={(e) => updateClip(video.id, { playlist: e.target.value })}
+                  />
+                </div>
+                <div className="field" style={{ flex: '1 1 160px' }}>
+                  <label htmlFor={`cats-${video.id}`}>Categories</label>
+                  <input
+                    id={`cats-${video.id}`}
+                    className="input"
+                    value={formatCategories(video.categories)}
+                    onChange={(e) => updateClip(video.id, { categories: parseCategories(e.target.value) })}
+                  />
+                </div>
+              </div>
+              <div className="field">
+                <label htmlFor={`text-${video.id}`}>Line</label>
+                <input
+                  id={`text-${video.id}`}
+                  className="input"
+                  value={video.captions[0]?.text ?? ''}
+                  onChange={(e) => updateClip(video.id, { line: e.target.value })}
+                />
+              </div>
+            </div>
+          ))}
+          {data.videos.length === 0 && <div className="card-meta">No clips yet — cut a recording first.</div>}
+        </div>
+      )}
+
+      {tab === 'cut' && (
       <div className="row gap-3 wrap">
         <button type="button" className="btn btn-primary" onClick={() => fileInput.current?.click()}>
           Upload audio or video
@@ -177,6 +273,7 @@ export function AdminScreen() {
         </button>
         {busy && <span style={{ fontSize: 13, opacity: 0.7 }}>{busy}</span>}
       </div>
+      )}
 
       {saved !== null && (
         <div className="card elev-sm">
@@ -185,8 +282,34 @@ export function AdminScreen() {
         </div>
       )}
 
-      {loaded && (
+      {tab === 'cut' && loaded && (
         <>
+          <div className="row gap-3 wrap" style={{ alignItems: 'flex-end' }}>
+            <div className="field" style={{ flex: '1 1 220px' }}>
+              <label htmlFor="playlist">Playlist</label>
+              <input
+                id="playlist"
+                className="input"
+                placeholder="Lesson or episode name"
+                value={playlist}
+                onChange={(e) => setPlaylist(e.target.value)}
+              />
+            </div>
+            <div className="field" style={{ flex: '1 1 220px' }}>
+              <label htmlFor="batch-categories">Categories for the batch</label>
+              <input
+                id="batch-categories"
+                className="input"
+                placeholder="interview, daily conversation"
+                value={batchCategories}
+                onChange={(e) => setBatchCategories(e.target.value)}
+              />
+            </div>
+            <button type="button" className="btn btn-secondary" onClick={applyCategoriesToAll}>
+              Apply to all clips
+            </button>
+          </div>
+
           <div className="stack gap-2">
             <div className="row between wrap gap-2">
               <div className="card-kicker">{loaded.name}</div>
@@ -254,6 +377,28 @@ export function AdminScreen() {
                       <button type="button" className="btn btn-ghost" onClick={() => remove(index)}>
                         Delete
                       </button>
+                    </div>
+                  </div>
+                  <div className="row gap-3 wrap">
+                    <div className="field" style={{ flex: '1 1 200px' }}>
+                      <label htmlFor={`title-${index}`}>Name (optional)</label>
+                      <input
+                        id={`title-${index}`}
+                        className="input"
+                        placeholder="Defaults to the line"
+                        value={lines[index]?.title ?? ''}
+                        onChange={(e) => update(index, { title: e.target.value })}
+                      />
+                    </div>
+                    <div className="field" style={{ flex: '1 1 200px' }}>
+                      <label htmlFor={`categories-${index}`}>Categories</label>
+                      <input
+                        id={`categories-${index}`}
+                        className="input"
+                        placeholder="interview, greeting"
+                        value={lines[index]?.categories ?? ''}
+                        onChange={(e) => update(index, { categories: e.target.value })}
+                      />
                     </div>
                   </div>
                   <div className="field">

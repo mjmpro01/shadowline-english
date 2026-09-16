@@ -28,7 +28,9 @@ Navigation is a collapsible sidebar on desktop and a bottom tab bar on phones.
 
 Clips are curated, not collected: learners practise what is in the library and
 cannot import or upload anything themselves. `/admin` holds the clip studio,
-where a recording is cut into lines — see below.
+where a recording is cut into lines — see below. The library is searchable by
+name, line, playlist and category, since a learner is as likely to remember a
+phrase from a clip as its title.
 
 ## Clip studio
 
@@ -39,6 +41,12 @@ quietest tenth of the recording, and a split at the quietest moment of anything
 still over the limit). The proposal is a starting point — boundaries drag,
 clips merge and delete, and each one gets its line of text — and publishing
 stores each cut as its own clip with its own audio.
+
+Each cut gets a name, and the batch gets a playlist and categories, which is
+what the library's search and filters run on. The studio's second tab lists
+everything already published so a clip can be renamed, re-tagged, moved to
+another playlist or deleted after the fact — deleting a clip drops the practice
+history that only made sense alongside it.
 
 Fetching a YouTube URL needs a server to download and strip the audio, so that
 button is there and disabled until there is a backend behind it.
@@ -84,7 +92,8 @@ curves (marked `sample` on the Analysis chart, against `measured` for real takes
 
 ## Tests
 
-`test/` checks the signal processing against synthesised tones whose melody is
+`test/` checks the cut proposal and the library search against known inputs, and
+the signal processing against synthesised tones whose melody is
 known in advance (`test/tone.ts`): a steady tone's fundamental is recovered, the
 same melody an octave down still scores full marks, a monotone reading of a
 melodic line is marked down, and a slow delivery keeps its intonation while

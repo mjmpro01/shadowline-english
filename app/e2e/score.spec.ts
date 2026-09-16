@@ -115,3 +115,22 @@ test('recording stops itself at the clip limit', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Stop' })).toBeHidden({ timeout: 15_000 })
   await expect(page.getByText('Take measured')).toBeVisible({ timeout: 20_000 })
 })
+
+test('learners can search the library and filter it by category', async ({ page }) => {
+  await publishLesson(page)
+
+  await page.getByLabel('Search clips').fill('line 3')
+  await expect(page.locator('.grid-cards .card')).toHaveCount(1)
+  await expect(page.getByText('Shadow this line 3')).toBeVisible()
+
+  await page.getByLabel('Search clips').fill('nothing like this')
+  await expect(page.getByText(/Nothing matches that/)).toBeVisible()
+
+  await page.getByLabel('Search clips').fill('')
+  await page.getByRole('button', { name: 'Lesson one', exact: true }).click()
+  // The four published clips share a playlist; the seeded ones do not.
+  await expect(page.locator('.grid-cards .card')).toHaveCount(4)
+
+  await page.getByRole('button', { name: 'interview', exact: true }).click()
+  await expect(page.locator('.grid-cards .card')).toHaveCount(4)
+})

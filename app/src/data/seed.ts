@@ -57,6 +57,8 @@ export interface SeedVideo extends Video {
 export const SEED_VIDEOS: SeedVideo[] = [
   {
     id: 'v1',
+    playlist: 'Starter samples',
+    categories: ['interview', 'chat show'],
     title: "Actually, I think it's brilliant",
     source: 'Jimmy Fallon Interview',
     timestamp: '00:12–00:18',
@@ -70,6 +72,8 @@ export const SEED_VIDEOS: SeedVideo[] = [
   },
   {
     id: 'v2',
+    playlist: 'Starter samples',
+    categories: ['talk', 'motivation'],
     title: "That's exactly the kind of energy we need",
     source: 'TED Shorts',
     timestamp: '00:03–00:09',
@@ -83,6 +87,8 @@ export const SEED_VIDEOS: SeedVideo[] = [
   },
   {
     id: 'v3',
+    playlist: 'Starter samples',
+    categories: ['interview', 'news'],
     title: "I honestly didn't expect that to happen",
     source: 'BBC Interview',
     timestamp: '00:18–00:23',
@@ -95,6 +101,8 @@ export const SEED_VIDEOS: SeedVideo[] = [
   },
   {
     id: 'v4',
+    playlist: 'Starter samples',
+    categories: ['podcast', 'conversation'],
     title: "You know, at the end of the day, it's about consistency",
     source: 'Joe Rogan Podcast',
     timestamp: '00:55–01:01',
@@ -107,6 +115,8 @@ export const SEED_VIDEOS: SeedVideo[] = [
   },
   {
     id: 'v5',
+    playlist: 'Starter samples',
+    categories: ['drama', 'motivation'],
     title: "It's not about winning, it's about showing up",
     source: 'Ted Lasso Shorts',
     timestamp: '00:08–00:13',

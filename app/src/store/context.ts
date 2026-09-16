@@ -1,14 +1,21 @@
 import { createContext, useContext } from 'react'
-import type { AppData, Take, VocabStatus } from '../data/types'
+import type { AppData, Take, Video, VocabStatus } from '../data/types'
 
 export interface NewClip {
+  /** What the library shows; falls back to the line when left empty. */
+  title: string
   line: string
   ipa: string
   source: string
+  playlist: string
+  categories: string[]
   start: number
   end: number
   audio: Blob
 }
+
+/** The parts of a published clip an admin can still change. */
+export type ClipEdit = Partial<Pick<Video, 'title' | 'playlist' | 'categories'>> & { line?: string; ipa?: string }
 
 export interface VideoStats {
   takes: Take[]
@@ -25,6 +32,8 @@ export interface Store {
   logout: () => void
   setAdmin: (isAdmin: boolean) => void
   addClips: (clips: NewClip[]) => Promise<void>
+  updateClip: (id: string, edit: ClipEdit) => void
+  deleteClip: (id: string) => void
   addTake: (videoId: string, audio: Blob | null) => Promise<Take>
   scoreTake: (takeId: string) => Promise<void>
   toggleVocabWord: (raw: string, videoId: string | null) => { word: string; status: 'added' | 'removed' | 'known' }

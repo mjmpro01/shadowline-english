@@ -5,7 +5,7 @@ import { getBlob, invalidateBlobUrl, putBlob } from '../lib/blobStore'
 import { analyseTake } from '../lib/dsp/analyse'
 import { normalizeWord } from '../lib/text'
 import { repository } from '../repository'
-import { AppContext, type NewClip, type Store, type VideoStats } from './context'
+import { AppContext, type ClipEdit, type NewClip, type Store, type VideoStats } from './context'
 
 function clock(seconds: number): string {
   const whole = Math.max(0, Math.round(seconds))
@@ -63,8 +63,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       await putBlob(key, clip.audio)
       created.push({
         id,
-        title: clip.line || `Untitled line ${index + 1}`,
+        title: clip.title || clip.line || `Untitled line ${index + 1}`,
         source: clip.source,
+        playlist: clip.playlist,
+        categories: clip.categories,
         timestamp: `${clock(clip.start)}–${clock(clip.end)}`,
         duration: clock(clip.end - clip.start),
         summary: 'No takes recorded yet — practice this clip to see your pitch analysis.',
@@ -76,6 +78,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const videos = [...created, ...prev.videos]
       void repository.saveVideos(videos)
       return { ...prev, videos }
+    })
+  }, [])
+
+  const updateClip = useCallback((id: string, edit: ClipEdit) => {
+    setData((prev) => {
+      const videos = prev.videos.map((video) => {
+        if (video.id !== id) return video
+        const [caption] = video.captions
+        return {
+          ...video,
+          title: edit.title ?? video.title,
+          playlist: edit.playlist ?? video.playlist,
+          categories: edit.categories ?? video.categories,
+          captions:
+            edit.line === undefined && edit.ipa === undefined
+              ? video.captions
+              : [
+                  { text: edit.line ?? caption?.text ?? '', ipa: edit.ipa ?? caption?.ipa ?? '' },
+                  ...video.captions.slice(1),
+                ],
+        }
+      })
+      void repository.saveVideos(videos)
+      return { ...prev, videos }
+    })
+  }, [])
+
+  /** Removes the clip and the practice history that only made sense with it. */
+  const deleteClip = useCallback((id: string) => {
+    setData((prev) => {
+      const videos = prev.videos.filter((video) => video.id !== id)
+      const takes = prev.takes.filter((take) => take.videoId !== id)
+      void repository.saveVideos(videos)
+      void repository.saveTakes(takes)
+      return { ...prev, videos, takes }
     })
   }, [])
 
@@ -214,6 +251,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       logout,
       setAdmin,
       addClips,
+      updateClip,
+      deleteClip,
       addTake,
       scoreTake,
       toggleVocabWord,
@@ -228,6 +267,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       logout,
       setAdmin,
       addClips,
+      updateClip,
+      deleteClip,
       addTake,
       scoreTake,
       toggleVocabWord,

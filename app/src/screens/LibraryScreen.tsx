@@ -1,18 +1,78 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from '../components/Icon'
+import { allCategories, allPlaylists, searchClips } from '../lib/clips'
 import { colorFor, sparkPoints } from '../lib/score'
 import { useApp } from '../store/context'
 
 export function LibraryScreen() {
   const { data, statsFor } = useApp()
   const navigate = useNavigate()
+  const [query, setQuery] = useState('')
+  const [category, setCategory] = useState('')
+  const [playlist, setPlaylist] = useState('')
+
+  const categories = allCategories(data.videos)
+  const playlists = allPlaylists(data.videos)
+  const results = searchClips(data.videos, { query, category, playlist })
 
   return (
     <div className="stack gap-6">
       <h1>Library</h1>
 
+      <input
+        type="search"
+        className="input"
+        placeholder="Search clips, lines, playlists"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        aria-label="Search clips"
+      />
+
+      {playlists.length > 0 && (
+        <div className="row gap-2 wrap">
+          <button
+            type="button"
+            className={`btn ${playlist === '' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setPlaylist('')}
+          >
+            All playlists
+          </button>
+          {playlists.map((name) => (
+            <button
+              type="button"
+              key={name}
+              className={`btn ${playlist === name ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setPlaylist(playlist === name ? '' : name)}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {categories.length > 0 && (
+        <div className="row gap-2 wrap">
+          {categories.map((name) => (
+            <button
+              type="button"
+              key={name}
+              className={category === name ? 'tag tag-accent' : 'tag tag-neutral'}
+              style={{ cursor: 'pointer', border: 'none' }}
+              onClick={() => setCategory(category === name ? '' : name)}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {results.length === 0 && (
+        <div className="card-meta">Nothing matches that — try another word, or clear the filters.</div>
+      )}
+
       <div className="grid-cards">
-        {data.videos.map((video) => {
+        {results.map((video) => {
           const stats = statsFor(video.id)
           const color = stats.lastScore === null ? 'var(--color-neutral-500)' : colorFor(stats.lastScore)
           return (
@@ -32,11 +92,14 @@ export function LibraryScreen() {
                 className="link-button stack"
                 style={{ gap: 2 }}
                 onClick={() => navigate(`/library/${video.id}`)}
+                // Without this the button's name is the whole card read aloud:
+                // title, playlist, score and take count run together.
+                aria-label={video.title}
               >
                 <span className="card-title clamp-2" style={{ fontSize: 15, marginTop: 'var(--space-2)' }}>
                   {video.title}
                 </span>
-                <span className="card-meta">{video.source}</span>
+                <span className="card-meta">{video.playlist || video.source}</span>
                 <span className="row between gap-2" style={{ marginTop: 2 }}>
                   <span className="score-big" style={{ color }}>
                     {stats.lastScore ?? '—'}

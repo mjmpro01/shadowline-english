@@ -19,11 +19,15 @@ export interface Video {
   id: string
   title: string
   source: string
+  /** The batch this clip was cut from — a lesson, an episode, an interview. */
+  playlist: string
+  /** Free-form tags the library can be filtered by. */
+  categories: string[]
   timestamp: string
   duration: string
   summary: string
   captions: CaptionLine[]
-  /** Blob key of the original clip audio, once the learner attaches it. */
+  /** Blob key of the clip's original audio. */
   sourceAudioKey: string | null
 }
 

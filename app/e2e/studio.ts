@@ -13,6 +13,10 @@ export async function publishLesson(page: Page): Promise<void> {
   await page.locator('input[type=file]').setInputFiles(LESSON)
   await expect(page.locator('.waveform-segment')).toHaveCount(4, { timeout: 15_000 })
 
+  await page.getByLabel('Playlist').fill('Lesson one')
+  await page.getByLabel('Categories for the batch').fill('interview, daily')
+  await page.getByRole('button', { name: 'Apply to all clips' }).click()
+
   const inputs = page.locator('input[id^="line-"]')
   for (let i = 0; i < (await inputs.count()); i++) {
     await inputs.nth(i).fill(`Shadow this line ${i + 1}`)
