@@ -4,61 +4,18 @@ Postgres because the claim depends on `for update skip locked`, and files on
 disk because the worker's job is to read a recording someone else wrote.
 """
 
-import os
 import shutil
 import subprocess
-import uuid
 from pathlib import Path
 
-import psycopg
 import pytest
 
 from shadowline.queue import MAX_ATTEMPTS, Queue
-from shadowline.storage import DiskStorage
 from shadowline.worker import run_once
 
+# db and blobs come from conftest, so the cutter tests build their schema the
+# same way rather than keeping a second copy of it.
 FIXTURES = Path(__file__).parent / "fixtures"
-MIGRATION = Path(__file__).resolve().parents[2] / "server/internal/db/migrations/00001_init.sql"
-
-
-def admin_dsn() -> str:
-    dsn = os.environ.get("TEST_DATABASE_URL")
-    if not dsn:
-        pytest.skip("set TEST_DATABASE_URL to run worker tests against Postgres")
-    return dsn
-
-
-@pytest.fixture
-def db():
-    """A database of this test's own, with the server's real schema applied.
-
-    The schema comes from the Go server's migration file rather than a copy
-    kept here: a copy would drift, and the first thing to break would be the
-    queue semantics these tests exist to check.
-    """
-    admin = admin_dsn()
-    name = f"shadowline_worker_{uuid.uuid4().hex[:12]}"
-
-    with psycopg.connect(admin, autocommit=True) as conn:
-        conn.execute(f"create database {name}")
-
-    dsn = admin.rsplit("/", 1)[0] + "/" + name
-    sql = MIGRATION.read_text()
-    up = sql.split("-- +goose Up", 1)[1].split("-- +goose Down", 1)[0]
-    with psycopg.connect(dsn, autocommit=True) as conn:
-        conn.execute(up)
-        yield conn
-
-    with psycopg.connect(admin, autocommit=True) as conn:
-        conn.execute(f"drop database {name} with (force)")
-
-
-@pytest.fixture
-def blobs(tmp_path):
-    root = tmp_path / "blobs"
-    (root / "clips").mkdir(parents=True)
-    (root / "takes").mkdir(parents=True)
-    return DiskStorage(root), root
 
 
 def seed(conn, root: Path, *, clip_audio="identical.reference.wav", take_audio="identical.take.wav"):

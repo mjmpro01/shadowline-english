@@ -78,11 +78,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLeaderboard([])
   }, [])
 
-  const addClips = useCallback(async (clips: NewClip[]) => {
+  const addClips = useCallback(async (clips: NewClip[], source?: { file: Blob; name: string }) => {
     // A clip is one line: nothing longer is sent, whatever the studio's UI
     // allowed while the cuts were being adjusted. The server checks too.
     const withinLimit = clips.filter((c) => c.end - c.start <= MAX_CLIP_SECONDS + 0.01)
     if (withinLimit.length === 0) return
+
+    // The recording goes up once for the whole batch, before the clips that
+    // reference it exist. Publishing hundreds of lines out of one lecture must
+    // not mean sending the lecture hundreds of times.
+    //
+    // A failed source upload is not a failed publish: the clips are still
+    // worth having with their audio, so the batch goes ahead without video
+    // rather than losing the admin's work over a picture.
+    let sourceId: string | undefined
+    if (source) {
+      try {
+        sourceId = await repository.uploadSource(source.file, source.name)
+      } catch {
+        sourceId = undefined
+      }
+    }
 
     const created = await repository.createClips(
       withinLimit.map((clip, index) => ({
@@ -94,6 +110,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         durationSeconds: clip.end - clip.start,
         summary: 'No takes recorded yet — practice this clip to see your pitch analysis.',
         captions: [{ text: clip.line, ipa: clip.ipa }],
+        sourceId,
+        startSeconds: clip.start,
+        endSeconds: clip.end,
       })),
     )
 

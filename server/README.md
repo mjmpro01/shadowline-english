@@ -131,6 +131,42 @@ never set the flag outside tests.
 Admin is decided by `ADMIN_EMAILS` at sign-in, and every admin route re-checks
 it server-side. The app's `RequireAdmin` route only hides the screen.
 
+## Clip video
+
+A clip published from a video keeps its picture. The browser cannot cut video
+the way it slices a wav, so the cut happens here:
+
+1. The studio uploads the recording **once** for the whole batch
+   (`POST /api/admin/sources`) and gets back a source id. Once, not once per
+   clip — a lecture becoming three hundred lines would otherwise be uploaded
+   three hundred times.
+2. Each clip is created with that source id and its start and end, and a row in
+   `cut_jobs` is written in the same transaction as the clip. There is no moment
+   where a clip promises a picture with nothing scheduled to produce one.
+3. The cutter (`python -m shadowline.cutter`) claims a job, runs ffmpeg, stores
+   the mp4 and records `clips.video_key`.
+4. `GET /api/clips/{id}/video` answers with a signed URL, or null.
+
+Null is the ordinary answer, not a failure: a clip cut from audio never has a
+video, and one cut from video does not have it yet while the cut is queued. The
+app plays the audio in both cases, so publishing is never blocked on cutting and
+a clip whose cut fails is still a usable clip.
+
+The audio is unchanged: the browser still slices each clip's wav and uploads it
+with the clip, which is what the scoring worker compares takes against. Video is
+an extra asset, not a replacement.
+
+Cutting is a separate queue and a separate worker from scoring on purpose. A
+learner watches the Practice screen waiting for a score; nobody waits on a cut,
+and one cut holds a CPU for seconds. Sharing a queue would put a batch of cuts
+in front of the score somebody is watching for. Scale them independently —
+`CutQueueDepth` is what to watch when video stops appearing.
+
+ffmpeg re-encodes rather than stream-copies. A copy can only cut on a keyframe,
+and a keyframe is typically seconds from where a line starts — which, for a clip
+a few seconds long, means cutting the wrong thing. Output is h264/aac mp4,
+because that is what plays everywhere, Safari included.
+
 ## Why the queue is a table
 
 One take produces one job. Ten thousand learners recording fifty takes a day is

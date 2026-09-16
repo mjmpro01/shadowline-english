@@ -26,20 +26,32 @@ type Clip struct {
 	Summary         string        `json:"summary"`
 	Captions        []CaptionLine `json:"captions"`
 	AudioKey        *string       `json:"-"`
-	CreatedAt       time.Time     `json:"createdAt"`
+	VideoKey        *string       `json:"-"`
+	// HasVideo is what the app needs: whether to ask for a picture at all. The
+	// key itself stays server-side, like the audio key.
+	HasVideo bool `json:"hasVideo"`
+	// Where in its source this clip was cut from, which the cutter needs long
+	// after the browser that chose the boundaries has gone.
+	SourceID     *uuid.UUID `json:"-"`
+	StartSeconds float64    `json:"-"`
+	EndSeconds   float64    `json:"-"`
+	CreatedAt    time.Time  `json:"createdAt"`
 }
 
 const clipColumns = `id, title, source, playlist, categories, featured, timestamp_label,
-	duration_seconds, summary, captions, audio_key, created_at`
+	duration_seconds, summary, captions, audio_key, video_key, source_id,
+	start_seconds, end_seconds, created_at`
 
 func scanClip(row pgx.Row) (Clip, error) {
 	var c Clip
 	var captions []byte
 	err := row.Scan(&c.ID, &c.Title, &c.Source, &c.Playlist, &c.Categories, &c.Featured,
-		&c.TimestampLabel, &c.DurationSeconds, &c.Summary, &captions, &c.AudioKey, &c.CreatedAt)
+		&c.TimestampLabel, &c.DurationSeconds, &c.Summary, &captions, &c.AudioKey, &c.VideoKey,
+		&c.SourceID, &c.StartSeconds, &c.EndSeconds, &c.CreatedAt)
 	if err != nil {
 		return c, mapErr(err)
 	}
+	c.HasVideo = c.VideoKey != nil
 	if err := json.Unmarshal(captions, &c.Captions); err != nil {
 		return c, err
 	}
@@ -80,6 +92,13 @@ type NewClip struct {
 	DurationSeconds float64       `json:"durationSeconds"`
 	Summary         string        `json:"summary"`
 	Captions        []CaptionLine `json:"captions"`
+
+	// SourceID names the upload this clip is cut from, when there is one. A
+	// clip with a source is queued for cutting; one without is audio the
+	// browser already sliced, which is every clip published before video.
+	SourceID     *uuid.UUID `json:"sourceId"`
+	StartSeconds float64    `json:"startSeconds"`
+	EndSeconds   float64    `json:"endSeconds"`
 }
 
 // CreateClip records a clip. createdBy may be uuid.Nil, which stores NULL: the
@@ -93,13 +112,29 @@ func (s *Store) CreateClip(ctx context.Context, in NewClip, createdBy uuid.UUID)
 	if createdBy != uuid.Nil {
 		author = &createdBy
 	}
-	return scanClip(s.pool.QueryRow(ctx, `
-		insert into clips (title, source, playlist, categories, featured, timestamp_label,
-		                   duration_seconds, summary, captions, created_by)
-		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-		returning `+clipColumns,
-		in.Title, in.Source, in.Playlist, orEmpty(in.Categories), in.Featured, in.TimestampLabel,
-		in.DurationSeconds, in.Summary, captions, author))
+	// The clip and its cut job are written together, for the same reason a take
+	// and its scoring job are: there must be no moment where a clip promises a
+	// picture with nothing scheduled to produce one.
+	var clip Clip
+	err = s.inTx(ctx, func(tx pgx.Tx) error {
+		clip, err = scanClip(tx.QueryRow(ctx, `
+			insert into clips (title, source, playlist, categories, featured, timestamp_label,
+			                   duration_seconds, summary, captions, created_by,
+			                   source_id, start_seconds, end_seconds)
+			values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+			returning `+clipColumns,
+			in.Title, in.Source, in.Playlist, orEmpty(in.Categories), in.Featured, in.TimestampLabel,
+			in.DurationSeconds, in.Summary, captions, author,
+			in.SourceID, in.StartSeconds, in.EndSeconds))
+		if err != nil {
+			return err
+		}
+		if in.SourceID == nil {
+			return nil
+		}
+		return s.EnqueueCut(ctx, tx, clip.ID)
+	})
+	return clip, err
 }
 
 // ClipPatch carries only the fields the studio's second tab can change. Nil
@@ -139,6 +174,11 @@ func (s *Store) UpdateClip(ctx context.Context, id uuid.UUID, p ClipPatch) (Clip
 		id, p.Title, p.Playlist, categories, p.Featured, p.Summary, captions))
 }
 
+func (s *Store) SetClipVideoKey(ctx context.Context, id uuid.UUID, key string) error {
+	_, err := s.pool.Exec(ctx, `update clips set video_key = $2 where id = $1`, id, key)
+	return err
+}
+
 func (s *Store) SetClipAudioKey(ctx context.Context, id uuid.UUID, key string) error {
 	tag, err := s.pool.Exec(ctx, `update clips set audio_key = $2 where id = $1`, id, key)
 	if err != nil {
@@ -153,7 +193,11 @@ func (s *Store) SetClipAudioKey(ctx context.Context, id uuid.UUID, key string) e
 // DeleteClip returns the audio keys that are now orphaned — the clip's own and
 // every take recorded against it — so the caller can remove the objects. The
 // rows go with the clip through `on delete cascade`.
-func (s *Store) DeleteClip(ctx context.Context, id uuid.UUID) (clipKey *string, takeKeys []string, err error) {
+// DeleteClip removes the row and reports every object that belonged to it: the
+// clip's own audio and video, and the audio of every take recorded against it.
+// Returning them rather than deleting them here keeps object storage out of the
+// store, which is the one place that talks to Postgres and nothing else.
+func (s *Store) DeleteClip(ctx context.Context, id uuid.UUID) (clipKeys []string, takeKeys []string, err error) {
 	rows, err := s.pool.Query(ctx, `select audio_key from takes where clip_id = $1 and audio_key is not null`, id)
 	if err != nil {
 		return nil, nil, err
@@ -171,11 +215,18 @@ func (s *Store) DeleteClip(ctx context.Context, id uuid.UUID) (clipKey *string, 
 		return nil, nil, err
 	}
 
-	err = s.pool.QueryRow(ctx, `delete from clips where id = $1 returning audio_key`, id).Scan(&clipKey)
+	var audioKey, videoKey *string
+	err = s.pool.QueryRow(ctx,
+		`delete from clips where id = $1 returning audio_key, video_key`, id).Scan(&audioKey, &videoKey)
 	if err != nil {
 		return nil, nil, mapErr(err)
 	}
-	return clipKey, takeKeys, nil
+	for _, key := range []*string{audioKey, videoKey} {
+		if key != nil {
+			clipKeys = append(clipKeys, *key)
+		}
+	}
+	return clipKeys, takeKeys, nil
 }
 
 // orEmpty keeps null out of the database: a missing JSON array should be stored

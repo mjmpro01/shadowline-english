@@ -75,6 +75,24 @@ services:
       minio:
         condition: service_healthy
 
+  # Cuts each published clip's video out of the file it came from. A separate
+  # service from scoring, and the same image with a different entrypoint: a
+  # learner waits on a score, nobody waits on a cut, and one cut holds a CPU for
+  # seconds. Sharing a worker would put a batch of cuts in front of the score
+  # somebody is watching for.
+  cutting:
+    build:
+      context: ../scoring
+    entrypoint: ["python", "-m", "shadowline.cutter"]
+    env_file: .env
+    deploy:
+      replicas: 1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
 volumes:
   pgdata:
   miniodata:

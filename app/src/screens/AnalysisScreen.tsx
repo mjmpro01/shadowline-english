@@ -1,5 +1,6 @@
-import { useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { ClipPlayer } from '../components/ClipPlayer'
 import { Icon } from '../components/Icon'
 import { LoadFailure, Loading } from '../components/LoadState'
 import { NoSuchClip } from '../components/NoSuchClip'
@@ -7,7 +8,7 @@ import { METRIC_NAMES, type Take } from '../data/types'
 import { chartFromAnalysis } from '../lib/chart'
 import { summariseTake } from '../lib/summary'
 import { colorFor, wordScore } from '../lib/score'
-import { urlOf, useClipAudio, useTakeAudio } from '../lib/useAudioUrl'
+import { urlOf, useClipAudio, useClipVideo, useTakeAudio } from '../lib/useAudioUrl'
 import { useApp } from '../store/context'
 
 export function AnalysisScreen() {
@@ -16,7 +17,11 @@ export function AnalysisScreen() {
   const { data, state, statsFor } = useApp()
   const [selected, setSelected] = useState<{ videoId: string; takeId: string } | null>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
-  const sourceRef = useRef<HTMLAudioElement>(null)
+  const sourceRef = useRef<HTMLMediaElement | null>(null)
+  // Stable, so the element is not detached and reattached every render.
+  const attachSource = useCallback((element: HTMLMediaElement | null) => {
+    sourceRef.current = element
+  }, [])
 
   const video = data.videos.find((v) => v.id === videoId)
   const stats = statsFor(videoId ?? '')
@@ -31,6 +36,8 @@ export function AnalysisScreen() {
   const myVoiceUrl = urlOf(useTakeAudio(take?.hasAudio ? take.id : null))
   const sourceAudio = useClipAudio(video?.id ?? null)
   const sourceUrl = urlOf(sourceAudio)
+  const sourceVideoUrl = urlOf(useClipVideo(video?.id ?? null))
+  const playable = sourceVideoUrl ?? sourceUrl
 
   if (state === 'loading') return <Loading />
   if (state === 'error') return <LoadFailure />
@@ -107,14 +114,13 @@ export function AnalysisScreen() {
             <button
               type="button"
               className="btn btn-secondary"
-              disabled={!sourceUrl}
-              title={sourceUrl ? "Play the clip's original audio" : 'No original audio attached to this clip'}
-              onClick={() => sourceRef.current?.play()}
+              disabled={!playable}
+              title={playable ? "Play the clip's original" : 'No original recording attached to this clip'}
+              onClick={() => void sourceRef.current?.play()}
             >
               <Icon name="play" size={14} />
               Original
             </button>
-            {sourceUrl && <audio ref={sourceRef} src={sourceUrl} />}
             <button
               type="button"
               className="btn btn-secondary"
@@ -128,6 +134,10 @@ export function AnalysisScreen() {
             {myVoiceUrl && <audio ref={audioRef} src={myVoiceUrl} />}
           </div>
         </div>
+
+        {/* Above the contour, not beside it: the picture and the chart are read
+            one after the other, and side by side leaves neither room. */}
+        <ClipPlayer attach={attachSource} videoUrl={sourceVideoUrl} audioUrl={sourceUrl} />
 
         {chart === null ? (
           <div className="card-meta" style={{ padding: '32px 0' }}>{contourPending(take)}</div>

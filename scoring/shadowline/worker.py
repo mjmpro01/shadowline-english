@@ -124,13 +124,15 @@ def main() -> int:
                 while running:
                     if not run_once(queue, blobs):
                         time.sleep(IDLE_SLEEP)
-        except psycopg.OperationalError as err:
-            # A database restart or a dropped connection should not end the
-            # worker: it would stop scoring until something restarted it, and
-            # every take recorded in the meantime would sit pending.
+        # Every database error, not just a dropped connection. A restart, a lost
+        # connection, or a schema that is not there yet should all be waited
+        # out: dying here stops scoring until something restarts the worker, and
+        # every take recorded meanwhile sits pending. Starting beside a server
+        # that is still migrating is the ordinary way to meet the last of those.
+        except psycopg.Error as err:
             if not running:
                 break
-            log.warning("database unavailable (%s) — retrying in %.0fs", err, backoff)
+            log.warning("database not ready (%s) — retrying in %.0fs", err, backoff)
             time.sleep(backoff)
             backoff = min(backoff * 2, MAX_BACKOFF)
     return 0

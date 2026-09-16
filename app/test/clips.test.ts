@@ -9,6 +9,7 @@ const clip = (overrides: Partial<Video>): Video => ({
   playlist: 'Lesson one',
   categories: [],
   featured: false,
+  hasVideo: false,
   timestamp: '0:00–0:05',
   durationSeconds: 5,
   summary: '',

@@ -20,19 +20,45 @@ export async function decodeFile(blob: Blob): Promise<{ samples: Float32Array; s
   return { samples, sampleRate: buffer.sampleRate }
 }
 
-/** Peak pairs per column, for drawing a waveform without plotting every sample. */
-export function peaks(samples: Float32Array, columns: number): { min: number; max: number }[] {
+export interface Column {
+  min: number
+  max: number
+  /** Average energy of the column: how loud it is, not how far it reaches. */
+  rms: number
+}
+
+/**
+ * Column summaries for drawing a waveform without plotting every sample.
+ *
+ * min/max alone is enough for a short recording, where a column spans a few
+ * milliseconds and the outline comes out spiky. It falls apart over a long one:
+ * a column of a fifty-minute file covers seconds of continuous speech, every
+ * column reaches the ceiling, and the waveform draws as a filled rectangle that
+ * says nothing about where anyone is talking.
+ *
+ * rms keeps varying long after min/max has saturated — a pause, a quiet line
+ * and a shout are three different numbers — so the editor draws the body of the
+ * wave from it and keeps min/max as a faint outline.
+ */
+export function peaks(samples: Float32Array, columns: number): Column[] {
   const perColumn = Math.max(1, Math.floor(samples.length / columns))
-  const out: { min: number; max: number }[] = []
+  const out: Column[] = []
   for (let c = 0; c < columns; c++) {
     let min = 0
     let max = 0
+    let sumSquares = 0
+    let counted = 0
     const from = c * perColumn
     for (let i = from; i < from + perColumn && i < samples.length; i++) {
-      if (samples[i] < min) min = samples[i]
-      if (samples[i] > max) max = samples[i]
+      const sample = samples[i]
+      if (sample < min) min = sample
+      if (sample > max) max = sample
+      sumSquares += sample * sample
+      counted++
     }
-    out.push({ min, max })
+    // A column past the end of the samples has nothing in it; dividing by
+    // counted would make it NaN and break the path it is drawn into.
+    out.push({ min, max, rms: counted > 0 ? Math.sqrt(sumSquares / counted) : 0 })
   }
   return out
 }

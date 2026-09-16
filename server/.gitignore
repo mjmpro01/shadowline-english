@@ -1,0 +1,8 @@
+# Real configuration, including the Google client secret and the session key.
+# .env.example is the one that belongs in the repository.
+.env
+.env.*
+!.env.example
+
+# Audio kept on local disk when S3_ENDPOINT is empty.
+blobs/
