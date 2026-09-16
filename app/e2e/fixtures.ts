@@ -36,11 +36,14 @@ export const SOURCE_CLIP = join(FIXTURE_DIR, 'source-clip.wav')
 /** A second clip with a flat delivery, for checking one clip's contour is not
     reused to score another. */
 export const FLAT_CLIP = join(FIXTURE_DIR, 'flat-clip.wav')
+/** Longer than a clip is allowed to be. */
+export const OVERLONG_CLIP = join(FIXTURE_DIR, 'overlong-clip.wav')
 /** A decent shadow of it, in a lower voice, fed in as the microphone. */
 export const USER_TAKE = join(FIXTURE_DIR, 'user-take.wav')
 
 export function writeAudioFixtures(): void {
   writeWav(SOURCE_CLIP, tone({ melody: MELODIES.wide }))
   writeWav(FLAT_CLIP, tone({ melody: MELODIES.flat }))
+  writeWav(OVERLONG_CLIP, tone({ melody: MELODIES.wide, duration: 10 }))
   writeWav(USER_TAKE, tone({ melody: (p) => MELODIES.wide(p) * 0.85 + 0.3, baseHz: 150 }))
 }

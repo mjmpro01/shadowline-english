@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { FLAT_CLIP, SOURCE_CLIP } from './fixtures'
+import { FLAT_CLIP, OVERLONG_CLIP, SOURCE_CLIP } from './fixtures'
 
 /** Long enough for the fake microphone to play through most of the clip. */
 const RECORD_MS = 2600
@@ -103,4 +103,29 @@ test('each clip is scored against its own audio, not the last one seen', async (
   expect(melodic).toBeGreaterThan(60)
   // Reusing the first clip's contour here would score this just as highly.
   expect(flat).toBeLessThan(melodic - 10)
+})
+
+test('recording stops itself at the clip limit', async ({ page }) => {
+  await page.getByRole('button', { name: 'Practice' }).first().click()
+  await page.waitForURL('**/practice')
+
+  await page.getByRole('button', { name: 'Record', exact: true }).click()
+  await expect(page.getByText('s left')).toBeVisible()
+
+  // Never pressed: the recorder ends the take on its own.
+  await expect(page.getByRole('button', { name: 'Stop' })).toBeHidden({ timeout: 15_000 })
+  await expect(page.getByText('Take measured')).toBeVisible({ timeout: 20_000 })
+})
+
+test('refuses source audio longer than a clip may be', async ({ page }) => {
+  await page.getByRole('button', { name: 'Practice' }).first().click()
+  await page.waitForURL('**/practice')
+
+  await page.locator('input[type=file]').setInputFiles(OVERLONG_CLIP)
+  await expect(page.getByText(/trim this to 6 seconds or less/)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Hear clip again' })).toBeDisabled()
+
+  // A clip within the limit is still accepted afterwards.
+  await page.locator('input[type=file]').setInputFiles(SOURCE_CLIP)
+  await expect(page.getByRole('button', { name: 'Hear clip again' })).toBeEnabled()
 })

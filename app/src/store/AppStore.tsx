@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { LOOKUP } from '../data/seed'
-import type { AppData, Take, Video, VocabStatus, VocabWord } from '../data/types'
+import { MAX_CLIP_SECONDS, type AppData, type Take, type Video, type VocabStatus, type VocabWord } from '../data/types'
 import { getBlob, invalidateBlobUrl, putBlob } from '../lib/blobStore'
 import { analyseTake } from '../lib/dsp/analyse'
+import { decodeToMono } from '../lib/dsp/pitch'
 import { normalizeWord } from '../lib/text'
 import { repository } from '../repository'
 import { AppContext, type Store, type VideoStats } from './context'
@@ -48,8 +49,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       id: `imp-${Date.now()}`,
       title: trimmed.replace(/^https?:\/\//, '').slice(0, 60) || 'Imported clip',
       source: 'Imported from URL',
-      timestamp: '00:00–00:30',
-      duration: '0:30',
+      timestamp: '00:00–00:06',
+      duration: '0:06',
       summary: 'No takes recorded yet — practice this clip to see your pitch analysis.',
       captions: [
         { text: 'Tap record and shadow the speaker line by line.', ipa: '/tæp rɪˈkɔːd ənd ˈʃædəʊ ðə ˈspiːkə/' },
@@ -96,7 +97,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return take
   }, [])
 
-  const attachSourceAudio = useCallback(async (videoId: string, audio: Blob) => {
+  const attachSourceAudio = useCallback<Store['attachSourceAudio']>(async (videoId, audio) => {
+    let seconds: number
+    try {
+      const decoded = await decodeToMono(audio)
+      seconds = decoded.samples.length / decoded.sampleRate
+    } catch {
+      return { ok: false, reason: "That file couldn't be read as audio" }
+    }
+    if (seconds > MAX_CLIP_SECONDS + 0.5) {
+      return {
+        ok: false,
+        reason: `Clips are one line long — trim this to ${MAX_CLIP_SECONDS} seconds or less (it is ${seconds.toFixed(1)}s)`,
+      }
+    }
+
     const key = `source-${videoId}-${Date.now()}`
     await putBlob(key, audio)
     setData((prev) => {
@@ -104,6 +119,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       void repository.saveVideos(videos)
       return { ...prev, videos }
     })
+    return { ok: true }
   }, [])
 
   /** Re-measures an existing take — used once a clip finally has its original audio. */

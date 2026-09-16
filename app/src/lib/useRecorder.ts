@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { MAX_CLIP_SECONDS } from '../data/types'
 
 export type RecorderStatus = 'idle' | 'requesting' | 'recording' | 'denied' | 'unsupported'
 
@@ -13,14 +14,26 @@ interface RecorderSession {
 }
 
 /**
- * Real microphone capture. The loudness bars below are measured from the live
- * signal; the pronunciation score the Practice screen shows afterwards is
- * still a stand-in until the pitch pipeline lands.
+ * Real microphone capture, with the loudness bars measured from the live signal.
+ *
+ * Recording stops itself at the clip limit — a take is one line, and a runaway
+ * recording is never what the learner wanted — so the finished recording is
+ * handed back through `onComplete` rather than returned from `stop`: the
+ * caller should not care which of the two ended it.
  */
-export function useRecorder() {
+export function useRecorder({
+  onComplete,
+}: { onComplete?: (recording: Blob | null, levels: number[]) => void } = {}) {
   const [status, setStatus] = useState<RecorderStatus>('idle')
   const [levels, setLevels] = useState<number[]>([])
+  const [elapsed, setElapsed] = useState(0)
   const session = useRef<RecorderSession | null>(null)
+  const levelsRef = useRef<number[]>([])
+  const complete = useRef(onComplete)
+
+  useEffect(() => {
+    complete.current = onComplete
+  }, [onComplete])
 
   const teardown = useCallback(() => {
     const active = session.current
@@ -32,6 +45,23 @@ export function useRecorder() {
   }, [])
 
   useEffect(() => teardown, [teardown])
+
+  const stop = useCallback(async () => {
+    const active = session.current
+    if (!active) return
+    const recording = await new Promise<Blob>((resolve) => {
+      active.recorder.onstop = () => resolve(new Blob(active.chunks, { type: active.recorder.mimeType }))
+      active.recorder.stop()
+    })
+    teardown()
+    setStatus('idle')
+    complete.current?.(recording, levelsRef.current)
+  }, [teardown])
+
+  const stopRef = useRef(stop)
+  useEffect(() => {
+    stopRef.current = stop
+  }, [stop])
 
   const start = useCallback(async () => {
     if (typeof MediaRecorder === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
@@ -54,13 +84,24 @@ export function useRecorder() {
       }
       recorder.start()
 
+      levelsRef.current = []
       setLevels([])
+      setElapsed(0)
+      const startedAt = performance.now()
+      let reachedLimit = false
       const meter = window.setInterval(() => {
         analyser.getByteTimeDomainData(buffer)
         let sum = 0
         for (const sample of buffer) sum += (sample - 128) ** 2
         const rms = Math.sqrt(sum / buffer.length) / 128
-        setLevels((prev) => [...prev, Math.min(1, rms * 2.4)].slice(-BAR_COUNT))
+        levelsRef.current = [...levelsRef.current, Math.min(1, rms * 2.4)].slice(-BAR_COUNT)
+        setLevels(levelsRef.current)
+        const seconds = (performance.now() - startedAt) / 1000
+        setElapsed(seconds)
+        if (seconds >= MAX_CLIP_SECONDS && !reachedLimit) {
+          reachedLimit = true
+          void stopRef.current()
+        }
       }, 90)
 
       session.current = { stream, recorder, context, chunks, meter }
@@ -72,23 +113,13 @@ export function useRecorder() {
     }
   }, [])
 
-  const stop = useCallback(async (): Promise<Blob | null> => {
-    const active = session.current
-    if (!active) return null
-    const blob = await new Promise<Blob>((resolve) => {
-      active.recorder.onstop = () => resolve(new Blob(active.chunks, { type: active.recorder.mimeType }))
-      active.recorder.stop()
-    })
-    teardown()
-    setStatus('idle')
-    return blob
-  }, [teardown])
-
   const reset = useCallback(() => {
     teardown()
+    levelsRef.current = []
     setLevels([])
+    setElapsed(0)
     setStatus('idle')
   }, [teardown])
 
-  return { status, levels, start, stop, reset }
+  return { status, levels, elapsed, start, stop, reset }
 }

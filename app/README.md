@@ -26,6 +26,13 @@ machine instead of Playwright's own download.
 Login → Library → Practice → Analysis → Dub Review, plus Vocabulary, Progress and Profile.
 Navigation is a collapsible sidebar on desktop and a bottom tab bar on phones.
 
+## Clip length
+
+A clip is one line to shadow, capped at `MAX_CLIP_SECONDS` (6) in
+`src/data/types.ts`. Recording stops itself at the cap with a countdown on
+screen, and source audio longer than that is refused rather than silently
+trimmed.
+
 ## Scoring
 
 Takes are measured, not simulated. `src/lib/dsp/` tracks fundamental frequency with YIN

@@ -16,7 +16,7 @@ export interface Store {
   logout: () => void
   importVideo: (url: string) => Video
   addTake: (videoId: string, audio: Blob | null) => Promise<Take>
-  attachSourceAudio: (videoId: string, audio: Blob) => Promise<void>
+  attachSourceAudio: (videoId: string, audio: Blob) => Promise<{ ok: true } | { ok: false; reason: string }>
   scoreTake: (takeId: string) => Promise<void>
   toggleVocabWord: (raw: string, videoId: string | null) => { word: string; status: 'added' | 'removed' | 'known' }
   setVocabStatus: (id: string, status: VocabStatus) => void

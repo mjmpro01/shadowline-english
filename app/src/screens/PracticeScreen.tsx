@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { Icon } from '../components/Icon'
-import type { Take } from '../data/types'
+import { MAX_CLIP_SECONDS, type Take } from '../data/types'
 import { colorFor, scoreLabel } from '../lib/score'
 import { useBlobUrl } from '../lib/useAudioUrl'
 import { useRecorder } from '../lib/useRecorder'
@@ -46,15 +46,27 @@ export function PracticeScreen() {
   const { videoId } = useParams()
   const navigate = useNavigate()
   const { data, addTake, attachSourceAudio, toggleVocabWord } = useApp()
-  const recorder = useRecorder()
 
   const [lineIndex, setLineIndex] = useState(0)
   const [take, setTake] = useState<Take | null>(null)
   const [capturedLevels, setCapturedLevels] = useState<number[]>([])
   const [popup, setPopup] = useState<Popup | null>(null)
   const [analysing, setAnalysing] = useState(false)
+  const [attachError, setAttachError] = useState<string | null>(null)
   const sourceInput = useRef<HTMLInputElement>(null)
   const sourcePlayer = useRef<HTMLAudioElement>(null)
+  const recorder = useRecorder({
+    onComplete: async (recording, capturedLevels) => {
+      if (!video) return
+      setCapturedLevels(capturedLevels)
+      setAnalysing(true)
+      try {
+        setTake(await addTake(video.id, recording))
+      } finally {
+        setAnalysing(false)
+      }
+    },
+  })
 
   const video = data.videos.find((v) => v.id === videoId)
   const sourceUrl = useBlobUrl(video?.sourceAudioKey ?? null)
@@ -83,14 +95,7 @@ export function PracticeScreen() {
 
   const toggleRecord = async () => {
     if (recording) {
-      const blob = await recorder.stop()
-      setCapturedLevels(recorder.levels)
-      setAnalysing(true)
-      try {
-        setTake(await addTake(video.id, blob))
-      } finally {
-        setAnalysing(false)
-      }
+      await recorder.stop()
       return
     }
     setTake(null)
@@ -100,7 +105,8 @@ export function PracticeScreen() {
 
   const attachSource = async (file: File | undefined) => {
     if (!file) return
-    await attachSourceAudio(video.id, file)
+    const result = await attachSourceAudio(video.id, file)
+    setAttachError(result.ok ? null : result.reason)
   }
 
   const resetMic = () => {
@@ -187,7 +193,16 @@ export function PracticeScreen() {
           {recording && (
             <div className="row gap-2" style={{ justifyContent: 'center', fontSize: 13 }}>
               <span className="rec-dot" />
-              {recorder.status === 'requesting' ? 'Waiting for microphone…' : 'Recording — read the line aloud'}
+              {recorder.status === 'requesting' ? (
+                'Waiting for microphone…'
+              ) : (
+                <>
+                  Recording — read the line aloud
+                  <span className="mono" style={{ opacity: 0.7 }}>
+                    {Math.max(0, MAX_CLIP_SECONDS - recorder.elapsed).toFixed(1)}s left
+                  </span>
+                </>
+              )}
             </div>
           )}
           {recorder.status === 'denied' && (
@@ -199,6 +214,10 @@ export function PracticeScreen() {
             <div style={{ fontSize: 13, textAlign: 'center', color: 'var(--score-attention)' }}>
               This browser can't record audio.
             </div>
+          )}
+
+          {attachError && (
+            <div style={{ fontSize: 13, textAlign: 'center', color: 'var(--score-attention)' }}>{attachError}</div>
           )}
 
           {analysing && <div style={{ fontSize: 13, textAlign: 'center', opacity: 0.7 }}>Measuring your pitch…</div>}
