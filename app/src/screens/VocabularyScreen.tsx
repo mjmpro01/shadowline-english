@@ -97,7 +97,7 @@ export function VocabularyScreen() {
                 type="button"
                 className={`btn ${known ? 'btn-secondary' : 'btn-ghost'} btn-block`}
                 style={{ marginTop: 2 }}
-                onClick={() => setVocabStatus(word.id, known ? 'learning' : 'known')}
+                onClick={() => void setVocabStatus(word.id, known ? 'learning' : 'known')}
               >
                 <Icon name={known ? 'check-circle' : 'circle'} size={14} />
                 {known ? 'Learned' : 'Mark learned'}

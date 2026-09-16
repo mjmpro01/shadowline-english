@@ -1,17 +1,19 @@
 import { useRef, useState } from 'react'
-import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Icon } from '../components/Icon'
-import { METRIC_NAMES } from '../data/types'
-import { chartFromAnalysis } from '../lib/dsp/chart'
-import { summariseTake } from '../lib/dsp/summary'
-import { buildChart, colorFor, wordScore } from '../lib/score'
-import { useBlobUrl } from '../lib/useAudioUrl'
+import { LoadFailure, Loading } from '../components/LoadState'
+import { NoSuchClip } from '../components/NoSuchClip'
+import { METRIC_NAMES, type Take } from '../data/types'
+import { chartFromAnalysis } from '../lib/chart'
+import { summariseTake } from '../lib/summary'
+import { colorFor, wordScore } from '../lib/score'
+import { urlOf, useClipAudio, useTakeAudio } from '../lib/useAudioUrl'
 import { useApp } from '../store/context'
 
 export function AnalysisScreen() {
   const { videoId } = useParams()
   const navigate = useNavigate()
-  const { data, statsFor, scoreTake } = useApp()
+  const { data, state, statsFor } = useApp()
   const [selected, setSelected] = useState<{ videoId: string; takeId: string } | null>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
   const sourceRef = useRef<HTMLAudioElement>(null)
@@ -22,16 +24,17 @@ export function AnalysisScreen() {
     selected && selected.videoId === videoId ? stats.takes.find((t) => t.id === selected.takeId) : undefined
   const take = chosen ?? stats.takes[stats.takes.length - 1]
 
-  // A take the learner actually recorded carries its measured contour; the
-  // seeded practice history has none, so that keeps the illustrative curve.
+  // Every chart drawn here is a measurement. A take that has not been scored
+  // has no contour, and the screen says so rather than drawing a plausible one.
   const measured = take?.analysis ?? null
-  const chart = measured
-    ? chartFromAnalysis(measured)
-    : buildChart(`${video?.id ?? ''}-${take?.id ?? ''}`, take?.score ?? 0)
-  const myVoiceUrl = useBlobUrl(take?.audioKey ?? null)
-  const sourceUrl = useBlobUrl(video?.sourceAudioKey ?? null)
+  const chart = measured ? chartFromAnalysis(measured) : null
+  const myVoiceUrl = urlOf(useTakeAudio(take?.hasAudio ? take.id : null))
+  const sourceAudio = useClipAudio(video?.id ?? null)
+  const sourceUrl = urlOf(sourceAudio)
 
-  if (!video) return <Navigate to="/library" replace />
+  if (state === 'loading') return <Loading />
+  if (state === 'error') return <LoadFailure />
+  if (!video) return <NoSuchClip />
 
   if (!take) {
     return (
@@ -98,9 +101,7 @@ export function AnalysisScreen() {
         <div className="row between wrap gap-2">
           <div className="row gap-2">
             <div className="card-kicker">Pitch contour</div>
-            <span className={measured ? 'tag tag-accent-2' : 'tag tag-neutral'}>
-              {measured ? 'measured' : 'sample'}
-            </span>
+            <span className="tag tag-accent-2">measured</span>
           </div>
           <div className="row gap-2">
             <button
@@ -128,6 +129,9 @@ export function AnalysisScreen() {
           </div>
         </div>
 
+        {chart === null ? (
+          <div className="card-meta" style={{ padding: '32px 0' }}>{contourPending(take)}</div>
+        ) : (
         <svg width="100%" viewBox="0 0 640 200" style={{ display: 'block' }} aria-label="Pitch contour chart">
           <path d={chart.bandPath} fill="var(--color-neutral-300)" opacity="0.5" stroke="none" />
           {chart.gridLines.map((line) => (
@@ -166,13 +170,17 @@ export function AnalysisScreen() {
             />
           ))}
         </svg>
+        )}
 
+        {chart && (
         <div className="row between mono" style={{ marginTop: 2, fontSize: 11, color: 'var(--color-neutral-600)' }}>
           {chart.xLabels.map((label) => (
             <span key={label}>{label}</span>
           ))}
         </div>
+        )}
 
+        {chart && (
         <div className="row gap-4" style={{ marginTop: 'var(--space-2)' }}>
           {chart.refPoints && (
             <div className="row gap-2">
@@ -185,6 +193,7 @@ export function AnalysisScreen() {
             <span style={{ fontSize: 12, opacity: 0.7 }}>You</span>
           </div>
         </div>
+        )}
       </div>
 
       {take.scores ? (
@@ -206,29 +215,16 @@ export function AnalysisScreen() {
         </div>
       ) : (
         <div className="card elev-sm stack gap-2">
-          <div className="card-kicker">Not scored yet</div>
-          <div style={{ fontSize: 14, opacity: 0.8 }}>
-            {video.sourceAudioKey
-              ? 'This clip now has its original audio — score this take against it.'
-              : "Scores compare your delivery with the clip's original audio, which this clip is still missing."}
-          </div>
-          {video.sourceAudioKey ? (
-            <button
-              type="button"
-              className="btn btn-primary"
-              style={{ alignSelf: 'flex-start' }}
-              onClick={() => void scoreTake(take.id)}
-            >
-              Score this take
-            </button>
-          ) : (
+          <div className="card-kicker">{take.status === 'pending' ? 'Measuring' : 'Not scored'}</div>
+          <div style={{ fontSize: 14, opacity: 0.8 }}>{unscoredReason(take, sourceAudio.status === 'none')}</div>
+          {take.status !== 'pending' && (
             <button
               type="button"
               className="btn btn-secondary"
               style={{ alignSelf: 'flex-start' }}
               onClick={() => navigate(`/library/${video.id}/practice`)}
             >
-              Go to Practice
+              Record another take
             </button>
           )}
         </div>
@@ -253,4 +249,29 @@ export function AnalysisScreen() {
       </button>
     </div>
   )
+}
+
+/** What to say in place of a contour that is not there. */
+function contourPending(take: Take): string {
+  if (take.status === 'pending') return 'Measuring your pitch…'
+  if (take.status === 'failed') return 'This recording could not be measured.'
+  return 'No contour for this take.'
+}
+
+/**
+ * Why a take has no score. Three different reasons, and conflating them is how
+ * a learner ends up believing the app is broken when it is waiting, or waiting
+ * when it has given up.
+ */
+function unscoredReason(take: Take, clipHasNoAudio: boolean): string {
+  if (take.status === 'pending') return 'Your take is being scored — this usually takes a moment.'
+  if (take.status === 'failed') {
+    return take.error
+      ? `We couldn’t score this one: ${take.error}.`
+      : 'We couldn’t score this one.'
+  }
+  if (clipHasNoAudio) {
+    return "Scores compare your delivery with the clip’s original audio, which this clip is missing."
+  }
+  return 'This take has no score.'
 }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Icon } from '../components/Icon'
 import { allCategories, allPlaylists, searchClips } from '../lib/clips'
 import { colorFor, sparkPoints } from '../lib/score'
+import { clock } from '../lib/time'
 import { useApp } from '../store/context'
 
 export function LibraryScreen() {
@@ -84,7 +85,7 @@ export function LibraryScreen() {
                 aria-label={`Open analysis for ${video.title}`}
               >
                 <Icon name="play" size={28} />
-                <span className="tag tag-neutral thumb-tag">{video.duration}</span>
+                <span className="tag tag-neutral thumb-tag">{clock(video.durationSeconds)}</span>
               </button>
 
               <button

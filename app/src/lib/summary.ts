@@ -1,4 +1,4 @@
-import { METRIC_NAMES, type MetricScores } from '../../data/types'
+import { METRIC_NAMES, type MetricScores } from '../data/types'
 
 /**
  * A summary built from what was actually measured. The clips ship with an

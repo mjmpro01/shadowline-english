@@ -8,16 +8,6 @@ export interface LearnerStats {
   streak: number
 }
 
-export interface LeaderboardRow {
-  id: string
-  name: string
-  averageScore: number
-  streak: number
-  isYou: boolean
-  /** Sample rows stand in for other learners until there is a backend. */
-  isSample: boolean
-  rank: number
-}
 
 function dayKey(iso: string): string {
   return iso.slice(0, 10)
@@ -57,29 +47,4 @@ export function statsFor(takes: Take[], today?: string): LearnerStats {
     averageScore: scored.length ? Math.round(total / scored.length) : null,
     streak: practiceStreak(takes, today),
   }
-}
-
-/**
- * Your row is real; everyone else is sample data. An unscored learner has no
- * average to rank on, so they sit at the bottom rather than at zero.
- */
-export function buildLeaderboard(
-  peers: { id: string; name: string; averageScore: number; streak: number }[],
-  you: { name: string; stats: LearnerStats },
-): LeaderboardRow[] {
-  const rows = [
-    ...peers.map((peer) => ({ ...peer, isYou: false, isSample: true })),
-    {
-      id: 'you',
-      name: you.name,
-      averageScore: you.stats.averageScore ?? -1,
-      streak: you.stats.streak,
-      isYou: true,
-      isSample: false,
-    },
-  ]
-
-  return rows
-    .sort((a, b) => b.averageScore - a.averageScore || b.streak - a.streak)
-    .map((row, index) => ({ ...row, rank: index + 1 }))
 }

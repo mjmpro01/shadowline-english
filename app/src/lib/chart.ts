@@ -1,5 +1,5 @@
-import type { ContourPoint, TakeAnalysis } from '../../data/types'
-import { ATTENTION, GOOD, MEDIUM, type PitchChart } from '../score'
+import type { ContourPoint, TakeAnalysis } from '../data/types'
+import { ATTENTION, GOOD, MEDIUM, type PitchChart } from './score'
 
 const W = 640
 const H = 200

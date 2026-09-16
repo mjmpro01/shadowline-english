@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react'
-import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Icon } from '../components/Icon'
+import { LoadFailure, Loading } from '../components/LoadState'
+import { NoSuchClip } from '../components/NoSuchClip'
 import { MAX_CLIP_SECONDS, type Take } from '../data/types'
 import { colorFor, scoreLabel } from '../lib/score'
-import { useBlobUrl } from '../lib/useAudioUrl'
+import { urlOf, useClipAudio } from '../lib/useAudioUrl'
 import { useRecorder } from '../lib/useRecorder'
 import { normalizeWord } from '../lib/text'
 import { useApp } from '../store/context'
@@ -11,7 +13,6 @@ import { useApp } from '../store/context'
 const POPUP_LABEL = {
   added: 'Added to Vocabulary',
   removed: 'Removed from Vocabulary',
-  known: 'Already in Vocabulary',
 }
 
 interface Popup {
@@ -45,7 +46,7 @@ function waveBars(levels: number[], live: boolean) {
 export function PracticeScreen() {
   const { videoId } = useParams()
   const navigate = useNavigate()
-  const { data, addTake, toggleVocabWord } = useApp()
+  const { data, state, addTake, toggleVocabWord } = useApp()
 
   const [lineIndex, setLineIndex] = useState(0)
   const [take, setTake] = useState<Take | null>(null)
@@ -55,7 +56,9 @@ export function PracticeScreen() {
   const sourcePlayer = useRef<HTMLAudioElement>(null)
   const recorder = useRecorder({
     onComplete: async (recording, capturedLevels) => {
-      if (!video) return
+      // A null recording means the microphone gave us nothing; there is no take
+      // to store, and sending an empty body would only queue a job that fails.
+      if (!video || !recording) return
       setCapturedLevels(capturedLevels)
       setAnalysing(true)
       try {
@@ -67,7 +70,8 @@ export function PracticeScreen() {
   })
 
   const video = data.videos.find((v) => v.id === videoId)
-  const sourceUrl = useBlobUrl(video?.sourceAudioKey ?? null)
+  const sourceAudio = useClipAudio(video?.id ?? null)
+  const sourceUrl = urlOf(sourceAudio)
   const line = video?.captions[Math.min(lineIndex, (video?.captions.length ?? 1) - 1)]
 
   const words =
@@ -76,12 +80,17 @@ export function PracticeScreen() {
       added: data.vocab.some((v) => v.word === normalizeWord(raw)),
     })) ?? []
 
-  if (!video || !line) return <Navigate to="/library" replace />
+  // The clip list arrives from the server, so "not found yet" and "not found"
+  // are different answers. Redirecting on the first would throw anyone opening
+  // a link to a clip straight back to the library.
+  if (state === 'loading') return <Loading />
+  if (state === 'error') return <LoadFailure />
+  if (!video || !line) return <NoSuchClip />
 
   const recording = recorder.status === 'recording' || recorder.status === 'requesting'
 
-  const tapWord = (raw: string) => {
-    const result = toggleVocabWord(raw, video.id)
+  const tapWord = async (raw: string) => {
+    const result = await toggleVocabWord(raw, video.id)
     const entry = data.vocab.find((v) => v.word === result.word)
     setPopup({
       word: result.word,
@@ -138,7 +147,7 @@ export function PracticeScreen() {
                 className="caption-word"
                 data-added={word.added}
                 key={`${word.raw}-${i}`}
-                onClick={() => tapWord(word.raw)}
+                onClick={() => void tapWord(word.raw)}
               >
                 {word.raw}
               </button>
@@ -294,3 +303,4 @@ export function PracticeScreen() {
     </div>
   )
 }
+

@@ -1,0 +1,14 @@
+{
+  "name": "shadowline-reference-scorer",
+  "private": true,
+  "type": "module",
+  "description": "Archived TypeScript scorer, kept to regenerate the parity fixtures",
+  "scripts": {
+    "generate": "tsx fixtures.gen.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "tsx": "^4.19.2",
+    "typescript": "~6.0.2"
+  }
+}

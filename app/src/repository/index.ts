@@ -1,112 +1,173 @@
-import { DEFAULT_PROFILE, SEED_VIDEOS, SEED_VOCAB } from '../data/seed'
-import { metricsForTake } from '../lib/score'
-import type { AppData, Profile, Take, Video, VocabWord } from '../data/types'
+import { api } from '../lib/api'
+import type { CaptionLine, Profile, Take, Video, VocabStatus, VocabWord } from '../data/types'
 
 /**
- * The app's data seam. Today it is backed by localStorage; swapping in a real
- * API means implementing this interface against the backend and changing the
- * export at the bottom of this file — no screen code changes.
+ * The app's data seam. Records live on the server now; this is the only module
+ * that knows the shape of the API, and screens talk to the store rather than to
+ * either.
+ *
+ * Writes are per record rather than per collection. The localStorage version
+ * saved whole arrays — `saveVideos(videos[])` — which was fine for one browser
+ * and would have had two devices overwriting each other's work.
  */
 export interface Repository {
-  loadAll(): Promise<AppData>
-  saveVideos(videos: Video[]): Promise<void>
-  saveTakes(takes: Take[]): Promise<void>
-  saveVocab(vocab: VocabWord[]): Promise<void>
-  saveProfile(profile: Profile): Promise<void>
-  saveSession(loggedIn: boolean): Promise<void>
-  saveAdmin(isAdmin: boolean): Promise<void>
+  me(): Promise<Profile | null>
+  logout(): Promise<void>
+
+  listClips(): Promise<Video[]>
+  clipAudioURL(clipId: string): Promise<string | null>
+  createClips(clips: NewClipInput[]): Promise<Video[]>
+  uploadClipAudio(clipId: string, audio: Blob): Promise<void>
+  updateClip(clipId: string, patch: ClipPatch): Promise<Video>
+  deleteClip(clipId: string): Promise<void>
+
+  listTakes(): Promise<Take[]>
+  createTake(clipId: string, audio: Blob): Promise<Take>
+  getTake(takeId: string): Promise<Take>
+  takeAudioURL(takeId: string): Promise<string | null>
+  deleteTake(takeId: string): Promise<void>
+
+  listVocab(): Promise<VocabWord[]>
+  createVocabWord(word: NewVocabWord): Promise<VocabWord>
+  updateVocabWord(id: string, patch: VocabPatch): Promise<VocabWord>
+  deleteVocabWord(id: string): Promise<void>
+
+  updateProfile(name: string): Promise<Profile>
+  uploadAvatar(avatar: Blob): Promise<Profile>
+
+  leaderboard(): Promise<LeaderboardRow[]>
 }
 
-const KEYS = {
-  videos: 'shadowline.videos',
-  takes: 'shadowline.takes',
-  vocab: 'shadowline.vocab',
-  profile: 'shadowline.profile',
-  session: 'shadowline.session',
-  admin: 'shadowline.admin',
+export interface NewClipInput {
+  title: string
+  source: string
+  playlist: string
+  categories: string[]
+  timestamp: string
+  durationSeconds: number
+  summary: string
+  captions: CaptionLine[]
 }
 
-function read<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key)
-    return raw === null ? fallback : (JSON.parse(raw) as T)
-  } catch {
-    return fallback
+export interface ClipPatch {
+  title?: string
+  playlist?: string
+  categories?: string[]
+  featured?: boolean
+  summary?: string
+  captions?: CaptionLine[]
+}
+
+export interface NewVocabWord {
+  word: string
+  ipa: string
+  meaning: string
+  videoId: string | null
+}
+
+export interface VocabPatch {
+  status?: VocabStatus
+  /** Records that the card came up in memory practice. */
+  reviewed?: boolean
+}
+
+export interface LeaderboardRow {
+  userId: string
+  name: string
+  avg: number
+  takes: number
+  clips: number
+  isYou: boolean
+}
+
+/** The server answers `{ url }` for audio, with null for a clip that has none. */
+interface SignedURL {
+  url: string | null
+}
+
+class ApiRepository implements Repository {
+  async me() {
+    const { user } = await api.get<{ user: Profile | null }>('/auth/me')
+    return user
+  }
+
+  logout() {
+    return api.send<void>('POST', '/auth/logout', {})
+  }
+
+  listClips() {
+    return api.get<Video[]>('/api/clips')
+  }
+
+  async clipAudioURL(clipId: string) {
+    const { url } = await api.get<SignedURL>(`/api/clips/${clipId}/audio`)
+    return url
+  }
+
+  createClips(clips: NewClipInput[]) {
+    return api.send<Video[]>('POST', '/api/admin/clips', { clips })
+  }
+
+  async uploadClipAudio(clipId: string, audio: Blob) {
+    await api.upload<{ ok: boolean }>('PUT', `/api/admin/clips/${clipId}/audio`, audio)
+  }
+
+  updateClip(clipId: string, patch: ClipPatch) {
+    return api.send<Video>('PATCH', `/api/admin/clips/${clipId}`, patch)
+  }
+
+  deleteClip(clipId: string) {
+    return api.del(`/api/admin/clips/${clipId}`)
+  }
+
+  listTakes() {
+    return api.get<Take[]>('/api/takes')
+  }
+
+  createTake(clipId: string, audio: Blob) {
+    return api.upload<Take>('POST', `/api/takes?clipId=${encodeURIComponent(clipId)}`, audio)
+  }
+
+  getTake(takeId: string) {
+    return api.get<Take>(`/api/takes/${takeId}`)
+  }
+
+  async takeAudioURL(takeId: string) {
+    const { url } = await api.get<SignedURL>(`/api/takes/${takeId}/audio`)
+    return url
+  }
+
+  deleteTake(takeId: string) {
+    return api.del(`/api/takes/${takeId}`)
+  }
+
+  listVocab() {
+    return api.get<VocabWord[]>('/api/vocab')
+  }
+
+  createVocabWord(word: NewVocabWord) {
+    return api.send<VocabWord>('POST', '/api/vocab', word)
+  }
+
+  updateVocabWord(id: string, patch: VocabPatch) {
+    return api.send<VocabWord>('PATCH', `/api/vocab/${id}`, patch)
+  }
+
+  deleteVocabWord(id: string) {
+    return api.del(`/api/vocab/${id}`)
+  }
+
+  updateProfile(name: string) {
+    return api.send<Profile>('PATCH', '/api/profile', { name })
+  }
+
+  uploadAvatar(avatar: Blob) {
+    return api.upload<Profile>('PUT', '/api/profile/avatar', avatar)
+  }
+
+  leaderboard() {
+    return api.get<LeaderboardRow[]>('/api/leaderboard')
   }
 }
 
-function write(key: string, value: unknown): void {
-  try {
-    localStorage.setItem(key, JSON.stringify(value))
-  } catch {
-    /* storage full or blocked — the session still works, it just won't persist */
-  }
-}
-
-function seedVideos(): Video[] {
-  return SEED_VIDEOS.map(({ history: _history, metrics: _metrics, ...video }) => video)
-}
-
-/** Expands each clip's authored score history into individual take records. */
-function seedTakes(): Take[] {
-  const takes: Take[] = []
-  for (const video of SEED_VIDEOS) {
-    const latest = video.history[video.history.length - 1]
-    video.history.forEach((score, i) => {
-      takes.push({
-        id: `${video.id}-t${i + 1}`,
-        videoId: video.id,
-        score,
-        scores: metricsForTake(video.metrics, score, latest),
-        recordedAt: new Date(Date.now() - (video.history.length - i) * 86400000).toISOString(),
-        audioKey: null,
-        analysis: null,
-      })
-    })
-  }
-  return takes
-}
-
-class LocalRepository implements Repository {
-  async loadAll(): Promise<AppData> {
-    return {
-      videos: read(KEYS.videos, seedVideos()).map((video) => ({
-        ...video,
-        playlist: video.playlist ?? '',
-        categories: video.categories ?? [],
-        featured: video.featured ?? false,
-      })),
-      takes: read(KEYS.takes, seedTakes()),
-      vocab: read(KEYS.vocab, SEED_VOCAB).map((word) => ({ ...word, reviewedAt: word.reviewedAt ?? null })),
-      profile: read<Profile>(KEYS.profile, DEFAULT_PROFILE),
-      loggedIn: read(KEYS.session, false),
-      isAdmin: read(KEYS.admin, false),
-    }
-  }
-
-  async saveVideos(videos: Video[]) {
-    write(KEYS.videos, videos)
-  }
-
-  async saveTakes(takes: Take[]) {
-    write(KEYS.takes, takes)
-  }
-
-  async saveVocab(vocab: VocabWord[]) {
-    write(KEYS.vocab, vocab)
-  }
-
-  async saveProfile(profile: Profile) {
-    write(KEYS.profile, profile)
-  }
-
-  async saveSession(loggedIn: boolean) {
-    write(KEYS.session, loggedIn)
-  }
-
-  async saveAdmin(isAdmin: boolean) {
-    write(KEYS.admin, isAdmin)
-  }
-}
-
-export const repository: Repository = new LocalRepository()
+export const repository: Repository = new ApiRepository()

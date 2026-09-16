@@ -1,21 +1,17 @@
 import { useRef, useState } from 'react'
-import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Icon } from '../components/Icon'
+import { LoadFailure, Loading } from '../components/LoadState'
+import { NoSuchClip } from '../components/NoSuchClip'
 import { SegmentedControl } from '../components/SegmentedControl'
-import { useBlobUrl } from '../lib/useAudioUrl'
+import { clock } from '../lib/time'
+import { urlOf, useClipAudio, useTakeAudio } from '../lib/useAudioUrl'
 import { useApp } from '../store/context'
-
-function clock(seconds: number): string {
-  if (!Number.isFinite(seconds)) return '0:00'
-  const m = Math.floor(seconds / 60)
-  const s = Math.floor(seconds % 60)
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
 
 export function DubScreen() {
   const { videoId } = useParams()
   const navigate = useNavigate()
-  const { data, statsFor } = useApp()
+  const { data, state, statsFor } = useApp()
   const audioRef = useRef<HTMLAudioElement>(null)
   /** Live playhead, captured when swapping voices — `position` only ticks a few times a second. */
   const resumeAt = useRef(0)
@@ -32,10 +28,12 @@ export function DubScreen() {
   const video = data.videos.find((v) => v.id === videoId)
   const stats = statsFor(videoId ?? '')
   const take = stats.takes.find((t) => t.id === takeId) ?? stats.takes[stats.takes.length - 1]
-  const myVoiceUrl = useBlobUrl(take?.audioKey ?? null)
-  const originalUrl = useBlobUrl(video?.sourceAudioKey ?? null)
+  const myVoiceUrl = urlOf(useTakeAudio(take?.hasAudio ? take.id : null))
+  const originalUrl = urlOf(useClipAudio(video?.id ?? null))
 
-  if (!video) return <Navigate to="/library" replace />
+  if (state === 'loading') return <Loading />
+  if (state === 'error') return <LoadFailure />
+  if (!video) return <NoSuchClip />
 
   const activeUrl = source === 'mine' ? myVoiceUrl : originalUrl
   const canPlay = !!activeUrl
@@ -152,7 +150,7 @@ export function DubScreen() {
           </div>
           <div className="row between mono" style={{ fontSize: 12, opacity: 0.65 }}>
             <span>{clock(position)}</span>
-            <span>{canPlay ? clock(duration) : video.duration}</span>
+            <span>{canPlay ? clock(duration) : clock(video.durationSeconds)}</span>
           </div>
           {source === 'original' && !originalUrl && (
             <div style={{ fontSize: 12, opacity: 0.6 }}>
@@ -196,8 +194,8 @@ export function DubScreen() {
               </button>
             ))}
           </div>
-          {take && !take.audioKey && (
-            <div style={{ fontSize: 12, opacity: 0.6 }}>This take is from your earlier history — no audio was stored.</div>
+          {take && !take.hasAudio && (
+            <div style={{ fontSize: 12, opacity: 0.6 }}>This take has no recording stored.</div>
           )}
         </div>
       </div>

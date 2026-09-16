@@ -1,245 +1,238 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { LOOKUP } from '../data/seed'
-import { MAX_CLIP_SECONDS, type AppData, type Take, type Video, type VocabStatus, type VocabWord } from '../data/types'
-import { getBlob, invalidateBlobUrl, putBlob } from '../lib/blobStore'
-import { analyseTake } from '../lib/dsp/analyse'
+import { MAX_CLIP_SECONDS, type AppData, type Take, type VocabStatus } from '../data/types'
+import { ApiError } from '../lib/api'
 import { normalizeWord } from '../lib/text'
-import { repository } from '../repository'
-import { AppContext, type ClipEdit, type NewClip, type Store, type VideoStats } from './context'
+import { clock } from '../lib/time'
+import { repository, type LeaderboardRow } from '../repository'
+import { AppContext, type ClipEdit, type LoadState, type NewClip, type Store, type VideoStats } from './context'
 
-function clock(seconds: number): string {
-  const whole = Math.max(0, Math.round(seconds))
-  return `${Math.floor(whole / 60)}:${(whole % 60).toString().padStart(2, '0')}`
-}
+const EMPTY: AppData = { videos: [], takes: [], vocab: [], profile: null }
 
-const EMPTY: AppData = {
-  videos: [],
-  takes: [],
-  vocab: [],
-  profile: { name: '', email: '', avatarKey: null },
-  loggedIn: false,
-  isAdmin: false,
-}
+/**
+ * How long to wait between asking whether a take has been scored, and how long
+ * to keep asking. Scoring a six-second clip is sub-second work; a minute of
+ * polling covers a queue that has backed up, and after that the Practice screen
+ * says so rather than spinning forever.
+ */
+const POLL_MS = 700
+const POLL_TIMEOUT_MS = 60_000
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AppData>(EMPTY)
-  const [ready, setReady] = useState(false)
-  // Async analysis reads the latest records without re-creating every callback.
+  const [leaderboard, setLeaderboard] = useState<LeaderboardRow[]>([])
+  const [state, setState] = useState<LoadState>('loading')
+  const [error, setError] = useState<string | null>(null)
+  // Polling reads the latest records without re-creating every callback.
   const dataRef = useRef<AppData>(EMPTY)
 
   useEffect(() => {
     dataRef.current = data
   }, [data])
 
+  // No setState before the first await: the initial state is already 'loading',
+  // and setting it synchronously from the effect below starts a second render
+  // for nothing. `reload` handles the retry case, from an event handler.
+  const load = useCallback(async () => {
+    try {
+      const profile = await repository.me()
+      if (!profile) {
+        // Not signed in is not a failure: the app shows the login screen.
+        setData(EMPTY)
+        setLeaderboard([])
+        setState('ready')
+        return
+      }
+      const [videos, takes, vocab, board] = await Promise.all([
+        repository.listClips(),
+        repository.listTakes(),
+        repository.listVocab(),
+        repository.leaderboard(),
+      ])
+      setData({ videos, takes, vocab, profile })
+      setLeaderboard(board)
+      setState('ready')
+    } catch (err) {
+      // Without this the browser version showed a blank page forever.
+      setError(err instanceof ApiError ? err.message : 'Could not load your data.')
+      setState('error')
+    }
+  }, [])
+
   useEffect(() => {
-    repository.loadAll().then((loaded) => {
-      setData(loaded)
-      setReady(true)
-    })
-  }, [])
+    // Every setState inside load() runs after an await, so none of them happens
+    // during this effect — the rule cannot see through the async boundary.
+    // eslint-disable-next-line react/set-state-in-effect
+    void load()
+  }, [load])
 
-  const login = useCallback(() => {
-    void repository.saveSession(true)
-    setData((prev) => ({ ...prev, loggedIn: true }))
-  }, [])
+  const reload = useCallback(() => {
+    setState('loading')
+    setError(null)
+    return load()
+  }, [load])
 
-  const logout = useCallback(() => {
-    void repository.saveSession(false)
-    setData((prev) => ({ ...prev, loggedIn: false }))
-  }, [])
-
-  const setAdmin = useCallback((isAdmin: boolean) => {
-    void repository.saveAdmin(isAdmin)
-    setData((prev) => ({ ...prev, isAdmin }))
+  const logout = useCallback(async () => {
+    await repository.logout()
+    setData(EMPTY)
+    setLeaderboard([])
   }, [])
 
   const addClips = useCallback(async (clips: NewClip[]) => {
-    const created: Video[] = []
-    // A clip is one line: nothing longer reaches the library, whatever the
-    // studio's UI allowed while the cuts were being adjusted.
-    for (const [index, clip] of clips.filter((c) => c.end - c.start <= MAX_CLIP_SECONDS + 0.01).entries()) {
-      const id = `clip-${Date.now()}-${index}`
-      const key = `source-${id}`
-      await putBlob(key, clip.audio)
-      created.push({
-        id,
+    // A clip is one line: nothing longer is sent, whatever the studio's UI
+    // allowed while the cuts were being adjusted. The server checks too.
+    const withinLimit = clips.filter((c) => c.end - c.start <= MAX_CLIP_SECONDS + 0.01)
+    if (withinLimit.length === 0) return
+
+    const created = await repository.createClips(
+      withinLimit.map((clip, index) => ({
         title: clip.title || clip.line || `Untitled line ${index + 1}`,
         source: clip.source,
         playlist: clip.playlist,
         categories: clip.categories,
-        featured: false,
         timestamp: `${clock(clip.start)}–${clock(clip.end)}`,
-        duration: clock(clip.end - clip.start),
+        durationSeconds: clip.end - clip.start,
         summary: 'No takes recorded yet — practice this clip to see your pitch analysis.',
         captions: [{ text: clip.line, ipa: clip.ipa }],
-        sourceAudioKey: key,
-      })
-    }
-    setData((prev) => {
-      const videos = [...created, ...prev.videos]
-      void repository.saveVideos(videos)
-      return { ...prev, videos }
-    })
+      })),
+    )
+
+    // Audio goes up per clip, after the ids exist. A clip whose upload fails
+    // stays in the library without source audio, which the app already handles:
+    // takes against it are measured but not scored.
+    await Promise.all(
+      created.map((clip, index) => repository.uploadClipAudio(clip.id, withinLimit[index].audio)),
+    )
+
+    setData((prev) => ({ ...prev, videos: [...created, ...prev.videos] }))
   }, [])
 
-  const updateClip = useCallback((id: string, edit: ClipEdit) => {
-    setData((prev) => {
-      const videos = prev.videos.map((video) => {
-        if (video.id !== id) return video
-        const [caption] = video.captions
-        return {
-          ...video,
-          title: edit.title ?? video.title,
-          playlist: edit.playlist ?? video.playlist,
-          categories: edit.categories ?? video.categories,
-          featured: edit.featured ?? video.featured,
-          captions:
-            edit.line === undefined && edit.ipa === undefined
-              ? video.captions
-              : [
-                  { text: edit.line ?? caption?.text ?? '', ipa: edit.ipa ?? caption?.ipa ?? '' },
-                  ...video.captions.slice(1),
-                ],
-        }
-      })
-      void repository.saveVideos(videos)
-      return { ...prev, videos }
+  const updateClip = useCallback(async (id: string, edit: ClipEdit) => {
+    const current = dataRef.current.videos.find((v) => v.id === id)
+    const [caption] = current?.captions ?? []
+    const captions =
+      edit.line === undefined && edit.ipa === undefined
+        ? undefined
+        : [
+            { text: edit.line ?? caption?.text ?? '', ipa: edit.ipa ?? caption?.ipa ?? '' },
+            ...(current?.captions.slice(1) ?? []),
+          ]
+
+    const updated = await repository.updateClip(id, {
+      title: edit.title,
+      playlist: edit.playlist,
+      categories: edit.categories,
+      featured: edit.featured,
+      captions,
     })
+    setData((prev) => ({
+      ...prev,
+      videos: prev.videos.map((v) => (v.id === id ? updated : v)),
+    }))
   }, [])
 
   /** Removes the clip and the practice history that only made sense with it. */
-  const deleteClip = useCallback((id: string) => {
-    setData((prev) => {
-      const videos = prev.videos.filter((video) => video.id !== id)
-      const takes = prev.takes.filter((take) => take.videoId !== id)
-      void repository.saveVideos(videos)
-      void repository.saveTakes(takes)
-      return { ...prev, videos, takes }
-    })
+  const deleteClip = useCallback(async (id: string) => {
+    await repository.deleteClip(id)
+    setData((prev) => ({
+      ...prev,
+      videos: prev.videos.filter((v) => v.id !== id),
+      takes: prev.takes.filter((t) => t.videoId !== id),
+    }))
   }, [])
 
-  const addTake = useCallback(async (videoId: string, audio: Blob | null): Promise<Take> => {
-    const id = `${videoId}-u${Date.now()}`
-    const audioKey = audio ? `take-${id}` : null
-    if (audio && audioKey) await putBlob(audioKey, audio)
+  /**
+   * Records a take and waits for the worker's score.
+   *
+   * The take is stored immediately and appears in the list straight away; the
+   * score arrives afterwards. Polling stops on any settled status, so a take
+   * the worker could not measure ends as `failed` rather than as a spinner.
+   */
+  const addTake = useCallback(async (videoId: string, audio: Blob): Promise<Take> => {
+    const take = await repository.createTake(videoId, audio)
+    setData((prev) => ({ ...prev, takes: [...prev.takes, take] }))
 
-    let result = null
-    if (audio) {
-      const video = dataRef.current.videos.find((v) => v.id === videoId)
-      const sourceKey = video?.sourceAudioKey
-      result = await analyseTake(
-        audio,
-        sourceKey ? { key: sourceKey, load: () => getBlob(sourceKey).then((b) => b ?? null) } : null,
-      )
+    if (take.status !== 'pending') return take
+
+    const deadline = Date.now() + POLL_TIMEOUT_MS
+    let latest = take
+    while (latest.status === 'pending' && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, POLL_MS))
+      try {
+        latest = await repository.getTake(take.id)
+      } catch {
+        // A blip while polling should not lose the take, which is already
+        // stored; the next attempt usually succeeds.
+        continue
+      }
+      setData((prev) => ({
+        ...prev,
+        takes: prev.takes.map((t) => (t.id === latest.id ? latest : t)),
+      }))
     }
 
-    const take: Take = {
-      id,
-      videoId,
-      score: result?.score ?? null,
-      scores: result?.scores ?? null,
-      recordedAt: new Date().toISOString(),
-      audioKey,
-      analysis: result?.analysis ?? null,
+    if (latest.status === 'scored') {
+      // A new score changes the ranking, and the dashboard would otherwise
+      // show yesterday's until the next reload.
+      repository.leaderboard().then(setLeaderboard, () => {})
     }
-    setData((prev) => {
-      const takes = [...prev.takes, take]
-      void repository.saveTakes(takes)
-      return { ...prev, takes }
-    })
-    return take
+    return latest
   }, [])
 
-  /** Re-measures an existing take — used once a clip finally has its original audio. */
-  const scoreTake = useCallback(async (takeId: string) => {
-    const current = dataRef.current
-    const take = current.takes.find((t) => t.id === takeId)
-    if (!take?.audioKey) return
-    const video = current.videos.find((v) => v.id === take.videoId)
-    if (!video?.sourceAudioKey) return
-
-    const takeBlob = await getBlob(take.audioKey)
-    if (!takeBlob) return
-    const sourceKey = video.sourceAudioKey
-    const result = await analyseTake(takeBlob, {
-      key: sourceKey,
-      load: () => getBlob(sourceKey).then((b) => b ?? null),
-    })
-    if (!result) return
-
-    setData((prev) => {
-      const takes = prev.takes.map((t) =>
-        t.id === takeId ? { ...t, score: result.score, scores: result.scores, analysis: result.analysis } : t,
-      )
-      void repository.saveTakes(takes)
-      return { ...prev, takes }
-    })
+  const deleteTake = useCallback(async (takeId: string) => {
+    await repository.deleteTake(takeId)
+    setData((prev) => ({ ...prev, takes: prev.takes.filter((t) => t.id !== takeId) }))
   }, [])
 
-  const toggleVocabWord = useCallback<Store['toggleVocabWord']>((raw, videoId) => {
+  /**
+   * Adds the word, or removes it if it is already collected.
+   *
+   * The browser version keyed words as `c-${word}` and used that prefix to
+   * decide whether a word could be removed, which meant seeded words were
+   * permanent and two learners collecting the same word collided. Every word
+   * now belongs to a learner and every word can be dropped.
+   */
+  const toggleVocabWord = useCallback(async (raw: string, videoId: string | null) => {
     const word = normalizeWord(raw)
-    let outcome: 'added' | 'removed' | 'known' = 'added'
-    setData((prev) => {
-      const existing = prev.vocab.find((v) => v.word === word)
-      if (existing) {
-        // Seeded words stay put; only words added from a caption can be undone.
-        if (!existing.id.startsWith('c-')) {
-          outcome = 'known'
-          return prev
-        }
-        outcome = 'removed'
-        const vocab = prev.vocab.filter((v) => v.word !== word)
-        void repository.saveVocab(vocab)
-        return { ...prev, vocab }
-      }
-      const looked = LOOKUP[word]
-      const entry: VocabWord = {
-        id: `c-${word}`,
-        word,
-        ipa: looked?.ipa ?? `/${word}/`,
-        meaning: looked?.meaning ?? 'Auto-translated definition',
-        status: 'new',
-        videoId,
-        reviewedAt: null,
-      }
-      const vocab = [...prev.vocab, entry]
-      void repository.saveVocab(vocab)
-      return { ...prev, vocab }
+    const existing = dataRef.current.vocab.find((v) => v.word === word)
+
+    if (existing) {
+      await repository.deleteVocabWord(existing.id)
+      setData((prev) => ({ ...prev, vocab: prev.vocab.filter((v) => v.id !== existing.id) }))
+      return { word, status: 'removed' as const }
+    }
+
+    const looked = LOOKUP[word]
+    const created = await repository.createVocabWord({
+      word,
+      ipa: looked?.ipa ?? `/${word}/`,
+      meaning: looked?.meaning ?? 'Auto-translated definition',
+      videoId,
     })
-    return { word, status: outcome }
+    setData((prev) => ({ ...prev, vocab: [...prev.vocab, created] }))
+    return { word, status: 'added' as const }
   }, [])
 
-  const setVocabStatus = useCallback((id: string, status: VocabStatus) => {
-    setData((prev) => {
-      const vocab = prev.vocab.map((v) => (v.id === id ? { ...v, status } : v))
-      void repository.saveVocab(vocab)
-      return { ...prev, vocab }
-    })
+  const patchWord = useCallback(async (id: string, status: VocabStatus, reviewed: boolean) => {
+    const updated = await repository.updateVocabWord(id, { status, reviewed })
+    setData((prev) => ({ ...prev, vocab: prev.vocab.map((v) => (v.id === id ? updated : v)) }))
   }, [])
+
+  const setVocabStatus = useCallback(
+    (id: string, status: VocabStatus) => patchWord(id, status, false),
+    [patchWord],
+  )
 
   /** A memory-practice answer: the new status, and the fact it came up at all. */
-  const reviewWord = useCallback((id: string, status: VocabStatus) => {
-    setData((prev) => {
-      const vocab = prev.vocab.map((v) =>
-        v.id === id ? { ...v, status, reviewedAt: new Date().toISOString() } : v,
-      )
-      void repository.saveVocab(vocab)
-      return { ...prev, vocab }
-    })
-  }, [])
+  const reviewWord = useCallback(
+    (id: string, status: VocabStatus) => patchWord(id, status, true),
+    [patchWord],
+  )
 
-  const updateProfile = useCallback(async (name: string, email: string, avatar: Blob | null) => {
-    let avatarKey: string | null = null
-    if (avatar) {
-      avatarKey = `avatar-${Date.now()}`
-      await putBlob(avatarKey, avatar)
-    }
-    setData((prev) => {
-      if (avatarKey && prev.profile.avatarKey) invalidateBlobUrl(prev.profile.avatarKey)
-      const profile = { name, email, avatarKey: avatarKey ?? prev.profile.avatarKey }
-      void repository.saveProfile(profile)
-      return { ...prev, profile }
-    })
+  const updateProfile = useCallback(async (name: string, avatar: Blob | null) => {
+    let profile = await repository.updateProfile(name)
+    if (avatar) profile = await repository.uploadAvatar(avatar)
+    setData((prev) => ({ ...prev, profile }))
   }, [])
 
   const statsFor = useCallback(
@@ -260,37 +253,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const value = useMemo<Store>(
     () => ({
       data,
-      ready,
-      login,
+      state,
+      error,
+      signedIn: data.profile !== null,
+      // Admin comes from the server. There is no way for the app to set it —
+      // the Profile screen used to have a switch that granted it to anyone.
+      isAdmin: data.profile?.isAdmin ?? false,
+      reload,
       logout,
-      setAdmin,
       addClips,
       updateClip,
       deleteClip,
       addTake,
-      scoreTake,
+      deleteTake,
       toggleVocabWord,
       setVocabStatus,
       reviewWord,
       updateProfile,
       statsFor,
+      leaderboard,
     }),
     [
       data,
-      ready,
-      login,
+      state,
+      error,
+      reload,
       logout,
-      setAdmin,
       addClips,
       updateClip,
       deleteClip,
       addTake,
-      scoreTake,
+      deleteTake,
       toggleVocabWord,
       setVocabStatus,
       reviewWord,
       updateProfile,
       statsFor,
+      leaderboard,
     ],
   )
 

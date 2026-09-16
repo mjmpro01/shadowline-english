@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { chartFromAnalysis } from '../src/lib/dsp/chart'
-import { summariseTake } from '../src/lib/dsp/summary'
+import { chartFromAnalysis } from '../src/lib/chart'
+import { summariseTake } from '../src/lib/summary'
 import type { TakeAnalysis } from '../src/data/types'
 
 const analysis = (overrides: Partial<TakeAnalysis> = {}): TakeAnalysis => ({

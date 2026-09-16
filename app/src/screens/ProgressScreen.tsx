@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from '../components/Icon'
-import { NEED_PRACTICE } from '../data/seed'
+import { needsPractice } from '../lib/practice'
 import { METRIC_NAMES, type MetricName } from '../data/types'
 import { colorFor } from '../lib/score'
 import { useApp } from '../store/context'
@@ -19,6 +19,10 @@ export function ProgressScreen() {
   const { data } = useApp()
   const navigate = useNavigate()
   const [filter, setFilter] = useState<Filter>('All')
+
+  // The clips you scored lowest, rather than three hand-written rows pointing
+  // at clip ids a real library would not have.
+  const suggestions = needsPractice(data.takes, data.videos)
 
   const series = useMemo(() => {
     const byDay = new Map<string, number[]>()
@@ -94,7 +98,10 @@ export function ProgressScreen() {
 
       <div className="stack gap-2">
         <div className="card-kicker">Need practice</div>
-        {NEED_PRACTICE.map((item) => (
+        {suggestions.length === 0 && (
+          <div className="card-meta">Record a few takes and the weakest lines show up here.</div>
+        )}
+        {suggestions.map((item) => (
           <div className="card elev-sm row between gap-3" key={item.id}>
             <div>
               <div className="card-title" style={{ fontSize: 15 }}>

@@ -6,7 +6,9 @@ export const METRIC_NAMES: MetricName[] = ['Intonation', 'Rhythm', 'Stress', 'Va
 
 /**
  * A clip is one line to shadow, not a passage. Everything entering the app —
- * the source audio and the takes recorded against it — is held to this.
+ * the source audio and the takes recorded against it — is held to this. The
+ * server enforces the same number; this copy is what the studio and the
+ * recorder check against before anything is sent.
  */
 export const MAX_CLIP_SECONDS = 6
 
@@ -26,24 +28,33 @@ export interface Video {
   /** Surfaced on the dashboard as something worth practising next. */
   featured: boolean
   timestamp: string
-  duration: string
+  durationSeconds: number
   summary: string
   captions: CaptionLine[]
-  /** Blob key of the clip's original audio. */
-  sourceAudioKey: string | null
+  createdAt: string
 }
+
+/**
+ * A take is scored on the server, which takes a moment, so it arrives `pending`
+ * and is filled in afterwards. `failed` is a real outcome, not an error the app
+ * hides: a recording with no speech in it cannot be measured, and saying so is
+ * better than inventing a number for it.
+ */
+export type TakeStatus = 'pending' | 'scored' | 'failed'
 
 export interface Take {
   id: string
   videoId: string
-  /** Match score against the clip's original audio; null when none is attached. */
+  /** Match score against the clip's original audio; null until scored. */
   score: number | null
   scores: MetricScores | null
-  recordedAt: string
-  /** Key into the audio blob store; null for seeded history with no recording. */
-  audioKey: string | null
-  /** Measured contour; null for seeded history and for takes we could not analyse. */
+  /** Measured contour; null until scored, and for takes we could not measure. */
   analysis: TakeAnalysis | null
+  status: TakeStatus
+  /** Why scoring gave up, when it did. */
+  error?: string
+  recordedAt: string
+  hasAudio: boolean
 }
 
 export type VocabStatus = 'new' | 'learning' | 'known'
@@ -67,18 +78,20 @@ export interface NeedPracticeItem {
 }
 
 export interface Profile {
+  id: string
   name: string
   email: string
-  avatarKey: string | null
+  /** Signed URL from the server, or null when no avatar has been uploaded. */
+  avatarUrl: string | null
+  /** Decided by the server from ADMIN_EMAILS. The app cannot set it. */
+  isAdmin: boolean
 }
 
 export interface AppData {
   videos: Video[]
   takes: Take[]
   vocab: VocabWord[]
-  profile: Profile
-  loggedIn: boolean
-  isAdmin: boolean
+  profile: Profile | null
 }
 
 /** One point of a measured pitch contour: seconds, semitones from the

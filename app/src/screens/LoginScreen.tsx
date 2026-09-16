@@ -1,19 +1,14 @@
-import { useState, type FormEvent } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Navigate } from 'react-router-dom'
+import { LoadFailure, Loading } from '../components/LoadState'
+import { loginURL } from '../lib/api'
 import { useApp } from '../store/context'
 
 export function LoginScreen() {
-  const [showEmailForm, setShowEmailForm] = useState(false)
-  const { data, ready, login } = useApp()
-  const navigate = useNavigate()
+  const { state, signedIn } = useApp()
 
-  if (ready && data.loggedIn) return <Navigate to="/dashboard" replace />
-
-  const signIn = (e?: FormEvent) => {
-    e?.preventDefault()
-    login()
-    navigate('/dashboard', { replace: true })
-  }
+  if (state === 'loading') return <Loading />
+  if (state === 'error') return <LoadFailure />
+  if (signedIn) return <Navigate to="/dashboard" replace />
 
   return (
     <div
@@ -31,35 +26,17 @@ export function LoginScreen() {
           <div style={{ fontSize: 14, opacity: 0.65 }}>pronunciation &amp; rhythm practice, for yourself</div>
         </div>
 
-        <button type="button" className="btn btn-secondary btn-block" onClick={() => signIn()}>
+        {/*
+          A link rather than a button with a handler: signing in is a navigation
+          out of the app to Google and back, and fetch cannot follow that.
+        */}
+        <a className="btn btn-secondary btn-block" href={loginURL()}>
           Continue with Google
-        </button>
+        </a>
 
-        <div className="row gap-3" style={{ width: '100%' }}>
-          <div className="divider" style={{ flex: 1 }} />
-          <div style={{ fontSize: 12, opacity: 0.5 }}>or</div>
-          <div className="divider" style={{ flex: 1 }} />
+        <div className="card-meta" style={{ textAlign: 'center' }}>
+          Google is the only way in — there is no password to lose.
         </div>
-
-        {!showEmailForm ? (
-          <button type="button" className="btn btn-ghost" onClick={() => setShowEmailForm(true)}>
-            Use email
-          </button>
-        ) : (
-          <form className="stack gap-3" style={{ width: '100%' }} onSubmit={signIn}>
-            <div className="field">
-              <label htmlFor="email">Email</label>
-              <input id="email" type="email" className="input" placeholder="you@example.com" required />
-            </div>
-            <div className="field">
-              <label htmlFor="password">Password</label>
-              <input id="password" type="password" className="input" placeholder="••••••••" required />
-            </div>
-            <button type="submit" className="btn btn-primary btn-block">
-              Sign in
-            </button>
-          </form>
-        )}
       </div>
     </div>
   )

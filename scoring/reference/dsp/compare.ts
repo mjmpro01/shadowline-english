@@ -1,5 +1,7 @@
-import type { MetricScores } from '../../data/types'
 import { semitoneTrack, type Contour } from './pitch'
+
+export type MetricName = 'Intonation' | 'Rhythm' | 'Stress' | 'Variation'
+export type MetricScores = Record<MetricName, number>
 
 export interface TrackPoint {
   time: number

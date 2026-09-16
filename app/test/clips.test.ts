@@ -10,10 +10,10 @@ const clip = (overrides: Partial<Video>): Video => ({
   categories: [],
   featured: false,
   timestamp: '0:00–0:05',
-  duration: '0:05',
+  durationSeconds: 5,
   summary: '',
   captions: [{ text: '', ipa: '' }],
-  sourceAudioKey: null,
+  createdAt: '2026-01-01T00:00:00.000Z',
   ...overrides,
 })
 

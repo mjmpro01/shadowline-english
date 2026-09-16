@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -125,5 +126,20 @@ func (f *fakeProvider) Exchange(_ context.Context, code, _ string) (Identity, er
 	if code == "" {
 		return Identity{}, fmt.Errorf("no code")
 	}
-	return Identity{Email: code, Name: "Test Learner"}, nil
+	// A name per address, so a test with two learners can tell them apart on
+	// screen — a leaderboard of identical names proves nothing.
+	local, _, _ := strings.Cut(code, "@")
+	return Identity{Email: code, Name: titleCase(local)}, nil
+}
+
+func titleCase(s string) string {
+	s = strings.ReplaceAll(strings.ReplaceAll(s, ".", " "), "_", " ")
+	fields := strings.Fields(s)
+	for i, word := range fields {
+		fields[i] = strings.ToUpper(word[:1]) + word[1:]
+	}
+	if len(fields) == 0 {
+		return "Learner"
+	}
+	return strings.Join(fields, " ")
 }

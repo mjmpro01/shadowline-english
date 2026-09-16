@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildLeaderboard, practiceStreak, statsFor } from '../src/lib/leaderboard'
+import { practiceStreak, statsFor } from '../src/lib/leaderboard'
 import type { Take } from '../src/data/types'
 
 const take = (day: string, score: number | null = 80): Take => ({
@@ -7,9 +7,10 @@ const take = (day: string, score: number | null = 80): Take => ({
   videoId: 'v1',
   score,
   scores: null,
-  recordedAt: `${day}T09:00:00.000Z`,
-  audioKey: null,
   analysis: null,
+  status: score === null ? 'failed' : 'scored',
+  recordedAt: `${day}T09:00:00.000Z`,
+  hasAudio: true,
 })
 
 describe('practiceStreak', () => {
@@ -53,35 +54,3 @@ describe('statsFor', () => {
   })
 })
 
-describe('buildLeaderboard', () => {
-  const peers = [
-    { id: 'a', name: 'Linh', averageScore: 91, streak: 18 },
-    { id: 'b', name: 'Minh', averageScore: 70, streak: 9 },
-  ]
-
-  it('ranks you among the others by score', () => {
-    const rows = buildLeaderboard(peers, { name: 'You', stats: statsFor([take('2026-09-16', 80)], '2026-09-16') })
-    expect(rows.map((r) => r.name)).toEqual(['Linh', 'You', 'Minh'])
-    expect(rows.find((r) => r.isYou)?.rank).toBe(2)
-  })
-
-  it('marks everyone but you as sample data', () => {
-    const rows = buildLeaderboard(peers, { name: 'You', stats: statsFor([], '2026-09-16') })
-    expect(rows.filter((r) => r.isSample)).toHaveLength(2)
-    expect(rows.find((r) => r.isYou)?.isSample).toBe(false)
-  })
-
-  it('puts an unscored learner last rather than at zero', () => {
-    const rows = buildLeaderboard(peers, { name: 'You', stats: statsFor([], '2026-09-16') })
-    expect(rows[rows.length - 1].isYou).toBe(true)
-  })
-
-  it('breaks a tie on the longer streak', () => {
-    const tied = [{ id: 'a', name: 'Linh', averageScore: 80, streak: 18 }]
-    const rows = buildLeaderboard(tied, {
-      name: 'You',
-      stats: statsFor([take('2026-09-16', 80)], '2026-09-16'),
-    })
-    expect(rows[0].name).toBe('Linh')
-  })
-})

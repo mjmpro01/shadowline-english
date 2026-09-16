@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react'
+import type { LeaderboardRow } from '../repository'
 import type { AppData, Take, Video, VocabStatus } from '../data/types'
 
 export interface NewClip {
@@ -28,22 +29,39 @@ export interface VideoStats {
   sparkline: number[]
 }
 
+/**
+ * How the app is doing at reaching the server.
+ *
+ * `error` is a state rather than a thrown exception because the whole app
+ * depends on this load: without it every screen renders empty, and the browser
+ * version simply showed a blank page forever when the load failed.
+ */
+export type LoadState = 'loading' | 'ready' | 'error'
+
 export interface Store {
   data: AppData
-  ready: boolean
-  login: () => void
-  logout: () => void
-  setAdmin: (isAdmin: boolean) => void
+  state: LoadState
+  /** What went wrong, when state is 'error'. */
+  error: string | null
+  /** Signed in, which the server decides. */
+  signedIn: boolean
+  isAdmin: boolean
+  reload: () => Promise<void>
+  logout: () => Promise<void>
   addClips: (clips: NewClip[]) => Promise<void>
-  updateClip: (id: string, edit: ClipEdit) => void
-  deleteClip: (id: string) => void
-  addTake: (videoId: string, audio: Blob | null) => Promise<Take>
-  scoreTake: (takeId: string) => Promise<void>
-  toggleVocabWord: (raw: string, videoId: string | null) => { word: string; status: 'added' | 'removed' | 'known' }
-  setVocabStatus: (id: string, status: VocabStatus) => void
-  reviewWord: (id: string, status: VocabStatus) => void
-  updateProfile: (name: string, email: string, avatar: Blob | null) => Promise<void>
+  updateClip: (id: string, edit: ClipEdit) => Promise<void>
+  deleteClip: (id: string) => Promise<void>
+  addTake: (videoId: string, audio: Blob) => Promise<Take>
+  deleteTake: (takeId: string) => Promise<void>
+  toggleVocabWord: (
+    raw: string,
+    videoId: string | null,
+  ) => Promise<{ word: string; status: 'added' | 'removed' }>
+  setVocabStatus: (id: string, status: VocabStatus) => Promise<void>
+  reviewWord: (id: string, status: VocabStatus) => Promise<void>
+  updateProfile: (name: string, avatar: Blob | null) => Promise<void>
   statsFor: (videoId: string) => VideoStats
+  leaderboard: LeaderboardRow[]
 }
 
 export const AppContext = createContext<Store | null>(null)

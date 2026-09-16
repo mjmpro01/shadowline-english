@@ -12,11 +12,11 @@ const TABS: { to: string; label: string; icon: IconName }[] = [
 
 export function AppShell() {
   const [collapsed, setCollapsed] = useState(false)
-  const { data, logout } = useApp()
+  const { isAdmin, logout } = useApp()
   const navigate = useNavigate()
 
   const signOut = () => {
-    logout()
+    void logout()
     navigate('/login', { replace: true })
   }
 
@@ -36,7 +36,7 @@ export function AppShell() {
         </div>
 
         <div className="sidebar-links">
-          {(data.isAdmin ? [...TABS, { to: '/admin', label: 'Clip studio', icon: 'scissors' as IconName }] : TABS).map((tab) => (
+          {(isAdmin ? [...TABS, { to: '/admin', label: 'Clip studio', icon: 'scissors' as IconName }] : TABS).map((tab) => (
             <NavLink key={tab.to} to={tab.to} className="nav-link" title={tab.label}>
               <Icon name={tab.icon} size={17} />
               {!collapsed && tab.label}

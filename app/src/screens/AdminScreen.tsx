@@ -7,6 +7,7 @@ import { decodeFile, peaks as computePeaks } from '../lib/audio/decode'
 import { proposeSegments, type Segment } from '../lib/audio/segment'
 import { formatCategories, parseCategories, searchClips } from '../lib/clips'
 import { sliceToWav } from '../lib/audio/wav'
+import { SavedField } from '../components/SavedField'
 import { useApp } from '../store/context'
 
 const WAVEFORM_COLUMNS = 900
@@ -206,59 +207,50 @@ export function AdminScreen() {
             <div className="card elev-sm stack gap-2" key={video.id}>
               <div className="row between wrap gap-2">
                 <span className="card-meta mono">
-                  {video.source} · {video.timestamp} · {video.duration}
+                  {video.source} · {video.timestamp} · {clock(video.durationSeconds)}
                 </span>
                 <div className="row gap-2">
                   <button
                     type="button"
                     className={`btn ${video.featured ? 'btn-primary' : 'btn-secondary'}`}
-                    onClick={() => updateClip(video.id, { featured: !video.featured })}
+                    onClick={() => void updateClip(video.id, { featured: !video.featured })}
                   >
                     {video.featured ? 'Featured' : 'Feature'}
                   </button>
-                  <button type="button" className="btn btn-ghost" onClick={() => deleteClip(video.id)}>
+                  <button type="button" className="btn btn-ghost" onClick={() => void deleteClip(video.id)}>
                     Delete clip
                   </button>
                 </div>
               </div>
               <div className="row gap-3 wrap">
-                <div className="field" style={{ flex: '1 1 220px' }}>
-                  <label htmlFor={`name-${video.id}`}>Name</label>
-                  <input
-                    id={`name-${video.id}`}
-                    className="input"
-                    value={video.title}
-                    onChange={(e) => updateClip(video.id, { title: e.target.value })}
-                  />
-                </div>
-                <div className="field" style={{ flex: '1 1 160px' }}>
-                  <label htmlFor={`playlist-${video.id}`}>Playlist</label>
-                  <input
-                    id={`playlist-${video.id}`}
-                    className="input"
-                    value={video.playlist}
-                    onChange={(e) => updateClip(video.id, { playlist: e.target.value })}
-                  />
-                </div>
-                <div className="field" style={{ flex: '1 1 160px' }}>
-                  <label htmlFor={`cats-${video.id}`}>Categories</label>
-                  <input
-                    id={`cats-${video.id}`}
-                    className="input"
-                    value={formatCategories(video.categories)}
-                    onChange={(e) => updateClip(video.id, { categories: parseCategories(e.target.value) })}
-                  />
-                </div>
-              </div>
-              <div className="field">
-                <label htmlFor={`text-${video.id}`}>Line</label>
-                <input
-                  id={`text-${video.id}`}
-                  className="input"
-                  value={video.captions[0]?.text ?? ''}
-                  onChange={(e) => updateClip(video.id, { line: e.target.value })}
+                <SavedField
+                  id={`name-${video.id}`}
+                  label="Name"
+                  value={video.title}
+                  style={{ flex: '1 1 220px' }}
+                  onSave={(title) => void updateClip(video.id, { title })}
+                />
+                <SavedField
+                  id={`playlist-${video.id}`}
+                  label="Playlist"
+                  value={video.playlist}
+                  style={{ flex: '1 1 160px' }}
+                  onSave={(playlist) => void updateClip(video.id, { playlist })}
+                />
+                <SavedField
+                  id={`cats-${video.id}`}
+                  label="Categories"
+                  value={formatCategories(video.categories)}
+                  style={{ flex: '1 1 160px' }}
+                  onSave={(raw) => void updateClip(video.id, { categories: parseCategories(raw) })}
                 />
               </div>
+              <SavedField
+                id={`text-${video.id}`}
+                label="Line"
+                value={video.captions[0]?.text ?? ''}
+                onSave={(line) => void updateClip(video.id, { line })}
+              />
             </div>
           ))}
           {data.videos.length === 0 && <div className="card-meta">No clips yet — cut a recording first.</div>}

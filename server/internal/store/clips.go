@@ -82,10 +82,16 @@ type NewClip struct {
 	Captions        []CaptionLine `json:"captions"`
 }
 
+// CreateClip records a clip. createdBy may be uuid.Nil, which stores NULL: the
+// seeder publishes the starter library before any admin has signed in.
 func (s *Store) CreateClip(ctx context.Context, in NewClip, createdBy uuid.UUID) (Clip, error) {
 	captions, err := json.Marshal(orEmpty(in.Captions))
 	if err != nil {
 		return Clip{}, err
+	}
+	var author *uuid.UUID
+	if createdBy != uuid.Nil {
+		author = &createdBy
 	}
 	return scanClip(s.pool.QueryRow(ctx, `
 		insert into clips (title, source, playlist, categories, featured, timestamp_label,
@@ -93,7 +99,7 @@ func (s *Store) CreateClip(ctx context.Context, in NewClip, createdBy uuid.UUID)
 		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		returning `+clipColumns,
 		in.Title, in.Source, in.Playlist, orEmpty(in.Categories), in.Featured, in.TimestampLabel,
-		in.DurationSeconds, in.Summary, captions, createdBy))
+		in.DurationSeconds, in.Summary, captions, author))
 }
 
 // ClipPatch carries only the fields the studio's second tab can change. Nil

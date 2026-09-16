@@ -1,16 +1,18 @@
 import { useNavigate } from 'react-router-dom'
 import { Icon } from '../components/Icon'
-import { SAMPLE_LEARNERS } from '../data/seed'
-import { buildLeaderboard, statsFor } from '../lib/leaderboard'
+import { statsFor } from '../lib/leaderboard'
 import { colorFor } from '../lib/score'
+import { clock } from '../lib/time'
 import { useApp } from '../store/context'
 
 export function DashboardScreen() {
-  const { data } = useApp()
+  const { data, leaderboard } = useApp()
   const navigate = useNavigate()
 
   const mine = statsFor(data.takes)
-  const rows = buildLeaderboard(SAMPLE_LEARNERS, { name: data.profile.name, stats: mine })
+  // Ranked by the server from everyone's scored takes. There is no filler: an
+  // app with one learner shows one row.
+  const rows = leaderboard.map((row, index) => ({ ...row, rank: index + 1 }))
   const podium = rows.slice(0, 3)
   const rest = rows.slice(3)
   const featured = data.videos.filter((video) => video.featured)
@@ -45,14 +47,14 @@ export function DashboardScreen() {
           <div className="card-kicker" style={{ margin: 0 }}>
             Leaderboard
           </div>
-          <span className="tag tag-neutral">other learners are sample data</span>
+          <span className="tag tag-neutral">{rows.length === 1 ? 'you are the only learner so far' : `${rows.length} learners`}</span>
         </div>
 
         <div className="podium">
           {podium.map((row) => (
             <div
               className="card elev-sm"
-              key={row.id}
+              key={row.userId}
               style={{
                 alignItems: 'center',
                 textAlign: 'center',
@@ -74,13 +76,12 @@ export function DashboardScreen() {
                 {row.name}
                 {row.isYou && ' (You)'}
               </div>
-              <div
-                className="mono"
-                style={{ fontSize: 26, color: row.averageScore < 0 ? undefined : colorFor(row.averageScore) }}
-              >
-                {row.averageScore < 0 ? '—' : row.averageScore}
+              <div className="mono" style={{ fontSize: 26, color: colorFor(row.avg) }}>
+                {Math.round(row.avg)}
               </div>
-              <div className="card-meta mono">{row.streak} day streak</div>
+              <div className="card-meta mono">
+                {row.takes} {row.takes === 1 ? 'take' : 'takes'} · {row.clips} clips
+              </div>
             </div>
           ))}
         </div>
@@ -93,21 +94,19 @@ export function DashboardScreen() {
                   <th>Rank</th>
                   <th>Learner</th>
                   <th>Avg score</th>
-                  <th>Streak</th>
+                  <th>Takes</th>
                 </tr>
               </thead>
               <tbody>
                 {rest.map((row) => (
-                  <tr key={row.id} style={{ background: row.isYou ? 'var(--color-accent-100)' : undefined }}>
+                  <tr key={row.userId} style={{ background: row.isYou ? 'var(--color-accent-100)' : undefined }}>
                     <td className="mono">{row.rank}</td>
                     <td style={{ fontWeight: row.isYou ? 700 : 400 }}>
                       {row.name}
                       {row.isYou && ' (You)'}
                     </td>
-                    <td className="mono" style={{ color: row.averageScore < 0 ? undefined : colorFor(row.averageScore) }}>
-                      {row.averageScore < 0 ? '—' : row.averageScore}
-                    </td>
-                    <td className="mono">{row.streak}</td>
+                    <td className="mono" style={{ color: colorFor(row.avg) }}>{Math.round(row.avg)}</td>
+                    <td className="mono">{row.takes}</td>
                   </tr>
                 ))}
               </tbody>
@@ -120,6 +119,12 @@ export function DashboardScreen() {
         <div className="card-kicker" style={{ marginBottom: 'var(--space-2)' }}>
           Featured clips
         </div>
+        {rows.length === 0 && (
+          <div className="card-meta" style={{ marginBottom: 'var(--space-3)' }}>
+            Nobody has a scored take yet — record one and you are on the board.
+          </div>
+        )}
+
         {featured.length === 0 ? (
           <div className="card-meta">Nothing featured yet — an admin picks these in the clip studio.</div>
         ) : (
@@ -136,7 +141,7 @@ export function DashboardScreen() {
                   <span className="tag tag-accent" style={{ position: 'absolute', left: 8, top: 8 }}>
                     featured
                   </span>
-                  <span className="tag tag-neutral thumb-tag">{video.duration}</span>
+                  <span className="tag tag-neutral thumb-tag">{clock(video.durationSeconds)}</span>
                 </button>
                 <div className="card-title clamp-2" style={{ fontSize: 15, marginTop: 'var(--space-2)' }}>
                   {video.title}

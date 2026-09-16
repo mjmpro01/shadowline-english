@@ -34,27 +34,6 @@ export interface Contour {
   duration: number
 }
 
-/** Decodes any browser-supported audio blob to mono 16kHz samples. */
-export async function decodeToMono(blob: Blob): Promise<{ samples: Float32Array; sampleRate: number }> {
-  const bytes = await blob.arrayBuffer()
-  // decodeAudioData needs a plain AudioContext; OfflineAudioContext resamples for us.
-  const probe = new AudioContext()
-  let decoded: AudioBuffer
-  try {
-    decoded = await probe.decodeAudioData(bytes)
-  } finally {
-    void probe.close()
-  }
-
-  const offline = new OfflineAudioContext(1, Math.ceil((decoded.duration * ANALYSIS_RATE) || 1), ANALYSIS_RATE)
-  const source = offline.createBufferSource()
-  source.buffer = decoded
-  source.connect(offline.destination)
-  source.start()
-  const rendered = await offline.startRendering()
-  return { samples: rendered.getChannelData(0), sampleRate: ANALYSIS_RATE }
-}
-
 function yinFrame(frame: Float32Array, sampleRate: number): number | null {
   const maxLag = Math.min(Math.floor(sampleRate / F0_MIN), Math.floor(frame.length / 2))
   const minLag = Math.max(2, Math.floor(sampleRate / F0_MAX))
@@ -168,9 +147,4 @@ export function semitoneTrack(contour: Contour): { time: number; semitone: numbe
       semitone: toSemitones(f.hz as number, contour.medianHz),
       rms: f.rms,
     }))
-}
-
-export async function analyseBlob(blob: Blob): Promise<Contour> {
-  const { samples, sampleRate } = await decodeToMono(blob)
-  return trackPitch(samples, sampleRate)
 }

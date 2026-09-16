@@ -23,7 +23,7 @@ export function FlashcardsScreen() {
   const progress = summarise(results, deck.length)
 
   const answer = (status: 'known' | 'learning') => {
-    reviewWord(card.id, status)
+    void reviewWord(card.id, status)
     setResults((prev) => ({ ...prev, [card.id]: status }))
     setIndex((i) => i + 1)
     setRevealed(false)
