@@ -46,28 +46,40 @@ exchange never passes through the provider.
 project can create them for you, and they are the one part of setup that cannot
 be automated.
 
+Everything below lives under **Google Auth Platform** in the console. Older
+guides — including earlier versions of this one — call it "APIs & Services →
+OAuth consent screen"; Google split that one wizard into the separate
+**Branding**, **Audience**, **Clients** and **Data Access** pages, so search for
+the page names rather than the old path.
+
 1. Open the [Google Cloud Console](https://console.cloud.google.com/) and pick a
    project, or create one. The project only holds the credential; Shadowline
    calls no other Google API.
-2. **APIs & Services → OAuth consent screen.** Choose **External** unless
-   everyone signing in shares a Workspace domain, in which case **Internal**
-   skips verification entirely. Fill in the app name, a support email and a
-   developer email.
-3. Add the scopes `openid`, `.../auth/userinfo.email` and
-   `.../auth/userinfo.profile` — the three the server asks for, and nothing more.
-   Anything beyond them drags the app into Google's verification review.
-4. While the consent screen is in **Testing**, only addresses listed under **Test
-   users** can sign in, and everyone else gets `access_denied`. Add your own
-   address there first. Publishing the app lifts that limit; with only these
-   three scopes it does not need a review.
-5. **APIs & Services → Credentials → Create credentials → OAuth client ID**,
-   application type **Web application**.
-6. Under **Authorised redirect URIs** add the exact value of
+2. **Google Auth Platform → Branding.** App name, a support email and a
+   developer email. This is what the consent screen shows.
+3. **Google Auth Platform → Audience.** Choose **External** unless everyone
+   signing in shares a Workspace domain, in which case **Internal** skips
+   verification entirely.
+4. While **Audience** says **Testing**, only the addresses listed there under
+   **Test users** can sign in — everyone else is turned away with
+   `access_denied`, which reaches the login screen as `cancelled`. Add your own
+   address first. **Publish app** lifts that limit.
+5. **Google Auth Platform → Data Access** is where scopes are declared, and for
+   Shadowline you can skip it. The server asks for `openid`,
+   `.../auth/userinfo.email` and `.../auth/userinfo.profile`; all three are
+   non-sensitive, so Google grants them from the authorization request itself
+   whether or not they are declared here, and an app that asks for only these
+   can be published without a verification review. Declare them if you want the
+   listing to be explicit — just do not add a fourth, because anything sensitive
+   pulls the app into review.
+6. **Google Auth Platform → Clients → Create client**, application type **Web
+   application**.
+7. Under **Authorised redirect URIs** add the exact value of
    `OAUTH_REDIRECT_URL` — scheme, host, port and path all have to match what the
    server sends, or Google answers `redirect_uri_mismatch` and the browser never
    comes back. For a laptop that is `http://localhost:8080/auth/google/callback`.
    Add each deployment's URL here too; the list can hold several.
-7. Copy the client ID and secret into `.env`.
+8. Copy the client ID and secret into `.env`.
 
 ### Checking it works
 
