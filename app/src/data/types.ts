@@ -23,6 +23,8 @@ export interface Video {
   playlist: string
   /** Free-form tags the library can be filtered by. */
   categories: string[]
+  /** Surfaced on the dashboard as something worth practising next. */
+  featured: boolean
   timestamp: string
   duration: string
   summary: string

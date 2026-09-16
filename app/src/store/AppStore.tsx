@@ -67,6 +67,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         source: clip.source,
         playlist: clip.playlist,
         categories: clip.categories,
+        featured: false,
         timestamp: `${clock(clip.start)}–${clock(clip.end)}`,
         duration: clock(clip.end - clip.start),
         summary: 'No takes recorded yet — practice this clip to see your pitch analysis.',
@@ -91,6 +92,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           title: edit.title ?? video.title,
           playlist: edit.playlist ?? video.playlist,
           categories: edit.categories ?? video.categories,
+          featured: edit.featured ?? video.featured,
           captions:
             edit.line === undefined && edit.ipa === undefined
               ? video.captions

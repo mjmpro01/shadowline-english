@@ -15,7 +15,10 @@ export interface NewClip {
 }
 
 /** The parts of a published clip an admin can still change. */
-export type ClipEdit = Partial<Pick<Video, 'title' | 'playlist' | 'categories'>> & { line?: string; ipa?: string }
+export type ClipEdit = Partial<Pick<Video, 'title' | 'playlist' | 'categories' | 'featured'>> & {
+  line?: string
+  ipa?: string
+}
 
 export interface VideoStats {
   takes: Take[]

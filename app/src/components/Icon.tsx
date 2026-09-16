@@ -65,6 +65,14 @@ const PATHS: Record<string, React.ReactNode> = {
   ),
   circle: <circle cx="12" cy="12" r="10" />,
   square: <rect x="6" y="6" width="12" height="12" rx="2" />,
+  grid: (
+    <>
+      <rect x="3" y="3" width="7" height="9" rx="1" />
+      <rect x="14" y="3" width="7" height="5" rx="1" />
+      <rect x="14" y="12" width="7" height="9" rx="1" />
+      <rect x="3" y="16" width="7" height="5" rx="1" />
+    </>
+  ),
   scissors: (
     <>
       <circle cx="6" cy="6" r="3" />

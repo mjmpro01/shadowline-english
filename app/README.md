@@ -23,7 +23,8 @@ machine instead of Playwright's own download.
 
 ## Screens
 
-Login → Library → Practice → Analysis → Dub Review, plus Vocabulary, Progress and Profile.
+Login → Dashboard → Library → Practice → Analysis → Dub Review, plus Vocabulary,
+Progress and Profile.
 Navigation is a collapsible sidebar on desktop and a bottom tab bar on phones.
 
 Clips are curated, not collected: learners practise what is in the library and
@@ -31,6 +32,18 @@ cannot import or upload anything themselves. `/admin` holds the clip studio,
 where a recording is cut into lines — see below. The library is searchable by
 name, line, playlist and category, since a learner is as likely to remember a
 phrase from a clip as its title.
+
+## Dashboard
+
+Where signing in lands. Your own numbers — clips practised, takes, average score
+and day streak — are computed from your takes; a streak counts days practised in
+a row, and practising yesterday but not yet today still counts, since the day is
+not over.
+
+The leaderboard ranks you among sample learners, labelled as such on screen:
+there is no backend and so no other learners, and inventing them silently would
+read as a social feature that does not exist. Your row is the real one. Below it
+sit the clips an admin has featured in the studio.
 
 ## Clip studio
 
@@ -45,7 +58,7 @@ stores each cut as its own clip with its own audio.
 Each cut gets a name, and the batch gets a playlist and categories, which is
 what the library's search and filters run on. The studio's second tab lists
 everything already published so a clip can be renamed, re-tagged, moved to
-another playlist or deleted after the fact — deleting a clip drops the practice
+another playlist, featured on the dashboard or deleted after the fact — deleting a clip drops the practice
 history that only made sense alongside it.
 
 Fetching a YouTube URL needs a server to download and strip the audio, so that

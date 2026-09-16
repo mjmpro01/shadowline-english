@@ -208,9 +208,18 @@ export function AdminScreen() {
                 <span className="card-meta mono">
                   {video.source} · {video.timestamp} · {video.duration}
                 </span>
-                <button type="button" className="btn btn-ghost" onClick={() => deleteClip(video.id)}>
-                  Delete clip
-                </button>
+                <div className="row gap-2">
+                  <button
+                    type="button"
+                    className={`btn ${video.featured ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => updateClip(video.id, { featured: !video.featured })}
+                  >
+                    {video.featured ? 'Featured' : 'Feature'}
+                  </button>
+                  <button type="button" className="btn btn-ghost" onClick={() => deleteClip(video.id)}>
+                    Delete clip
+                  </button>
+                </div>
               </div>
               <div className="row gap-3 wrap">
                 <div className="field" style={{ flex: '1 1 220px' }}>

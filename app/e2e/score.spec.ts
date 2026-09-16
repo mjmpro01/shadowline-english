@@ -7,7 +7,8 @@ const RECORD_MS = 2600
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Continue with Google' }).click()
-  await page.waitForURL('**/library')
+  await page.waitForURL('**/dashboard')
+  await page.goto('/library')
 })
 
 async function recordOnce(page: import('@playwright/test').Page, label: 'Record' | 'Re-record') {

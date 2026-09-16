@@ -7,12 +7,12 @@ export function LoginScreen() {
   const { data, ready, login } = useApp()
   const navigate = useNavigate()
 
-  if (ready && data.loggedIn) return <Navigate to="/library" replace />
+  if (ready && data.loggedIn) return <Navigate to="/dashboard" replace />
 
   const signIn = (e?: FormEvent) => {
     e?.preventDefault()
     login()
-    navigate('/library', { replace: true })
+    navigate('/dashboard', { replace: true })
   }
 
   return (

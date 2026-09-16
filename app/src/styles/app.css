@@ -391,3 +391,49 @@
   background: var(--score-good);
   pointer-events: none;
 }
+
+/* — dashboard podium — */
+.podium {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.podium-rank {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+}
+.podium-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--color-accent-100);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 14px;
+  text-transform: uppercase;
+}
+/* Three narrow cards still beat three stacked ones: the content is a rank, an
+   initial and two numbers, and stacking costs a whole screen of scrolling. */
+@media (max-width: 560px) {
+  .podium {
+    gap: var(--space-2);
+  }
+  .podium .card {
+    padding: var(--space-2);
+  }
+  .podium-rank {
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+  }
+  .podium-avatar {
+    width: 30px;
+    height: 30px;
+    font-size: 12px;
+  }
+}

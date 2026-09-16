@@ -5,7 +5,8 @@ import { publishLesson } from './studio'
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Continue with Google' }).click()
-  await page.waitForURL('**/library')
+  await page.waitForURL('**/dashboard')
+  await page.goto('/library')
 })
 
 test('learners cannot add clips of their own', async ({ page }) => {

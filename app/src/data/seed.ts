@@ -57,6 +57,7 @@ export interface SeedVideo extends Video {
 export const SEED_VIDEOS: SeedVideo[] = [
   {
     id: 'v1',
+    featured: true,
     playlist: 'Starter samples',
     categories: ['interview', 'chat show'],
     title: "Actually, I think it's brilliant",
@@ -72,6 +73,7 @@ export const SEED_VIDEOS: SeedVideo[] = [
   },
   {
     id: 'v2',
+    featured: false,
     playlist: 'Starter samples',
     categories: ['talk', 'motivation'],
     title: "That's exactly the kind of energy we need",
@@ -87,6 +89,7 @@ export const SEED_VIDEOS: SeedVideo[] = [
   },
   {
     id: 'v3',
+    featured: false,
     playlist: 'Starter samples',
     categories: ['interview', 'news'],
     title: "I honestly didn't expect that to happen",
@@ -101,6 +104,7 @@ export const SEED_VIDEOS: SeedVideo[] = [
   },
   {
     id: 'v4',
+    featured: true,
     playlist: 'Starter samples',
     categories: ['podcast', 'conversation'],
     title: "You know, at the end of the day, it's about consistency",
@@ -115,6 +119,7 @@ export const SEED_VIDEOS: SeedVideo[] = [
   },
   {
     id: 'v5',
+    featured: true,
     playlist: 'Starter samples',
     categories: ['drama', 'motivation'],
     title: "It's not about winning, it's about showing up",
@@ -231,3 +236,15 @@ export const DEFAULT_PROFILE = {
   email: 'mai.nguyen@gmail.com',
   avatarKey: null,
 }
+
+/**
+ * Stand-in classmates for the leaderboard. There is no backend and so no other
+ * learners: these are sample rows, labelled as such on screen, and the only
+ * real row is the one computed from your own takes.
+ */
+export const SAMPLE_LEARNERS = [
+  { id: 'u1', name: 'Linh Tran', averageScore: 91, streak: 18 },
+  { id: 'u3', name: 'Minh Le', averageScore: 79, streak: 9 },
+  { id: 'u4', name: 'Anh Pham', averageScore: 73, streak: 5 },
+  { id: 'u5', name: 'Duc Vo', averageScore: 66, streak: 3 },
+]

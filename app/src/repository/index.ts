@@ -74,6 +74,7 @@ class LocalRepository implements Repository {
         ...video,
         playlist: video.playlist ?? '',
         categories: video.categories ?? [],
+        featured: video.featured ?? false,
       })),
       takes: read(KEYS.takes, seedTakes()),
       vocab: read(KEYS.vocab, SEED_VOCAB),

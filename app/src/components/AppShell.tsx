@@ -4,6 +4,7 @@ import { useApp } from '../store/context'
 import { Icon, type IconName } from './Icon'
 
 const TABS: { to: string; label: string; icon: IconName }[] = [
+  { to: '/dashboard', label: 'Dashboard', icon: 'grid' },
   { to: '/library', label: 'Library', icon: 'library' },
   { to: '/vocabulary', label: 'Vocabulary', icon: 'book' },
   { to: '/progress', label: 'Progress', icon: 'chart' },
