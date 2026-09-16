@@ -60,27 +60,42 @@ function resample(track: TrackPoint[], count: number): number[] {
   return out
 }
 
+/** Frames of local drift the band allows — 3 seconds at a 10ms hop. */
+const MAX_BAND = 300
+
 /**
  * Dynamic time warping over the two semitone tracks, constrained to a
  * Sakoe-Chiba band so an alignment can stretch timing without reordering
  * the sentence.
+ *
+ * The band is centred on the diagonal between the two lengths, so an overall
+ * difference in tempo is already accounted for and the width only has to cover
+ * local drift. Capping it keeps a long clip from costing O(n^2).
  */
 function dtw(a: number[], b: number[], bandRatio = 0.35): { path: [number, number][]; cost: number } {
   const n = a.length
   const m = b.length
-  const band = Math.max(8, Math.round(Math.max(n, m) * bandRatio))
-  const cost = new Float64Array((n + 1) * (m + 1)).fill(Infinity)
-  const at = (i: number, j: number) => i * (m + 1) + j
-  cost[at(0, 0)] = 0
+  const band = Math.min(MAX_BAND, Math.max(8, Math.round(Math.max(n, m) * bandRatio)))
 
+  // Only the band is stored. A full n*m matrix reaches hundreds of megabytes on
+  // a minute-long clip, nearly all of it cells the band never visits.
+  const lo = new Int32Array(n + 1)
+  const hi = new Int32Array(n + 1)
   for (let i = 1; i <= n; i++) {
     const centre = Math.round(((i - 1) * m) / n) + 1
-    const from = Math.max(1, centre - band)
-    const to = Math.min(m, centre + band)
-    for (let j = from; j <= to; j++) {
+    lo[i] = Math.max(1, centre - band)
+    hi[i] = Math.min(m, centre + band)
+  }
+  const width = 2 * band + 2
+  const cost = new Float64Array((n + 1) * width).fill(Infinity)
+  const get = (i: number, j: number) =>
+    i < 0 || j < lo[i] || j > hi[i] ? Infinity : cost[i * width + (j - lo[i])]
+  cost[0] = 0
+
+  for (let i = 1; i <= n; i++) {
+    for (let j = lo[i]; j <= hi[i]; j++) {
       const local = Math.abs(a[i - 1] - b[j - 1])
-      const best = Math.min(cost[at(i - 1, j)], cost[at(i, j - 1)], cost[at(i - 1, j - 1)])
-      cost[at(i, j)] = local + best
+      cost[i * width + (j - lo[i])] = local + Math.min(get(i - 1, j), get(i, j - 1), get(i - 1, j - 1))
     }
   }
 
@@ -89,9 +104,9 @@ function dtw(a: number[], b: number[], bandRatio = 0.35): { path: [number, numbe
   let j = m
   while (i > 0 && j > 0) {
     path.push([i - 1, j - 1])
-    const diag = cost[at(i - 1, j - 1)]
-    const up = cost[at(i - 1, j)]
-    const left = cost[at(i, j - 1)]
+    const diag = get(i - 1, j - 1)
+    const up = get(i - 1, j)
+    const left = get(i, j - 1)
     if (diag <= up && diag <= left) {
       i--
       j--
@@ -102,7 +117,7 @@ function dtw(a: number[], b: number[], bandRatio = 0.35): { path: [number, numbe
     }
   }
   path.reverse()
-  return { path, cost: cost[at(n, m)] }
+  return { path, cost: get(n, m) }
 }
 
 function pearson(xs: number[], ys: number[]): number {

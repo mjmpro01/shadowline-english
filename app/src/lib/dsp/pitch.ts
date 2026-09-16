@@ -10,7 +10,9 @@
 
 export const FRAME_MS = 40
 export const HOP_MS = 10
-const ANALYSIS_RATE = 16000
+/** Speech F0 tops out around 400Hz, so analysing at 8kHz keeps every harmonic
+    that matters and costs a quarter of what 16kHz does in the difference loop. */
+export const ANALYSIS_RATE = 8000
 const F0_MIN = 60
 const F0_MAX = 400
 const YIN_THRESHOLD = 0.15

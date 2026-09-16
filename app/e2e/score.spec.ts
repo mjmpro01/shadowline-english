@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { SOURCE_CLIP } from './fixtures'
+import { FLAT_CLIP, SOURCE_CLIP } from './fixtures'
 
 /** Long enough for the fake microphone to play through most of the clip. */
 const RECORD_MS = 2600
@@ -78,4 +78,29 @@ test('both voices play on one timeline in dub review', async ({ page }) => {
   expect(after.paused).toBe(false)
   // Switching voices keeps your place rather than restarting the line.
   expect(after.time).toBeGreaterThanOrEqual(before.time - 0.2)
+})
+
+test('each clip is scored against its own audio, not the last one seen', async ({ page }) => {
+  // Navigation stays inside the app on purpose: a full page load would drop the
+  // worker and its cached contour, which is exactly what this guards.
+  const scoreFor = async (clipIndex: number, sourceFile: string) => {
+    await page.getByRole('button', { name: 'Practice' }).nth(clipIndex).click()
+    await page.waitForURL('**/practice')
+    await page.locator('input[type=file]').setInputFiles(sourceFile)
+    await recordOnce(page, 'Record')
+    const card = page.locator('.card', { hasText: 'PITCH MATCH SCORE' })
+    await expect(card).toBeVisible({ timeout: 20_000 })
+    const score = Number((await card.locator('div').last().innerText()).trim())
+    await page.getByRole('button', { name: 'Exit' }).click()
+    await page.waitForURL('**/library')
+    return score
+  }
+
+  // The microphone plays a shadow of the melodic clip both times.
+  const melodic = await scoreFor(0, SOURCE_CLIP)
+  const flat = await scoreFor(1, FLAT_CLIP)
+
+  expect(melodic).toBeGreaterThan(60)
+  // Reusing the first clip's contour here would score this just as highly.
+  expect(flat).toBeLessThan(melodic - 10)
 })

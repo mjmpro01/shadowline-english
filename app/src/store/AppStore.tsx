@@ -72,8 +72,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let result = null
     if (audio) {
       const video = dataRef.current.videos.find((v) => v.id === videoId)
-      const reference = video?.sourceAudioKey ? ((await getBlob(video.sourceAudioKey)) ?? null) : null
-      result = await analyseTake(audio, reference)
+      const sourceKey = video?.sourceAudioKey
+      result = await analyseTake(
+        audio,
+        sourceKey ? { key: sourceKey, load: () => getBlob(sourceKey).then((b) => b ?? null) } : null,
+      )
     }
 
     const take: Take = {
@@ -111,9 +114,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const video = current.videos.find((v) => v.id === take.videoId)
     if (!video?.sourceAudioKey) return
 
-    const [takeBlob, referenceBlob] = await Promise.all([getBlob(take.audioKey), getBlob(video.sourceAudioKey)])
-    if (!takeBlob || !referenceBlob) return
-    const result = await analyseTake(takeBlob, referenceBlob)
+    const takeBlob = await getBlob(take.audioKey)
+    if (!takeBlob) return
+    const sourceKey = video.sourceAudioKey
+    const result = await analyseTake(takeBlob, {
+      key: sourceKey,
+      load: () => getBlob(sourceKey).then((b) => b ?? null),
+    })
     if (!result) return
 
     setData((prev) => {

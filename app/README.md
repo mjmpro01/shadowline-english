@@ -41,6 +41,12 @@ contours with banded dynamic time warping. From that:
 - **Stress** — correlation of the two loudness envelopes at the aligned points.
 - **Variation** — the ratio of the two pitch ranges (10th–90th percentile).
 
+The arithmetic runs in a Web Worker (`src/lib/dsp/analyse.worker.ts`), which also
+keeps the source clip's contour so it is tracked once per clip rather than once
+per take. A minute-long take measures in well under a second without the UI
+stalling; only the decode, which Web Audio can do on the main thread only, runs
+outside the worker.
+
 Scoring needs the clip's original audio to compare against, and this repo ships no media.
 Attach a file on the Practice screen ("Attach source audio") and takes are scored against
 it; without one, a take is still measured and its contour drawn, but no match score is

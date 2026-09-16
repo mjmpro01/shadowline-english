@@ -1,81 +1,84 @@
-import type { ContourPoint, MetricScores, TakeAnalysis } from '../../data/types'
-import { compareContours, type TrackPoint } from './compare'
-import { analyseBlob, semitoneTrack, type Contour } from './pitch'
+import { decodeToMono } from './pitch'
+import type { AnalyseRequest, AnalyseResponse } from './analyse.worker'
+import type { TakeResult } from './measure'
 
-/** Plenty for the chart, small enough to keep many takes in local storage. */
-const STORED_POINTS = 150
+export type { TakeResult }
 
-function decimate(track: TrackPoint[], deviations?: Map<number, number>): ContourPoint[] {
-  const step = Math.max(1, Math.ceil(track.length / STORED_POINTS))
-  const out: ContourPoint[] = []
-  for (let i = 0; i < track.length; i += step) {
-    const point: ContourPoint = {
-      t: Number(track[i].time.toFixed(3)),
-      s: Number(track[i].semitone.toFixed(2)),
-    }
-    const deviation = deviations?.get(i)
-    if (deviation !== undefined) point.d = Number(deviation.toFixed(2))
-    out.push(point)
-  }
-  return out
+export interface ReferenceSource {
+  key: string
+  /** Only called when the worker does not already hold this reference. */
+  load: () => Promise<Blob | null>
 }
 
-export interface TakeResult {
-  analysis: TakeAnalysis
-  /** Null when there was no reference to score against. */
-  score: number | null
-  scores: MetricScores | null
+let worker: Worker | null = null
+let nextId = 1
+
+function getWorker(): Worker {
+  worker ??= new Worker(new URL('./analyse.worker.ts', import.meta.url), { type: 'module' })
+  return worker
+}
+
+function run(request: AnalyseRequest, transfer: Transferable[] = []): Promise<AnalyseResponse> {
+  const instance = getWorker()
+  return new Promise((resolve) => {
+    const onMessage = (event: MessageEvent<AnalyseResponse>) => {
+      if (event.data.id !== request.id) return
+      instance.removeEventListener('message', onMessage)
+      resolve(event.data)
+    }
+    instance.addEventListener('message', onMessage)
+    instance.postMessage(request, transfer)
+  })
 }
 
 /**
  * Measures a recorded take, scoring it against the clip's original audio when
  * the learner has attached one. Without a reference we still keep the measured
  * contour — it is real data — but we do not invent a match score for it.
+ *
+ * Decoding stays here because Web Audio is main-thread only; the arithmetic
+ * that follows runs in a worker, which holds onto the source clip's contour so
+ * it is tracked once rather than once per take.
  */
-export async function analyseTake(takeBlob: Blob, referenceBlob: Blob | null): Promise<TakeResult | null> {
-  let userContour: Contour
+export async function analyseTake(takeBlob: Blob, reference: ReferenceSource | null): Promise<TakeResult | null> {
+  let take: { samples: Float32Array; sampleRate: number }
   try {
-    userContour = await analyseBlob(takeBlob)
+    take = await decodeToMono(takeBlob)
   } catch {
     return null
   }
 
-  const userTrack = semitoneTrack(userContour)
-  if (userTrack.length < 8) return null
+  // Ask without the samples first: the worker usually still holds this clip.
+  // The take's buffer is copied rather than transferred so that a miss does
+  // not cost a second decode.
+  const first = await run({
+    id: nextId++,
+    take,
+    reference: reference ? { key: reference.key, samples: null, sampleRate: 0 } : null,
+  })
+  if (!first.needReference || !reference) return first.error ? null : first.result
 
-  let referenceContour: Contour | null = null
-  if (referenceBlob) {
-    try {
-      referenceContour = await analyseBlob(referenceBlob)
-    } catch {
-      referenceContour = null
-    }
+  const blob = await reference.load()
+  if (!blob) return null
+
+  let decodedReference: { samples: Float32Array; sampleRate: number }
+  try {
+    decodedReference = await decodeToMono(blob)
+  } catch {
+    return null
   }
 
-  const comparison = referenceContour ? compareContours(referenceContour, userContour) : null
-
-  if (!comparison) {
-    return {
-      analysis: { user: decimate(userTrack), reference: null, duration: userContour.duration, meanDeviation: null },
-      score: null,
-      scores: null,
-    }
-  }
-
-  const deviations = new Map<number, number>()
-  for (const [ui, ri] of comparison.path) {
-    const value = Math.abs(comparison.user[ui].semitone - comparison.reference[ri].semitone)
-    deviations.set(ui, Math.max(deviations.get(ui) ?? 0, value))
-  }
-
-  return {
-    analysis: {
-      user: decimate(comparison.user, deviations),
-      reference: decimate(comparison.reference),
-      duration: userContour.duration,
-      meanDeviation: Number(comparison.meanDeviation.toFixed(2)),
+  const second = await run(
+    {
+      id: nextId++,
+      take,
+      reference: {
+        key: reference.key,
+        samples: decodedReference.samples,
+        sampleRate: decodedReference.sampleRate,
+      },
     },
-    score: comparison.score,
-    scores: comparison.scores,
-  }
+    [decodedReference.samples.buffer],
+  )
+  return second.error ? null : second.result
 }

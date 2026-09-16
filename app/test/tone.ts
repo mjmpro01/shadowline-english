@@ -2,7 +2,10 @@
  * Synthesised speech-like tones with a known pitch contour, so the tracker and
  * the scorer can be checked against melodies whose answer we already know.
  */
-export const RATE = 16000
+import { ANALYSIS_RATE } from '../src/lib/dsp/pitch'
+
+/** Tones are generated at the rate the app actually analyses at. */
+export const RATE = ANALYSIS_RATE
 
 export interface ToneOptions {
   /** Semitones away from the base pitch, given progress through the clip (0..1). */
