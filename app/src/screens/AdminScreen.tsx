@@ -3,7 +3,7 @@ import { Icon } from '../components/Icon'
 import { SegmentedControl } from '../components/SegmentedControl'
 import { WaveformEditor } from '../components/WaveformEditor'
 import { MAX_CLIP_SECONDS } from '../data/types'
-import { decodeFile, peaks as computePeaks } from '../lib/audio/decode'
+import { decodeFile, peaks as computePeaks, type Column } from '../lib/audio/decode'
 import { proposeSegments, type Segment } from '../lib/audio/segment'
 import { formatCategories, parseCategories, searchClips } from '../lib/clips'
 import { sliceToWav } from '../lib/audio/wav'
@@ -24,7 +24,7 @@ interface Loaded {
   samples: Float32Array
   sampleRate: number
   duration: number
-  peaks: { min: number; max: number }[]
+  peaks: Column[]
 }
 
 function clock(seconds: number): string {
