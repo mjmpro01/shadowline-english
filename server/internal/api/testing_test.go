@@ -47,6 +47,15 @@ type harness struct {
 	store    *store.Store
 	blobs    storage.Storage
 	diskRoot string
+	srv      *api.Server
+}
+
+// withRealProvider rebuilds the routes as a deployment would have them: no fake
+// provider, and so no test-only routes.
+func (h *harness) withRealProvider() {
+	h.srv.Cfg.AuthFake = false
+	h.srv.Provider = auth.NewGoogleProvider("id", "secret", h.srv.Cfg.OAuthRedirectURL)
+	h.server.Config.Handler = h.srv.Routes()
 }
 
 // newHarness builds a server on its own freshly created database, so tests
@@ -106,6 +115,7 @@ func newHarness(t *testing.T) *harness {
 		Log:      slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
+	h := &harness{t: t, store: st, blobs: blobs, diskRoot: diskRoot, srv: srv}
 	ts := httptest.NewServer(srv.Routes())
 	t.Cleanup(func() {
 		ts.Close()
@@ -120,7 +130,8 @@ func newHarness(t *testing.T) *harness {
 		}
 	})
 
-	return &harness{t: t, server: ts, store: st, blobs: blobs, diskRoot: diskRoot}
+	h.server = ts
+	return h
 }
 
 func replaceDatabase(dsn, name string) string {

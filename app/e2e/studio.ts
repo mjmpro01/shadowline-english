@@ -1,13 +1,16 @@
 import { expect, type Page } from '@playwright/test'
 import { LESSON } from './fixtures'
+import { asAdmin } from './session'
 
 /**
- * Publishes the lesson fixture as library clips. Clips only reach learners
- * through the studio now, so the practice tests have to go through it too.
+ * Publishes the lesson fixture as library clips, as an admin.
+ *
+ * Clips reach learners only through the studio, so the practice tests have to
+ * go through it too. Signing in as the admin is part of that: the studio is
+ * closed to anyone the server did not mark, and there is no switch to flip.
  */
 export async function publishLesson(page: Page): Promise<void> {
-  await page.goto('/profile')
-  await page.getByRole('button', { name: 'Off' }).click()
+  await asAdmin(page)
   await page.goto('/admin')
 
   await page.locator('input[type=file]').setInputFiles(LESSON)
@@ -23,6 +26,6 @@ export async function publishLesson(page: Page): Promise<void> {
   }
 
   await page.getByRole('button', { name: /Publish 4 clips/ }).click()
-  await expect(page.getByText('4 clips are now in the library.')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('4 clips are now in the library.')).toBeVisible({ timeout: 30_000 })
   await page.goto('/library')
 }

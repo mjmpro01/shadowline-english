@@ -121,3 +121,14 @@ func TestCallbackRejectsAMissingVerifier(t *testing.T) {
 		other.do("GET", "/auth/google/callback?state="+state+"&code=attacker@example.com", "", nil),
 		http.StatusBadRequest)
 }
+
+// The reset route wipes every table. It must not exist outside the tests, and
+// the guarantee is that it is never registered rather than that it checks.
+func TestTheResetRouteIsAbsentWithoutTheFakeProvider(t *testing.T) {
+	h := newHarness(t)
+	expectStatus(t, h.anonymous().json("POST", "/test/reset", nil), http.StatusOK)
+
+	real := newHarness(t)
+	real.withRealProvider()
+	expectStatus(t, real.anonymous().json("POST", "/test/reset", nil), http.StatusNotFound)
+}

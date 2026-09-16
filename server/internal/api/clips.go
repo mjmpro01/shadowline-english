@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"path"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -211,6 +214,29 @@ func (s *Server) putAudio(r *http.Request, bucket storage.Bucket, prefix string)
 	return key, nil
 }
 
+// contentTypeFor is extensionFor in reverse, for serving an object back. The
+// disk backend stores no metadata, and an <audio> element handed a response
+// with no usable type refuses to play it — "The element has no supported
+// sources", with nothing to say which element or why.
+func contentTypeFor(key string) string {
+	switch strings.ToLower(path.Ext(key)) {
+	case ".wav":
+		return "audio/wav"
+	case ".mp3":
+		return "audio/mpeg"
+	case ".ogg":
+		return "audio/ogg"
+	case ".webm":
+		return "audio/webm"
+	case ".png":
+		return "image/png"
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	default:
+		return "application/octet-stream"
+	}
+}
+
 func extensionFor(contentType string) string {
 	switch {
 	case contentType == "audio/wav" || contentType == "audio/x-wav":
@@ -243,7 +269,11 @@ func parseID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
 // storage.Disk.SignedGetURL produced. With S3 configured this route is never hit.
 func (s *Server) handleFile(w http.ResponseWriter, r *http.Request) {
 	bucket := chi.URLParam(r, "bucket")
-	key := chi.URLParam(r, "key")
+	key, err := url.PathUnescape(chi.URLParam(r, "*"))
+	if err != nil {
+		fail(w, http.StatusNotFound, "not found")
+		return
+	}
 	q := r.URL.Query()
 	if !s.Signer.VerifyPath(bucket, key, q.Get("expires"), q.Get("sig")) {
 		fail(w, http.StatusForbidden, "link expired")
@@ -260,6 +290,7 @@ func (s *Server) handleFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer rc.Close()
+	w.Header().Set("Content-Type", contentTypeFor(key))
 	w.Header().Set("Cache-Control", "private, max-age=3600")
 	if _, err := io.Copy(w, rc); err != nil {
 		s.Log.Warn("truncated file response", "key", key, "error", err)

@@ -1,13 +1,12 @@
 import { expect, test } from '@playwright/test'
+import { asLearner, startFresh } from './session'
 import { publishLesson } from './studio'
 
 /** Long enough for the fake microphone to play through most of the clip. */
 const RECORD_MS = 2600
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Continue with Google' }).click()
-  await page.waitForURL('**/dashboard')
+  await startFresh(page)
   await page.goto('/library')
 })
 
@@ -17,10 +16,24 @@ async function recordOnce(page: import('@playwright/test').Page, label: 'Record'
   await page.getByRole('button', { name: 'Stop' }).click()
 }
 
-async function practise(page: import('@playwright/test').Page, clipIndex: number) {
-  await page.getByRole('button', { name: 'Practice', exact: true }).nth(clipIndex).click()
+/**
+ * Opens a clip by name.
+ *
+ * By name rather than by position: the library holds the starter clips as well
+ * as whatever a test published, and the starter clips carry no audio — so
+ * practising the first card would measure a take that can never be scored.
+ */
+async function practise(page: import('@playwright/test').Page, title: string) {
+  await page.goto('/library')
+  await page.getByLabel('Search clips').fill(title)
+  await page.getByRole('button', { name: 'Practice', exact: true }).first().click()
   await page.waitForURL('**/practice')
 }
+
+/** The published lesson's lines, in the order the studio cut them. */
+const LINE = (n: number) => `Shadow this line ${n}`
+/** A starter clip, which ships with no source audio. */
+const STARTER = 'One step at a time'
 
 async function scoreOf(page: import('@playwright/test').Page): Promise<number> {
   const card = page.locator('.card', { hasText: 'PITCH MATCH SCORE' })
@@ -28,17 +41,19 @@ async function scoreOf(page: import('@playwright/test').Page): Promise<number> {
   return Number((await card.locator('div').last().innerText()).trim())
 }
 
-test('a seeded clip has no original audio, so a take is measured but not scored', async ({ page }) => {
-  await practise(page, 0)
+test('a starter clip has no original audio, so a take is kept but not scored', async ({ page }) => {
+  await practise(page, STARTER)
   await recordOnce(page, 'Record')
 
-  await expect(page.getByText('Take measured')).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText('Take recorded')).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText('nothing to score your delivery against')).toBeVisible()
   await expect(page.getByText('PITCH MATCH SCORE')).toHaveCount(0)
 })
 
 test('a published clip scores takes against its own audio', async ({ page }) => {
   await publishLesson(page)
-  await practise(page, 0)
+  await asLearner(page)
+  await practise(page, LINE(1))
   await expect(page.getByRole('button', { name: 'Hear clip again' })).toBeEnabled()
 
   await recordOnce(page, 'Record')
@@ -55,11 +70,10 @@ test('a published clip scores takes against its own audio', async ({ page }) => 
 
 test('each clip is scored against its own audio, not the last one seen', async ({ page }) => {
   await publishLesson(page)
+  await asLearner(page)
 
-  // Navigation stays inside the app on purpose: a full page load would drop the
-  // worker and its cached contour, which is exactly what this guards.
-  const scoreClip = async (index: number) => {
-    await practise(page, index)
+  const scoreClip = async (title: string) => {
+    await practise(page, title)
     await recordOnce(page, 'Record')
     const score = await scoreOf(page)
     await page.getByRole('button', { name: 'Exit' }).click()
@@ -69,8 +83,8 @@ test('each clip is scored against its own audio, not the last one seen', async (
 
   // The microphone plays a shadow of the melodic line both times; the second
   // published clip is flat, so it cannot score as well.
-  const melodic = await scoreClip(0)
-  const flat = await scoreClip(1)
+  const melodic = await scoreClip(LINE(1))
+  const flat = await scoreClip(LINE(2))
 
   expect(melodic).toBeGreaterThan(60)
   expect(flat).toBeLessThan(melodic - 10)
@@ -78,7 +92,8 @@ test('each clip is scored against its own audio, not the last one seen', async (
 
 test('both voices play on one timeline in dub review', async ({ page }) => {
   await publishLesson(page)
-  await practise(page, 0)
+  await asLearner(page)
+  await practise(page, LINE(1))
   await recordOnce(page, 'Record')
   await expect(page.getByRole('button', { name: 'Watch' })).toBeEnabled({ timeout: 20_000 })
 
@@ -107,18 +122,20 @@ test('both voices play on one timeline in dub review', async ({ page }) => {
 })
 
 test('recording stops itself at the clip limit', async ({ page }) => {
-  await practise(page, 0)
+  await practise(page, STARTER)
 
   await page.getByRole('button', { name: 'Record', exact: true }).click()
   await expect(page.getByText('s left')).toBeVisible()
 
   // Never pressed: the recorder ends the take on its own.
   await expect(page.getByRole('button', { name: 'Stop' })).toBeHidden({ timeout: 15_000 })
-  await expect(page.getByText('Take measured')).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText('Take recorded')).toBeVisible({ timeout: 20_000 })
 })
 
 test('learners can search the library and filter it by category', async ({ page }) => {
   await publishLesson(page)
+  await asLearner(page)
+  await page.goto('/library')
 
   await page.getByLabel('Search clips').fill('line 3')
   await expect(page.locator('.grid-cards .card')).toHaveCount(1)

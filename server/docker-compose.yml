@@ -48,6 +48,19 @@ services:
       minio:
         condition: service_healthy
 
+  # Publishes the starter library once, so the first screen is not empty. It
+  # exits immediately if the library already has clips, so leaving it in the
+  # default set is harmless.
+  seed:
+    build:
+      context: .
+    env_file: .env
+    entrypoint: ["/usr/local/bin/seed"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   scoring:
     build:
       context: ../scoring

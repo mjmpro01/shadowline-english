@@ -66,9 +66,37 @@ recording in a loud room is marked down for a recording the app genuinely cannot
 measure. `test_heavy_noise_degrades_the_measurement_rather_than_faking_one` pins
 this so it is a known limit rather than a surprise.
 
+## Failure, and what the learner sees
+
+A take that cannot be scored is not given a score. `queue.fail` retries three
+times — enough to cover a worker crashing mid-job — and then marks the take
+`failed` with the reason, which the Practice and Analysis screens show. The
+alternative, leaving it `pending`, is a screen that says "Measuring your pitch…"
+forever.
+
+A recording with no speech in it, and a clip whose source audio has gone missing,
+both land here. Neither is a bad delivery, and neither gets a number.
+
+If the database goes away the worker waits and reconnects rather than exiting:
+stopping would leave every take recorded in the meantime sitting pending until
+something restarted it.
+
 ## Scaling
 
-One replica scores roughly one take a second, so that — not message throughput —
-is the limit worth watching. Add replicas until `select count(*) from
-scoring_jobs where state = 'queued'` stops growing. See `../server/README.md` for
-why the queue is a table and not Kafka.
+One replica scores roughly one take a second — a six-second clip measures in
+about 200ms — so worker CPU, not message throughput, is the limit worth
+watching. Add replicas until `select count(*) from scoring_jobs where state =
+'queued'` stops growing. See `../server/README.md` for why the queue is a table
+and not Kafka.
+
+## Layout
+
+```
+shadowline/pitch.py     YIN pitch tracking, ported from the browser
+shadowline/compare.py   DTW and the four metrics
+shadowline/audio.py     ffmpeg: whatever the browser recorded -> mono 8kHz
+shadowline/queue.py     claim / complete / fail, against the Postgres table
+shadowline/storage.py   reading audio from S3/MinIO or from a directory
+shadowline/worker.py    the loop
+reference/              the archived TypeScript scorer, for the fixtures
+```

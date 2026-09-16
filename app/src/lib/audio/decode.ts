@@ -1,5 +1,5 @@
-/** Decodes an uploaded file to mono at its own sample rate — unlike the
-    analysis path, the audio kept for a clip should stay listenable. */
+/** Decodes an uploaded file to mono at its own sample rate: the studio needs the
+    waveform to cut on, and the audio it publishes has to stay listenable. */
 export async function decodeFile(blob: Blob): Promise<{ samples: Float32Array; sampleRate: number }> {
   const bytes = await blob.arrayBuffer()
   const context = new AudioContext()

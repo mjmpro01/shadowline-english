@@ -1,7 +1,16 @@
-> **Implementation status:** the designs in this bundle have been built in [`app/`](app/) —
-> a Vite + React + TypeScript app covering Login, Library, Practice, Analysis, Dub Review,
-> Progress, Vocabulary and Profile. See [`app/README.md`](app/README.md) for what is wired up
-> for real and what is still a stand-in. The notes below are the original handoff brief.
+> **Implementation status:** the designs in this bundle have been built, and now run
+> against a backend:
+>
+> - [`app/`](app/) — Vite + React + TypeScript: Login, Dashboard, Library, Practice,
+>   Analysis, Dub Review, Progress, Vocabulary, Profile and the clip studio.
+> - [`server/`](server/) — Go API: Google OAuth, clips, takes, vocabulary, the
+>   leaderboard, and a scoring queue in Postgres.
+> - [`scoring/`](scoring/) — Python worker: pitch tracking and scoring, with parity
+>   against the browser implementation it replaced proved by fixtures.
+>
+> `docker compose up` in `server/` brings up Postgres, MinIO, the API and the worker.
+> Each directory's README covers its own decisions. The notes below are the original
+> handoff brief.
 
 # CODING AGENTS: READ THIS FIRST
 

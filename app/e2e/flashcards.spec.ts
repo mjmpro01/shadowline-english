@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test'
+import { startFresh } from './session'
+import { collectSomeWords } from './vocabulary'
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Continue with Google' }).click()
-  await page.waitForURL('**/dashboard')
+  await startFresh(page)
+  await collectSomeWords(page)
   await page.goto('/vocabulary')
 })
 

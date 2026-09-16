@@ -269,7 +269,10 @@ export function AdminScreen() {
           hidden
           onChange={(e) => void open(e.target.files?.[0])}
         />
-        <button type="button" className="btn btn-secondary" disabled title="Needs a server to fetch and strip the audio">
+        {/* Still not wired: fetching a video and stripping its audio is an
+            endpoint the API does not have, and the button says so rather than
+            failing when pressed. */}
+        <button type="button" className="btn btn-secondary" disabled title="Not available yet — upload a file instead">
           Paste a YouTube URL
         </button>
         {busy && <span style={{ fontSize: 13, opacity: 0.7 }}>{busy}</span>}

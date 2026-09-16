@@ -2,6 +2,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -36,6 +37,11 @@ func (s *Server) Routes() http.Handler {
 
 	r.Get("/healthz", s.handleHealth)
 
+	if s.Cfg.AuthFake {
+		// Test-only, and absent entirely from a normal deployment.
+		r.Post("/test/reset", s.handleTestReset)
+	}
+
 	r.Route("/auth", func(r chi.Router) {
 		r.Get("/google/start", s.handleAuthStart)
 		r.Get("/google/callback", s.handleAuthCallback)
@@ -45,7 +51,9 @@ func (s *Server) Routes() http.Handler {
 
 	// Disk storage serves its objects here. With S3 the browser goes straight to
 	// the presigned URL and never touches this route.
-	r.Get("/files/{bucket}/{key}", s.handleFile)
+	// A wildcard, not `{key}`: object keys have slashes in them, and a single
+	// path segment never matched one.
+	r.Get("/files/{bucket}/*", s.handleFile)
 
 	r.Route("/api", func(r chi.Router) {
 		r.Use(s.requireUser)
@@ -152,6 +160,12 @@ func fail(w http.ResponseWriter, status int, message string) {
 func (s *Server) failErr(w http.ResponseWriter, err error, action string) {
 	if errors.Is(err, store.ErrNotFound) || errors.Is(err, storage.ErrNotFound) {
 		fail(w, http.StatusNotFound, "not found")
+		return
+	}
+	// A cancelled context means the browser navigated away mid-request. Nothing
+	// is wrong, and logging it as an error buries the ones that are — the test
+	// run alone produced a screenful.
+	if errors.Is(err, context.Canceled) {
 		return
 	}
 	s.Log.Error(action, "error", err)

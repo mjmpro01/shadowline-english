@@ -52,7 +52,6 @@ export interface Store {
   updateClip: (id: string, edit: ClipEdit) => Promise<void>
   deleteClip: (id: string) => Promise<void>
   addTake: (videoId: string, audio: Blob) => Promise<Take>
-  deleteTake: (takeId: string) => Promise<void>
   toggleVocabWord: (
     raw: string,
     videoId: string | null,

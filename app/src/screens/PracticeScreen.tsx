@@ -217,7 +217,9 @@ export function PracticeScreen() {
             </div>
           )}
 
-          {analysing && <div style={{ fontSize: 13, textAlign: 'center', opacity: 0.7 }}>Measuring your pitch…</div>}
+          {(analysing || take?.status === 'pending') && (
+            <div style={{ fontSize: 13, textAlign: 'center', opacity: 0.7 }}>Measuring your pitch…</div>
+          )}
 
           {take && take.score !== null && (
             <div className="card elev-sm row between">
@@ -231,14 +233,30 @@ export function PracticeScreen() {
             </div>
           )}
 
-          {take && take.score === null && (
+          {take && take.score === null && take.status !== 'pending' && (
             <div className="card elev-sm stack gap-2">
-              <div className="card-kicker">{take.analysis ? 'Take measured' : 'Nothing to measure'}</div>
-              <div style={{ fontSize: 13, opacity: 0.75 }}>
-                {take.analysis
-                  ? 'Your pitch contour was recorded, but this clip has no original audio to score it against yet.'
-                  : 'The recording was too short or too quiet to track a pitch — try again closer to the mic.'}
-              </div>
+              {/*
+                Three different reasons a take has no score, and the screen used
+                to give one message for all of them: it told a learner their
+                recording was too quiet when the truth was that the clip has
+                nothing to score against.
+              */}
+              {take.status === 'failed' ? (
+                <>
+                  <div className="card-kicker">Nothing to measure</div>
+                  <div style={{ fontSize: 13, opacity: 0.75 }}>
+                    {take.error ?? 'The recording was too short or too quiet to track a pitch'} — try again
+                    closer to the mic.
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="card-kicker">Take recorded</div>
+                  <div style={{ fontSize: 13, opacity: 0.75 }}>
+                    This clip has no original audio, so there is nothing to score your delivery against.
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -248,7 +266,7 @@ export function PracticeScreen() {
             type="button"
             className="btn btn-secondary btn-block"
             disabled={!sourceUrl}
-            title={sourceUrl ? "Play the clip's original audio" : 'Attach the original audio first'}
+            title={sourceUrl ? "Play the clip's original audio" : 'This clip has no original audio'}
             onClick={() => sourcePlayer.current?.play()}
           >
             Hear clip again

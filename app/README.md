@@ -1,13 +1,16 @@
 # Shadowline
 
-English shadowing practice — import a short clip, read each line back, and compare your
-delivery against the source.
+English shadowing practice — pick a short clip from the library, read each line
+back, and compare your delivery against the source.
 
-Built from the Claude Design handoff in `../project/Shadowline.dc.html`. The prototype's
-Organic design system is ported in `src/styles/`, including the dark + amber overrides the
-prototype applies on top of it.
+Built from the Claude Design handoff in `../project/Shadowline.dc.html`. The
+prototype's Organic design system is ported in `src/styles/`, including the dark
++ amber overrides the prototype applies on top of it.
 
 ## Running
+
+The app needs the API in `../server` and the worker in `../scoring`. The quickest
+way to get both is `docker compose up` in `../server`.
 
 ```bash
 npm install
@@ -18,14 +21,13 @@ npm test          # unit tests (Vitest)
 npm run test:e2e  # browser tests (Playwright)
 ```
 
-The e2e run needs a Chromium; set `CHROMIUM_PATH` to reuse one already on the
-machine instead of Playwright's own download.
+`VITE_API_URL` points at the API; it defaults to `http://localhost:8080`.
 
 ## Screens
 
 Login → Dashboard → Library → Practice → Analysis → Dub Review, plus Vocabulary
-with its flashcards, Progress and Profile.
-Navigation is a collapsible sidebar on desktop and a bottom tab bar on phones.
+with its flashcards, Progress and Profile. Navigation is a collapsible sidebar on
+desktop and a bottom tab bar on phones.
 
 Clips are curated, not collected: learners practise what is in the library and
 cannot import or upload anything themselves. `/admin` holds the clip studio,
@@ -40,19 +42,17 @@ and day streak — are computed from your takes; a streak counts days practised 
 a row, and practising yesterday but not yet today still counts, since the day is
 not over.
 
-The leaderboard ranks you among sample learners, labelled as such on screen:
-there is no backend and so no other learners, and inventing them silently would
-read as a social feature that does not exist. Your row is the real one. Below it
-sit the clips an admin has featured in the studio.
+The leaderboard is ranked by the server from everyone's scored takes. There are
+no filler learners: an app nobody has scored in ranks nobody, and one with a
+single learner shows one row. Below it sit the clips an admin has featured.
 
 ## Memory practice
 
 The Vocabulary screen opens a flashcard session over the words you have
-collected. Words you have not learnt come first, and within a status the ones
-you have not seen for longest lead, so a second session is not the same cards in
-the same order. Known words stay in the deck rather than being dropped — they
-are what you are trying not to forget. Answering a card sets the word's status
-and records that it came up.
+collected by tapping them while practising. Words you have not learnt come
+first, and within a status the ones you have not seen for longest lead, so a
+second session is not the same cards in the same order. Known words stay in the
+deck rather than being dropped — they are what you are trying not to forget.
 
 ## Clip studio
 
@@ -60,73 +60,66 @@ Upload a recording and it is cut at the pauses between sentences rather than on
 a fixed grid, because a clip cut mid-word is useless to shadow
 (`src/lib/audio/segment.ts`: an RMS envelope, a noise floor taken from the
 quietest tenth of the recording, and a split at the quietest moment of anything
-still over the limit). The proposal is a starting point — boundaries drag,
-clips merge and delete, and each one gets its line of text — and publishing
-stores each cut as its own clip with its own audio.
+still over the limit). The proposal is a starting point — boundaries drag, clips
+merge and delete, and each one gets its line of text — and publishing stores each
+cut as its own clip with its own audio.
 
-Each cut gets a name, and the batch gets a playlist and categories, which is
-what the library's search and filters run on. The studio's second tab lists
-everything already published so a clip can be renamed, re-tagged, moved to
-another playlist, featured on the dashboard or deleted after the fact — deleting a clip drops the practice
-history that only made sense alongside it.
+Each cut gets a name, and the batch gets a playlist and categories, which is what
+the library's search and filters run on. The studio's second tab lists everything
+already published so a clip can be renamed, re-tagged, moved to another playlist,
+featured on the dashboard or deleted — deleting a clip drops the practice history
+that only made sense alongside it, and the audio with it.
 
-Fetching a YouTube URL needs a server to download and strip the audio, so that
-button is there and disabled until there is a backend behind it.
+Those editors keep a draft and save when they lose focus. They used to call the
+store on every keystroke, which was free against localStorage and is a request
+per character against an API.
+
+The studio is open to the addresses in the server's `ADMIN_EMAILS` and to nobody
+else. `RequireAdmin` only hides the screen; every admin endpoint checks again.
 
 ## Clip length
 
 A clip is one line to shadow, capped at `MAX_CLIP_SECONDS` (6) in
 `src/data/types.ts`. Recording stops itself at the cap with a countdown on
-screen, the studio never proposes a longer cut, and `addClips` refuses one
+screen, the studio never proposes a longer cut, and the server refuses one
 regardless of what the studio's editing allowed.
 
 ## Scoring
 
-Takes are measured, not simulated. `src/lib/dsp/` tracks fundamental frequency with YIN
-(40ms frames every 10ms), expresses it in semitones around each speaker's own median — so
-a low voice shadowing a high one is judged on delivery, not register — and aligns the two
-contours with banded dynamic time warping. From that:
+Takes are measured, not simulated — by the Python worker in `../scoring`, which
+tracks fundamental frequency with YIN, expresses it in semitones around each
+speaker's own median, and aligns the two contours with banded dynamic time
+warping. `../scoring/README.md` has the detail, including why the scores match
+the browser implementation this replaced exactly rather than approximately.
 
-- **Intonation** — mean semitone distance between the contours on a shared time axis.
-  Measured on shape rather than on the warped alignment, so a monotone reading cannot hide
-  behind time warping.
-- **Rhythm** — how far the alignment had to wander from the diagonal, plus how closely the
-  two utterances match in length.
-- **Stress** — correlation of the two loudness envelopes at the aligned points.
-- **Variation** — the ratio of the two pitch ranges (10th–90th percentile).
-
-The arithmetic runs in a Web Worker (`src/lib/dsp/analyse.worker.ts`), which also
-keeps the source clip's contour so it is tracked once per clip rather than once
-per take. A minute-long take measures in well under a second without the UI
-stalling; only the decode, which Web Audio can do on the main thread only, runs
-outside the worker.
-
-Scoring needs the clip's original audio to compare against. Clips published from
-the studio carry theirs, so takes against them are scored. The sample clips that
-ship with the app have none: a take against one is still measured and its contour
-drawn, but no match score is invented for it.
-
-## What is still a stand-in
-
-Sign-in is a local flag rather than real Google OAuth, clip import records the URL without
-fetching anything from it, and the seeded practice history keeps illustrative scores and
-curves (marked `sample` on the Analysis chart, against `measured` for real takes).
+A take is uploaded, comes back `pending`, and the app polls until it settles.
+Three outcomes, and the screens keep them apart: still measuring, measured and
+scored, or measured and unscoreable — a recording with no speech in it, or a clip
+that has no source audio to compare against. The starter clips have none, so a
+take against one is kept without a score being invented for it.
 
 ## Tests
 
-`test/` checks the cut proposal and the library search against known inputs, and
-the signal processing against synthesised tones whose melody is
-known in advance (`test/tone.ts`): a steady tone's fundamental is recovered, the
-same melody an octave down still scores full marks, a monotone reading of a
-melodic line is marked down, and a slow delivery keeps its intonation while
-losing rhythm. `e2e/` drives the real browser with a WAV file fed in as the
-microphone, covering record → measure → score and the shared dub timeline.
+`test/` checks the cut proposal, the library search, the flashcard deck, the
+streak arithmetic and the analysis chart against known inputs.
+
+`e2e/` drives the real browser against the real stack: Playwright starts the Go
+API, the Python worker and the dev server, on a database of the run's own, with a
+WAV file fed in as the microphone. It covers record → score, the shared dub
+timeline, the studio's cut-and-publish flow, admin access from both sides, and
+two learners on one leaderboard. Sign-in goes through the whole OAuth route with
+only the provider faked (`AUTH_FAKE=1`), so the state parameter, the PKCE cookie
+and `ADMIN_EMAILS` are all exercised.
+
+Set `CHROMIUM_PATH` to reuse a browser already on the machine, and
+`TEST_DATABASE_URL` to point at a Postgres the run may create a database in.
+
+The tests share one server and reset it between each other through a route that
+exists only when `AUTH_FAKE=1` — see `../server/README.md`.
 
 ## Data
 
-`src/repository/index.ts` is the data seam. Today `LocalRepository` keeps records in
-localStorage and `src/lib/blobStore.ts` keeps recorded audio and the avatar in IndexedDB.
-Pointing the app at a backend means implementing `Repository` against the API and swapping
-the export at the bottom of that file; screens talk only to the store.
-
-Seed content (clips, captions, vocabulary, practice suggestions) is in `src/data/seed.ts`.
+`src/repository/index.ts` is the only module that knows the shape of the API;
+screens talk to the store in `src/store/`. Writes are per record rather than per
+collection — the localStorage version saved whole arrays, which two devices would
+have used to overwrite each other.

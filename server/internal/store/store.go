@@ -42,3 +42,13 @@ func (s *Store) inTx(ctx context.Context, fn func(pgx.Tx) error) error {
 	}
 	return tx.Commit(ctx)
 }
+
+// TruncateAll empties every table. Used by the test-only reset route; `cascade`
+// covers the foreign keys, and restarting the identities keeps job ids
+// predictable across a test run.
+func (s *Store) TruncateAll(ctx context.Context) error {
+	_, err := s.pool.Exec(ctx, `
+		truncate users, clips, takes, vocab_words, scoring_jobs, sessions
+		restart identity cascade`)
+	return err
+}

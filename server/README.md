@@ -10,6 +10,9 @@ cp .env.example .env     # then fill it in; see the OAuth note below
 docker compose up
 ```
 
+That brings up Postgres, MinIO, the API and the scoring worker, and publishes a
+starter library once. The React app is separate — `npm run dev` in `../app`.
+
 Without Docker, against a Postgres you already have:
 
 ```bash
@@ -67,6 +70,21 @@ stream — `take.scored` feeding a leaderboard, analytics and an ML dataset at
 once — or when replay matters. The enqueue path is deliberately narrow so that
 swap touches one file.
 
+## Serving audio
+
+With `S3_ENDPOINT` set, the browser fetches audio straight from MinIO through a
+presigned URL and the bytes never pass through this process. With `DISK_ROOT`
+instead, `GET /files/{bucket}/*` serves them behind an HMAC signature that
+`internal/auth/sign.go` produces and checks.
+
+Two things about that route are easy to get wrong and were: the path is a
+wildcard rather than `{key}`, because object keys contain slashes and a single
+segment never matches one; and the response sets `Content-Type` from the key's
+extension, because disk storage keeps no metadata and an `<audio>` element given
+a response it cannot type refuses to play it — reporting only "The element has no
+supported sources", which names neither the element nor the reason. Both are
+covered by tests in `internal/api/clips_test.go`.
+
 ## Layout
 
 ```
@@ -78,3 +96,22 @@ internal/auth      OAuth providers, session cookies, HMAC signing
 internal/storage   Storage interface: S3/MinIO, or a directory on disk
 internal/api       routing and handlers
 ```
+
+## The test-only reset route
+
+`POST /test/reset` empties every table and republishes the starter library. It is
+registered **only when `AUTH_FAKE=1`** — a deployment that has not set that flag
+does not have the route at all, which is a stronger guarantee than a check inside
+the handler. `TestTheResetRouteIsAbsentWithoutTheFakeProvider` asserts it.
+
+The browser tests need it because they share one server: without a reset between
+them they would see each other's clips, takes and vocabulary.
+
+## Seeding
+
+`go run ./cmd/seed` publishes a small starter library so a fresh install is not
+an empty screen. Those clips carry lines and IPA but no source audio — there is
+no recording to ship with the code — so a take against one is kept and its
+contour drawn, without a score being invented for it. Upload audio in the clip
+studio to make them scoreable. Running the seeder twice does nothing the second
+time.

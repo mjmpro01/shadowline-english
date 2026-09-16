@@ -21,11 +21,12 @@ export interface Repository {
   updateClip(clipId: string, patch: ClipPatch): Promise<Video>
   deleteClip(clipId: string): Promise<void>
 
+  // DELETE /api/takes/{id} exists on the server and is covered by its tests;
+  // nothing in the app offers it yet, so it is not plumbed through here.
   listTakes(): Promise<Take[]>
   createTake(clipId: string, audio: Blob): Promise<Take>
   getTake(takeId: string): Promise<Take>
   takeAudioURL(takeId: string): Promise<string | null>
-  deleteTake(takeId: string): Promise<void>
 
   listVocab(): Promise<VocabWord[]>
   createVocabWord(word: NewVocabWord): Promise<VocabWord>
@@ -137,9 +138,6 @@ class ApiRepository implements Repository {
     return url
   }
 
-  deleteTake(takeId: string) {
-    return api.del(`/api/takes/${takeId}`)
-  }
 
   listVocab() {
     return api.get<VocabWord[]>('/api/vocab')

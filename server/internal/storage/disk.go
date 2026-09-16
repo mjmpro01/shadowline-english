@@ -73,7 +73,13 @@ func (d *Disk) SignedGetURL(ctx context.Context, bucket Bucket, key string, ttl 
 		return "", err
 	}
 	expires := time.Now().Add(ttl)
-	return fmt.Sprintf("%s/%s/%s?%s", d.BaseURL, bucket, url.PathEscape(key), d.Sign(bucket, key, expires)), nil
+	// Each segment is escaped on its own: PathEscape on the whole key would turn
+	// its slashes into %2F, and the route matches path segments.
+	segments := strings.Split(key, "/")
+	for i, segment := range segments {
+		segments[i] = url.PathEscape(segment)
+	}
+	return fmt.Sprintf("%s/%s/%s?%s", d.BaseURL, bucket, strings.Join(segments, "/"), d.Sign(bucket, key, expires)), nil
 }
 
 func (d *Disk) Delete(ctx context.Context, bucket Bucket, key string) error {

@@ -20,69 +20,6 @@ import (
 	"github.com/shadowline/server/internal/store"
 )
 
-var clips = []store.NewClip{
-	{
-		Title:           "Actually, I think it's brilliant",
-		Source:          "Starter samples",
-		Playlist:        "Starter samples",
-		Categories:      []string{"interview", "chat show"},
-		TimestampLabel:  "0:00–0:03",
-		DurationSeconds: 3.2,
-		Summary:         "A short opinion, with the rise landing on the adjective.",
-		Captions: []store.CaptionLine{
-			{Text: "Actually, I think it's brilliant.", IPA: "/ˈæktʃuəli aɪ θɪŋk ɪts ˈbrɪljənt/"},
-		},
-	},
-	{
-		Title:           "It's not about winning",
-		Source:          "Starter samples",
-		Playlist:        "Starter samples",
-		Categories:      []string{"speech", "daily"},
-		TimestampLabel:  "0:00–0:04",
-		DurationSeconds: 4.1,
-		Summary:         "Two balanced halves — the contrast is carried by stress, not volume.",
-		Captions: []store.CaptionLine{
-			{Text: "It's not about winning, it's about showing up.", IPA: "/ɪts nɒt əˈbaʊt ˈwɪnɪŋ ɪts əˈbaʊt ˈʃəʊɪŋ ʌp/"},
-		},
-	},
-	{
-		Title:           "That's a really good question",
-		Source:          "Starter samples",
-		Playlist:        "Starter samples",
-		Categories:      []string{"interview", "daily"},
-		TimestampLabel:  "0:00–0:03",
-		DurationSeconds: 2.8,
-		Summary:         "Falling intonation on a statement that sounds like praise.",
-		Captions: []store.CaptionLine{
-			{Text: "That's a really good question, honestly.", IPA: "/ðæts ə ˈrɪəli ɡʊd ˈkwestʃən ˈɒnɪstli/"},
-		},
-	},
-	{
-		Title:           "One step at a time",
-		Source:          "Starter samples",
-		Playlist:        "Everyday phrases",
-		Categories:      []string{"daily"},
-		TimestampLabel:  "0:00–0:03",
-		DurationSeconds: 2.6,
-		Summary:         "Even rhythm across five short words — easy to rush.",
-		Captions: []store.CaptionLine{
-			{Text: "Let's just take it one step at a time.", IPA: "/lets dʒʌst teɪk ɪt wʌn step ət ə taɪm/"},
-		},
-	},
-	{
-		Title:           "It was worth it",
-		Source:          "Starter samples",
-		Playlist:        "Everyday phrases",
-		Categories:      []string{"daily"},
-		TimestampLabel:  "0:00–0:03",
-		DurationSeconds: 3.0,
-		Summary:         "A reversal mid-sentence: the pitch resets after \"but\".",
-		Captions: []store.CaptionLine{
-			{Text: "It took a while, but it was worth it.", IPA: "/ɪt tʊk ə waɪl bʌt ɪt wəz wɜːθ ɪt/"},
-		},
-	},
-}
-
 func main() {
 	feature := flag.Int("feature", 2, "how many of the seeded clips to feature on the dashboard")
 	flag.Parse()
@@ -116,6 +53,7 @@ func main() {
 		return
 	}
 
+	clips := store.StarterClips()
 	for i, clip := range clips {
 		clip.Featured = i < *feature
 		created, err := st.CreateClip(ctx, clip, uuid.Nil)

@@ -179,10 +179,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return latest
   }, [])
 
-  const deleteTake = useCallback(async (takeId: string) => {
-    await repository.deleteTake(takeId)
-    setData((prev) => ({ ...prev, takes: prev.takes.filter((t) => t.id !== takeId) }))
-  }, [])
 
   /**
    * Adds the word, or removes it if it is already collected.
@@ -265,7 +261,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateClip,
       deleteClip,
       addTake,
-      deleteTake,
       toggleVocabWord,
       setVocabStatus,
       reviewWord,
@@ -283,7 +278,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateClip,
       deleteClip,
       addTake,
-      deleteTake,
       toggleVocabWord,
       setVocabStatus,
       reviewWord,

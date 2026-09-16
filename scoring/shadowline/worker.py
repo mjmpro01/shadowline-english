@@ -32,6 +32,9 @@ log = logging.getLogger("shadowline.worker")
 # database when nobody is practising.
 IDLE_SLEEP = 1.0
 
+# Ceiling on the wait between reconnection attempts.
+MAX_BACKOFF = 30.0
+
 
 class Unscoreable(Exception):
     """The take cannot be scored, and retrying will not change that."""
@@ -108,19 +111,28 @@ def main() -> int:
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
 
-    # autocommit so each transaction below is exactly the one it declares; the
-    # claim must commit before the audio is fetched, or the row stays locked for
-    # the length of the scoring.
-    with psycopg.connect(dsn, autocommit=True) as conn:
-        queue = Queue(conn)
-        log.info("worker ready")
-        while running:
-            try:
-                if not run_once(queue, blobs):
-                    time.sleep(IDLE_SLEEP)
-            except psycopg.OperationalError:
-                log.exception("database connection lost")
-                return 1
+    log.info("worker ready")
+    backoff = 1.0
+    while running:
+        try:
+            # autocommit so each transaction below is exactly the one it
+            # declares; the claim must commit before the audio is fetched, or
+            # the row stays locked for the length of the scoring.
+            with psycopg.connect(dsn, autocommit=True) as conn:
+                queue = Queue(conn)
+                backoff = 1.0
+                while running:
+                    if not run_once(queue, blobs):
+                        time.sleep(IDLE_SLEEP)
+        except psycopg.OperationalError as err:
+            # A database restart or a dropped connection should not end the
+            # worker: it would stop scoring until something restarted it, and
+            # every take recorded in the meantime would sit pending.
+            if not running:
+                break
+            log.warning("database unavailable (%s) — retrying in %.0fs", err, backoff)
+            time.sleep(backoff)
+            backoff = min(backoff * 2, MAX_BACKOFF)
     return 0
 
 

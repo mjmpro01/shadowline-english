@@ -1,0 +1,7 @@
+
+# Ignore the archived reference scorer and test caches when building the worker.
+reference/
+tests/
+__pycache__/
+*.pyc
+.pytest_cache/
