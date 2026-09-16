@@ -14,6 +14,7 @@ export interface Repository {
   saveVocab(vocab: VocabWord[]): Promise<void>
   saveProfile(profile: Profile): Promise<void>
   saveSession(loggedIn: boolean): Promise<void>
+  saveAdmin(isAdmin: boolean): Promise<void>
 }
 
 const KEYS = {
@@ -22,6 +23,7 @@ const KEYS = {
   vocab: 'shadowline.vocab',
   profile: 'shadowline.profile',
   session: 'shadowline.session',
+  admin: 'shadowline.admin',
 }
 
 function read<T>(key: string, fallback: T): T {
@@ -73,6 +75,7 @@ class LocalRepository implements Repository {
       vocab: read(KEYS.vocab, SEED_VOCAB),
       profile: read<Profile>(KEYS.profile, DEFAULT_PROFILE),
       loggedIn: read(KEYS.session, false),
+      isAdmin: read(KEYS.admin, false),
     }
   }
 
@@ -94,6 +97,10 @@ class LocalRepository implements Repository {
 
   async saveSession(loggedIn: boolean) {
     write(KEYS.session, loggedIn)
+  }
+
+  async saveAdmin(isAdmin: boolean) {
+    write(KEYS.admin, isAdmin)
   }
 }
 

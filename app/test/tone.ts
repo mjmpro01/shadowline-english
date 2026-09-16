@@ -50,3 +50,19 @@ export const MELODIES = {
 export function silence(duration = 1): Float32Array {
   return new Float32Array(Math.floor(RATE * duration))
 }
+
+/** Speech-like bursts separated by silence, as a recording of several lines is. */
+export function lines(spec: { speech: number; pause: number; melody?: ToneOptions['melody'] }[]): Float32Array {
+  const parts = spec.flatMap(({ speech, pause, melody = MELODIES.wide }) => [
+    tone({ melody, duration: speech, syllables: Math.max(1, Math.round(speech * 2)) }),
+    new Float32Array(Math.round(pause * RATE)),
+  ])
+  const total = parts.reduce((sum, part) => sum + part.length, 0)
+  const out = new Float32Array(total)
+  let offset = 0
+  for (const part of parts) {
+    out.set(part, offset)
+    offset += part.length
+  }
+  return out
+}

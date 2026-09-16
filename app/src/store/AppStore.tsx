@@ -3,10 +3,14 @@ import { LOOKUP } from '../data/seed'
 import { MAX_CLIP_SECONDS, type AppData, type Take, type Video, type VocabStatus, type VocabWord } from '../data/types'
 import { getBlob, invalidateBlobUrl, putBlob } from '../lib/blobStore'
 import { analyseTake } from '../lib/dsp/analyse'
-import { decodeToMono } from '../lib/dsp/pitch'
 import { normalizeWord } from '../lib/text'
 import { repository } from '../repository'
-import { AppContext, type Store, type VideoStats } from './context'
+import { AppContext, type NewClip, type Store, type VideoStats } from './context'
+
+function clock(seconds: number): string {
+  const whole = Math.max(0, Math.round(seconds))
+  return `${Math.floor(whole / 60)}:${(whole % 60).toString().padStart(2, '0')}`
+}
 
 const EMPTY: AppData = {
   videos: [],
@@ -14,6 +18,7 @@ const EMPTY: AppData = {
   vocab: [],
   profile: { name: '', email: '', avatarKey: null },
   loggedIn: false,
+  isAdmin: false,
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -43,26 +48,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setData((prev) => ({ ...prev, loggedIn: false }))
   }, [])
 
-  const importVideo = useCallback((url: string): Video => {
-    const trimmed = url.trim()
-    const video: Video = {
-      id: `imp-${Date.now()}`,
-      title: trimmed.replace(/^https?:\/\//, '').slice(0, 60) || 'Imported clip',
-      source: 'Imported from URL',
-      timestamp: '00:00–00:06',
-      duration: '0:06',
-      summary: 'No takes recorded yet — practice this clip to see your pitch analysis.',
-      captions: [
-        { text: 'Tap record and shadow the speaker line by line.', ipa: '/tæp rɪˈkɔːd ənd ˈʃædəʊ ðə ˈspiːkə/' },
-      ],
-      sourceAudioKey: null,
+  const setAdmin = useCallback((isAdmin: boolean) => {
+    void repository.saveAdmin(isAdmin)
+    setData((prev) => ({ ...prev, isAdmin }))
+  }, [])
+
+  const addClips = useCallback(async (clips: NewClip[]) => {
+    const created: Video[] = []
+    // A clip is one line: nothing longer reaches the library, whatever the
+    // studio's UI allowed while the cuts were being adjusted.
+    for (const [index, clip] of clips.filter((c) => c.end - c.start <= MAX_CLIP_SECONDS + 0.01).entries()) {
+      const id = `clip-${Date.now()}-${index}`
+      const key = `source-${id}`
+      await putBlob(key, clip.audio)
+      created.push({
+        id,
+        title: clip.line || `Untitled line ${index + 1}`,
+        source: clip.source,
+        timestamp: `${clock(clip.start)}–${clock(clip.end)}`,
+        duration: clock(clip.end - clip.start),
+        summary: 'No takes recorded yet — practice this clip to see your pitch analysis.',
+        captions: [{ text: clip.line, ipa: clip.ipa }],
+        sourceAudioKey: key,
+      })
     }
     setData((prev) => {
-      const videos = [video, ...prev.videos]
+      const videos = [...created, ...prev.videos]
       void repository.saveVideos(videos)
       return { ...prev, videos }
     })
-    return video
   }, [])
 
   const addTake = useCallback(async (videoId: string, audio: Blob | null): Promise<Take> => {
@@ -95,31 +109,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return { ...prev, takes }
     })
     return take
-  }, [])
-
-  const attachSourceAudio = useCallback<Store['attachSourceAudio']>(async (videoId, audio) => {
-    let seconds: number
-    try {
-      const decoded = await decodeToMono(audio)
-      seconds = decoded.samples.length / decoded.sampleRate
-    } catch {
-      return { ok: false, reason: "That file couldn't be read as audio" }
-    }
-    if (seconds > MAX_CLIP_SECONDS + 0.5) {
-      return {
-        ok: false,
-        reason: `Clips are one line long — trim this to ${MAX_CLIP_SECONDS} seconds or less (it is ${seconds.toFixed(1)}s)`,
-      }
-    }
-
-    const key = `source-${videoId}-${Date.now()}`
-    await putBlob(key, audio)
-    setData((prev) => {
-      const videos = prev.videos.map((v) => (v.id === videoId ? { ...v, sourceAudioKey: key } : v))
-      void repository.saveVideos(videos)
-      return { ...prev, videos }
-    })
-    return { ok: true }
   }, [])
 
   /** Re-measures an existing take — used once a clip finally has its original audio. */
@@ -223,9 +212,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ready,
       login,
       logout,
-      importVideo,
+      setAdmin,
+      addClips,
       addTake,
-      attachSourceAudio,
       scoreTake,
       toggleVocabWord,
       setVocabStatus,
@@ -237,9 +226,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ready,
       login,
       logout,
-      importVideo,
+      setAdmin,
+      addClips,
       addTake,
-      attachSourceAudio,
       scoreTake,
       toggleVocabWord,
       setVocabStatus,

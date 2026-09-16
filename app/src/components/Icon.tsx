@@ -65,6 +65,15 @@ const PATHS: Record<string, React.ReactNode> = {
   ),
   circle: <circle cx="12" cy="12" r="10" />,
   square: <rect x="6" y="6" width="12" height="12" rx="2" />,
+  scissors: (
+    <>
+      <circle cx="6" cy="6" r="3" />
+      <circle cx="6" cy="18" r="3" />
+      <line x1="20" y1="4" x2="8.12" y2="15.88" />
+      <line x1="14.47" y1="14.48" x2="20" y2="20" />
+      <line x1="8.12" y1="8.12" x2="12" y2="12" />
+    </>
+  ),
 }
 
 export type IconName = keyof typeof PATHS

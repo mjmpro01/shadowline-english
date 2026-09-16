@@ -1,5 +1,14 @@
 import { createContext, useContext } from 'react'
-import type { AppData, Take, Video, VocabStatus } from '../data/types'
+import type { AppData, Take, VocabStatus } from '../data/types'
+
+export interface NewClip {
+  line: string
+  ipa: string
+  source: string
+  start: number
+  end: number
+  audio: Blob
+}
 
 export interface VideoStats {
   takes: Take[]
@@ -14,9 +23,9 @@ export interface Store {
   ready: boolean
   login: () => void
   logout: () => void
-  importVideo: (url: string) => Video
+  setAdmin: (isAdmin: boolean) => void
+  addClips: (clips: NewClip[]) => Promise<void>
   addTake: (videoId: string, audio: Blob | null) => Promise<Take>
-  attachSourceAudio: (videoId: string, audio: Blob) => Promise<{ ok: true } | { ok: false; reason: string }>
   scoreTake: (takeId: string) => Promise<void>
   toggleVocabWord: (raw: string, videoId: string | null) => { word: string; status: 'added' | 'removed' | 'known' }
   setVocabStatus: (id: string, status: VocabStatus) => void

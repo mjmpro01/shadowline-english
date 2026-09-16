@@ -210,7 +210,7 @@ export function AnalysisScreen() {
           <div style={{ fontSize: 14, opacity: 0.8 }}>
             {video.sourceAudioKey
               ? 'This clip now has its original audio — score this take against it.'
-              : "Scores compare your delivery with the clip's original audio. Attach it on the Practice screen to measure this take."}
+              : "Scores compare your delivery with the clip's original audio, which this clip is still missing."}
           </div>
           {video.sourceAudioKey ? (
             <button

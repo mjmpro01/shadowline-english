@@ -26,12 +26,29 @@ machine instead of Playwright's own download.
 Login → Library → Practice → Analysis → Dub Review, plus Vocabulary, Progress and Profile.
 Navigation is a collapsible sidebar on desktop and a bottom tab bar on phones.
 
+Clips are curated, not collected: learners practise what is in the library and
+cannot import or upload anything themselves. `/admin` holds the clip studio,
+where a recording is cut into lines — see below.
+
+## Clip studio
+
+Upload a recording and it is cut at the pauses between sentences rather than on
+a fixed grid, because a clip cut mid-word is useless to shadow
+(`src/lib/audio/segment.ts`: an RMS envelope, a noise floor taken from the
+quietest tenth of the recording, and a split at the quietest moment of anything
+still over the limit). The proposal is a starting point — boundaries drag,
+clips merge and delete, and each one gets its line of text — and publishing
+stores each cut as its own clip with its own audio.
+
+Fetching a YouTube URL needs a server to download and strip the audio, so that
+button is there and disabled until there is a backend behind it.
+
 ## Clip length
 
 A clip is one line to shadow, capped at `MAX_CLIP_SECONDS` (6) in
 `src/data/types.ts`. Recording stops itself at the cap with a countdown on
-screen, and source audio longer than that is refused rather than silently
-trimmed.
+screen, the studio never proposes a longer cut, and `addClips` refuses one
+regardless of what the studio's editing allowed.
 
 ## Scoring
 
@@ -54,10 +71,10 @@ per take. A minute-long take measures in well under a second without the UI
 stalling; only the decode, which Web Audio can do on the main thread only, runs
 outside the worker.
 
-Scoring needs the clip's original audio to compare against, and this repo ships no media.
-Attach a file on the Practice screen ("Attach source audio") and takes are scored against
-it; without one, a take is still measured and its contour drawn, but no match score is
-invented — the Analysis screen offers to score it once a source exists.
+Scoring needs the clip's original audio to compare against. Clips published from
+the studio carry theirs, so takes against them are scored. The sample clips that
+ship with the app have none: a take against one is still measured and its contour
+drawn, but no match score is invented for it.
 
 ## What is still a stand-in
 

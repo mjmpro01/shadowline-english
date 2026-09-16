@@ -1,6 +1,6 @@
 import { Navigate, createBrowserRouter } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
-import { RequireAuth } from './components/RequireAuth'
+import { RequireAdmin, RequireAuth } from './components/RequireAuth'
 import { AnalysisScreen } from './screens/AnalysisScreen'
 import { DubScreen } from './screens/DubScreen'
 import { LibraryScreen } from './screens/LibraryScreen'
@@ -28,6 +28,7 @@ export const router = createBrowserRouter([
       { path: 'vocabulary', element: <VocabularyScreen /> },
       { path: 'progress', element: <ProgressScreen /> },
       { path: 'profile', element: <ProfileScreen /> },
+      { path: 'admin', element: <RequireAdmin /> },
       { path: '*', element: <Navigate to="/library" replace /> },
     ],
   },

@@ -7,7 +7,7 @@ import { useBlobUrl } from '../lib/useAudioUrl'
 import { useApp } from '../store/context'
 
 export function ProfileScreen() {
-  const { data, logout, updateProfile } = useApp()
+  const { data, logout, setAdmin, updateProfile } = useApp()
   const navigate = useNavigate()
   const avatarUrl = useBlobUrl(data.profile.avatarKey)
 
@@ -59,6 +59,23 @@ export function ProfileScreen() {
             <span className="mono">{stat.value}</span>
           </div>
         ))}
+      </div>
+
+      <div className="card elev-sm stack gap-2" style={{ width: '100%', textAlign: 'left' }}>
+        <div className="card-kicker">Clip studio</div>
+        <div className="row between gap-3">
+          <span style={{ fontSize: 13, opacity: 0.75 }}>
+            Cut recordings into clips for the library. Local switch only — real access control comes with the backend.
+          </span>
+          <button
+            type="button"
+            className={`btn ${data.isAdmin ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ flexShrink: 0 }}
+            onClick={() => setAdmin(!data.isAdmin)}
+          >
+            {data.isAdmin ? 'On' : 'Off'}
+          </button>
+        </div>
       </div>
 
       <div className="row gap-2" style={{ width: '100%' }}>

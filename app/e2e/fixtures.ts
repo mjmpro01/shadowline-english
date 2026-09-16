@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { MELODIES, RATE, tone } from '../test/tone'
+import { lines, MELODIES, RATE, tone } from '../test/tone'
 
 /**
  * Chromium reads the fake microphone from a WAV file given at launch, so the
@@ -38,6 +38,9 @@ export const SOURCE_CLIP = join(FIXTURE_DIR, 'source-clip.wav')
 export const FLAT_CLIP = join(FIXTURE_DIR, 'flat-clip.wav')
 /** Longer than a clip is allowed to be. */
 export const OVERLONG_CLIP = join(FIXTURE_DIR, 'overlong-clip.wav')
+/** A recording of four lines with pauses between them, for the clip studio.
+    Lines alternate between melodic and flat so the published clips differ. */
+export const LESSON = join(FIXTURE_DIR, 'lesson.wav')
 /** A decent shadow of it, in a lower voice, fed in as the microphone. */
 export const USER_TAKE = join(FIXTURE_DIR, 'user-take.wav')
 
@@ -45,5 +48,14 @@ export function writeAudioFixtures(): void {
   writeWav(SOURCE_CLIP, tone({ melody: MELODIES.wide }))
   writeWav(FLAT_CLIP, tone({ melody: MELODIES.flat }))
   writeWav(OVERLONG_CLIP, tone({ melody: MELODIES.wide, duration: 10 }))
+  writeWav(
+    LESSON,
+    lines([
+      { speech: 3.2, pause: 0.55, melody: MELODIES.wide },
+      { speech: 2.4, pause: 0.55, melody: MELODIES.flat },
+      { speech: 4, pause: 0.55, melody: MELODIES.wide },
+      { speech: 2.8, pause: 0.55, melody: MELODIES.flat },
+    ]),
+  )
   writeWav(USER_TAKE, tone({ melody: (p) => MELODIES.wide(p) * 0.85 + 0.3, baseHz: 150 }))
 }

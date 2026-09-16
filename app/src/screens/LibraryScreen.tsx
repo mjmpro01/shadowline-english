@@ -1,39 +1,15 @@
-import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from '../components/Icon'
 import { colorFor, sparkPoints } from '../lib/score'
 import { useApp } from '../store/context'
 
 export function LibraryScreen() {
-  const { data, importVideo, statsFor } = useApp()
-  const [url, setUrl] = useState('')
+  const { data, statsFor } = useApp()
   const navigate = useNavigate()
-
-  const submitImport = (e: FormEvent) => {
-    e.preventDefault()
-    if (!url.trim()) return
-    const video = importVideo(url)
-    setUrl('')
-    navigate(`/library/${video.id}/practice`)
-  }
 
   return (
     <div className="stack gap-6">
       <h1>Library</h1>
-
-      <form className="row gap-2 wrap" onSubmit={submitImport}>
-        <input
-          type="url"
-          className="input"
-          placeholder="Paste a YouTube Shorts / clip URL"
-          style={{ flex: 1, minWidth: 220 }}
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-        />
-        <button type="submit" className="btn btn-primary">
-          Import
-        </button>
-      </form>
 
       <div className="grid-cards">
         {data.videos.map((video) => {

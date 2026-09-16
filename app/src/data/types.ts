@@ -70,6 +70,7 @@ export interface AppData {
   vocab: VocabWord[]
   profile: Profile
   loggedIn: boolean
+  isAdmin: boolean
 }
 
 /** One point of a measured pitch contour: seconds, semitones from the
