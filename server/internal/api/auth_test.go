@@ -89,9 +89,9 @@ func TestCallbackRejectsAnUnsignedState(t *testing.T) {
 	resp := c.do("GET", "/auth/google/start?email=learner@example.com", "", nil)
 	resp.Body.Close()
 
-	expectStatus(t,
+	expectLoginError(t,
 		c.do("GET", "/auth/google/callback?state=forged.9999999999.nope&code=attacker@example.com", "", nil),
-		http.StatusBadRequest)
+		"expired")
 
 	me := expect[meJSON](t, c.do("GET", "/auth/me", "", nil), http.StatusOK)
 	if me.User != nil {
@@ -117,9 +117,57 @@ func TestCallbackRejectsAMissingVerifier(t *testing.T) {
 
 	// A different browser: same signed state, no PKCE cookie.
 	other := h.anonymous()
-	expectStatus(t,
+	expectLoginError(t,
 		other.do("GET", "/auth/google/callback?state="+state+"&code=attacker@example.com", "", nil),
-		http.StatusBadRequest)
+		"browser")
+
+	me := expect[meJSON](t, other.do("GET", "/auth/me", "", nil), http.StatusOK)
+	if me.User != nil {
+		t.Fatalf("a callback with no verifier signed someone in as %s", me.User.Email)
+	}
+}
+
+// Every way the flow can fail ends on the app's own login screen. The callback
+// is a browser navigation, so an error body would leave the learner parked on
+// the API's origin reading JSON, with nothing to click.
+func TestFailedLoginsLandBackOnTheLoginScreen(t *testing.T) {
+	h := newHarness(t)
+
+	t.Run("cancelled at the provider", func(t *testing.T) {
+		c := h.anonymous()
+		resp := c.do("GET", "/auth/google/start?email=learner@example.com", "", nil)
+		resp.Body.Close()
+
+		// Google sends ?error=access_denied and no code when the learner
+		// declines. It is reported before the state check, so the message is
+		// about the choice they made rather than about an expired link.
+		expectLoginError(t,
+			c.do("GET", "/auth/google/callback?error=access_denied", "", nil),
+			"cancelled")
+	})
+
+	t.Run("nothing at all", func(t *testing.T) {
+		expectLoginError(t,
+			h.anonymous().do("GET", "/auth/google/callback", "", nil),
+			"expired")
+	})
+}
+
+// expectLoginError asserts a redirect back to the app's login screen carrying
+// this reason code, and nothing else — a stray path or origin here is how a
+// login failure turns into an open redirect.
+func expectLoginError(t *testing.T, resp *http.Response, reason string) {
+	t.Helper()
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusFound {
+		t.Fatalf("got %d, want 302", resp.StatusCode)
+	}
+	location := resp.Header.Get("Location")
+	want := "http://localhost:5173/login?error=" + reason
+	if location != want {
+		t.Fatalf("redirected to %q, want %q", location, want)
+	}
 }
 
 // The reset route wipes every table. It must not exist outside the tests, and

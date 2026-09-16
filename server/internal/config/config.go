@@ -17,7 +17,9 @@ type Config struct {
 	GoogleClientSecret string
 	OAuthRedirectURL   string
 	SessionSecret      string
-	// AuthFake replaces Google with a local stub. Tests only — refused in production.
+	// AuthFake replaces Google with a local stub. Tests only — Load refuses it
+	// on an https deployment, which is the closest thing to "in production" the
+	// server can tell from its own environment.
 	AuthFake    bool
 	AdminEmails map[string]bool
 
@@ -68,10 +70,31 @@ func Load() (Config, error) {
 	if !c.AuthFake && (c.GoogleClientID == "" || c.GoogleClientSecret == "") {
 		return c, fmt.Errorf("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are required unless AUTH_FAKE=1")
 	}
+	// The stub signs in anyone as any address, so a deployment that reaches it
+	// has no authentication at all. https is the signal: a laptop and a CI
+	// runner both speak http, and anything a real browser reaches over TLS is
+	// somewhere a stranger can also reach. Refusing to start beats a warning in
+	// a log nobody reads.
+	if c.AuthFake {
+		if origin := httpsOrigin(c.AppOrigin, c.OAuthRedirectURL); origin != "" {
+			return c, fmt.Errorf("AUTH_FAKE=1 signs in anyone as any address, and %s is served over https — unset AUTH_FAKE and configure Google OAuth", origin)
+		}
+	}
 	if c.S3Endpoint == "" && c.DiskRoot == "" {
 		return c, fmt.Errorf("set S3_ENDPOINT for object storage, or DISK_ROOT to keep audio on local disk")
 	}
 	return c, nil
+}
+
+// httpsOrigin returns the first of these URLs served over https, or "" when
+// none is. Compared case-insensitively because a scheme is not case-sensitive.
+func httpsOrigin(urls ...string) string {
+	for _, u := range urls {
+		if strings.HasPrefix(strings.ToLower(strings.TrimSpace(u)), "https://") {
+			return u
+		}
+	}
+	return ""
 }
 
 // IsAdmin decides admin rights from the configured list, not from anything the
