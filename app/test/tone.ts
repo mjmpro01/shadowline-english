@@ -15,6 +15,11 @@ export interface ToneOptions {
   /** Amplitude bumps standing in for syllables. */
   syllables?: number
   amplitude?: number
+  /** Broadband noise as a fraction of amplitude. Real rooms are not silent,
+      and a clean tone never makes the pitch tracker work for its answer. */
+  noise?: number
+  /** Fixed seed, so a noisy tone is the same tone every run. */
+  seed?: number
 }
 
 export function tone({
@@ -23,10 +28,13 @@ export function tone({
   duration = 2.4,
   syllables = 4,
   amplitude = 0.25,
+  noise = 0,
+  seed = 1,
 }: ToneOptions = {}): Float32Array {
   const count = Math.floor(RATE * duration)
   const samples = new Float32Array(count)
   let phase = 0
+  const random = mulberry32(seed)
   for (let i = 0; i < count; i++) {
     const progress = i / count
     const hz = baseHz * 2 ** (melody(progress) / 12)
@@ -35,9 +43,21 @@ export function tone({
     let value = 0
     for (let harmonic = 1; harmonic <= 6; harmonic++) value += Math.sin(phase * harmonic) / harmonic
     const envelope = Math.max(0.05, Math.abs(Math.sin(Math.PI * syllables * progress)) ** 1.5)
-    samples[i] = value * amplitude * envelope
+    samples[i] = value * amplitude * envelope + (noise ? (random() * 2 - 1) * amplitude * noise : 0)
   }
   return samples
+}
+
+/** A tiny deterministic generator: Math.random would make a fixture that
+    changes every time it is written, which is not a fixture. */
+function mulberry32(seed: number): () => number {
+  let state = seed >>> 0
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0
+    let t = Math.imul(state ^ (state >>> 15), 1 | state)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
 }
 
 export const MELODIES = {
