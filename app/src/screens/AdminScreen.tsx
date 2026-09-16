@@ -1,16 +1,22 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../components/Icon'
 import { SegmentedControl } from '../components/SegmentedControl'
+import { ThumbnailStrip } from '../components/ThumbnailStrip'
 import { WaveformEditor } from '../components/WaveformEditor'
 import { MAX_CLIP_SECONDS } from '../data/types'
 import { decodeFile, peaks as computePeaks, type Column } from '../lib/audio/decode'
 import { proposeSegments, type Segment } from '../lib/audio/segment'
 import { formatCategories, parseCategories, searchClips } from '../lib/clips'
 import { sliceToWav } from '../lib/audio/wav'
+import { extractFrames } from '../lib/video/frames'
 import { SavedField } from '../components/SavedField'
 import { useApp } from '../store/context'
 
 const WAVEFORM_COLUMNS = 900
+/** Slots on the filmstrip. Enough to show a change of speaker on a wide screen,
+ *  few enough that walking a long file does not take all day — each one is a
+ *  seek, and seeks are the slow part. */
+const FILMSTRIP_SLOTS = 28
 
 interface Line {
   title: string
@@ -25,6 +31,9 @@ interface Loaded {
   sampleRate: number
   duration: number
   peaks: Column[]
+  /** The original file, for the picture. The decoded samples carry only sound. */
+  url: string
+  isVideo: boolean
 }
 
 function clock(seconds: number): string {
@@ -44,6 +53,10 @@ export function AdminScreen() {
   const [manageQuery, setManageQuery] = useState('')
   const fileInput = useRef<HTMLInputElement>(null)
   const player = useRef<HTMLAudioElement>(null)
+  const video = useRef<HTMLVideoElement>(null)
+  /** Identifies the current playback. A second Play while one is running would
+   *  otherwise leave two loops moving the same playhead. */
+  const playing = useRef(0)
 
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [segments, setSegments] = useState<Segment[]>([])
@@ -54,11 +67,22 @@ export function AdminScreen() {
   const [playhead, setPlayhead] = useState<number | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [saved, setSaved] = useState<number | null>(null)
+  const [frames, setFrames] = useState<(string | null)[]>([])
 
   const open = async (file: File | undefined) => {
     if (!file) return
     setBusy('Decoding…')
     setSaved(null)
+    // The strip's slots exist from the moment a video is chosen, so it shows
+    // as an empty filmstrip filling in rather than appearing once it is done.
+    setFrames(file.type.startsWith('video/') ? Array.from({ length: FILMSTRIP_SLOTS }, () => null) : [])
+    // The previous upload's url is dead the moment this one replaces it, and
+    // an unrevoked one holds the whole file in memory until the tab closes.
+    setLoaded((previous) => {
+      if (previous) URL.revokeObjectURL(previous.url)
+      return null
+    })
+    const url = URL.createObjectURL(file)
     try {
       const { samples, sampleRate } = await decodeFile(file)
       const proposal = proposeSegments(samples, sampleRate, { maxSeconds: MAX_CLIP_SECONDS })
@@ -68,6 +92,11 @@ export function AdminScreen() {
         sampleRate,
         duration: samples.length / sampleRate,
         peaks: computePeaks(samples, WAVEFORM_COLUMNS),
+        url,
+        // What the browser says it is, not what the extension claims. An
+        // audio-only file in a video container still has no picture, which the
+        // frame walk discovers and reports as an empty strip.
+        isVideo: file.type.startsWith('video/'),
       })
       setSegments(proposal)
       setLines(proposal.map(() => ({ title: '', text: '', ipa: '', categories: batchCategories })))
@@ -75,6 +104,7 @@ export function AdminScreen() {
       // A playlist per upload is the common case, so name it after the file.
       setPlaylist((current) => current || file.name.replace(/\.[^.]+$/, ''))
     } catch {
+      URL.revokeObjectURL(url)
       setBusy(null)
       setLoaded(null)
       window.alert("That file couldn't be read as audio or video")
@@ -83,8 +113,47 @@ export function AdminScreen() {
     setBusy(null)
   }
 
+  /** Puts the picture on the frame at this moment without starting playback. */
+  const scrub = (seconds: number) => {
+    setPlayhead(seconds)
+    playing.current++
+    const element = video.current
+    if (element) {
+      element.pause()
+      element.currentTime = seconds
+    }
+  }
+
   const playRange = (start: number, end: number) => {
     if (!loaded) return
+    // Any loop already moving the playhead belongs to a previous press.
+    const token = ++playing.current
+
+    // A video is played whole and seeked to, rather than sliced: it carries its
+    // own sound, so picture and audio cannot drift apart the way two separate
+    // players would. Slicing is still what gets published — that is a different
+    // job, and it happens once, at the end.
+    if (loaded.isVideo && video.current) {
+      const element = video.current
+      element.currentTime = start
+      setPlayhead(start)
+      void element.play()
+      const follow = () => {
+        if (playing.current !== token) return
+        // Driven by the video's own clock rather than the wall clock: a frame
+        // it stalls on is a frame the playhead should wait at too.
+        if (element.ended || element.currentTime >= end) {
+          element.pause()
+          setPlayhead(null)
+          return
+        }
+        setPlayhead(element.currentTime)
+        requestAnimationFrame(follow)
+      }
+      requestAnimationFrame(follow)
+      return
+    }
+
     const url = URL.createObjectURL(sliceToWav(loaded.samples, loaded.sampleRate, start, end))
     const audio = player.current
     if (!audio) return
@@ -93,6 +162,10 @@ export function AdminScreen() {
     void audio.play()
     const started = performance.now()
     const follow = () => {
+      if (playing.current !== token) {
+        URL.revokeObjectURL(url)
+        return
+      }
       const elapsed = (performance.now() - started) / 1000
       if (elapsed >= end - start) {
         setPlayhead(null)
@@ -104,6 +177,28 @@ export function AdminScreen() {
     }
     requestAnimationFrame(follow)
   }
+
+  // Walking the file for frames is slow and entirely optional, so it runs after
+  // the cut proposal is already on screen and fills the strip in as it goes.
+  // Abandoning it on a new upload matters: without that, two walks fight over
+  // the same strip and the frames arrive interleaved from both files.
+  useEffect(() => {
+    if (!loaded?.isVideo) return
+    const controller = new AbortController()
+    void extractFrames({
+      url: loaded.url,
+      duration: loaded.duration,
+      count: FILMSTRIP_SLOTS,
+      onFrame: ({ index, src }) =>
+        setFrames((previous) => {
+          const next = previous.slice()
+          next[index] = src
+          return next
+        }),
+      signal: controller.signal,
+    })
+    return () => controller.abort()
+  }, [loaded])
 
   const update = (index: number, patch: Partial<Line>) =>
     setLines((prev) => prev.map((line, i) => (i === index ? { ...line, ...patch } : line)))
@@ -167,10 +262,14 @@ export function AdminScreen() {
     )
     setBusy(null)
     setSaved(segments.length)
-    setLoaded(null)
+    setLoaded((previous) => {
+      if (previous) URL.revokeObjectURL(previous.url)
+      return null
+    })
     setSegments([])
     setLines([])
     setSelected(null)
+    setFrames([])
   }
 
   const tooLong = segments.filter((s) => s.end - s.start > MAX_CLIP_SECONDS + 0.01).length
@@ -321,6 +420,25 @@ export function AdminScreen() {
                 {clock(loaded.duration)} · {segments.length} clips proposed
               </div>
             </div>
+            {loaded.isVideo && (
+              <video
+                ref={video}
+                src={loaded.url}
+                className="studio-video"
+                playsInline
+                controls
+                onSeeked={() => setPlayhead(video.current?.currentTime ?? null)}
+                aria-label="Uploaded recording"
+              />
+            )}
+            {frames.length > 0 && (
+              <ThumbnailStrip
+                frames={frames}
+                duration={loaded.duration}
+                playhead={playhead}
+                onScrub={scrub}
+              />
+            )}
             <WaveformEditor
               peaks={loaded.peaks}
               duration={loaded.duration}
@@ -329,7 +447,7 @@ export function AdminScreen() {
               playhead={playhead}
               onSelect={setSelected}
               onChange={setSegments}
-              onScrub={setPlayhead}
+              onScrub={scrub}
             />
             <div className="row gap-2 wrap">
               <button type="button" className="btn btn-secondary" onClick={() => playRange(0, loaded.duration)}>

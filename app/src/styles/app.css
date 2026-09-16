@@ -389,6 +389,55 @@
 .waveform-handle:hover {
   opacity: 1;
 }
+/* — studio video + filmstrip — */
+.studio-video {
+  width: 100%;
+  /* Big enough to read a mouth on, small enough that the timeline below it is
+     still on screen — cutting is done by looking at both at once. */
+  max-width: 420px;
+  align-self: center;
+  border-radius: var(--radius-md);
+  background: #000;
+  display: block;
+}
+
+
+.filmstrip {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 44px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  cursor: text;
+  user-select: none;
+}
+.filmstrip-cell {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  border-right: 1px solid var(--color-bg);
+}
+.filmstrip-cell:last-child {
+  border-right: none;
+}
+.filmstrip-cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.filmstrip-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--score-good);
+  pointer-events: none;
+}
+
 .waveform-playhead {
   position: absolute;
   top: 0;
