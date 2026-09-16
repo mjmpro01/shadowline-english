@@ -36,17 +36,97 @@ fails, where the database is left behind so you can open it.
 
 ## Google OAuth
 
-`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` come from the Google Cloud Console
-(APIs & Services → Credentials → OAuth client ID, type "Web application", with
-`OAUTH_REDIRECT_URL` as an authorised redirect URI). Nothing here can create
-them. The flow is Authorization Code with PKCE; the verifier rides in a
-short-lived cookie rather than in the state parameter, so the value proving we
-started the exchange never passes through the provider.
+The flow is Authorization Code with PKCE. The verifier rides in a short-lived
+cookie rather than in the state parameter, so the value proving we started the
+exchange never passes through the provider.
+
+### Getting credentials
+
+`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` come from Google. Nothing in this
+project can create them for you, and they are the one part of setup that cannot
+be automated.
+
+Everything below lives under **Google Auth Platform** in the console. Older
+guides — including earlier versions of this one — call it "APIs & Services →
+OAuth consent screen"; Google split that one wizard into the separate
+**Branding**, **Audience**, **Clients** and **Data Access** pages, so search for
+the page names rather than the old path.
+
+1. Open the [Google Cloud Console](https://console.cloud.google.com/) and pick a
+   project, or create one. The project only holds the credential; Shadowline
+   calls no other Google API.
+2. **Google Auth Platform → Branding.** App name, a support email and a
+   developer email. This is what the consent screen shows.
+3. **Google Auth Platform → Audience.** Choose **External** unless everyone
+   signing in shares a Workspace domain, in which case **Internal** skips
+   verification entirely.
+4. While **Audience** says **Testing**, only the addresses listed there under
+   **Test users** can sign in — everyone else is turned away with
+   `access_denied`, which reaches the login screen as `cancelled`. Add your own
+   address first. **Publish app** lifts that limit.
+5. **Google Auth Platform → Data Access** is where scopes are declared, and for
+   Shadowline you can skip it. The server asks for `openid`,
+   `.../auth/userinfo.email` and `.../auth/userinfo.profile`; all three are
+   non-sensitive, so Google grants them from the authorization request itself
+   whether or not they are declared here, and an app that asks for only these
+   can be published without a verification review. Declare them if you want the
+   listing to be explicit — just do not add a fourth, because anything sensitive
+   pulls the app into review.
+6. **Google Auth Platform → Clients → Create client**, application type **Web
+   application**.
+7. Under **Authorised redirect URIs** add the exact value of
+   `OAUTH_REDIRECT_URL` — scheme, host, port and path all have to match what the
+   server sends, or Google answers `redirect_uri_mismatch` and the browser never
+   comes back. For a laptop that is `http://localhost:8080/auth/google/callback`.
+   Add each deployment's URL here too; the list can hold several.
+8. Copy the client ID and secret into `.env`.
+
+### Checking it works
+
+```bash
+cp .env.example .env     # fill in the two Google values, DATABASE_URL, SESSION_SECRET
+docker compose up
+```
+
+Then open the app (`npm run dev` in `../app`) and press **Continue with Google**.
+Three settings have to agree or the round trip breaks:
+
+| Setting | Must be |
+| --- | --- |
+| `OAUTH_REDIRECT_URL` | character-for-character one of the authorised redirect URIs |
+| `APP_ORIGIN` | where the React app is actually served — it is both the CORS origin and where the callback sends the browser afterwards |
+| `ADMIN_EMAILS` | the addresses that get the clip studio, checked at sign-in |
+
+When something goes wrong the callback does not answer with an error body: it is
+a browser navigation, and one would leave the learner on this server's origin
+looking at JSON. It redirects to `APP_ORIGIN/login?error=…` instead, and the
+login screen turns the code into a sentence:
+
+| Code | Means | Usual cause |
+| --- | --- | --- |
+| `expired` | the state was forged or is over ten minutes old | a stale tab, or a callback nobody started |
+| `browser` | no PKCE cookie | the flow began in a different browser or profile |
+| `cancelled` | the provider declined | "Cancel" at Google, or an address not on the test-user list |
+| `failed` | the code would not exchange | wrong client secret, or an unverified Google address |
+| `server` | our fault | see the server log, where the detail stays |
+
+Only `cancelled` and `failed` involve Google at all. A `redirect_uri_mismatch`
+never reaches here — Google shows its own screen before redirecting, which means
+step 6 above does not match `OAUTH_REDIRECT_URL`.
+
+### The fake provider
 
 `AUTH_FAKE=1` replaces Google with a stub that signs anyone in as whatever
 address `?email=` names. It is how the Go and Playwright tests cover the whole
-login path without credentials that cannot exist in CI, and it is refused by
-nothing — so never set it in production.
+login path — state, PKCE, session cookie and `ADMIN_EMAILS` — without
+credentials that cannot exist in CI.
+
+A deployment that reaches it has no authentication at all, so the server refuses
+to start when `AUTH_FAKE=1` and either `APP_ORIGIN` or `OAUTH_REDIRECT_URL` is
+`https://`. TLS is the signal: a laptop and a CI runner both speak http, and
+anything a real browser reaches over https is somewhere a stranger can reach
+too. It is a guard, not a guarantee — an http deployment can still be public, so
+never set the flag outside tests.
 
 Admin is decided by `ADMIN_EMAILS` at sign-in, and every admin route re-checks
 it server-side. The app's `RequireAdmin` route only hides the screen.
