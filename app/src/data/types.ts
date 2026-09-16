@@ -31,6 +31,11 @@ export interface Video {
   durationSeconds: number
   summary: string
   captions: CaptionLine[]
+  /** Whether a cut of the original video exists for this clip.
+   *
+   * False covers two cases the app treats alike: a clip cut from audio, and one
+   * cut from video whose cut has not finished yet. Both play the audio. */
+  hasVideo: boolean
   createdAt: string
 }
 

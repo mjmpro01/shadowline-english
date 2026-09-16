@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/shadowline/server/internal/api"
 	"github.com/shadowline/server/internal/auth"
 	"github.com/shadowline/server/internal/config"
@@ -56,6 +57,36 @@ func (h *harness) withRealProvider() {
 	h.srv.Cfg.AuthFake = false
 	h.srv.Provider = auth.NewGoogleProvider("id", "secret", h.srv.Cfg.OAuthRedirectURL)
 	h.server.Config.Handler = h.srv.Routes()
+}
+
+// cutQueueDepth is how many clips are waiting for their video. The cutter
+// itself is Python, and lives in ../../../scoring; from here the queue is only
+// ever written, so depth is the whole of what these tests can check.
+func (h *harness) cutQueueDepth(t *testing.T) int {
+	t.Helper()
+	n, err := h.store.CutQueueDepth(context.Background())
+	if err != nil {
+		t.Fatalf("read cut queue depth: %v", err)
+	}
+	return n
+}
+
+// attachVideo puts an object where a finished cut would have left one, and
+// records it on the clip the way the cutter does.
+func (h *harness) attachVideo(t *testing.T, clipID string) {
+	t.Helper()
+	ctx := context.Background()
+	id, err := uuid.Parse(clipID)
+	if err != nil {
+		t.Fatalf("parse clip id: %v", err)
+	}
+	key := "clip/" + clipID + "/cut.mp4"
+	if err := h.blobs.Put(ctx, storage.Clips, key, strings.NewReader("cut"), -1, "video/mp4"); err != nil {
+		t.Fatalf("store clip video: %v", err)
+	}
+	if err := h.store.SetClipVideoKey(ctx, id, key); err != nil {
+		t.Fatalf("record clip video key: %v", err)
+	}
 }
 
 // newHarness builds a server on its own freshly created database, so tests

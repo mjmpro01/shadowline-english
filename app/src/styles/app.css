@@ -389,6 +389,16 @@
 .waveform-handle:hover {
   opacity: 1;
 }
+/* The clip being shadowed, when it has a picture. Capped so the controls
+   under it stay on screen without scrolling — a learner is looking at both. */
+.clip-video {
+  width: 100%;
+  max-height: 260px;
+  border-radius: var(--radius-md);
+  background: #000;
+  display: block;
+}
+
 /* — studio video + filmstrip — */
 .studio-video {
   width: 100%;

@@ -1,12 +1,15 @@
-"""Reading audio the API stored, from S3/MinIO or from a directory.
+"""Reading and writing the objects the API stored, from S3/MinIO or a directory.
 
-Mirrors ``server/internal/storage``: the worker only ever reads, so this is the
-smaller half of that interface.
+Mirrors ``server/internal/storage``. Scoring only ever reads, and reads whole
+recordings into memory because a take is a few seconds long. Cutting cannot: a
+source is the entire lecture, so it is streamed to a file for ffmpeg to open,
+and the cut is streamed back the same way.
 """
 
 from __future__ import annotations
 
 import os
+import shutil
 from pathlib import Path
 from typing import Protocol
 
@@ -18,6 +21,12 @@ class ObjectMissing(RuntimeError):
 class Storage(Protocol):
     def get(self, bucket: str, key: str) -> bytes: ...
 
+    def download(self, bucket: str, key: str, dest: Path) -> None:
+        """Streams an object to a file, for something too big to hold in memory."""
+        ...
+
+    def put(self, bucket: str, key: str, path: Path, content_type: str) -> None: ...
+
 
 class DiskStorage:
     """A directory per bucket. Used by tests and by a run with no MinIO."""
@@ -25,17 +34,31 @@ class DiskStorage:
     def __init__(self, root: str | Path) -> None:
         self.root = Path(root)
 
-    def get(self, bucket: str, key: str) -> bytes:
+    def _resolve(self, bucket: str, key: str) -> Path:
         # Keys are written by the API, but a traversal here would be a
-        # file-system read primitive, so it is checked rather than assumed.
+        # file-system primitive, so it is checked rather than assumed.
         path = (self.root / bucket / key).resolve()
         base = (self.root / bucket).resolve()
         if not str(path).startswith(str(base) + os.sep):
             raise ObjectMissing(f"invalid key {key!r}")
+        return path
+
+    def get(self, bucket: str, key: str) -> bytes:
         try:
-            return path.read_bytes()
+            return self._resolve(bucket, key).read_bytes()
         except FileNotFoundError as err:
             raise ObjectMissing(f"{bucket}/{key}") from err
+
+    def download(self, bucket: str, key: str, dest: Path) -> None:
+        try:
+            shutil.copyfile(self._resolve(bucket, key), dest)
+        except FileNotFoundError as err:
+            raise ObjectMissing(f"{bucket}/{key}") from err
+
+    def put(self, bucket: str, key: str, path: Path, content_type: str) -> None:
+        target = self._resolve(bucket, key)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(path, target)
 
 
 class S3Storage:
@@ -61,6 +84,17 @@ class S3Storage:
             if response is not None:
                 response.close()
                 response.release_conn()
+
+    def download(self, bucket: str, key: str, dest: Path) -> None:
+        try:
+            self._client.fget_object(self._buckets[bucket], key, str(dest))
+        except self._error as err:
+            if err.code in ("NoSuchKey", "NoSuchBucket"):
+                raise ObjectMissing(f"{bucket}/{key}") from err
+            raise
+
+    def put(self, bucket: str, key: str, path: Path, content_type: str) -> None:
+        self._client.fput_object(self._buckets[bucket], key, str(path), content_type=content_type)
 
 
 def from_env() -> Storage:

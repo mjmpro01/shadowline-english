@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { join } from 'node:path'
-import { asAdmin, resetServer } from './session'
+import { API_URL } from './environment'
+import { asAdmin, asLearner, resetServer } from './session'
 
 /**
  * The studio accepted video from the start but only ever decoded its audio, so
@@ -91,4 +92,64 @@ test('playing a clip plays the video over that range', async ({ page }) => {
 
   const stoppedAt = await video.evaluate((el: HTMLVideoElement) => el.currentTime)
   expect(stoppedAt).toBeLessThanOrEqual(firstClipEnd + 1)
+})
+
+/**
+ * The whole point of cutting server-side: a learner sees the picture, not just
+ * the studio. This walks the full chain — upload, publish, the cutter's ffmpeg
+ * run, and the clip playing on the Practice screen — with nothing stubbed.
+ */
+test('a clip published from video reaches the learner with its picture', async ({ page }) => {
+  // Longer than the default: this one waits on ffmpeg, not just on the browser.
+  test.setTimeout(180_000)
+  await upload(page)
+
+  await page.getByLabel('Playlist').fill('Film night')
+  const lines = page.locator('input[id^="line-"]')
+  for (let i = 0; i < (await lines.count()); i++) {
+    await lines.nth(i).fill(`Watch this line ${i + 1}`)
+  }
+
+  await page.getByRole('button', { name: /Publish \d+ clips/ }).click()
+  await expect(page.getByText(/clips are now in the library/)).toBeVisible({ timeout: 60_000 })
+  // The admin is told the picture is still coming, rather than left wondering
+  // why the clip they just published has none.
+  await expect(page.getByText(/video is being cut in the background/)).toBeVisible()
+
+  await asLearner(page)
+
+  // Wait on the cut itself rather than on the screen: the clip reports its own
+  // video the moment the cutter records it, and polling the API says whether
+  // the chain worked without a reload loop clouding the answer.
+  await expect
+    .poll(
+      async () => {
+        const clips = await (await page.request.get(`${API_URL}/api/clips`)).json()
+        return clips.filter((clip: { title: string; hasVideo: boolean }) =>
+          clip.title.startsWith('Watch this line') && clip.hasVideo).length
+      },
+      { timeout: 90_000, intervals: [1000] },
+    )
+    .toBeGreaterThan(0)
+
+  await page.goto('/library')
+  await page.getByLabel('Search clips').fill('Watch this line 1')
+  await page.getByRole('button', { name: 'Practice', exact: true }).first().click()
+  await page.waitForURL('**/practice')
+
+  const clip = page.locator('video.clip-video')
+  await expect(clip).toBeVisible({ timeout: 20_000 })
+
+  // The source is what is checked, not videoWidth. The cutter emits h264/aac
+  // mp4 — the format every browser a learner will use can play, Safari
+  // included — and this Chromium is built without the patented codecs, so it
+  // reports a width of zero for a file it simply will not decode. The src
+  // proves the whole chain: the cutter's own mp4, under this clip's id, handed
+  // to the player. Do not "fix" this by asserting a size; assert the format.
+  const src = await clip.getAttribute('src')
+  expect(src).toContain('.mp4')
+  expect(src).toContain('/files/clips/')
+
+  // And the button offers to watch it, rather than still talking about audio.
+  await expect(page.getByRole('button', { name: 'Watch clip again' })).toBeEnabled()
 })

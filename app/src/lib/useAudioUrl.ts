@@ -45,6 +45,15 @@ export function useClipAudio(clipId: string | null): AudioURL {
   return useSignedURL(clipId, (id) => repository.clipAudioURL(id))
 }
 
+/** The cut of the original video, when the cutter has produced one.
+ *
+ * `none` is the ordinary answer for most clips: one cut from audio never has a
+ * video, and one cut from video does not have it yet while the cut is queued.
+ * Both cases play the audio instead. */
+export function useClipVideo(clipId: string | null): AudioURL {
+  return useSignedURL(clipId, (id) => repository.clipVideoURL(id))
+}
+
 /** A learner's own recording. */
 export function useTakeAudio(takeId: string | null): AudioURL {
   return useSignedURL(takeId, (id) => repository.takeAudioURL(id))

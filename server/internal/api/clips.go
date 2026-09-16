@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -20,6 +21,16 @@ import (
 // eight leaves room for uncompressed WAV without letting the endpoint become a
 // place to park files.
 const maxAudioBytes = 8 << 20
+
+// maxSourceBytes caps the recording a batch is cut out of. Two gigabytes covers
+// an hour of 1080p; it is a different number from maxAudioBytes because it is a
+// different thing — one file an admin uploads once, not a clip per learner.
+const maxSourceBytes = 2 << 30
+
+// sourceUploadTimeout replaces the server's write deadline for the one request
+// that streams hundreds of megabytes. The global two minutes is right for every
+// other route and would cut a large upload off mid-file.
+const sourceUploadTimeout = 30 * time.Minute
 
 // audioURLTTL is how long a signed audio URL stays good. Long enough to practise
 // a clip without re-fetching, short enough that a leaked URL expires.
@@ -71,6 +82,80 @@ func (s *Server) handleClipAudio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"url": url})
+}
+
+// handleClipVideo answers with a signed URL for the clip's video, or null.
+//
+// Null is the ordinary answer, not a failure: a clip cut from audio never has
+// one, and a clip cut from video does not have one yet while its cut is still
+// queued. The app plays the audio in both cases.
+func (s *Server) handleClipVideo(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	clip, err := s.Store.ClipByID(r.Context(), id)
+	if err != nil {
+		s.failErr(w, err, "get clip")
+		return
+	}
+	if clip.VideoKey == nil {
+		writeJSON(w, http.StatusOK, map[string]any{"url": nil})
+		return
+	}
+	url, err := s.Storage.SignedGetURL(r.Context(), storage.Clips, *clip.VideoKey, audioURLTTL)
+	if err != nil {
+		s.failErr(w, err, "sign clip video url")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"url": url})
+}
+
+// handleUploadSource stores the recording a batch will be cut out of, and
+// answers with the id the clips then reference.
+//
+// The file is uploaded once for the whole batch rather than once per clip: the
+// studio may be publishing hundreds of lines out of one lecture, and sending
+// the lecture hundreds of times is the difference between this working and not.
+func (s *Server) handleUploadSource(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+
+	// A big upload takes longer than any other request this server serves, so
+	// this one gets its own deadline rather than raising it for everything.
+	if err := http.NewResponseController(w).SetWriteDeadline(time.Now().Add(sourceUploadTimeout)); err != nil {
+		s.Log.Warn("could not extend the deadline for a source upload", "error", err)
+	}
+
+	name := r.URL.Query().Get("name")
+	contentType := r.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	body := http.MaxBytesReader(w, r.Body, maxSourceBytes)
+	defer body.Close()
+	key := "source/" + uuid.NewString() + extensionFor(contentType)
+	if err := s.Storage.Put(r.Context(), storage.Clips, key, body, -1, contentType); err != nil {
+		var tooBig *http.MaxBytesError
+		if errors.As(err, &tooBig) {
+			fail(w, http.StatusRequestEntityTooLarge, "that recording is too large to upload")
+			return
+		}
+		s.failErr(w, err, "store source")
+		return
+	}
+
+	source, err := s.Store.CreateSource(r.Context(), name, key, contentType, u.ID)
+	if err != nil {
+		// The object is already stored; without a row nothing will ever point
+		// at it, so take it back out rather than leaving it to pay rent.
+		if err := s.Storage.Delete(r.Context(), storage.Clips, key); err != nil {
+			s.Log.Warn("orphaned source object", "key", key, "error", err)
+		}
+		s.failErr(w, err, "record source")
+		return
+	}
+	writeJSON(w, http.StatusCreated, source)
 }
 
 // handleCreateClips takes the studio's whole batch at once. The cuts of one
@@ -176,16 +261,16 @@ func (s *Server) handleDeleteClip(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	clipKey, takeKeys, err := s.Store.DeleteClip(r.Context(), id)
+	clipKeys, takeKeys, err := s.Store.DeleteClip(r.Context(), id)
 	if err != nil {
 		s.failErr(w, err, "delete clip")
 		return
 	}
-	if clipKey != nil {
-		if err := s.Storage.Delete(r.Context(), storage.Clips, *clipKey); err != nil {
+	for _, key := range clipKeys {
+		if err := s.Storage.Delete(r.Context(), storage.Clips, key); err != nil {
 			// The row is already gone; losing the object is a leak to clean up
 			// later, not a reason to fail the request.
-			s.Log.Warn("orphaned clip audio", "key", *clipKey, "error", err)
+			s.Log.Warn("orphaned clip object", "key", key, "error", err)
 		}
 	}
 	for _, k := range takeKeys {
@@ -228,6 +313,12 @@ func contentTypeFor(key string) string {
 		return "audio/ogg"
 	case ".webm":
 		return "audio/webm"
+	case ".mp4":
+		return "video/mp4"
+	case ".m4v":
+		return "video/mp4"
+	case ".mov":
+		return "video/quicktime"
 	case ".png":
 		return "image/png"
 	case ".jpg", ".jpeg":
@@ -249,6 +340,18 @@ func extensionFor(contentType string) string {
 		return ".png"
 	case contentType == "image/jpeg":
 		return ".jpg"
+	// Sources keep their own extension so ffmpeg can tell what it is opening,
+	// and so a cut video is served back as something a <video> will play.
+	case contentType == "video/mp4":
+		return ".mp4"
+	case contentType == "video/quicktime":
+		return ".mov"
+	case contentType == "video/webm":
+		return ".webm"
+	case contentType == "video/x-matroska":
+		return ".mkv"
+	case strings.HasPrefix(contentType, "video/"):
+		return ".mp4"
 	default:
 		// MediaRecorder's default in Chrome. Kept last so a type we do know
 		// never falls through to it.

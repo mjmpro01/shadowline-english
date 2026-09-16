@@ -16,7 +16,11 @@ export interface Repository {
 
   listClips(): Promise<Video[]>
   clipAudioURL(clipId: string): Promise<string | null>
+  /** Null until the cutter has produced one, and for ever on an audio clip. */
+  clipVideoURL(clipId: string): Promise<string | null>
   createClips(clips: NewClipInput[]): Promise<Video[]>
+  /** Stores the recording a batch is cut from, once, and returns its id. */
+  uploadSource(file: Blob, name: string): Promise<string>
   uploadClipAudio(clipId: string, audio: Blob): Promise<void>
   updateClip(clipId: string, patch: ClipPatch): Promise<Video>
   deleteClip(clipId: string): Promise<void>
@@ -48,6 +52,11 @@ export interface NewClipInput {
   durationSeconds: number
   summary: string
   captions: CaptionLine[]
+  /** The upload this clip is cut from, when it is a video. Set it and the
+   *  server queues the cut; leave it out and the clip is audio only. */
+  sourceId?: string
+  startSeconds?: number
+  endSeconds?: number
 }
 
 export interface ClipPatch {
@@ -103,6 +112,20 @@ class ApiRepository implements Repository {
   async clipAudioURL(clipId: string) {
     const { url } = await api.get<SignedURL>(`/api/clips/${clipId}/audio`)
     return url
+  }
+
+  async clipVideoURL(clipId: string) {
+    const { url } = await api.get<SignedURL>(`/api/clips/${clipId}/video`)
+    return url
+  }
+
+  async uploadSource(file: Blob, name: string) {
+    const { id } = await api.upload<{ id: string }>(
+      'POST',
+      `/api/admin/sources?name=${encodeURIComponent(name)}`,
+      file,
+    )
+    return id
   }
 
   createClips(clips: NewClipInput[]) {

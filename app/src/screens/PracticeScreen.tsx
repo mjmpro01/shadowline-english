@@ -1,11 +1,12 @@
-import { useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { ClipPlayer } from '../components/ClipPlayer'
 import { Icon } from '../components/Icon'
 import { LoadFailure, Loading } from '../components/LoadState'
 import { NoSuchClip } from '../components/NoSuchClip'
 import { MAX_CLIP_SECONDS, type Take } from '../data/types'
 import { colorFor, scoreLabel } from '../lib/score'
-import { urlOf, useClipAudio } from '../lib/useAudioUrl'
+import { urlOf, useClipAudio, useClipVideo } from '../lib/useAudioUrl'
 import { useRecorder } from '../lib/useRecorder'
 import { normalizeWord } from '../lib/text'
 import { useApp } from '../store/context'
@@ -53,7 +54,11 @@ export function PracticeScreen() {
   const [capturedLevels, setCapturedLevels] = useState<number[]>([])
   const [popup, setPopup] = useState<Popup | null>(null)
   const [analysing, setAnalysing] = useState(false)
-  const sourcePlayer = useRef<HTMLAudioElement>(null)
+  const sourcePlayer = useRef<HTMLMediaElement | null>(null)
+  // Stable, so the element is not detached and reattached every render.
+  const attachSource = useCallback((element: HTMLMediaElement | null) => {
+    sourcePlayer.current = element
+  }, [])
   const recorder = useRecorder({
     onComplete: async (recording, capturedLevels) => {
       // A null recording means the microphone gave us nothing; there is no take
@@ -72,6 +77,9 @@ export function PracticeScreen() {
   const video = data.videos.find((v) => v.id === videoId)
   const sourceAudio = useClipAudio(video?.id ?? null)
   const sourceUrl = urlOf(sourceAudio)
+  const sourceVideoUrl = urlOf(useClipVideo(video?.id ?? null))
+  /** Either form of the clip counts as having something to play. */
+  const playable = sourceVideoUrl ?? sourceUrl
   const line = video?.captions[Math.min(lineIndex, (video?.captions.length ?? 1) - 1)]
 
   const words =
@@ -265,13 +273,13 @@ export function PracticeScreen() {
           <button
             type="button"
             className="btn btn-secondary btn-block"
-            disabled={!sourceUrl}
-            title={sourceUrl ? "Play the clip's original audio" : 'This clip has no original audio'}
-            onClick={() => sourcePlayer.current?.play()}
+            disabled={!playable}
+            title={playable ? "Play the clip's original" : 'This clip has no original recording'}
+            onClick={() => void sourcePlayer.current?.play()}
           >
-            Hear clip again
+            {sourceVideoUrl ? 'Watch clip again' : 'Hear clip again'}
           </button>
-          {sourceUrl && <audio ref={sourcePlayer} src={sourceUrl} />}
+          <ClipPlayer attach={attachSource} videoUrl={sourceVideoUrl} audioUrl={sourceUrl} />
           <button
             type="button"
             className={`btn ${recording ? 'btn-secondary' : 'btn-primary'} btn-block`}

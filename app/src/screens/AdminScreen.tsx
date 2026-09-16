@@ -33,6 +33,7 @@ interface Loaded {
   peaks: Column[]
   /** The original file, for the picture. The decoded samples carry only sound. */
   url: string
+  file: File
   isVideo: boolean
 }
 
@@ -67,6 +68,8 @@ export function AdminScreen() {
   const [playhead, setPlayhead] = useState<number | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [saved, setSaved] = useState<number | null>(null)
+  /** Whether the batch just published is having its video cut. */
+  const [savedVideo, setSavedVideo] = useState(false)
   const [frames, setFrames] = useState<(string | null)[]>([])
 
   const open = async (file: File | undefined) => {
@@ -93,6 +96,7 @@ export function AdminScreen() {
         duration: samples.length / sampleRate,
         peaks: computePeaks(samples, WAVEFORM_COLUMNS),
         url,
+        file,
         // What the browser says it is, not what the extension claims. An
         // audio-only file in a video container still has no picture, which the
         // frame walk discovers and reports as an empty strip.
@@ -246,7 +250,9 @@ export function AdminScreen() {
 
   const publish = async () => {
     if (!loaded) return
-    setBusy('Saving…')
+    // Named separately because it is the slow half: the recording can be
+    // hundreds of megabytes, and "Saving…" for two minutes reads as a hang.
+    setBusy(loaded.isVideo ? 'Uploading the recording…' : 'Saving…')
     await addClips(
       segments.map((segment, index) => ({
         title: lines[index].title.trim(),
@@ -259,9 +265,13 @@ export function AdminScreen() {
         end: segment.end,
         audio: sliceToWav(loaded.samples, loaded.sampleRate, segment.start, segment.end),
       })),
+      // Only a video needs cutting server-side. Audio was already sliced here,
+      // and uploading the original again would buy nothing.
+      loaded.isVideo ? { file: loaded.file, name: loaded.name } : undefined,
     )
     setBusy(null)
     setSaved(segments.length)
+    setSavedVideo(loaded.isVideo)
     setLoaded((previous) => {
       if (previous) URL.revokeObjectURL(previous.url)
       return null
@@ -382,6 +392,12 @@ export function AdminScreen() {
         <div className="card elev-sm">
           <div className="card-kicker">Published</div>
           <div style={{ fontSize: 14 }}>{saved} clips are now in the library.</div>
+          {savedVideo && (
+            <div className="card-meta">
+              Their video is being cut in the background — learners can practise the audio meanwhile,
+              and the picture appears when each cut is done.
+            </div>
+          )}
         </div>
       )}
 
