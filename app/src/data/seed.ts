@@ -141,6 +141,7 @@ export const SEED_VOCAB: VocabWord[] = [
     ipa: '/ˈbrɪl.jənt/',
     meaning: 'extremely impressive, talented, or intelligent',
     status: 'known',
+    reviewedAt: null,
     videoId: 'v1',
   },
   {
@@ -149,6 +150,7 @@ export const SEED_VOCAB: VocabWord[] = [
     ipa: '/ˈɒn.ɪst.li/',
     meaning: 'used to emphasize that you are being sincere',
     status: 'learning',
+    reviewedAt: null,
     videoId: 'v3',
   },
   {
@@ -157,6 +159,7 @@ export const SEED_VOCAB: VocabWord[] = [
     ipa: '/ɪɡˈzækt.li/',
     meaning: 'used to emphasize precise agreement',
     status: 'new',
+    reviewedAt: null,
     videoId: 'v2',
   },
   {
@@ -165,6 +168,7 @@ export const SEED_VOCAB: VocabWord[] = [
     ipa: '/ˈen.ə.dʒi/',
     meaning: 'enthusiasm, liveliness, and drive',
     status: 'learning',
+    reviewedAt: null,
     videoId: 'v2',
   },
   {
@@ -173,6 +177,7 @@ export const SEED_VOCAB: VocabWord[] = [
     ipa: '/ˈʃəʊ.ɪŋ ʌp/',
     meaning: 'being present, engaged, and dependable',
     status: 'new',
+    reviewedAt: null,
     videoId: 'v5',
   },
   {
@@ -181,6 +186,7 @@ export const SEED_VOCAB: VocabWord[] = [
     ipa: '/ət ði end əv ðə deɪ/',
     meaning: 'when everything has been considered',
     status: 'learning',
+    reviewedAt: null,
     videoId: 'v4',
   },
   {
@@ -189,6 +195,7 @@ export const SEED_VOCAB: VocabWord[] = [
     ipa: '/ɪkˈspekt/',
     meaning: 'to think something is likely to happen',
     status: 'known',
+    reviewedAt: null,
     videoId: 'v3',
   },
   {
@@ -197,6 +204,7 @@ export const SEED_VOCAB: VocabWord[] = [
     ipa: '/kaɪnd əv/',
     meaning: 'somewhat; to a certain extent',
     status: 'new',
+    reviewedAt: null,
     videoId: 'v1',
   },
 ]
@@ -211,6 +219,18 @@ export const NEED_PRACTICE: NeedPracticeItem[] = [
   },
   { id: 'n3', title: 'Falling intonation on statements', detail: 'Missed in 4/8 recent attempts', videoId: 'v2' },
 ]
+
+/** A sentence to say the word in, for the speaking half of memory practice. */
+export const EXAMPLES: Record<string, string> = {
+  brilliant: 'The team came up with a brilliant plan to fix the bug.',
+  honestly: "Honestly, I don't think we have enough time.",
+  exactly: "That's exactly what I was thinking.",
+  energy: 'She brings so much energy to every rehearsal.',
+  'showing up': 'Showing up on time matters more than talking about it.',
+  'at the end of the day': 'At the end of the day, we just want the client happy.',
+  expect: "I didn't expect the meeting to run so long.",
+  'kind of': "It's kind of hard to explain without seeing it.",
+}
 
 /** Stand-in for a dictionary / translation API on tapped caption words. */
 export const LOOKUP: Record<string, { ipa: string; meaning: string }> = {

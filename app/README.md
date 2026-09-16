@@ -23,8 +23,8 @@ machine instead of Playwright's own download.
 
 ## Screens
 
-Login → Dashboard → Library → Practice → Analysis → Dub Review, plus Vocabulary,
-Progress and Profile.
+Login → Dashboard → Library → Practice → Analysis → Dub Review, plus Vocabulary
+with its flashcards, Progress and Profile.
 Navigation is a collapsible sidebar on desktop and a bottom tab bar on phones.
 
 Clips are curated, not collected: learners practise what is in the library and
@@ -44,6 +44,15 @@ The leaderboard ranks you among sample learners, labelled as such on screen:
 there is no backend and so no other learners, and inventing them silently would
 read as a social feature that does not exist. Your row is the real one. Below it
 sit the clips an admin has featured in the studio.
+
+## Memory practice
+
+The Vocabulary screen opens a flashcard session over the words you have
+collected. Words you have not learnt come first, and within a status the ones
+you have not seen for longest lead, so a second session is not the same cards in
+the same order. Known words stay in the deck rather than being dropped — they
+are what you are trying not to forget. Answering a card sets the word's status
+and records that it came up.
 
 ## Clip studio
 

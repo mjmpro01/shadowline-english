@@ -32,7 +32,18 @@ export function VocabularyScreen() {
 
   return (
     <div className="stack gap-6">
-      <h1 style={{ margin: 0 }}>Vocabulary</h1>
+      <div className="row between wrap gap-2">
+        <h1 style={{ margin: 0 }}>Vocabulary</h1>
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={data.vocab.length === 0}
+          onClick={() => navigate('/vocabulary/practice')}
+        >
+          <Icon name="brain" size={15} />
+          Memory practice
+        </button>
+      </div>
 
       <div className="row gap-2 wrap">
         {FILTERS.map((option) => (

@@ -4,6 +4,7 @@ import { RequireAdmin, RequireAuth } from './components/RequireAuth'
 import { AnalysisScreen } from './screens/AnalysisScreen'
 import { DashboardScreen } from './screens/DashboardScreen'
 import { DubScreen } from './screens/DubScreen'
+import { FlashcardsScreen } from './screens/FlashcardsScreen'
 import { LibraryScreen } from './screens/LibraryScreen'
 import { LoginScreen } from './screens/LoginScreen'
 import { PracticeScreen } from './screens/PracticeScreen'
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
       { path: 'library/:videoId/practice', element: <PracticeScreen /> },
       { path: 'library/:videoId/dub', element: <DubScreen /> },
       { path: 'vocabulary', element: <VocabularyScreen /> },
+      { path: 'vocabulary/practice', element: <FlashcardsScreen /> },
       { path: 'progress', element: <ProgressScreen /> },
       { path: 'profile', element: <ProfileScreen /> },
       { path: 'admin', element: <RequireAdmin /> },

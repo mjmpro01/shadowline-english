@@ -41,6 +41,7 @@ export interface Store {
   scoreTake: (takeId: string) => Promise<void>
   toggleVocabWord: (raw: string, videoId: string | null) => { word: string; status: 'added' | 'removed' | 'known' }
   setVocabStatus: (id: string, status: VocabStatus) => void
+  reviewWord: (id: string, status: VocabStatus) => void
   updateProfile: (name: string, email: string, avatar: Blob | null) => Promise<void>
   statsFor: (videoId: string) => VideoStats
 }

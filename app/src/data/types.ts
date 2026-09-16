@@ -55,6 +55,8 @@ export interface VocabWord {
   meaning: string
   status: VocabStatus
   videoId: string | null
+  /** Last time this came up in memory practice; null until it has. */
+  reviewedAt: string | null
 }
 
 export interface NeedPracticeItem {

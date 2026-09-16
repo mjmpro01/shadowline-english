@@ -200,6 +200,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         meaning: looked?.meaning ?? 'Auto-translated definition',
         status: 'new',
         videoId,
+        reviewedAt: null,
       }
       const vocab = [...prev.vocab, entry]
       void repository.saveVocab(vocab)
@@ -211,6 +212,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setVocabStatus = useCallback((id: string, status: VocabStatus) => {
     setData((prev) => {
       const vocab = prev.vocab.map((v) => (v.id === id ? { ...v, status } : v))
+      void repository.saveVocab(vocab)
+      return { ...prev, vocab }
+    })
+  }, [])
+
+  /** A memory-practice answer: the new status, and the fact it came up at all. */
+  const reviewWord = useCallback((id: string, status: VocabStatus) => {
+    setData((prev) => {
+      const vocab = prev.vocab.map((v) =>
+        v.id === id ? { ...v, status, reviewedAt: new Date().toISOString() } : v,
+      )
       void repository.saveVocab(vocab)
       return { ...prev, vocab }
     })
@@ -259,6 +271,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       scoreTake,
       toggleVocabWord,
       setVocabStatus,
+      reviewWord,
       updateProfile,
       statsFor,
     }),
@@ -275,6 +288,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       scoreTake,
       toggleVocabWord,
       setVocabStatus,
+      reviewWord,
       updateProfile,
       statsFor,
     ],

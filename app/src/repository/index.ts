@@ -77,7 +77,7 @@ class LocalRepository implements Repository {
         featured: video.featured ?? false,
       })),
       takes: read(KEYS.takes, seedTakes()),
-      vocab: read(KEYS.vocab, SEED_VOCAB),
+      vocab: read(KEYS.vocab, SEED_VOCAB).map((word) => ({ ...word, reviewedAt: word.reviewedAt ?? null })),
       profile: read<Profile>(KEYS.profile, DEFAULT_PROFILE),
       loggedIn: read(KEYS.session, false),
       isAdmin: read(KEYS.admin, false),
