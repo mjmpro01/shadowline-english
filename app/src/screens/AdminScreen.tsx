@@ -29,7 +29,19 @@ interface Line {
   text: string
   ipa: string
   categories: string
+  /**
+   * Whether this clip goes to the library when the batch is published.
+   *
+   * Distinct from `selected`, which is the one clip the timeline is focused on.
+   * Every proposal starts included, because a short recording is usually
+   * published whole; a fifty-minute one proposes hundreds of cuts and most of
+   * them are not dialogue worth shadowing, which is what the bulk controls are
+   * for.
+   */
+  include: boolean
 }
+
+const EMPTY_LINE: Omit<Line, 'categories'> = { title: '', text: '', ipa: '', include: true }
 
 interface Loaded {
   name: string
@@ -115,7 +127,7 @@ export function AdminScreen() {
         isVideo: file.type.startsWith('video/'),
       })
       setSegments(proposal)
-      setLines(proposal.map(() => ({ title: '', text: '', ipa: '', categories: batchCategories })))
+      setLines(proposal.map(() => ({ ...EMPTY_LINE, categories: batchCategories })))
       setSelected(proposal.length ? 0 : null)
       // A playlist per upload is the common case, so name it after the file.
       setPlaylist((current) => current || file.name.replace(/\.[^.]+$/, ''))
@@ -331,22 +343,29 @@ export function AdminScreen() {
     setLines((prev) => [
       ...prev.slice(0, selected),
       prev[selected],
-      { title: '', text: '', ipa: '', categories: prev[selected].categories },
+      // The new half inherits whether its parent was going to be published:
+      // splitting a clip is not a decision about publishing it.
+      { ...EMPTY_LINE, categories: prev[selected].categories, include: prev[selected].include },
       ...prev.slice(selected + 1),
     ])
   }
 
   const publish = async () => {
     if (!loaded) return
+    const chosen = segments
+      .map((segment, index) => ({ segment, line: lines[index] }))
+      .filter(({ line }) => line?.include)
+    if (chosen.length === 0) return
+
     setBusy('Saving…')
     await addClips(
-      segments.map((segment, index) => ({
-        title: lines[index].title.trim(),
-        line: lines[index].text.trim(),
-        ipa: lines[index].ipa.trim(),
+      chosen.map(({ segment, line }) => ({
+        title: line.title.trim(),
+        line: line.text.trim(),
+        ipa: line.ipa.trim(),
         source: loaded.name,
         playlist: playlist.trim() || loaded.name,
-        categories: parseCategories(lines[index].categories),
+        categories: parseCategories(line.categories),
         start: segment.start,
         end: segment.end,
         audio: sliceToWav(loaded.samples, loaded.sampleRate, segment.start, segment.end),
@@ -356,7 +375,7 @@ export function AdminScreen() {
       sourceId,
     )
     setBusy(null)
-    setSaved(segments.length)
+    setSaved(chosen.length)
     setSavedVideo(loaded.isVideo)
     setLoaded((previous) => {
       if (previous) URL.revokeObjectURL(previous.url)
@@ -370,7 +389,20 @@ export function AdminScreen() {
     setTranscript(null)
   }
 
-  const tooLong = segments.filter((s) => s.end - s.start > MAX_CLIP_SECONDS + 0.01).length
+  const included = lines.filter((line) => line.include).length
+  // Only what is actually going up has to be short enough. A proposal being
+  // left behind is not a reason to refuse the batch.
+  const tooLong = segments.filter(
+    (s, i) => lines[i]?.include && s.end - s.start > MAX_CLIP_SECONDS + 0.01,
+  ).length
+
+  const includeAll = (include: boolean) =>
+    setLines((previous) => previous.map((line) => ({ ...line, include })))
+
+  /** Everything that has words in it, which after transcription is the part
+   *  worth publishing — the rest of a long recording is silence and noise. */
+  const includeOnlySpoken = () =>
+    setLines((previous) => previous.map((line) => ({ ...line, include: line.text.trim() !== '' })))
 
   return (
     <div className="stack gap-6">
@@ -594,19 +626,48 @@ export function AdminScreen() {
             </div>
           </div>
 
+          <div className="row between wrap gap-2">
+            <div className="card-meta">
+              {included} of {segments.length} clips selected to publish
+              {included < segments.length && ' — the rest stay behind'}
+            </div>
+            <div className="row gap-2 wrap">
+              <button type="button" className="btn btn-ghost" onClick={() => includeAll(true)}>
+                Select all
+              </button>
+              <button type="button" className="btn btn-ghost" onClick={() => includeAll(false)}>
+                Select none
+              </button>
+              {/* After transcription this is the useful one: a long recording
+                  proposes a cut per pause, and only some of them are speech. */}
+              <button type="button" className="btn btn-ghost" onClick={includeOnlySpoken}>
+                Only clips with a line
+              </button>
+            </div>
+          </div>
+
           <div className="stack gap-2">
             {segments.map((segment, index) => {
               const length = segment.end - segment.start
-              const over = length > MAX_CLIP_SECONDS + 0.01
+              const over = lines[index]?.include && length > MAX_CLIP_SECONDS + 0.01
               return (
                 <div
                   className="card elev-sm stack gap-2"
                   key={index}
                   data-selected={index === selected}
+                  data-excluded={!lines[index]?.include}
                   onPointerDown={() => setSelected(index)}
                 >
                   <div className="row between wrap gap-2">
                     <div className="row gap-2">
+                      <label className="clip-include" title="Publish this clip">
+                        <input
+                          type="checkbox"
+                          checked={lines[index]?.include ?? false}
+                          onChange={(e) => update(index, { include: e.target.checked })}
+                          aria-label={`Publish clip ${index + 1}`}
+                        />
+                      </label>
                       <span className="tag tag-neutral mono">{index + 1}</span>
                       <span className="card-meta mono" style={{ color: over ? 'var(--score-attention)' : undefined }}>
                         {clock(segment.start)}–{clock(segment.end)} · {lengthLabel(length)}s
@@ -681,10 +742,10 @@ export function AdminScreen() {
             type="button"
             className="btn btn-primary"
             style={{ alignSelf: 'flex-start' }}
-            disabled={!segments.length || tooLong > 0 || busy !== null}
+            disabled={included === 0 || tooLong > 0 || busy !== null}
             onClick={() => void publish()}
           >
-            Publish {segments.length} clips to the library
+            Publish {included} clips to the library
           </button>
         </>
       )}

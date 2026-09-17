@@ -167,6 +167,21 @@ and a keyframe is typically seconds from where a line starts — which, for a cl
 a few seconds long, means cutting the wrong thing. Output is h264/aac mp4,
 because that is what plays everywhere, Safari included.
 
+## Choosing what gets published
+
+The studio proposes a cut at every pause, which for a fifty-minute recording is
+hundreds of them — and most of a film is not dialogue worth shadowing. Each clip
+carries a checkbox, and only the selected ones are published.
+
+Everything starts selected, because a short recording is usually published
+whole and that is what the studio did before. `Select none` and `Only clips
+with a line` are the way into the other case: after transcription, the clips
+with words in them are the ones worth keeping, and the rest are silence the
+energy-based cut found anyway.
+
+Length is checked against the selection, not the proposal: a clip being left
+behind is too long for nobody.
+
 ## Transcripts and IPA
 
 The studio fills its own lines in. The recording is uploaded when the admin
