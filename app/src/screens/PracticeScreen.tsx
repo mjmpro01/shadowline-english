@@ -1,12 +1,14 @@
 import { useCallback, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ClipPlayer } from '../components/ClipPlayer'
+import { DubExport } from '../components/DubExport'
 import { Icon } from '../components/Icon'
 import { LoadFailure, Loading } from '../components/LoadState'
 import { NoSuchClip } from '../components/NoSuchClip'
 import { MAX_CLIP_SECONDS, type Take } from '../data/types'
 import { colorFor, scoreLabel } from '../lib/score'
 import { urlOf, useClipAudio, useClipVideo } from '../lib/useAudioUrl'
+import { useDub } from '../lib/useDub'
 import { useRecorder } from '../lib/useRecorder'
 import { normalizeWord } from '../lib/text'
 import { useApp } from '../store/context'
@@ -78,6 +80,7 @@ export function PracticeScreen() {
   const sourceAudio = useClipAudio(video?.id ?? null)
   const sourceUrl = urlOf(sourceAudio)
   const sourceVideoUrl = urlOf(useClipVideo(video?.id ?? null))
+  const dubState = useDub(take?.hasAudio ? take.id : null)
   /** Either form of the clip counts as having something to play. */
   const playable = sourceVideoUrl ?? sourceUrl
   const line = video?.captions[Math.min(lineIndex, (video?.captions.length ?? 1) - 1)]
@@ -143,8 +146,13 @@ export function PracticeScreen() {
 
       <div className="practice-grid">
         <div className="stack gap-3">
+          {/* The frame the design left for the picture. It held a play icon
+              and nothing else until clips had video; the player used to be
+              bolted on beside the buttons instead, which left the screen with
+              two video areas and a picture in the wrong one. */}
           <div className="practice-video">
-            <Icon name="play" size={34} />
+            <ClipPlayer attach={attachSource} videoUrl={sourceVideoUrl} audioUrl={sourceUrl} />
+            {!sourceVideoUrl && <Icon name="play" size={34} />}
           </div>
 
           <div style={{ fontSize: 16, fontStyle: 'italic', textAlign: 'center' }}>
@@ -279,7 +287,6 @@ export function PracticeScreen() {
           >
             {sourceVideoUrl ? 'Watch clip again' : 'Hear clip again'}
           </button>
-          <ClipPlayer attach={attachSource} videoUrl={sourceVideoUrl} audioUrl={sourceUrl} />
           <button
             type="button"
             className={`btn ${recording ? 'btn-secondary' : 'btn-primary'} btn-block`}
@@ -316,6 +323,16 @@ export function PracticeScreen() {
           >
             See analysis
           </button>
+          {/* Keeping the take is offered here, not only on Dub Review: a
+              learner who has just nailed a line should not have to go to
+              another screen to save it. */}
+          <DubExport
+            state={dubState}
+            filename={video.title}
+            canDub={video.hasVideo}
+            hasRecording={!!take?.hasAudio}
+            label="Save dub"
+          />
           <div className="divider" style={{ margin: '4px 0' }} />
           <button type="button" className="btn btn-ghost btn-block" onClick={resetMic}>
             Reset mic

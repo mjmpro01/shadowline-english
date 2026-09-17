@@ -275,6 +275,18 @@
   justify-content: center;
   color: var(--color-accent-500);
 }
+/* Inside the practice frame the player fills it, rather than keeping the
+   standalone cap that suits a player sitting in a column. `contain` and not
+   `cover`: a 16:9 clip in a 16:10 frame would lose the top of a head. */
+.practice-video .clip-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: contain;
+  border-radius: inherit;
+}
 .caption-word {
   cursor: pointer;
   background: none;

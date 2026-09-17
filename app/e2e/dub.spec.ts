@@ -115,3 +115,68 @@ test('a clip with no video says so rather than offering a dead button', async ({
   await expect(button).toBeDisabled()
   await expect(button).toHaveAttribute('title', /no video to dub onto/)
 })
+
+/**
+ * The design put "Save dub" in the Practice column, and it belongs there: a
+ * learner who has just nailed a line should not have to go to another screen to
+ * keep it.
+ */
+test('a take can be saved as a video from the practice screen', async ({ page }) => {
+  test.setTimeout(180_000)
+  await publishVideoClip(page)
+
+  await page.goto('/library')
+  await page.getByLabel('Search clips').fill('Dub this line 1')
+  await page.getByRole('button', { name: 'Practice', exact: true }).first().click()
+  await page.waitForURL('**/practice')
+
+  // Nothing to save before there is a take.
+  await expect(page.getByRole('button', { name: 'Save dub' })).toBeDisabled()
+
+  await page.getByRole('button', { name: 'Record', exact: true }).click()
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: 'Stop' }).click()
+
+  const save = page.getByRole('button', { name: 'Save dub' })
+  await expect(save).toBeEnabled({ timeout: 20_000 })
+  await save.click()
+
+  const download = page.getByRole('link', { name: 'Download' })
+  await expect(download).toBeVisible({ timeout: 60_000 })
+  const href = await download.getAttribute('href')
+  expect(href).toContain('.mp4')
+
+  const file = await page.request.get(href!)
+  expect(file.status()).toBe(200)
+})
+
+// The picture belongs in the frame the screen already has for it, not bolted on
+// beside the buttons — which left two video areas and the picture in neither of
+// the places a learner looks.
+test('the practice screen shows the clip in its own frame', async ({ page }) => {
+  test.setTimeout(180_000)
+  await publishVideoClip(page)
+
+  await page.goto('/library')
+  await page.getByLabel('Search clips').fill('Dub this line 1')
+  await page.getByRole('button', { name: 'Practice', exact: true }).first().click()
+  await page.waitForURL('**/practice')
+
+  await expect(page.locator('.practice-video video')).toBeVisible({ timeout: 20_000 })
+  // One player on the screen, not two.
+  await expect(page.locator('video')).toHaveCount(1)
+})
+
+// An audio clip has no picture, so the frame keeps the icon it always showed.
+test('a clip with no video keeps the play icon in the frame', async ({ page }) => {
+  await resetServer(page)
+  await asLearner(page)
+
+  await page.goto('/library')
+  await page.getByLabel('Search clips').fill('One step at a time')
+  await page.getByRole('button', { name: 'Practice', exact: true }).first().click()
+  await page.waitForURL('**/practice')
+
+  await expect(page.locator('.practice-video svg')).toBeVisible()
+  await expect(page.locator('video')).toHaveCount(0)
+})

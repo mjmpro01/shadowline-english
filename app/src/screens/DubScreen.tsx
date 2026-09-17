@@ -1,14 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Icon } from '../components/Icon'
 import { LoadFailure, Loading } from '../components/LoadState'
 import { NoSuchClip } from '../components/NoSuchClip'
 import { SegmentedControl } from '../components/SegmentedControl'
 import { clock } from '../lib/time'
+import { DubExport } from '../components/DubExport'
 import { urlOf, useClipAudio, useClipVideo, useTakeAudio } from '../lib/useAudioUrl'
-import { ApiError } from '../lib/api'
-import { repository } from '../repository'
-import type { Dub } from '../data/types'
+import { useDub } from '../lib/useDub'
 import { useApp } from '../store/context'
 
 export function DubScreen() {
@@ -30,16 +29,6 @@ export function DubScreen() {
   const [position, setPosition] = useState(0)
   const [duration, setDuration] = useState(0)
   const [playing, setPlaying] = useState(false)
-  /** The exported file, keyed by the take it belongs to — switching takes must
-   *  not show the previous one's file while the new one is being read. */
-  const [resolvedDub, setResolvedDub] = useState<{ takeId: string; dub: Dub } | null>(null)
-  const [dubError, setDubError] = useState<string | null>(null)
-  /** Bumped when a dub is asked for, to restart the read below. Without it the
-   *  poll only ever runs on arrival: it self-schedules while it sees `pending`,
-   *  and a request that sets `pending` from outside leaves nothing running —
-   *  the screen would wait for ever on a file that was already made. */
-  const [dubRequest, setDubRequest] = useState(0)
-
   const video = data.videos.find((v) => v.id === videoId)
   const stats = statsFor(videoId ?? '')
   const take = stats.takes.find((t) => t.id === takeId) ?? stats.takes[stats.takes.length - 1]
@@ -49,55 +38,7 @@ export function DubScreen() {
   const myVoiceUrl = urlOf(useTakeAudio(take?.hasAudio ? take.id : null))
   const originalUrl = urlOf(useClipAudio(video?.id ?? null))
   const clipVideoUrl = urlOf(useClipVideo(video?.id ?? null))
-
-  // Reads the dub, and keeps reading while one is being made. A mux is
-  // sub-second work, so this is a short wait rather than a background errand —
-  // which is also why the dubber is its own worker and not a job behind a batch
-  // of cuts.
-  useEffect(() => {
-    if (!takeIdForDub) return
-    let active = true
-    let timer: ReturnType<typeof setTimeout>
-
-    const ask = async () => {
-      try {
-        const next = await repository.dub(takeIdForDub)
-        if (!active) return
-        setResolvedDub({ takeId: takeIdForDub, dub: next })
-        if (next.status === 'pending') timer = setTimeout(ask, 1500)
-      } catch {
-        // Keep asking: the worker may still be running, and the next answer
-        // may be the file.
-        if (active) timer = setTimeout(ask, 1500)
-      }
-    }
-    void ask()
-
-    return () => {
-      active = false
-      clearTimeout(timer)
-    }
-  }, [takeIdForDub, dubRequest])
-
-  // Read rather than stored, so a take with no answer yet shows nothing rather
-  // than the previous take's file.
-  const dub = resolvedDub?.takeId === takeIdForDub ? resolvedDub.dub : null
-
-  const exportDub = async () => {
-    if (!takeIdForDub) return
-    setDubError(null)
-    setResolvedDub({ takeId: takeIdForDub, dub: { status: 'pending', url: null } })
-    try {
-      setResolvedDub({ takeId: takeIdForDub, dub: await repository.requestDub(takeIdForDub) })
-      // Start watching for it to land.
-      setDubRequest((n) => n + 1)
-    } catch (err) {
-      // The common one is a clip with no picture to dub onto: an audio clip, or
-      // one whose cut has not landed yet. Saying which beats a dead button.
-      setResolvedDub({ takeId: takeIdForDub, dub: { status: 'none', url: null } })
-      setDubError(err instanceof ApiError ? err.message : 'Could not start the export.')
-    }
-  }
+  const dubState = useDub(takeIdForDub)
 
   if (state === 'loading') return <Loading />
   if (state === 'error') return <LoadFailure />
@@ -286,49 +227,16 @@ export function DubScreen() {
         )}
 
         {/* The dub as a file, rather than only as something this screen can
-            play: a learner who has nailed a line wants to keep it and send it.
-            Asked for rather than made for every take — a line gets practised a
-            dozen times and nobody wants a dozen files. */}
+            play: a learner who has nailed a line wants to keep it and send it. */}
         <div className="stack gap-2">
           <div className="card-kicker">This dub as a video</div>
-          {dub?.status === 'ready' && dub.url ? (
-            <div className="row gap-2 wrap">
-              <a className="btn btn-primary" href={dub.url} download={`${video.title}.mp4`}>
-                <Icon name="download" size={14} />
-                Download
-              </a>
-              <a className="btn btn-secondary" href={dub.url} target="_blank" rel="noreferrer">
-                Open
-              </a>
-            </div>
-          ) : dub?.status === 'pending' ? (
-            <div className="card-meta" role="status">
-              Putting your voice on the picture…
-            </div>
-          ) : (
-            <button
-              type="button"
-              className="btn btn-secondary"
-              style={{ alignSelf: 'flex-start' }}
-              disabled={!takeIdForDub || !video.hasVideo}
-              title={
-                !takeIdForDub
-                  ? 'This take has no recording'
-                  : video.hasVideo
-                    ? 'Make a video of this take over the original'
-                    : 'This clip has no video to dub onto'
-              }
-              onClick={() => void exportDub()}
-            >
-              <Icon name="download" size={14} />
-              Export this dub
-            </button>
-          )}
-          {dubError && (
-            <div className="card-meta" style={{ color: 'var(--score-attention)' }}>
-              {dubError}
-            </div>
-          )}
+          <DubExport
+            state={dubState}
+            filename={video.title}
+            canDub={video.hasVideo}
+            hasRecording={!!takeIdForDub}
+            label="Export this dub"
+          />
         </div>
 
         <div className="stack gap-2">
