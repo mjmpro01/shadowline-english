@@ -152,3 +152,50 @@ test('learners can search the library and filter it by category', async ({ page 
   await page.getByRole('button', { name: 'interview', exact: true }).click()
   await expect(page.locator('.grid-cards .card')).toHaveCount(4)
 })
+
+
+/**
+ * Scoring is a poll that runs for seconds, and the screen used to let a learner
+ * start another recording straight through it. The abandoned take's score then
+ * arrived mid-recording and sat under the new waveform: "Measuring your pitch…"
+ * and a number from a take they had already thrown away, on screen at once, with
+ * "See analysis" pointing at it.
+ */
+test('a new recording cannot be started while the last one is being scored', async ({ page }) => {
+  await publishLesson(page)
+  await asLearner(page)
+  await practise(page, LINE(1))
+
+  await recordOnce(page, 'Record')
+  await expect(page.getByText('Measuring your pitch…')).toBeVisible({ timeout: 5_000 })
+
+  // Stopping is always allowed; starting waits for an answer about the last take.
+  await expect(page.getByRole('button', { name: 'Record', exact: true })).toBeDisabled()
+  // And nothing claims to have a score while it is still being measured.
+  await expect(page.locator('.card', { hasText: 'PITCH MATCH SCORE' })).toHaveCount(0)
+
+  // It comes back as soon as there is an answer.
+  expect(await scoreOf(page)).toBeGreaterThan(0)
+  await expect(page.getByRole('button', { name: 'Re-record', exact: true })).toBeEnabled()
+})
+
+/**
+ * The same race from the other side: moving on while a take is still scoring.
+ * The poll cannot be cancelled, so the guard is that a late answer is dropped
+ * rather than attached to whatever the learner is looking at now.
+ */
+test('a take still being scored does not follow the learner to the next line', async ({ page }) => {
+  await publishLesson(page)
+  await asLearner(page)
+  await practise(page, LINE(1))
+
+  await recordOnce(page, 'Record')
+  await expect(page.getByText('Measuring your pitch…')).toBeVisible({ timeout: 5_000 })
+  await page.getByRole('button', { name: 'Reset mic' }).click()
+
+  // Long enough for the abandoned poll to have finished and tried to report.
+  await page.waitForTimeout(8_000)
+  await expect(page.locator('.card', { hasText: 'PITCH MATCH SCORE' })).toHaveCount(0)
+  await expect(page.getByText('Measuring your pitch…')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Record', exact: true })).toBeEnabled()
+})

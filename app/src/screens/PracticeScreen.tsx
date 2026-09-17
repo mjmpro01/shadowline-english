@@ -66,17 +66,28 @@ export function PracticeScreen() {
   const attachSource = useCallback((element: HTMLMediaElement | null) => {
     sourcePlayer.current = element
   }, [])
+  // Bumped whenever the screen stops caring about the take being scored — a new
+  // recording, a reset, the next line. Scoring is a poll that runs for seconds,
+  // so without this the take that finishes last wins rather than the take the
+  // learner is actually looking at: pressing Record mid-scoring used to put the
+  // abandoned take's score on screen underneath the new recording's waveform.
+  const attempt = useRef(0)
+
   const recorder = useRecorder({
     onComplete: async (recording, capturedLevels) => {
       // A null recording means the microphone gave us nothing; there is no take
       // to store, and sending an empty body would only queue a job that fails.
       if (!video || !recording) return
+      const mine = attempt.current
       setCapturedLevels(capturedLevels)
       setAnalysing(true)
       try {
-        setTake(await addTake(video.id, recording))
+        const scored = await addTake(video.id, recording)
+        // Stored either way — it is the learner's recording and it is theirs to
+        // keep — but only shown while it is still the one on screen.
+        if (attempt.current === mine) setTake(scored)
       } finally {
-        setAnalysing(false)
+        if (attempt.current === mine) setAnalysing(false)
       }
     },
   })
@@ -119,15 +130,19 @@ export function PracticeScreen() {
       await recorder.stop()
       return
     }
+    attempt.current += 1
     setTake(null)
     setCapturedLevels([])
+    setAnalysing(false)
     await recorder.start()
   }
 
   const resetMic = () => {
+    attempt.current += 1
     recorder.reset()
     setTake(null)
     setCapturedLevels([])
+    setAnalysing(false)
   }
 
   const nextLine = () => {
@@ -309,6 +324,11 @@ export function PracticeScreen() {
           <button
             type="button"
             className={`btn ${recording ? 'btn-secondary' : 'btn-primary'} btn-block`}
+            // Scoring takes seconds, and starting another recording through it
+            // leaves the learner watching two takes at once. Stopping is always
+            // allowed; starting waits until there is an answer about the last.
+            disabled={analysing && !recording}
+            title={analysing && !recording ? 'Waiting for the last take to be scored' : undefined}
             onClick={toggleRecord}
           >
             <Icon name={recording ? 'square' : 'mic'} size={14} />
