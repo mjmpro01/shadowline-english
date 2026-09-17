@@ -88,7 +88,11 @@ def _sources() -> list[Glosser]:
         log.info("ANTHROPIC_API_KEY is not set — no meanings for words the dictionary lacks")
 
     if not sources:
-        log.warning("no source of meanings configured — words get a pronunciation only")
+        log.warning(
+            "no source of meanings configured — words get a pronunciation only. "
+            "Words looked up now keep an empty meaning after a key is added; "
+            "`python -m shadowline.seedwords --requeue-empty` is what fixes that."
+        )
     return sources
 
 

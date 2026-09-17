@@ -365,6 +365,29 @@ Both keys are optional and the worker says at startup which it has. With
 neither, a tapped word still comes back with its pronunciation — a smaller
 answer rather than a broken one, and how the browser tests run.
 
+### Seeding the cache
+
+An empty cache means the first learner to tap each word waits for it.
+`scoring/shadowline/data/common_words.txt` holds the 12,000 commonest English
+words in frequency order, and `python -m shadowline.seedwords` fills them in
+ahead of anybody.
+
+The two halves cost very different things, so they are separate. Pronunciations
+are CMUdict: 12,000 of them land in under a second with no key of any kind.
+Meanings are opt-in behind `--meanings`, and the command prints what it is
+about to commit to before it does it.
+
+Meanings only have to be produced once, by anybody. `--export` writes every
+finished gloss to a tab-separated file and `--import` loads one, so the
+generated definitions get committed and every deployment afterwards starts with
+them and asks nobody for anything. Definitions do not change; paying for the
+same 12,000 twice buys nothing.
+
+Seeding gives up one thing: the sentence. A word glossed before anybody has met
+it has no caption behind it, so it gets the ordinary sense rather than the one
+a particular line uses. Words tapped outside the 12,000 still get the sentence,
+which is where it matters most — an unusual word in an unusual place.
+
 ### A caveat on the Merriam-Webster parsing
 
 The network this was written on blocks `dictionaryapi.com`, so

@@ -103,6 +103,8 @@ shadowline/gloss.py     what a tapped word means, and which source said so
 shadowline/dictionary.py  Merriam-Webster's Learner's Dictionary
 shadowline/glossqueue.py  claim / complete / fail, for lookups
 shadowline/glosser.py   the lookup loop
+shadowline/seedwords.py   filling the cache before anybody taps anything
+shadowline/data/        the 12,000 commonest English words
 reference/              the archived TypeScript scorer, for the fixtures
 ```
 
@@ -130,6 +132,42 @@ neither, words get their pronunciation and no meaning, which is what the browser
 tests run against. A gloss is written once and read for ever, so the model is
 priced per distinct word that reaches it — about $0.002 on the default model,
 a fifth of that on `claude-haiku-4-5`.
+
+### Seeding the cache
+
+An empty cache means the first learner to tap each word waits for it.
+`shadowline/data/common_words.txt` holds the 12,000 commonest English words, in
+frequency order, every one of them in CMUdict.
+
+```bash
+python -m shadowline.seedwords                # 12,000 pronunciations: free, instant, no key
+python -m shadowline.seedwords --meanings     # queue the meanings; the glosser works through them
+python -m shadowline.seedwords --meanings --limit 2000
+```
+
+The two halves cost very different things, so they are separate. Pronunciations
+are CMUdict and land in under a second with no key of any kind. Meanings are
+opt-in, and the command says what it is about to commit to before it does it.
+
+Meanings only have to be produced once, by anybody:
+
+```bash
+python -m shadowline.seedwords --export data/glosses.tsv   # after the glosser has run
+python -m shadowline.seedwords --import data/glosses.tsv   # anywhere else, instantly
+```
+
+Commit that file and every deployment afterwards starts with the definitions
+and asks nobody for anything. Definitions do not change; paying for the same
+12,000 twice buys nothing.
+
+`--requeue-empty` is the one to run after turning a key on. A glosser with no
+source of meanings still answers taps — it writes the pronunciation and settles
+the word, because the alternative is a popup that spins for ever — so words met
+during that time need asking about again.
+
+`tools/build_wordlist.py` rebuilds the word list from `wordfreq`. It is checked
+in rather than generated at runtime so that seeding needs nothing but this
+repository, and so that two deployments seeded a year apart hold the same words.
 
 `python -m shadowline.dictionary <word>` prints Merriam-Webster's raw answer
 beside what the parser made of it. It exists because the network this was
