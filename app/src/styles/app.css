@@ -399,6 +399,22 @@
   display: block;
 }
 
+/* A clip left out of the batch: still editable, visibly not going anywhere. */
+.card[data-excluded='true'] {
+  opacity: 0.45;
+}
+.clip-include {
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.clip-include input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+
 /* — studio video + filmstrip — */
 .studio-video {
   width: 100%;

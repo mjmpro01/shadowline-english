@@ -12,12 +12,26 @@ type sourceJSON struct {
 	Name string `json:"name"`
 }
 
+type transcriptJSON struct {
+	Status string `json:"status"`
+	Words  []struct {
+		Start float64 `json:"start"`
+		Text  string  `json:"text"`
+		IPA   string  `json:"ipa"`
+	} `json:"words"`
+}
+
 // Not a real video: nothing in the API opens the file, and the one thing that
 // does — the cutter — is tested against real ffmpeg in ../../scoring/tests.
 func uploadSource(t *testing.T, c *client, name string) sourceJSON {
 	t.Helper()
+	return uploadSourceAs(t, c, name, "video/mp4")
+}
+
+func uploadSourceAs(t *testing.T, c *client, name, contentType string) sourceJSON {
+	t.Helper()
 	return expect[sourceJSON](t,
-		c.do("POST", "/api/admin/sources?name="+name, "video/mp4", bytes.NewReader([]byte("not really an mp4"))),
+		c.do("POST", "/api/admin/sources?name="+name, contentType, bytes.NewReader([]byte("pretend recording"))),
 		http.StatusCreated)
 }
 
@@ -106,4 +120,85 @@ func TestDeletingAClipRemovesItsVideoToo(t *testing.T) {
 	if after := countObjects(t, h); after != before-2 {
 		t.Fatalf("deleting the clip left %d of its 2 objects behind", after-(before-2))
 	}
+}
+
+// An audio upload has a source row too, because transcription wants the file
+// whether or not there is a picture in it. What it must not get is a cut job:
+// the cutter could only fail that one, three times, before giving up.
+func TestAnAudioSourceIsTranscribedButNotCut(t *testing.T) {
+	h := newHarness(t)
+	admin := h.login("admin@example.com")
+
+	source := uploadSourceAs(t, admin, "lesson.wav", "audio/wav")
+
+	clip := aClip("Line one")
+	clip["sourceId"] = source.ID
+	clip["endSeconds"] = 3.4
+	publishClips(t, admin, clip)
+
+	if depth := h.cutQueueDepth(t); depth != 0 {
+		t.Fatalf("an audio source queued %d cuts, want 0", depth)
+	}
+	// The transcription was queued when the source was created, before any clip
+	// existed: the words belong to the recording, not to the cuts.
+	if depth := h.transcribeQueueDepth(t); depth != 1 {
+		t.Fatalf("transcribe queue holds %d jobs, want 1", depth)
+	}
+}
+
+func TestUploadingASourceQueuesItsTranscription(t *testing.T) {
+	h := newHarness(t)
+	admin := h.login("admin@example.com")
+
+	uploadSource(t, admin, "lecture.mp4")
+
+	if depth := h.transcribeQueueDepth(t); depth != 1 {
+		t.Fatalf("transcribe queue holds %d jobs, want 1", depth)
+	}
+}
+
+// Pending is the ordinary first answer, and the studio shows it as "still
+// coming" rather than as "there are no words".
+func TestATranscriptIsPendingUntilTheWorkerHasRun(t *testing.T) {
+	h := newHarness(t)
+	admin := h.login("admin@example.com")
+
+	source := uploadSource(t, admin, "lecture.mp4")
+
+	got := expect[transcriptJSON](t,
+		admin.do("GET", "/api/admin/sources/"+source.ID+"/transcript", "", nil), http.StatusOK)
+	if got.Status != "pending" {
+		t.Fatalf("a fresh source reported %q, want pending", got.Status)
+	}
+	if len(got.Words) != 0 {
+		t.Fatalf("a pending transcript carried %d words", len(got.Words))
+	}
+}
+
+func TestAStoredTranscriptIsServedWithItsWords(t *testing.T) {
+	h := newHarness(t)
+	admin := h.login("admin@example.com")
+
+	source := uploadSource(t, admin, "lecture.mp4")
+	h.storeTranscript(t, source.ID)
+
+	got := expect[transcriptJSON](t,
+		admin.do("GET", "/api/admin/sources/"+source.ID+"/transcript", "", nil), http.StatusOK)
+	if got.Status != "ready" {
+		t.Fatalf("a stored transcript reported %q, want ready", got.Status)
+	}
+	if len(got.Words) != 2 || got.Words[0].Text != "One" || got.Words[0].IPA != "ˈwʌn" {
+		t.Fatalf("words came back as %+v", got.Words)
+	}
+}
+
+// Whoever can publish can see the transcript, and nobody else: it is the
+// contents of a recording that has not been cut into a library yet.
+func TestOnlyAdminsCanReadATranscript(t *testing.T) {
+	h := newHarness(t)
+	source := uploadSource(t, h.login("admin@example.com"), "lecture.mp4")
+
+	expectStatus(t,
+		h.login("learner@example.com").do("GET", "/api/admin/sources/"+source.ID+"/transcript", "", nil),
+		http.StatusForbidden)
 }

@@ -48,9 +48,10 @@ export interface Store {
   isAdmin: boolean
   reload: () => Promise<void>
   logout: () => Promise<void>
-  /** Publishes a batch. `source` is the file the clips were cut from: pass it
-   *  and the server cuts each clip's video out of it in the background. */
-  addClips: (clips: NewClip[], source?: { file: Blob; name: string }) => Promise<void>
+  /** Publishes a batch. `sourceId` is the recording the studio already
+   *  uploaded: pass it and the server cuts each clip's video out of it in the
+   *  background. */
+  addClips: (clips: NewClip[], sourceId?: string | null) => Promise<void>
   updateClip: (id: string, edit: ClipEdit) => Promise<void>
   deleteClip: (id: string) => Promise<void>
   addTake: (videoId: string, audio: Blob) => Promise<Take>

@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/shadowline/server/internal/api"
 	"github.com/shadowline/server/internal/auth"
 	"github.com/shadowline/server/internal/config"
@@ -43,9 +44,12 @@ func testDatabaseURL(t *testing.T) string {
 }
 
 type harness struct {
-	t        *testing.T
-	server   *httptest.Server
-	store    *store.Store
+	t      *testing.T
+	server *httptest.Server
+	store  *store.Store
+	// pool is for the few assertions that read a queue the Go server only ever
+	// writes to — the workers that drain them are Python.
+	pool     *pgxpool.Pool
 	blobs    storage.Storage
 	diskRoot string
 	srv      *api.Server
@@ -69,6 +73,35 @@ func (h *harness) cutQueueDepth(t *testing.T) int {
 		t.Fatalf("read cut queue depth: %v", err)
 	}
 	return n
+}
+
+// transcribeQueueDepth is how many recordings are waiting for their words. The
+// transcriber is Python and lives in ../../../scoring; from here the queue is
+// only ever written.
+func (h *harness) transcribeQueueDepth(t *testing.T) int {
+	t.Helper()
+	var n int
+	err := h.pool.QueryRow(context.Background(),
+		`select count(*)::int from transcribe_jobs where state = 'queued'`).Scan(&n)
+	if err != nil {
+		t.Fatalf("read transcribe queue depth: %v", err)
+	}
+	return n
+}
+
+// storeTranscript writes what the transcriber would have written, so the API
+// can be checked against a transcript without a Whisper model on disk.
+func (h *harness) storeTranscript(t *testing.T, sourceID string) {
+	t.Helper()
+	_, err := h.pool.Exec(context.Background(), `
+		insert into transcripts (source_id, words, language)
+		values ($1, $2, 'en')`, sourceID, []byte(`[
+			{"start": 0.1, "end": 0.45, "text": "One", "ipa": "ˈwʌn"},
+			{"start": 0.5, "end": 0.9,  "text": "step", "ipa": "ˈstɛp"}
+		]`))
+	if err != nil {
+		t.Fatalf("store transcript: %v", err)
+	}
 }
 
 // attachVideo puts an object where a finished cut would have left one, and
@@ -146,7 +179,7 @@ func newHarness(t *testing.T) *harness {
 		Log:      slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
-	h := &harness{t: t, store: st, blobs: blobs, diskRoot: diskRoot, srv: srv}
+	h := &harness{t: t, store: st, pool: pool, blobs: blobs, diskRoot: diskRoot, srv: srv}
 	ts := httptest.NewServer(srv.Routes())
 	t.Cleanup(func() {
 		ts.Close()

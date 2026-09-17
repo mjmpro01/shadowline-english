@@ -167,6 +167,67 @@ and a keyframe is typically seconds from where a line starts — which, for a cl
 a few seconds long, means cutting the wrong thing. Output is h264/aac mp4,
 because that is what plays everywhere, Safari included.
 
+## Choosing what gets published
+
+The studio proposes a cut at every pause, which for a fifty-minute recording is
+hundreds of them — and most of a film is not dialogue worth shadowing. Each clip
+carries a checkbox, and only the selected ones are published.
+
+Everything starts selected, because a short recording is usually published
+whole and that is what the studio did before. `Select none` and `Only clips
+with a line` are the way into the other case: after transcription, the clips
+with words in them are the ones worth keeping, and the rest are silence the
+energy-based cut found anyway.
+
+Length is checked against the selection, not the proposal: a clip being left
+behind is too long for nobody.
+
+## Transcripts and IPA
+
+The studio fills its own lines in. The recording is uploaded when the admin
+opens it — not at publish — because transcribing it is what fills them, and that
+cannot start until the server has the file:
+
+1. `POST /api/admin/sources` stores the upload and queues a transcription in the
+   same transaction.
+2. The transcriber (`python -m shadowline.transcriber`) runs Whisper over the
+   whole recording and stores the words with their times and their IPA.
+3. The studio polls `GET /api/admin/sources/{id}/transcript` while the admin
+   cuts, and writes each clip's words into its Line and IPA fields when they
+   land — leaving alone anything already typed, so a correction survives.
+
+One run per upload, not per clip: every clip reads the words falling inside its
+own boundaries, so an hour is transcribed once however many lines come out of
+it. A word belongs to the clip its *middle* falls in, so one straddling a cut
+goes to the side holding most of it and never to both. That rule lives twice —
+`words_between` in `scoring/shadowline/transcribe.py` and `wordsBetween` in
+`app/src/lib/transcript.ts` — because the worker maps words once and the studio
+maps them again whenever a boundary moves. Both are tested against the same
+cases; they have to stay in step.
+
+Whisper runs locally, through faster-whisper on CPU. An API would bill for
+fifty minutes every time a lecture is re-cut, and these recordings are the
+product's own material. `WHISPER_MODEL` picks the model and the image fetches
+its weights at build time, so a fresh replica does not download hundreds of
+megabytes while an admin waits.
+
+IPA comes from CMUdict rather than a model: the same answer every run, no
+download, and a word the dictionary has never heard of gets no transcription at
+all. An invented pronunciation is worse than none — the field is optional, and
+a learner would practise whatever is in it. The stress mark goes before the
+whole syllable, consonants included (`həˈloʊ`, not `həlˈoʊ`), and only clusters
+English actually opens a syllable with move in front of it, or `computer` comes
+out as `kəˈmpjutɝ`.
+
+Transcription is a third queue and a third worker for the same reason cutting is
+a second one: a learner waits on a score in seconds, nobody waits on a cut, and
+an admin watches a transcript arrive over minutes. Three pressures, scaled
+apart.
+
+If transcription fails, the studio says so and the admin types the lines, which
+is what they did before any of this existed. Nothing else about the upload is
+affected.
+
 ## Why the queue is a table
 
 One take produces one job. Ten thousand learners recording fifty takes a day is

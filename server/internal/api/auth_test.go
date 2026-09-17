@@ -170,13 +170,16 @@ func expectLoginError(t *testing.T, resp *http.Response, reason string) {
 	}
 }
 
-// The reset route wipes every table. It must not exist outside the tests, and
-// the guarantee is that it is never registered rather than that it checks.
-func TestTheResetRouteIsAbsentWithoutTheFakeProvider(t *testing.T) {
+// The test-only routes wipe every table and write transcripts nobody spoke.
+// They must not exist outside the tests, and the guarantee is that they are
+// never registered rather than that they check.
+func TestTheTestOnlyRoutesAreAbsentWithoutTheFakeProvider(t *testing.T) {
 	h := newHarness(t)
 	expectStatus(t, h.anonymous().json("POST", "/test/reset", nil), http.StatusOK)
 
 	real := newHarness(t)
 	real.withRealProvider()
-	expectStatus(t, real.anonymous().json("POST", "/test/reset", nil), http.StatusNotFound)
+	for _, route := range []string{"/test/reset", "/test/transcript"} {
+		expectStatus(t, real.anonymous().json("POST", route, nil), http.StatusNotFound)
+	}
 }

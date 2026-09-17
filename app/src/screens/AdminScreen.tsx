@@ -1,14 +1,16 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Icon } from '../components/Icon'
 import { SegmentedControl } from '../components/SegmentedControl'
 import { ThumbnailStrip } from '../components/ThumbnailStrip'
 import { WaveformEditor } from '../components/WaveformEditor'
-import { MAX_CLIP_SECONDS } from '../data/types'
+import { MAX_CLIP_SECONDS, type Transcript } from '../data/types'
 import { decodeFile, peaks as computePeaks, type Column } from '../lib/audio/decode'
 import { proposeSegments, type Segment } from '../lib/audio/segment'
 import { formatCategories, parseCategories, searchClips } from '../lib/clips'
 import { sliceToWav } from '../lib/audio/wav'
+import { ipaOf, lineOf, wordsBetween } from '../lib/transcript'
 import { extractFrames } from '../lib/video/frames'
+import { repository } from '../repository'
 import { SavedField } from '../components/SavedField'
 import { useApp } from '../store/context'
 
@@ -18,12 +20,28 @@ const WAVEFORM_COLUMNS = 900
  *  seek, and seeks are the slow part. */
 const FILMSTRIP_SLOTS = 28
 
+/** How often to ask whether the transcript is ready. Whisper takes minutes on
+ *  a long recording, so asking more often only adds requests. */
+const TRANSCRIPT_POLL_MS = 3000
+
 interface Line {
   title: string
   text: string
   ipa: string
   categories: string
+  /**
+   * Whether this clip goes to the library when the batch is published.
+   *
+   * Distinct from `selected`, which is the one clip the timeline is focused on.
+   * Every proposal starts included, because a short recording is usually
+   * published whole; a fifty-minute one proposes hundreds of cuts and most of
+   * them are not dialogue worth shadowing, which is what the bulk controls are
+   * for.
+   */
+  include: boolean
 }
+
+const EMPTY_LINE: Omit<Line, 'categories'> = { title: '', text: '', ipa: '', include: true }
 
 interface Loaded {
   name: string
@@ -71,6 +89,10 @@ export function AdminScreen() {
   /** Whether the batch just published is having its video cut. */
   const [savedVideo, setSavedVideo] = useState(false)
   const [frames, setFrames] = useState<(string | null)[]>([])
+  /** The upload on the server, which the transcript and the cut both hang off.
+   *  Null while it is still going up, or if it failed. */
+  const [sourceId, setSourceId] = useState<string | null>(null)
+  const [transcript, setTranscript] = useState<Transcript | null>(null)
 
   const open = async (file: File | undefined) => {
     if (!file) return
@@ -79,6 +101,8 @@ export function AdminScreen() {
     // The strip's slots exist from the moment a video is chosen, so it shows
     // as an empty filmstrip filling in rather than appearing once it is done.
     setFrames(file.type.startsWith('video/') ? Array.from({ length: FILMSTRIP_SLOTS }, () => null) : [])
+    setSourceId(null)
+    setTranscript(null)
     // The previous upload's url is dead the moment this one replaces it, and
     // an unrevoked one holds the whole file in memory until the tab closes.
     setLoaded((previous) => {
@@ -103,10 +127,22 @@ export function AdminScreen() {
         isVideo: file.type.startsWith('video/'),
       })
       setSegments(proposal)
-      setLines(proposal.map(() => ({ title: '', text: '', ipa: '', categories: batchCategories })))
+      setLines(proposal.map(() => ({ ...EMPTY_LINE, categories: batchCategories })))
       setSelected(proposal.length ? 0 : null)
       // A playlist per upload is the common case, so name it after the file.
       setPlaylist((current) => current || file.name.replace(/\.[^.]+$/, ''))
+
+      // The recording goes up now rather than at publish, because transcribing
+      // it is what fills the lines in and that cannot start until the server
+      // has the file. Publishing then only has to reference it.
+      //
+      // Not awaited: the cuts are already on screen and the admin can work
+      // while it uploads. A failure costs the transcript and the video, not the
+      // batch — which is exactly where the studio was before either existed.
+      void repository
+        .uploadSource(file, file.name)
+        .then(setSourceId)
+        .catch(() => setTranscript({ status: 'failed', language: '', words: [] }))
     } catch {
       URL.revokeObjectURL(url)
       setBusy(null)
@@ -182,6 +218,70 @@ export function AdminScreen() {
     requestAnimationFrame(follow)
   }
 
+  // Asks for the transcript until it is there or it is not coming. Whisper runs
+  // on the server over the whole recording, so this is minutes of waiting with
+  // the admin already cutting — which is the point of polling rather than
+  // blocking the screen on it.
+  useEffect(() => {
+    if (!sourceId) return
+    let active = true
+    let timer: ReturnType<typeof setTimeout>
+
+    const ask = async () => {
+      try {
+        const next = await repository.sourceTranscript(sourceId)
+        if (!active) return
+        setTranscript(next)
+        if (next.status === 'pending') timer = setTimeout(ask, TRANSCRIPT_POLL_MS)
+      } catch {
+        // A failed request is not a failed transcript: keep asking, because the
+        // worker may still be running and the next answer may be the words.
+        if (active) timer = setTimeout(ask, TRANSCRIPT_POLL_MS)
+      }
+    }
+    void ask()
+
+    return () => {
+      active = false
+      clearTimeout(timer)
+    }
+  }, [sourceId])
+
+  /**
+   * Writes the transcript into the clips, leaving alone anything already typed.
+   *
+   * Only empty fields are filled, so a correction survives — both the automatic
+   * fill when the words arrive and the button that re-runs it after boundaries
+   * have moved.
+   */
+  const fillFromTranscript = useCallback((words: Transcript['words'], cuts: Segment[]) => {
+    if (words.length === 0) return
+    setLines((previous) =>
+      previous.map((line, index) => {
+        const cut = cuts[index]
+        if (!cut) return line
+        const spoken = wordsBetween(words, cut.start, cut.end)
+        if (spoken.length === 0) return line
+        return {
+          ...line,
+          text: line.text.trim() ? line.text : lineOf(spoken),
+          ipa: line.ipa.trim() ? line.ipa : ipaOf(spoken),
+        }
+      }),
+    )
+  }, [])
+
+  // The words land in the clips as they stand when they arrive, which is why
+  // the fill is an effect and not part of the fetch: by then the admin has
+  // usually been moving boundaries for a while.
+  useEffect(() => {
+    if (transcript?.status === 'ready') fillFromTranscript(transcript.words, segments)
+    // segments deliberately absent: moving a boundary should not silently
+    // rewrite the lines under the admin. The button below is how that is asked
+    // for on purpose.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transcript, fillFromTranscript])
+
   // Walking the file for frames is slow and entirely optional, so it runs after
   // the cut proposal is already on screen and fills the strip in as it goes.
   // Abandoning it on a new upload matters: without that, two walks fight over
@@ -243,34 +343,39 @@ export function AdminScreen() {
     setLines((prev) => [
       ...prev.slice(0, selected),
       prev[selected],
-      { title: '', text: '', ipa: '', categories: prev[selected].categories },
+      // The new half inherits whether its parent was going to be published:
+      // splitting a clip is not a decision about publishing it.
+      { ...EMPTY_LINE, categories: prev[selected].categories, include: prev[selected].include },
       ...prev.slice(selected + 1),
     ])
   }
 
   const publish = async () => {
     if (!loaded) return
-    // Named separately because it is the slow half: the recording can be
-    // hundreds of megabytes, and "Saving…" for two minutes reads as a hang.
-    setBusy(loaded.isVideo ? 'Uploading the recording…' : 'Saving…')
+    const chosen = segments
+      .map((segment, index) => ({ segment, line: lines[index] }))
+      .filter(({ line }) => line?.include)
+    if (chosen.length === 0) return
+
+    setBusy('Saving…')
     await addClips(
-      segments.map((segment, index) => ({
-        title: lines[index].title.trim(),
-        line: lines[index].text.trim(),
-        ipa: lines[index].ipa.trim(),
+      chosen.map(({ segment, line }) => ({
+        title: line.title.trim(),
+        line: line.text.trim(),
+        ipa: line.ipa.trim(),
         source: loaded.name,
         playlist: playlist.trim() || loaded.name,
-        categories: parseCategories(lines[index].categories),
+        categories: parseCategories(line.categories),
         start: segment.start,
         end: segment.end,
         audio: sliceToWav(loaded.samples, loaded.sampleRate, segment.start, segment.end),
       })),
-      // Only a video needs cutting server-side. Audio was already sliced here,
-      // and uploading the original again would buy nothing.
-      loaded.isVideo ? { file: loaded.file, name: loaded.name } : undefined,
+      // Already on the server since the file was opened, so publishing sends
+      // an id rather than the recording all over again.
+      sourceId,
     )
     setBusy(null)
-    setSaved(segments.length)
+    setSaved(chosen.length)
     setSavedVideo(loaded.isVideo)
     setLoaded((previous) => {
       if (previous) URL.revokeObjectURL(previous.url)
@@ -280,9 +385,24 @@ export function AdminScreen() {
     setLines([])
     setSelected(null)
     setFrames([])
+    setSourceId(null)
+    setTranscript(null)
   }
 
-  const tooLong = segments.filter((s) => s.end - s.start > MAX_CLIP_SECONDS + 0.01).length
+  const included = lines.filter((line) => line.include).length
+  // Only what is actually going up has to be short enough. A proposal being
+  // left behind is not a reason to refuse the batch.
+  const tooLong = segments.filter(
+    (s, i) => lines[i]?.include && s.end - s.start > MAX_CLIP_SECONDS + 0.01,
+  ).length
+
+  const includeAll = (include: boolean) =>
+    setLines((previous) => previous.map((line) => ({ ...line, include })))
+
+  /** Everything that has words in it, which after transcription is the part
+   *  worth publishing — the rest of a long recording is silence and noise. */
+  const includeOnlySpoken = () =>
+    setLines((previous) => previous.map((line) => ({ ...line, include: line.text.trim() !== '' })))
 
   return (
     <div className="stack gap-6">
@@ -436,6 +556,31 @@ export function AdminScreen() {
                 {clock(loaded.duration)} · {segments.length} clips proposed
               </div>
             </div>
+
+            <div className="row between wrap gap-2">
+              <div className="card-meta">
+                {transcript === null && 'Listening for the words…'}
+                {transcript?.status === 'pending' &&
+                  'Transcribing — the lines fill themselves in when it finishes. Keep cutting meanwhile.'}
+                {transcript?.status === 'ready' &&
+                  `Transcribed ${transcript.words.length} words. Empty lines have been filled in — check them.`}
+                {transcript?.status === 'failed' &&
+                  'The words could not be transcribed, so the lines are yours to type.'}
+              </div>
+              {/* Boundaries move after the words arrive, and the lines are not
+                  rewritten underneath the admin when they do. This is how that
+                  is asked for on purpose — and it still leaves typed lines
+                  alone, so corrections survive it. */}
+              {transcript?.status === 'ready' && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => fillFromTranscript(transcript.words, segments)}
+                >
+                  Fill empty lines from transcript
+                </button>
+              )}
+            </div>
             {loaded.isVideo && (
               <video
                 ref={video}
@@ -481,19 +626,48 @@ export function AdminScreen() {
             </div>
           </div>
 
+          <div className="row between wrap gap-2">
+            <div className="card-meta">
+              {included} of {segments.length} clips selected to publish
+              {included < segments.length && ' — the rest stay behind'}
+            </div>
+            <div className="row gap-2 wrap">
+              <button type="button" className="btn btn-ghost" onClick={() => includeAll(true)}>
+                Select all
+              </button>
+              <button type="button" className="btn btn-ghost" onClick={() => includeAll(false)}>
+                Select none
+              </button>
+              {/* After transcription this is the useful one: a long recording
+                  proposes a cut per pause, and only some of them are speech. */}
+              <button type="button" className="btn btn-ghost" onClick={includeOnlySpoken}>
+                Only clips with a line
+              </button>
+            </div>
+          </div>
+
           <div className="stack gap-2">
             {segments.map((segment, index) => {
               const length = segment.end - segment.start
-              const over = length > MAX_CLIP_SECONDS + 0.01
+              const over = lines[index]?.include && length > MAX_CLIP_SECONDS + 0.01
               return (
                 <div
                   className="card elev-sm stack gap-2"
                   key={index}
                   data-selected={index === selected}
+                  data-excluded={!lines[index]?.include}
                   onPointerDown={() => setSelected(index)}
                 >
                   <div className="row between wrap gap-2">
                     <div className="row gap-2">
+                      <label className="clip-include" title="Publish this clip">
+                        <input
+                          type="checkbox"
+                          checked={lines[index]?.include ?? false}
+                          onChange={(e) => update(index, { include: e.target.checked })}
+                          aria-label={`Publish clip ${index + 1}`}
+                        />
+                      </label>
                       <span className="tag tag-neutral mono">{index + 1}</span>
                       <span className="card-meta mono" style={{ color: over ? 'var(--score-attention)' : undefined }}>
                         {clock(segment.start)}–{clock(segment.end)} · {lengthLabel(length)}s
@@ -568,10 +742,10 @@ export function AdminScreen() {
             type="button"
             className="btn btn-primary"
             style={{ alignSelf: 'flex-start' }}
-            disabled={!segments.length || tooLong > 0 || busy !== null}
+            disabled={included === 0 || tooLong > 0 || busy !== null}
             onClick={() => void publish()}
           >
-            Publish {segments.length} clips to the library
+            Publish {included} clips to the library
           </button>
         </>
       )}

@@ -145,7 +145,11 @@ func (s *Server) handleUploadSource(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	source, err := s.Store.CreateSource(r.Context(), name, key, contentType, u.ID)
+	// What the browser said it was uploading decides whether cutting is even
+	// attempted. An audio file has no picture to cut, and its clips are queued
+	// for transcription alone.
+	hasVideo := strings.HasPrefix(contentType, "video/")
+	source, err := s.Store.CreateSource(r.Context(), name, key, contentType, hasVideo, u.ID)
 	if err != nil {
 		// The object is already stored; without a row nothing will ever point
 		// at it, so take it back out rather than leaving it to pay rent.
@@ -156,6 +160,25 @@ func (s *Server) handleUploadSource(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, source)
+}
+
+// handleSourceTranscript answers with the words Whisper found in a source, or
+// says they are still coming. The studio polls this while the admin works.
+func (s *Server) handleSourceTranscript(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	if _, err := s.Store.SourceByID(r.Context(), id); err != nil {
+		s.failErr(w, err, "get source")
+		return
+	}
+	transcript, err := s.Store.TranscriptBySource(r.Context(), id)
+	if err != nil {
+		s.failErr(w, err, "get transcript")
+		return
+	}
+	writeJSON(w, http.StatusOK, transcript)
 }
 
 // handleCreateClips takes the studio's whole batch at once. The cuts of one

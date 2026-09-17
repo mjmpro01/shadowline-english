@@ -21,11 +21,22 @@ import (
 // side only ever enqueues.
 
 // EnqueueCut schedules a clip's video, in the same transaction as whatever else
-// the caller is doing. `on conflict do nothing` makes a re-publish idempotent
-// rather than a duplicate-key error.
+// the caller is doing.
+//
+// The insert selects rather than values: a source with no picture produces no
+// row, so an audio upload — which has a source of its own now, because
+// transcription wants the file either way — never hands the cutter a job whose
+// only possible outcome is failing three times.
+//
+// `on conflict do nothing` makes a re-publish idempotent rather than a
+// duplicate-key error.
 func (s *Store) EnqueueCut(ctx context.Context, tx pgx.Tx, clipID uuid.UUID) error {
-	_, err := tx.Exec(ctx,
-		`insert into cut_jobs (clip_id) values ($1) on conflict (clip_id) do nothing`, clipID)
+	_, err := tx.Exec(ctx, `
+		insert into cut_jobs (clip_id)
+		select c.id from clips c
+		join clip_sources s on s.id = c.source_id
+		where c.id = $1 and s.has_video
+		on conflict (clip_id) do nothing`, clipID)
 	return err
 }
 
