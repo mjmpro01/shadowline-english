@@ -17,6 +17,24 @@ export interface CaptionLine {
   ipa: string
 }
 
+/** One word Whisper heard, when it was said, and how to say it. */
+export interface TranscriptWord {
+  start: number
+  end: number
+  text: string
+  /** Empty when CMUdict has never heard of the word. */
+  ipa: string
+}
+
+export interface Transcript {
+  /** `pending` while the worker is still running, and the ordinary first
+   *  answer: transcribing an hour takes minutes. `failed` means no transcript
+   *  is coming and the lines have to be typed. */
+  status: 'pending' | 'ready' | 'failed'
+  language: string
+  words: TranscriptWord[]
+}
+
 export interface Video {
   id: string
   title: string

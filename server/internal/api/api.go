@@ -40,6 +40,7 @@ func (s *Server) Routes() http.Handler {
 	if s.Cfg.AuthFake {
 		// Test-only, and absent entirely from a normal deployment.
 		r.Post("/test/reset", s.handleTestReset)
+		r.Post("/test/transcript", s.handleTestTranscript)
 	}
 
 	r.Route("/auth", func(r chi.Router) {
@@ -83,6 +84,7 @@ func (s *Server) Routes() http.Handler {
 		r.Group(func(r chi.Router) {
 			r.Use(s.requireAdmin)
 			r.Post("/admin/sources", s.handleUploadSource)
+			r.Get("/admin/sources/{id}/transcript", s.handleSourceTranscript)
 			r.Post("/admin/clips", s.handleCreateClips)
 			r.Put("/admin/clips/{id}/audio", s.handleUploadClipAudio)
 			r.Patch("/admin/clips/{id}", s.handleUpdateClip)

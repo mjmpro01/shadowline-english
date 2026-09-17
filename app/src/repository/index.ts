@@ -1,5 +1,5 @@
 import { api } from '../lib/api'
-import type { CaptionLine, Profile, Take, Video, VocabStatus, VocabWord } from '../data/types'
+import type { CaptionLine, Profile, Take, Transcript, Video, VocabStatus, VocabWord } from '../data/types'
 
 /**
  * The app's data seam. Records live on the server now; this is the only module
@@ -21,6 +21,8 @@ export interface Repository {
   createClips(clips: NewClipInput[]): Promise<Video[]>
   /** Stores the recording a batch is cut from, once, and returns its id. */
   uploadSource(file: Blob, name: string): Promise<string>
+  /** The words Whisper found in a source, or word that they are still coming. */
+  sourceTranscript(sourceId: string): Promise<Transcript>
   uploadClipAudio(clipId: string, audio: Blob): Promise<void>
   updateClip(clipId: string, patch: ClipPatch): Promise<Video>
   deleteClip(clipId: string): Promise<void>
@@ -117,6 +119,10 @@ class ApiRepository implements Repository {
   async clipVideoURL(clipId: string) {
     const { url } = await api.get<SignedURL>(`/api/clips/${clipId}/video`)
     return url
+  }
+
+  sourceTranscript(sourceId: string) {
+    return api.get<Transcript>(`/api/admin/sources/${sourceId}/transcript`)
   }
 
   async uploadSource(file: Blob, name: string) {

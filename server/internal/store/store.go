@@ -48,7 +48,8 @@ func (s *Store) inTx(ctx context.Context, fn func(pgx.Tx) error) error {
 // predictable across a test run.
 func (s *Store) TruncateAll(ctx context.Context) error {
 	_, err := s.pool.Exec(ctx, `
-		truncate users, clips, clip_sources, takes, vocab_words, scoring_jobs, cut_jobs, sessions
+		truncate users, clips, clip_sources, transcripts, takes, vocab_words,
+		         scoring_jobs, cut_jobs, transcribe_jobs, sessions
 		restart identity cascade`)
 	return err
 }

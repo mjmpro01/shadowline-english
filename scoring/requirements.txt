@@ -2,3 +2,8 @@ numpy>=2.0
 soundfile>=0.12
 psycopg[binary]>=3.2
 minio>=7.2
+# Whisper on CPU through CTranslate2 — the same models, fast enough that a
+# lecture transcribes in minutes rather than hours.
+faster-whisper>=1.1
+# IPA comes from a dictionary, not a model: same answer every run, no download.
+cmudict>=1.0

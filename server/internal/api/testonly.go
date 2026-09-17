@@ -29,3 +29,26 @@ func (s *Server) handleTestReset(w http.ResponseWriter, r *http.Request) {
 	s.Sessions.Clear(r.Context(), w, r)
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "signedOut": true})
 }
+
+// handleTestTranscript stores a transcript for the most recently uploaded
+// source, standing in for the transcriber.
+//
+// Registered only when AUTH_FAKE=1, like the reset route. It exists because the
+// browser tests cannot run Whisper: the model is hundreds of megabytes fetched
+// from somewhere CI has no business reaching, and what the tests are checking
+// is the studio filling its lines in, not the model's accuracy. The worker's
+// own behaviour is covered in ../../../scoring/tests/test_transcriber.py.
+func (s *Server) handleTestTranscript(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Words []store.Word `json:"words"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		fail(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := s.Store.StoreLatestTranscript(r.Context(), "en", body.Words); err != nil {
+		s.failErr(w, err, "store test transcript")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
