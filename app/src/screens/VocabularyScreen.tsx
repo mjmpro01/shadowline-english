@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from '../components/Icon'
 import type { VocabStatus } from '../data/types'
+import { meaningOrWait } from '../lib/text'
 import { useApp } from '../store/context'
 
 const FILTERS: { label: string; value: 'All' | VocabStatus }[] = [
@@ -75,7 +76,9 @@ export function VocabularyScreen() {
               <div className="mono" style={{ fontSize: 13, opacity: 0.6 }}>
                 {word.ipa}
               </div>
-              <div className="card-body">{word.meaning}</div>
+              <div className="card-body" style={{ opacity: word.meaning ? 1 : 0.6 }}>
+                {meaningOrWait(word.meaning)}
+              </div>
               {video && (
                 <button
                   type="button"

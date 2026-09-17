@@ -9,6 +9,7 @@ import { MAX_CLIP_SECONDS, type Take } from '../data/types'
 import { colorFor, scoreLabel } from '../lib/score'
 import { urlOf, useClipAudio, useClipVideo } from '../lib/useAudioUrl'
 import { useDub } from '../lib/useDub'
+import { useGloss } from '../lib/useGloss'
 import { useRecorder } from '../lib/useRecorder'
 import { normalizeWord } from '../lib/text'
 import { useApp } from '../store/context'
@@ -18,10 +19,14 @@ const POPUP_LABEL = {
   removed: 'Removed from Vocabulary',
 }
 
+/** The word tapped and what tapping it did. What it *means* is not in here:
+ *  that is looked up separately and arrives when it arrives. */
 interface Popup {
   word: string
-  ipa: string
-  meaning: string
+  /** The line it was tapped in, kept so the lookup can pick the sense that
+   *  sentence uses. Held here rather than read live, so moving to the next line
+   *  does not re-ask for the word still on screen. */
+  context: string
   statusLabel: string
 }
 
@@ -85,6 +90,10 @@ export function PracticeScreen() {
   const playable = sourceVideoUrl ?? sourceUrl
   const line = video?.captions[Math.min(lineIndex, (video?.captions.length ?? 1) - 1)]
 
+  // Before the early returns, because it is a hook. No popup means no word and
+  // no lookup.
+  const gloss = useGloss(popup?.word ?? null, popup?.context ?? '')
+
   const words =
     line?.text.split(' ').map((raw) => ({
       raw,
@@ -102,13 +111,7 @@ export function PracticeScreen() {
 
   const tapWord = async (raw: string) => {
     const result = await toggleVocabWord(raw, video.id)
-    const entry = data.vocab.find((v) => v.word === result.word)
-    setPopup({
-      word: result.word,
-      ipa: entry?.ipa ?? `/${result.word}/`,
-      meaning: entry?.meaning ?? 'Auto-translated definition',
-      statusLabel: POPUP_LABEL[result.status],
-    })
+    setPopup({ word: result.word, context: line.text, statusLabel: POPUP_LABEL[result.status] })
   }
 
   const toggleRecord = async () => {
@@ -190,9 +193,16 @@ export function PracticeScreen() {
               </button>
               <div className="card-title">{popup.word}</div>
               <div className="mono" style={{ fontSize: 13, opacity: 0.6 }}>
-                {popup.ipa}
+                {gloss?.ipa}
               </div>
-              <div className="card-body">{popup.meaning}</div>
+              {/* Three answers, and the popup says which: the definition, the
+                  wait for one nobody has ever asked for, and the admission
+                  that none is coming. Saying nothing would read as a blank. */}
+              <div className="card-body" style={{ opacity: gloss?.meaning ? 1 : 0.6 }}>
+                {gloss?.meaning || (gloss === null || gloss.status === 'pending'
+                  ? 'Looking this word up…'
+                  : 'No definition for this one yet.')}
+              </div>
               <span className="tag tag-accent-2" style={{ alignSelf: 'flex-start' }}>
                 {popup.statusLabel}
               </span>

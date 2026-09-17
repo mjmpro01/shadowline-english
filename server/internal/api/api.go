@@ -72,6 +72,9 @@ func (s *Server) Routes() http.Handler {
 		r.Get("/takes/{id}/dub", s.handleTakeDub)
 		r.Delete("/takes/{id}", s.handleDeleteTake)
 
+		r.Post("/words/{word}", s.handleLookupWord)
+		r.Get("/words/{word}", s.handleGetWord)
+
 		r.Get("/vocab", s.handleListVocab)
 		r.Post("/vocab", s.handleCreateVocab)
 		r.Patch("/vocab/{id}", s.handleUpdateVocab)

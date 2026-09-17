@@ -98,5 +98,35 @@ shadowline/audio.py     ffmpeg: whatever the browser recorded -> mono 8kHz
 shadowline/queue.py     claim / complete / fail, against the Postgres table
 shadowline/storage.py   reading audio from S3/MinIO or from a directory
 shadowline/worker.py    the loop
+shadowline/ipa.py       CMUdict -> IPA, for transcripts and word lookups
+shadowline/gloss.py     what a tapped word means: CMUdict + the Claude API
+shadowline/glossqueue.py  claim / complete / fail, for lookups
+shadowline/glosser.py   the lookup loop
 reference/              the archived TypeScript scorer, for the fixtures
 ```
+
+## Looking words up
+
+`python -m shadowline.glosser` answers "what does this word mean" for words a
+learner taps in a caption. Two halves from two places: the pronunciation is a
+CMUdict lookup, which is free and the same every run, and the meaning is one
+short Claude API call, because no bundled dictionary covers the words people
+actually tap — `gonna`, `okay`, `kidding`, `guys` — or defines what it does
+cover in words a learner already has.
+
+```bash
+DATABASE_URL=postgres://... ANTHROPIC_API_KEY=sk-ant-... python -m shadowline.glosser
+```
+
+`ANTHROPIC_API_KEY` is optional and the worker says so at startup. Without it
+words get their pronunciation and no definition, which is what the tests run
+against: `tests/test_glosser.py` puts a stand-in in place of the model, because
+a real call costs money and comes back worded differently every run.
+
+A gloss is written once and read for ever, so the cost is per distinct word
+ever tapped rather than per tap. `GLOSS_MODEL` picks the model; the default is
+`claude-opus-5` and `claude-haiku-4-5` costs about a fifth as much.
+
+The sentence the word was tapped in is sent with it, which is the one thing a
+dictionary cannot do — `really` in "Are you really going?" is not `really` in
+"I really like it". The full design is in `../server/README.md`.

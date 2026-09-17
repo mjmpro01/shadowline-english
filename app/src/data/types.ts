@@ -35,6 +35,21 @@ export interface TranscriptWord {
   ipa: string
 }
 
+/** What a word means and how it is said, looked up once and kept for ever.
+ *
+ * `pending` while the worker has it — the first tap on a word nobody has ever
+ * tapped. `none` means no meaning is coming: either nothing asked for one or
+ * the lookup gave up. Both still carry whatever is known, which for a word
+ * CMUdict has is a real pronunciation and no definition. */
+export interface Gloss {
+  status: 'ready' | 'pending' | 'none'
+  word: string
+  /** Empty when CMUdict has never heard of the word. */
+  ipa: string
+  /** Empty while the lookup is running, and when it failed. */
+  meaning: string
+}
+
 export interface Transcript {
   /** `pending` while the worker is still running, and the ordinary first
    *  answer: transcribing an hour takes minutes. `failed` means no transcript

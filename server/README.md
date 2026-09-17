@@ -301,6 +301,57 @@ If transcription fails, the studio says so and the admin types the lines, which
 is what they did before any of this existed. Nothing else about the upload is
 affected.
 
+## Looking words up
+
+Tapping a word in a caption used to be answered from a fifteen-word table
+compiled into the bundle. Every other word came back with the literal string
+"Auto-translated definition" and a pronunciation that was just its own spelling
+between slashes — a made-up transcription shown to somebody learning to
+pronounce things.
+
+Now the tap goes to the server:
+
+1. `POST /api/words/{word}` answers with the gloss if anybody has ever tapped
+   that word, and queues a lookup if not.
+2. The glosser (`python -m shadowline.glosser`) claims the job, reads CMUdict
+   for the pronunciation and asks the Claude API for the meaning.
+3. `GET /api/words/{word}` is what the popup polls while it waits. It reports
+   `ready`, `pending`, or `none` — and `none`, which covers both "never asked
+   for" and "gave up", shows the word without a meaning rather than a spinner
+   that never resolves.
+
+The gloss is keyed by the word alone and kept for ever, which is the whole
+design. One learner's first tap pays for the lookup; everybody else's is a
+single indexed read. A word collected before its lookup finished picks the
+meaning up afterwards, because `vocab_words` reads its pronunciation and
+meaning from `glosses` and falls back to its own columns
+(`internal/store/vocab.go`) — the gloss belongs to the word, not to anybody's
+copy of it.
+
+The line the word was tapped in is sent with the request and steers which sense
+gets written down, which is the one thing no dictionary can do: `really` in
+"Are you really going?" is not `really` in "I really like it". It is not part
+of the key, though — a card in a vocabulary list wants one settled meaning per
+word, not one per sentence it was met in.
+
+A model rather than a bundled dictionary because the bundled ones do not work
+here. The offline English dictionaries on PyPI are Webster derivatives: on
+fifteen ordinary conversational words they had seven, missing `brilliant`,
+`gonna`, `okay`, `kidding` and `guys` outright, and defining what they did have
+in words harder than the word being defined.
+
+`ANTHROPIC_API_KEY` is optional. Without it the glosser still runs and still
+fills in pronunciations; words come back with how to say them and no
+definition, which is a smaller answer rather than a broken one. That is also
+how the browser tests run — definitions cost money and are worded differently
+every run, so `e2e/words.spec.ts` checks the CMUdict half and
+`scoring/tests/test_glosser.py` covers the model half against a stand-in.
+
+Lookups are a fifth queue and a fifth worker. Same reason as the others, with
+one difference: what a lookup costs is money rather than CPU, so the thing
+worth scaling is not the worker count but the number of words that ever reach
+it — which is what the cache is.
+
 ## Why the queue is a table
 
 One take produces one job. Ten thousand learners recording fifty takes a day is
