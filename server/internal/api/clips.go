@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -42,7 +43,32 @@ func (s *Server) handleListClips(w http.ResponseWriter, r *http.Request) {
 		s.failErr(w, err, "list clips")
 		return
 	}
+	for i := range clips {
+		clips[i].PosterURL = s.posterURL(r.Context(), clips[i])
+	}
 	writeJSON(w, http.StatusOK, clips)
+}
+
+// posterURL signs the clip's still, or returns "" for a clip that has none —
+// one cut from audio, or one whose cut has not finished.
+//
+// Signed here rather than fetched per card. The library is a grid, and asking
+// where each thumbnail lives would be one round trip per clip on a screen that
+// already has the whole list.
+//
+// A failure to sign is not a failure to list: the card falls back to the play
+// icon it showed before posters existed, which is a worse card and not a
+// broken screen.
+func (s *Server) posterURL(ctx context.Context, clip store.Clip) string {
+	if clip.PosterKey == nil {
+		return ""
+	}
+	url, err := s.Storage.SignedGetURL(ctx, storage.Clips, *clip.PosterKey, audioURLTTL)
+	if err != nil {
+		s.Log.Warn("could not sign a clip poster", "clip", clip.ID, "error", err)
+		return ""
+	}
+	return url
 }
 
 func (s *Server) handleGetClip(w http.ResponseWriter, r *http.Request) {
@@ -55,6 +81,7 @@ func (s *Server) handleGetClip(w http.ResponseWriter, r *http.Request) {
 		s.failErr(w, err, "get clip")
 		return
 	}
+	clip.PosterURL = s.posterURL(r.Context(), clip)
 	writeJSON(w, http.StatusOK, clip)
 }
 

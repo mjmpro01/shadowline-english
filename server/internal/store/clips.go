@@ -27,27 +27,35 @@ type Clip struct {
 	Captions        []CaptionLine `json:"captions"`
 	AudioKey        *string       `json:"-"`
 	VideoKey        *string       `json:"-"`
+	PosterKey       *string       `json:"-"`
+	// PosterURL is signed by the API when it lists clips, rather than fetched
+	// per card: a library of twenty clips is twenty cards, and twenty round
+	// trips to learn where twenty thumbnails live is twenty too many.
+	PosterURL string `json:"posterUrl"`
 	// HasVideo is what the app needs: whether to ask for a picture at all. The
 	// key itself stays server-side, like the audio key.
 	HasVideo bool `json:"hasVideo"`
 	// Where in its source this clip was cut from, which the cutter needs long
 	// after the browser that chose the boundaries has gone.
-	SourceID     *uuid.UUID `json:"-"`
-	StartSeconds float64    `json:"-"`
-	EndSeconds   float64    `json:"-"`
-	CreatedAt    time.Time  `json:"createdAt"`
+	SourceID *uuid.UUID `json:"-"`
+	// StartSeconds is also how a playlist orders itself: clips published from
+	// one recording are an episode, and an episode has an order that created_at
+	// only happens to agree with.
+	StartSeconds float64   `json:"startSeconds"`
+	EndSeconds   float64   `json:"-"`
+	CreatedAt    time.Time `json:"createdAt"`
 }
 
 const clipColumns = `id, title, source, playlist, categories, featured, timestamp_label,
-	duration_seconds, summary, captions, audio_key, video_key, source_id,
-	start_seconds, end_seconds, created_at`
+	duration_seconds, summary, captions, audio_key, video_key, poster_key,
+	source_id, start_seconds, end_seconds, created_at`
 
 func scanClip(row pgx.Row) (Clip, error) {
 	var c Clip
 	var captions []byte
 	err := row.Scan(&c.ID, &c.Title, &c.Source, &c.Playlist, &c.Categories, &c.Featured,
 		&c.TimestampLabel, &c.DurationSeconds, &c.Summary, &captions, &c.AudioKey, &c.VideoKey,
-		&c.SourceID, &c.StartSeconds, &c.EndSeconds, &c.CreatedAt)
+		&c.PosterKey, &c.SourceID, &c.StartSeconds, &c.EndSeconds, &c.CreatedAt)
 	if err != nil {
 		return c, mapErr(err)
 	}
@@ -179,6 +187,11 @@ func (s *Store) SetClipVideoKey(ctx context.Context, id uuid.UUID, key string) e
 	return err
 }
 
+func (s *Store) SetClipPosterKey(ctx context.Context, id uuid.UUID, key string) error {
+	_, err := s.pool.Exec(ctx, `update clips set poster_key = $2 where id = $1`, id, key)
+	return err
+}
+
 func (s *Store) SetClipAudioKey(ctx context.Context, id uuid.UUID, key string) error {
 	tag, err := s.pool.Exec(ctx, `update clips set audio_key = $2 where id = $1`, id, key)
 	if err != nil {
@@ -215,13 +228,14 @@ func (s *Store) DeleteClip(ctx context.Context, id uuid.UUID) (clipKeys []string
 		return nil, nil, err
 	}
 
-	var audioKey, videoKey *string
+	var audioKey, videoKey, posterKey *string
 	err = s.pool.QueryRow(ctx,
-		`delete from clips where id = $1 returning audio_key, video_key`, id).Scan(&audioKey, &videoKey)
+		`delete from clips where id = $1 returning audio_key, video_key, poster_key`, id).
+		Scan(&audioKey, &videoKey, &posterKey)
 	if err != nil {
 		return nil, nil, mapErr(err)
 	}
-	for _, key := range []*string{audioKey, videoKey} {
+	for _, key := range []*string{audioKey, videoKey, posterKey} {
 		if key != nil {
 			clipKeys = append(clipKeys, *key)
 		}

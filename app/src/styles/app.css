@@ -199,6 +199,17 @@
   color: var(--color-accent-500);
   overflow: hidden;
 }
+/* Fills the card's frame, cropping rather than letterboxing: a grid of cards
+   the same size reads as a grid, and a 16:9 still in a 9:16 frame would be a
+   stripe of picture between two bars. */
+.thumb-poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
 .thumb-tag {
   position: absolute;
   right: 8px;
@@ -413,6 +424,70 @@
   height: 16px;
   accent-color: var(--color-accent);
   cursor: pointer;
+}
+
+/* — playlist — */
+.progress-track {
+  height: 8px;
+  width: 100%;
+  border-radius: 99px;
+  background: var(--color-accent-100);
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: 99px;
+}
+.playlist-row {
+  display: grid;
+  grid-template-columns: 2ch 64px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+}
+/* A clip already practised recedes, so the unpractised ones are what the eye
+   lands on when you come back to an episode you are halfway through. */
+.playlist-row[data-practised='true'] .playlist-body {
+  opacity: 0.65;
+}
+.playlist-index {
+  text-align: right;
+}
+.playlist-thumb {
+  position: relative;
+  width: 64px;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-100);
+  color: var(--color-accent-500);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.playlist-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.playlist-score {
+  font-size: 20px;
+}
+@media (max-width: 620px) {
+  .playlist-row {
+    grid-template-columns: 2ch 48px minmax(0, 1fr);
+    row-gap: var(--space-2);
+  }
+  .playlist-thumb {
+    width: 48px;
+  }
+  /* The score and the button drop to their own row rather than squeezing the
+     line into nothing. */
+  .playlist-score,
+  .playlist-row > .btn {
+    grid-column: 2 / -1;
+  }
 }
 
 /* — studio video + filmstrip — */

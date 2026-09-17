@@ -49,6 +49,19 @@ export function LibraryScreen() {
               {name}
             </button>
           ))}
+          {/* Filtering shows the clips; opening shows the episode. Two hundred
+              cards from one film say nothing about the order they were spoken
+              in or where you left off, and that is what a playlist is. */}
+          {playlist !== '' && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => navigate(`/library/playlist/${encodeURIComponent(playlist)}`)}
+            >
+              Open as playlist
+              <Icon name="chevron-right" />
+            </button>
+          )}
         </div>
       )}
 
@@ -84,7 +97,14 @@ export function LibraryScreen() {
                 onClick={() => navigate(`/library/${video.id}`)}
                 aria-label={`Open analysis for ${video.title}`}
               >
-                <Icon name="play" size={28} />
+                {/* The still when the cutter has made one; the icon otherwise,
+                    which is every clip cut from audio and every one whose cut
+                    is still queued. */}
+                {video.posterUrl ? (
+                  <img className="thumb-poster" src={video.posterUrl} alt="" loading="lazy" />
+                ) : (
+                  <Icon name="play" size={28} />
+                )}
                 <span className="tag tag-neutral thumb-tag">{clock(video.durationSeconds)}</span>
               </button>
 
@@ -100,7 +120,12 @@ export function LibraryScreen() {
                 <span className="card-title clamp-2" style={{ fontSize: 15, marginTop: 'var(--space-2)' }}>
                   {video.title}
                 </span>
-                <span className="card-meta">{video.playlist || video.source}</span>
+                {/* The line, not the playlist: names are numbers now, so this
+                    is the only thing on the card that says what is said in it.
+                    The playlist is a chip above and a page of its own. */}
+                <span className="card-meta clamp-2">
+                  {video.captions[0]?.text || video.playlist || video.source}
+                </span>
                 <span className="row between gap-2" style={{ marginTop: 2 }}>
                   <span className="score-big" style={{ color }}>
                     {stats.lastScore ?? '—'}

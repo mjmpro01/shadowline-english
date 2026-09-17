@@ -137,7 +137,11 @@ export function DashboardScreen() {
                   onClick={() => navigate(`/library/${video.id}`)}
                   aria-label={`Open ${video.title}`}
                 >
-                  <Icon name="play" size={28} />
+                  {video.posterUrl ? (
+                    <img className="thumb-poster" src={video.posterUrl} alt="" loading="lazy" />
+                  ) : (
+                    <Icon name="play" size={28} />
+                  )}
                   <span className="tag tag-accent" style={{ position: 'absolute', left: 8, top: 8 }}>
                     featured
                   </span>
@@ -146,7 +150,12 @@ export function DashboardScreen() {
                 <div className="card-title clamp-2" style={{ fontSize: 15, marginTop: 'var(--space-2)' }}>
                   {video.title}
                 </div>
-                <div className="card-meta">{video.playlist || video.source}</div>
+                {/* The line, for the same reason the library card shows it:
+                    an unnamed clip is called "Clip 3", which says where it is
+                    and nothing about what is said in it. */}
+                <div className="card-meta clamp-2">
+                  {video.captions[0]?.text || video.playlist || video.source}
+                </div>
                 <button
                   type="button"
                   className="btn btn-primary btn-block"

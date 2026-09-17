@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { LOOKUP } from '../data/seed'
 import { MAX_CLIP_SECONDS, type AppData, type Take, type VocabStatus } from '../data/types'
 import { ApiError } from '../lib/api'
+import { clipName, nextClipNumber } from '../lib/clips'
 import { normalizeWord } from '../lib/text'
 import { clock } from '../lib/time'
 import { repository, type LeaderboardRow } from '../repository'
@@ -89,9 +90,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // — still publishes: the clips are worth having with their audio, and
     // losing the admin's work over a picture would be the wrong trade.
 
+    // Unnamed clips are numbered across the batch being published, continuing
+    // from whatever the playlist already holds. Not named after their line any
+    // more: transcription fills a line into every clip, and a library of whole
+    // sentences for titles is a library you cannot scan.
+    const playlist = withinLimit[0]?.playlist ?? ''
+    const firstNumber = nextClipNumber(dataRef.current.videos, playlist)
+
     const created = await repository.createClips(
       withinLimit.map((clip, index) => ({
-        title: clip.title || clip.line || `Untitled line ${index + 1}`,
+        title: clip.title || clipName(firstNumber + index),
         source: clip.source,
         playlist: clip.playlist,
         categories: clip.categories,

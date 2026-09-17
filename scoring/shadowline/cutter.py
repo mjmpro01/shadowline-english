@@ -24,7 +24,7 @@ import psycopg
 
 from .cutqueue import CutJob, CutQueue
 from .storage import ObjectMissing, Storage, from_env as storage_from_env
-from .video import CutFailed, cut, ffmpeg_available, has_video_stream
+from .video import CutFailed, cut, ffmpeg_available, has_video_stream, poster
 
 log = logging.getLogger("shadowline.cutter")
 
@@ -73,8 +73,8 @@ class SourceCache:
         self.key, self.path, self.has_picture = None, None, False
 
 
-def cut_job(job: CutJob, blobs: Storage, sources: SourceCache, workdir: Path) -> str:
-    """Cuts one clip and stores it. Returns the key to record on the row."""
+def cut_job(job: CutJob, blobs: Storage, sources: SourceCache, workdir: Path) -> tuple[str, str]:
+    """Cuts one clip and stores it. Returns the video and poster keys."""
     try:
         source = sources.fetch(blobs, job.source_key)
     except ObjectMissing as err:
@@ -84,15 +84,25 @@ def cut_job(job: CutJob, blobs: Storage, sources: SourceCache, workdir: Path) ->
         raise Uncuttable("the source has no video track")
 
     dest = workdir / f"{job.clip_id}.mp4"
+    still = workdir / f"{job.clip_id}.jpg"
     try:
         cut(source, job.start, job.end, dest)
-        key = f"clip/{job.clip_id}/{uuid.uuid4()}.mp4"
-        blobs.put("clips", key, dest, "video/mp4")
-        return key
+        video_key = f"clip/{job.clip_id}/{uuid.uuid4()}.mp4"
+        blobs.put("clips", video_key, dest, "video/mp4")
+
+        # A third of the way in rather than the first frame: a cut often opens
+        # on the tail of a shot change, and the middle of a line is where the
+        # speaker's face actually is.
+        poster(source, job.start + (job.end - job.start) / 3, still)
+        poster_key = f"clip/{job.clip_id}/{uuid.uuid4()}.jpg"
+        blobs.put("clips", poster_key, still, "image/jpeg")
+
+        return video_key, poster_key
     except CutFailed as err:
         raise Uncuttable(str(err)) from err
     finally:
         dest.unlink(missing_ok=True)
+        still.unlink(missing_ok=True)
 
 
 def run_once(queue: CutQueue, blobs: Storage, sources: SourceCache, workdir: Path) -> bool:
@@ -103,7 +113,7 @@ def run_once(queue: CutQueue, blobs: Storage, sources: SourceCache, workdir: Pat
 
     started = time.monotonic()
     try:
-        key = cut_job(job, blobs, sources, workdir)
+        video_key, poster_key = cut_job(job, blobs, sources, workdir)
     except Uncuttable as err:
         # The clip keeps its audio and simply has no picture, which is the state
         # every audio-only clip in the library is already in.
@@ -115,7 +125,7 @@ def run_once(queue: CutQueue, blobs: Storage, sources: SourceCache, workdir: Pat
         queue.fail(job, "cutting failed")
         return True
 
-    queue.complete(job, key)
+    queue.complete(job, video_key, poster_key)
     log.info("cut clip %s (%.0fms)", job.clip_id, (time.monotonic() - started) * 1000)
     return True
 

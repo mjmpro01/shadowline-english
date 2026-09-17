@@ -303,7 +303,10 @@ export function PracticeScreen() {
             disabled={!take}
             onClick={() => navigate(`/library/${video.id}/dub`)}
           >
-            Watch
+            {/* Named for where it goes. It used to say "Watch", which was
+                unambiguous until the clip above it grew a picture and a button
+                that says "Watch clip again". */}
+            Dub review
           </button>
           <button
             type="button"

@@ -6,7 +6,7 @@ import { WaveformEditor } from '../components/WaveformEditor'
 import { MAX_CLIP_SECONDS, type Transcript } from '../data/types'
 import { decodeFile, peaks as computePeaks, type Column } from '../lib/audio/decode'
 import { proposeSegments, type Segment } from '../lib/audio/segment'
-import { formatCategories, parseCategories, searchClips } from '../lib/clips'
+import { clipName, formatCategories, nextClipNumber, parseCategories, searchClips } from '../lib/clips'
 import { sliceToWav } from '../lib/audio/wav'
 import { ipaOf, lineOf, wordsBetween } from '../lib/transcript'
 import { extractFrames } from '../lib/video/frames'
@@ -390,6 +390,17 @@ export function AdminScreen() {
   }
 
   const included = lines.filter((line) => line.include).length
+
+  // The name each unnamed clip will carry, worked out the way publishing works
+  // it out: numbered across the selected clips only, continuing from what the
+  // playlist already holds. Shown as the placeholder so the studio is not
+  // promising one thing and saving another.
+  const publishPlaylist = playlist.trim() || loaded?.name || ''
+  const clipNumbers: number[] = []
+  let nextNumber = nextClipNumber(data.videos, publishPlaylist)
+  for (const [index, line] of lines.entries()) {
+    clipNumbers[index] = line.include ? nextNumber++ : 0
+  }
   // Only what is actually going up has to be short enough. A proposal being
   // left behind is not a reason to refuse the batch.
   const tooLong = segments.filter(
@@ -697,7 +708,9 @@ export function AdminScreen() {
                       <input
                         id={`title-${index}`}
                         className="input"
-                        placeholder="Defaults to the line"
+                        placeholder={
+                          clipNumbers[index] ? clipName(clipNumbers[index]) : 'Named when published'
+                        }
                         value={lines[index]?.title ?? ''}
                         onChange={(e) => update(index, { title: e.target.value })}
                       />

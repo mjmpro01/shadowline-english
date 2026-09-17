@@ -147,6 +147,20 @@ the way it slices a wav, so the cut happens here:
    the mp4 and records `clips.video_key`.
 4. `GET /api/clips/{id}/video` answers with a signed URL, or null.
 
+The cutter takes a still in the same run, a third of the way into the clip —
+far enough in that the frame is the speaker rather than the tail of a shot
+change. It is signed into the clip listing rather than fetched per card: the
+library is a grid, and asking where twenty thumbnails live would be twenty
+round trips on a screen that already has the whole list.
+
+Where the picture ends up:
+
+| Screen | Shows |
+| --- | --- |
+| Library, Dashboard | the still, or the play icon for a clip that has none |
+| Practice, Analysis | the video, in place of the audio element |
+| Dub Review | the video, muted, under whichever voice is playing |
+
 Null is the ordinary answer, not a failure: a clip cut from audio never has a
 video, and one cut from video does not have it yet while the cut is queued. The
 app plays the audio in both cases, so publishing is never blocked on cutting and
@@ -166,6 +180,36 @@ ffmpeg re-encodes rather than stream-copies. A copy can only cut on a keyframe,
 and a keyframe is typically seconds from where a line starts — which, for a clip
 a few seconds long, means cutting the wrong thing. Output is h264/aac mp4,
 because that is what plays everywhere, Safari included.
+
+## What an unnamed clip is called
+
+A clip the admin did not name is "Clip 1", "Clip 2", numbered across the batch
+being published and continuing from whatever the playlist already holds — so
+going back to cut a few more lines into an episode does not give it a second
+"Clip 1". Only names of exactly that shape are counted, so a clip somebody
+named themselves does not push the sequence along.
+
+It used to be named after its line. Transcription now fills a line into every
+clip, and a library whose titles are whole sentences is a library you cannot
+scan. The line is shown under the title on the cards instead, which is where it
+was always more use.
+
+"Clip" rather than "take" or "line": both already mean something here. A take
+is a learner's recording, and a line is one caption inside a clip — the Practice
+screen says "Line 1 of 1" within one.
+
+## Playlists
+
+A playlist is a column on the clip, not a table: the studio names a batch and
+every clip cut from that recording carries the name. The library turns those
+names into filter chips, and `library/playlist/:name` opens one as a sequence —
+numbered in source order, with how far through it you are and the first
+unpractised clip one button away.
+
+Source order comes from `start_seconds`, not `created_at`. A batch is inserted
+one row after another so the two agree today, and would stop agreeing the first
+time an admin goes back and publishes a line they cut later. The order of an
+episode is a fact about the recording.
 
 ## Choosing what gets published
 

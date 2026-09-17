@@ -7,6 +7,7 @@ import { DubScreen } from './screens/DubScreen'
 import { FlashcardsScreen } from './screens/FlashcardsScreen'
 import { LibraryScreen } from './screens/LibraryScreen'
 import { LoginScreen } from './screens/LoginScreen'
+import { PlaylistScreen } from './screens/PlaylistScreen'
 import { PracticeScreen } from './screens/PracticeScreen'
 import { ProfileScreen } from './screens/ProfileScreen'
 import { ProgressScreen } from './screens/ProgressScreen'
@@ -25,6 +26,9 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: 'dashboard', element: <DashboardScreen /> },
       { path: 'library', element: <LibraryScreen /> },
+      // Before the :videoId route in the file for readability; it wins on its
+      // own anyway, having a static segment where that one has a parameter.
+      { path: 'library/playlist/:name', element: <PlaylistScreen /> },
       { path: 'library/:videoId', element: <AnalysisScreen /> },
       { path: 'library/:videoId/practice', element: <PracticeScreen /> },
       { path: 'library/:videoId/dub', element: <DubScreen /> },
