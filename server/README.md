@@ -181,6 +181,19 @@ and a keyframe is typically seconds from where a line starts — which, for a cl
 a few seconds long, means cutting the wrong thing. Output is h264/aac mp4,
 because that is what plays everywhere, Safari included.
 
+## Playlists
+
+A playlist is a column on the clip, not a table: the studio names a batch and
+every clip cut from that recording carries the name. The library turns those
+names into filter chips, and `library/playlist/:name` opens one as a sequence —
+numbered in source order, with how far through it you are and the first
+unpractised clip one button away.
+
+Source order comes from `start_seconds`, not `created_at`. A batch is inserted
+one row after another so the two agree today, and would stop agreeing the first
+time an admin goes back and publishes a line they cut later. The order of an
+episode is a fact about the recording.
+
 ## Choosing what gets published
 
 The studio proposes a cut at every pause, which for a fifty-minute recording is

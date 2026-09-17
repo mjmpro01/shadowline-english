@@ -49,6 +49,19 @@ export function LibraryScreen() {
               {name}
             </button>
           ))}
+          {/* Filtering shows the clips; opening shows the episode. Two hundred
+              cards from one film say nothing about the order they were spoken
+              in or where you left off, and that is what a playlist is. */}
+          {playlist !== '' && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => navigate(`/library/playlist/${encodeURIComponent(playlist)}`)}
+            >
+              Open as playlist
+              <Icon name="chevron-right" />
+            </button>
+          )}
         </div>
       )}
 

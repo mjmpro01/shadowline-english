@@ -37,10 +37,13 @@ type Clip struct {
 	HasVideo bool `json:"hasVideo"`
 	// Where in its source this clip was cut from, which the cutter needs long
 	// after the browser that chose the boundaries has gone.
-	SourceID     *uuid.UUID `json:"-"`
-	StartSeconds float64    `json:"-"`
-	EndSeconds   float64    `json:"-"`
-	CreatedAt    time.Time  `json:"createdAt"`
+	SourceID *uuid.UUID `json:"-"`
+	// StartSeconds is also how a playlist orders itself: clips published from
+	// one recording are an episode, and an episode has an order that created_at
+	// only happens to agree with.
+	StartSeconds float64   `json:"startSeconds"`
+	EndSeconds   float64   `json:"-"`
+	CreatedAt    time.Time `json:"createdAt"`
 }
 
 const clipColumns = `id, title, source, playlist, categories, featured, timestamp_label,

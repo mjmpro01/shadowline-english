@@ -57,6 +57,9 @@ export interface Video {
   /** A still from the clip, for the card. Empty for a clip cut from audio, and
    *  for one whose cut has not finished — both fall back to the play icon. */
   posterUrl: string
+  /** Where in its source recording this clip begins, which is the order a
+   *  playlist reads in. Zero for the starter clips, which came from nowhere. */
+  startSeconds: number
   createdAt: string
 }
 
