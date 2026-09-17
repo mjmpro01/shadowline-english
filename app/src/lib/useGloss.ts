@@ -8,6 +8,8 @@ export const SOURCE_LABEL: Record<string, string> = {
   // CC BY-NC 4.0, so the credit and the link are a licence condition rather
   // than a courtesy. See scoring/shadowline/data/FREETALK_LICENSE.
   freetalk: 'FreeTalk Dictionary (CC BY-NC 4.0)',
+  // Ours: the contractions and possessives, which no dictionary we found has.
+  shadowline: 'Shadowline',
   'merriam-webster-learners': "Merriam-Webster's Learner's Dictionary",
   claude: 'Claude',
 }

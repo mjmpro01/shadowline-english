@@ -140,12 +140,15 @@ at the start, is every word. Two files ship beside the worker:
 
 - `shadowline/data/common_words.txt` — the 12,000 commonest English words in
   frequency order, every one of them in CMUdict.
-- `shadowline/data/glosses.tsv` — a definition for 10,629 of them, from the
-  FreeTalk Dictionary.
+- `shadowline/data/glosses.tsv` — a definition for 10,761 of them: the
+  FreeTalk Dictionary, plus the contractions and possessives written in
+  `tools/contractions.py` because no dictionary we found files a word with an
+  apostrophe in it, and `it's`, `don't` and `i'm` are what captions of real
+  speech are made of.
 
 ```bash
-python -m shadowline.seedwords               # 12,000 pronunciations + 10,629 definitions
-python -m shadowline.seedwords --meanings    # queue the ~1,400 left, which need a key
+python -m shadowline.seedwords               # 12,000 pronunciations + 10,761 definitions
+python -m shadowline.seedwords --meanings    # queue the ~1,200 left, which need a key
 python -m shadowline.seedwords --meanings --limit 2000
 ```
 

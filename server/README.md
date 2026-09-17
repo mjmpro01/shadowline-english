@@ -369,15 +369,20 @@ answer rather than a broken one, and how the browser tests run.
 
 An empty cache means the first learner to tap each word waits for it — which,
 at the start, is every word. Two files ship beside the worker: the 12,000
-commonest English words in frequency order, and a definition for 10,629 of them
-taken from the FreeTalk Dictionary. `python -m shadowline.seedwords` loads both
-in about a second, with no key of any kind and no network, and that is what a
-deployment should run once before opening the doors.
+commonest English words in frequency order, and a definition for 10,761 of
+them. `python -m shadowline.seedwords` loads both in about a second, with no key
+of any kind and no network, and that is what a deployment should run once before
+opening the doors.
 
-What is left afterwards is about 1,400 words — mostly contractions the
-dictionary files under no name, `don't` and `it's` and `i'm` — and those are the
-only ones that need a key. `--meanings` queues them: free through
-Merriam-Webster at 1,000 a day, or roughly $3 in one go through the model.
+Most of those definitions are the FreeTalk Dictionary's. The apostrophe words
+are not: it has no entry containing one, and a shadowing app cannot leave
+`it's`, `don't` and `i'm` blank, so those 132 are written out in
+`scoring/tools/contractions.py` and marked `source=shadowline`.
+
+What is left afterwards is about 1,200 words, mostly proper nouns — `london`,
+`june`, `david` — which a learner does not need a dictionary for. `--meanings`
+queues them: free through Merriam-Webster at 1,000 a day, or roughly $2.50 in
+one go through the model.
 
 **The seeded definitions are CC BY-NC 4.0.** Free for personal and research
 use; a product that makes money needs a licence from freetalk.fun. That is the

@@ -1,9 +1,18 @@
 # word	ipa	meaning	source
-# Definitions from the FreeTalk Dictionary V1, Copyright 2024-present FreeTalk.fun, CC BY-NC 4.0.
-# https://github.com/freetalk-fun/freetalk-dictionary-v1
-# Changed: the first short, non-circular sense of each word was taken,
-# and nothing else was kept. See FREETALK_LICENSE beside this file.
-# NON-COMMERCIAL. A product that makes money needs a licence from them.
+#
+# Two sources, and the fourth column says which is which.
+#
+# source=freetalk: the FreeTalk Dictionary V1, Copyright 2024-present
+#   FreeTalk.fun, CC BY-NC 4.0 — NON-COMMERCIAL. A product that makes
+#   money needs a licence from them. See FREETALK_LICENSE beside this
+#   file. https://github.com/freetalk-fun/freetalk-dictionary-v1
+#   Changed: the first short, non-circular sense of each word was
+#   taken, and nothing else was kept.
+#
+# source=shadowline: the contractions and possessives, written for this
+#   project in tools/contractions.py and under its licence, because the
+#   dictionary has no entry containing an apostrophe.
+#
 # Rebuild with tools/build_seed_glosses.py.
 the	ðə	Denoting one or more people or things already mentioned or assumed to be common knowledge	freetalk
 to	ˈtu	Expressing motion in the direction of a particular location	freetalk
@@ -56,6 +65,7 @@ no	ˈnoʊ	Used to give a negative response or refusal	freetalk
 were	ˈwɝ	Past tense of 'be'	freetalk
 who	ˈhu	Used to ask about a person's identity or character	freetalk
 had	ˈhæd	past tense of have	freetalk
+it's	ˈɪts	Short for 'it is' or 'it has'	shadowline
 their	ˈðɛɹ	Belonging to or associated with a group of people previously mentioned or easily identified	freetalk
 there	ˈðɛɹ	In or at that place	freetalk
 her	ˈhɝ	Belonging to or associated with a female person or animal	freetalk
@@ -68,10 +78,12 @@ she	ˈʃi	Used to refer to a female person or animal previously mentioned or eas
 new	ˈnu	Not existing before; made, introduced, or discovered recently or now for the first time	freetalk
 people	ˈpipəl	Human beings in general or considered collectively	freetalk
 how	ˈhaʊ	In what way or manner	freetalk
+don't	ˈdoʊnt	Short for 'do not'	shadowline
 also	ˈɔlsoʊ	In addition; too	freetalk
 them	ˈðɛm	Used to refer to two or more people or things previously mentioned or easily identified	freetalk
 now	ˈnaʊ	At the present time	freetalk
 other	ˈʌðɝ	Used to refer to someone or something different or distinct from the one already mentioned	freetalk
+i'm	ˈaɪm	Short for 'I am'	shadowline
 its	ˈɪts	Belonging to or associated with a thing previously mentioned or easily identified	freetalk
 our	ˈaʊɝ	Belonging to us	freetalk
 than	ˈðæn	Used to introduce the second element in a comparison	freetalk
@@ -133,7 +145,9 @@ world	ˈwɝld	The earth, together with all of its countries, peoples, and natura
 down	ˈdaʊn	Toward or in a lower place or position	freetalk
 great	ˈɡɹeɪt	Of an extent, amount, or intensity considerably above the normal or average	freetalk
 through	ˈθɹu	Moving in one side and out of the other side of (an opening, channel, or location)	freetalk
+you're	ˈjʊɹ	Short for 'you are'	shadowline
 last	ˈlæst	Most recent in time	freetalk
+that's	ˈðæts	Short for 'that is' or 'that has'	shadowline
 while	ˈwaɪl	A period of time during which something takes place	freetalk
 best	ˈbɛst	Surpassing all others in excellence, achievement, or quality	freetalk
 such	ˈsʌtʃ	Of the type previously mentioned	freetalk
@@ -144,6 +158,7 @@ long	ˈlɔŋ	Extending for a considerable distance	freetalk
 look	ˈlʊk	To direct one's gaze in a specified direction	freetalk
 something	ˈsʌmθɪŋ	A thing that is not known or specified	freetalk
 use	ˈjus	To employ for some purpose	freetalk
+can't	ˈkænt	Short for 'cannot'	shadowline
 same	ˈseɪm	Identical in kind or quality	freetalk
 used	ˈjuzd	Previously owned or utilized	freetalk
 both	ˈboʊθ	The one as well as the other	freetalk
@@ -170,6 +185,7 @@ things	ˈθɪŋz	Objects or articles	freetalk
 under	ˈʌndɝ	Below or beneath something else	freetalk
 during	ˈdʊɹɪŋ	Throughout the course of	freetalk
 game	ˈɡeɪm	An activity engaged in for amusement or fun	freetalk
+i've	ˈaɪv	Short for 'I have'	shadowline
 thing	ˈθɪŋ	An object that one need not, cannot, or does not wish to give a specific name to	freetalk
 give	ˈɡɪv	To freely transfer the possession of something to someone else	freetalk
 house	ˈhaʊs	A building for human habitation	freetalk
@@ -180,6 +196,7 @@ next	ˈnɛkst	Immediately following in order or importance	freetalk
 each	ˈitʃ	Every one of two or more people or things considered separately	freetalk
 without	wɪˈθaʊt	Not having or holding something	freetalk
 against	əˈɡɛnst	In opposition to	freetalk
+didn't	ˈdɪdənt	Short for 'did not'	shadowline
 end	ˈɛnd	The final part of something	freetalk
 found	ˈfaʊnd	establish or originate	freetalk
 must	ˈmʌst	Be obliged to; have to	freetalk
@@ -211,6 +228,7 @@ until	ənˈtɪl	Up to the point in time that	freetalk
 company	ˈkʌmpəˌni	A commercial business	freetalk
 doing	ˈduɪŋ	The act of performing or executing a task or action	freetalk
 few	ˈfju	A small number of something	freetalk
+he's	ˈhiz	Short for 'he is' or 'he has'	shadowline
 let	ˈlɛt	To allow or permit	freetalk
 real	ˈɹil	Actually existing or occurring	freetalk
 called	ˈkɔld	To give a name to	freetalk
@@ -248,9 +266,11 @@ live	ˈlaɪv	To be alive; exist	freetalk
 making	ˈmeɪkɪŋ	The act of creating or producing something	freetalk
 point	ˈpɔɪnt	A sharp or tapered end	freetalk
 read	ˈɹɛd	To look at and comprehend the meaning of written or printed matter by interpreting the characters or symbols of which it is composed	freetalk
+there's	ˈðɛɹz	Short for 'there is' or 'there has'	shadowline
 told	ˈtoʊld	Past tense of tell	freetalk
 yet	ˈjɛt	Up to the present time; until now	freetalk
 bad	ˈbæd	Not good in any manner or degree	freetalk
+doesn't	ˈdʌzənt	Short for 'does not'	shadowline
 four	ˈfɔɹ	The number equivalent to the sum of two and two	freetalk
 hard	ˈhɑɹd	Not easily penetrated or cut	freetalk
 mean	ˈmin	Intend to convey or refer to (something)	freetalk
@@ -298,6 +318,7 @@ thank	ˈθæŋk	Express gratitude or appreciation for something received or done
 children	ˈtʃɪldɹən	Plural of child	freetalk
 everyone	ˈɛvɹiˌwʌn	Every person	freetalk
 general	ˈdʒɛnɝəl	A commander of an army or military unit	freetalk
+they're	ˈðɛɹ	Short for 'they are'	shadowline
 trying	ˈtɹaɪɪŋ	Making an effort to do something	freetalk
 united	juˈnaɪtɪd	Joined together as a single entity	freetalk
 using	ˈjuzɪŋ	Employing something for a specific purpose	freetalk
@@ -331,6 +352,7 @@ able	ˈeɪbəl	Having the power, skill, means, or opportunity to do something	fr
 book	ˈbʊk	A written or printed work consisting of pages glued or sewn together along one side and bound in covers	freetalk
 early	ˈɝli	Near the beginning of a period of time	freetalk
 friends	ˈfɹɛndz	A person whom one knows and with whom one has a bond of mutual affection	freetalk
+i'll	ˈaɪl	Short for 'I will'	shadowline
 information	ˌɪnfɝˈmeɪʃən	Facts provided or learned about something or someone	freetalk
 local	ˈloʊkəl	relating or restricted to a particular area or neighborhood	freetalk
 oh	ˈoʊ	Used to express a range of emotions including surprise, disappointment, or realization	freetalk
@@ -348,6 +370,7 @@ given	ˈɡɪvən	Past participle of give	freetalk
 guys	ˈɡaɪz	A group of people, especially males	freetalk
 half	ˈhæf	One of two equal parts of something	freetalk
 hand	ˈhænd	The terminal part of the human arm located below the forearm, used for grasping and holding	freetalk
+isn't	ˈɪzənt	Short for 'is not'	shadowline
 level	ˈlɛvəl	Having a flat and even surface	freetalk
 mind	ˈmaɪnd	The element of a person that enables them to be aware of the world and their experiences	freetalk
 often	ˈɔfən	Frequently; many times	freetalk
@@ -365,6 +388,7 @@ pay	ˈpeɪ	Give money to (someone) in return for goods or services	freetalk
 problem	ˈpɹɑbləm	A matter or situation regarded as unwelcome or harmful and needing to be dealt with and overcome	freetalk
 south	ˈsaʊθ	The direction opposite to that of the north	freetalk
 true	ˈtɹu	In accordance with fact or reality	freetalk
+we're	ˈwiɹ	Short for 'we are'	shadowline
 almost	ˈɔlˌmoʊst	Very nearly; all but	freetalk
 fuck	ˈfʌk	To have sexual intercourse with someone	freetalk
 history	ˈhɪstɝi	The study of past events	freetalk
@@ -402,6 +426,7 @@ york	ˈjɔɹk	A type of pig	freetalk
 class	ˈklæs	A group of students meeting regularly to study a subject	freetalk
 close	ˈkloʊs	To shut something	freetalk
 comes	ˈkʌmz	To move toward or arrive at a particular place	freetalk
+i'd	ˈaɪd	Short for 'I would' or 'I had'	shadowline
 idea	aɪˈdiə	A thought or suggestion	freetalk
 international	ˌɪntɝˈnæʃənəl	Of, relating to, or involving two or more nations	freetalk
 looks	ˈlʊks	The act of directing one's gaze in a particular direction	freetalk
@@ -428,6 +453,7 @@ north	ˈnɔɹθ	The direction in which a compass needle normally points, toward 
 saw	ˈsɔ	A tool with a toothed blade used for cutting wood or other materials	freetalk
 special	ˈspɛʃəl	Better, greater, or otherwise different from what is usual	freetalk
 watch	ˈwɑtʃ	To look at or observe attentively	freetalk
+won't	ˈwoʊnt	Short for 'will not'	shadowline
 either	ˈiðɝ	One or the other of two options	freetalk
 fucking	ˈfʌkɪŋ	Used for emphasis or to express anger, annoyance, contempt, or surprise	freetalk
 future	ˈfjutʃɝ	The time or period of time that is to come	freetalk
@@ -498,6 +524,7 @@ ready	ˈɹɛdi	Prepared for use or action	freetalk
 sometimes	səmˈtaɪmz	Occasionally	freetalk
 son	ˈsʌn	A male child or offspring	freetalk
 street	ˈstɹit	A public road in a city or town, typically with buildings on either side	freetalk
+wasn't	ˈwɑzənt	Short for 'was not'	shadowline
 bring	ˈbɹɪŋ	To carry or convey something to a place	freetalk
 college	ˈkɑlɪdʒ	An institution of higher education offering courses at the undergraduate level	freetalk
 current	ˈkɝənt	Belonging to the present time; happening or being used or done now	freetalk
@@ -512,6 +539,7 @@ chance	ˈtʃæns	The possibility of something happening	freetalk
 father	ˈfɑðɝ	A male parent	freetalk
 march	ˈmɑɹtʃ	Walk with regular and measured tread, especially in a military context	freetalk
 process	ˈpɹɑˌsɛs	A series of actions or steps taken in order to achieve a particular end	freetalk
+she's	ˈʃiz	Short for 'she is' or 'she has'	shadowline
 song	ˈsɔŋ	A short poem or other set of words set to music or meant to be sung	freetalk
 study	ˈstʌdi	The act of learning or gaining knowledge through reading, research, or practice	freetalk
 word	ˈwɝd	A single distinct meaningful element of speech or writing	freetalk
@@ -571,6 +599,7 @@ sex	ˈsɛks	The biological characteristics that define male and female organisms
 shot	ˈʃɑt	A single photograph taken with a camera	freetalk
 site	ˈsaɪt	The place where something is located or where an event takes place	freetalk
 strong	ˈstɹɔŋ	Having the power to move heavy weights or perform other physically demanding tasks	freetalk
+you'll	ˈjul	Short for 'you will'	shadowline
 account	əˈkaʊnt	A record or statement of financial transactions	freetalk
 especially	əˈspɛʃli	Particularly; to a great extent	freetalk
 eyes	ˈaɪz	The organ of sight in humans and animals	freetalk
@@ -596,6 +625,7 @@ personal	ˈpɝsɪnəl	Belonging to or affecting a particular person	freetalk
 security	sɪˈkjʊɹəti	The state of being free from danger or threat	freetalk
 share	ˈʃɛɹ	To have a portion of something with others	freetalk
 st	ˈstɹit	Saint	freetalk
+what's	ˈwʌts	Short for 'what is' or 'what has'	shadowline
 won	ˈwʌn	past tense of win	freetalk
 center	ˈsɛntɝ	The middle point or part of something	freetalk
 county	ˈkaʊnti	A political and administrative division of a state, providing certain local governmental services	freetalk
@@ -632,6 +662,7 @@ sorry	ˈsɑɹi	Feeling distress, especially through sympathy with someone else's
 takes	ˈteɪks	To lay hold of; grasp	freetalk
 training	ˈtɹeɪnɪŋ	The action of teaching a person or animal a particular skill or type of behavior	freetalk
 wish	ˈwɪʃ	A desire or longing for something to happen or be true	freetalk
+wouldn't	ˈwʊdənt	Short for 'would not'	shadowline
 answer	ˈænsɝ	A response to a question or problem	freetalk
 boy	ˈbɔɪ	A male child or young man	freetalk
 design	dɪˈzaɪn	Purpose, planning, or intention that exists or is thought to exist behind an action, fact, or material object	freetalk
@@ -656,6 +687,7 @@ church	ˈtʃɝtʃ	A building used for public Christian worship	freetalk
 east	ˈist	The direction toward which the sun rises, opposite of west	freetalk
 hands	ˈhændz	The terminal part of the human arm located below the forearm, used for grasping and holding	freetalk
 hot	ˈhɑt	Having a high degree of heat or a high temperature	freetalk
+let's	ˈlɛts	Short for 'let us', used to suggest doing something together	shadowline
 longer	ˈlɔŋɡɝ	Having greater length than usual or expected	freetalk
 medical	ˈmɛdəkəl	Of or relating to the science or practice of medicine	freetalk
 movie	ˈmuvi	A motion picture	freetalk
@@ -719,6 +751,7 @@ picture	ˈpɪktʃɝ	A visual representation or image produced by painting, drawi
 size	ˈsaɪz	The physical dimensions, proportions, magnitude, or extent of an object	freetalk
 step	ˈstɛp	An act of moving one's foot in walking or running	freetalk
 trust	ˈtɹʌst	Firm belief in the reliability, truth, ability, or strength of someone or something	freetalk
+you've	ˈjuv	Short for 'you have'	shadowline
 central	ˈsɛntɹəl	Located in the center or middle	freetalk
 changes	ˈtʃeɪndʒəz	To make or become different	freetalk
 forward	ˈfɔɹwɝd	Toward the front or ahead in space	freetalk
@@ -742,6 +775,7 @@ chief	ˈtʃif	Leader or head of a group or organization	freetalk
 cup	ˈkʌp	A small, open container used for drinking	freetalk
 football	ˈfʊtˌbɔl	A game played with a round ball by two teams of eleven players on a rectangular field with a goal at each end	freetalk
 hate	ˈheɪt	Feel intense or passionate dislike for someone	freetalk
+haven't	ˈhævənt	Short for 'have not'	shadowline
 james	ˈdʒeɪmz	A male given name	freetalk
 led	ˈlɛd	past tense of lead	freetalk
 looked	ˈlʊkt	To direct one's gaze in a specified direction	freetalk
@@ -774,6 +808,7 @@ add	ˈæd	To combine two or more numbers to find their total	freetalk
 article	ˈɑɹtəkəl	A piece of writing included with others in a newspaper, magazine, or other publication	freetalk
 attack	əˈtæk	To take aggressive action against a person or place	freetalk
 born	ˈbɔɹn	brought into existence	freetalk
+couldn't	ˈkʊdənt	Short for 'could not'	shadowline
 damn	ˈdæm	To condemn to punishment or fate	freetalk
 decided	ˌdɪˈsaɪdɪd	Having made a firm decision	freetalk
 decision	dɪˈsɪʒən	A conclusion or resolution reached after consideration	freetalk
@@ -860,6 +895,7 @@ towards	təˈwɔɹdz	In the direction of	freetalk
 waiting	ˈweɪtɪŋ	Stay where one is or delay action until a particular time or event	freetalk
 ways	ˈweɪz	A method, manner, or means of doing something	freetalk
 access	ˈækˌsɛs	The ability or right to approach, enter, or use something	freetalk
+aren't	ˈɑɹənt	Short for 'are not'	shadowline
 base	ˈbeɪs	The lowest part or edge of something	freetalk
 below	bɪˈloʊ	At a lower level or layer	freetalk
 created	kɹiˈeɪtəd	To bring into existence	freetalk
@@ -898,6 +934,7 @@ straight	ˈstɹeɪt	Extending or moving in one direction without curving or bend
 visit	ˈvɪzɪt	To go to see or spend time with (someone) socially	freetalk
 wall	ˈwɔl	A vertical structure typically made of brick or stone used to enclose or divide an area	freetalk
 wanna	ˈwɑnə	Want to	freetalk
+we've	ˈwiv	Short for 'we have'	shadowline
 wrote	ˈɹoʊt	To form letters, words, or symbols on a surface with a pen, pencil, or typewriter	freetalk
 allowed	əˈlaʊd	Permitted	freetalk
 boys	ˈbɔɪz	A male child or young man	freetalk
@@ -1199,6 +1236,7 @@ dream	ˈdɹim	A series of thoughts, images, and sensations occurring in a person
 easily	ˈizəli	Without difficulty or effort	freetalk
 finish	ˈfɪnɪʃ	Bring (a task or activity) to an end	freetalk
 grand	ˈɡɹænd	Impressive in size, appearance, or general effect	freetalk
+here's	ˈhɪɹz	Short for 'here is'	shadowline
 increased	ˌɪnˈkɹist	Become or make greater in size, amount, intensity, or degree	freetalk
 literally	ˈlɪtɝəli	In a literal or strict sense, without exaggeration or metaphor	freetalk
 luck	ˈlʌk	Success or failure apparently brought by chance rather than through one's own actions	freetalk
@@ -1264,10 +1302,12 @@ plant	ˈplænt	A living organism that typically grows in soil and has leaves, st
 reality	ˌɹiˈæləˌti	The state of things as they actually exist, as opposed to an idealistic or notional idea	freetalk
 smith	ˈsmɪθ	A person who works with metal, especially a blacksmith	freetalk
 spot	ˈspɑt	A small, round mark or stain	freetalk
+we'll	ˈwil	Short for 'we will'	shadowline
 winter	ˈwɪntɝ	The coldest season of the year, occurring between autumn and spring	freetalk
 worse	ˈwɝs	More inferior in quality or condition than something else	freetalk
 advice	ædˈvaɪs	Guidance or recommendations offered to help someone make a decision or solve a problem	freetalk
 agreement	əˈɡɹimənt	Harmony or accordance in opinion or feeling	freetalk
+ain't	ˈeɪnt	Informal short form of 'is not', 'are not' or 'have not'	shadowline
 award	əˈwɔɹd	A prize or other mark of recognition given in honor of an achievement	freetalk
 block	ˈblɑk	A solid piece of hard material, such as wood or stone	freetalk
 broken	ˈbɹoʊkən	Not functioning properly	freetalk
@@ -1388,6 +1428,7 @@ traffic	ˈtɹæfɪk	The movement of vehicles or people along roads or through a 
 tree	ˈtɹi	A wooden structure or part of a structure	freetalk
 types	ˈtaɪps	A category of people or things having common characteristics	freetalk
 wearing	ˈwɛɹɪŋ	Causing fatigue or exhaustion	freetalk
+who's	ˈhuz	Short for 'who is' or 'who has'	shadowline
 whom	ˈhum	Used as the object of a verb or preposition to refer to a person or people previously mentioned or easily identified	freetalk
 wonderful	ˈwʌndɝfəl	Inspiring delight, pleasure, or admiration	freetalk
 agreed	əˈɡɹid	To have the same opinion or come to a mutual understanding	freetalk
@@ -1457,6 +1498,7 @@ totally	ˈtoʊtəli	Completely	freetalk
 twitter	ˈtwɪtɝ	To make a series of small, high-pitched sounds	freetalk
 views	ˈvjuz	The act of seeing or looking at something	freetalk
 wedding	ˈwɛdɪŋ	The act of marrying	freetalk
+you'd	ˈjud	Short for 'you would' or 'you had'	shadowline
 acting	ˈæktɪŋ	The art or occupation of performing in plays, movies, or television shows	freetalk
 actions	ˈækʃənz	The process of doing something in order to achieve a purpose	freetalk
 arms	ˈɑɹmz	Weapons, especially firearms or explosives	freetalk
@@ -1485,6 +1527,7 @@ rose	ˈɹoʊz	A type of flower with a sweet fragrance	freetalk
 seat	ˈsit	A piece of furniture designed for sitting on	freetalk
 seemed	ˈsimd	Gave the impression of being	freetalk
 sexual	ˈsɛkʃuəl	Relating to the instincts, physiological processes, and activities connected with physical attraction or intimate physical contact between individuals	freetalk
+shouldn't	ˈʃʊdənt	Short for 'should not'	shadowline
 target	ˈtɑɹɡət	A person, object, or place selected as the aim of an attack	freetalk
 understanding	ˌʌndɝˈstændɪŋ	The ability to comprehend or grasp the meaning of something	freetalk
 village	ˈvɪlədʒ	A small community or group of houses in a rural area	freetalk
@@ -1655,6 +1698,7 @@ net	ˈnɛt	A fabric mesh woven from string or wire	freetalk
 owned	ˈoʊnd	To possess something as one's own	freetalk
 request	ɹɪˈkwɛst	An act of asking for something to be done or given	freetalk
 stick	ˈstɪk	A thin piece of wood that is used for various purposes	freetalk
+they've	ˈðeɪv	Short for 'they have'	shadowline
 turns	ˈtɝnz	To move or cause to move in a circular direction	freetalk
 vehicle	ˈvihɪkəl	A device or structure for transporting people or goods	freetalk
 volume	ˈvɑljum	The amount of space that a substance or object occupies	freetalk
@@ -1842,6 +1886,7 @@ fantastic	fænˈtæstɪk	Imaginary or fanciful	freetalk
 feelings	ˈfilɪŋz	An emotional state or reaction	freetalk
 flying	ˈflaɪɪŋ	Moving or able to move through the air using wings	freetalk
 governor	ˈɡʌvɝnɝ	A person who governs or controls a state or organization	freetalk
+hasn't	ˈhæzənt	Short for 'has not'	shadowline
 hundred	ˈhʌndɹəd	A cardinal number equal to ten times ten	freetalk
 industrial	ˌɪnˈdʌstɹiəl	Of, relating to, or characterized by industry	freetalk
 joint	ˈdʒɔɪnt	A point at which parts of an artificial structure are joined	freetalk
@@ -1861,6 +1906,7 @@ spending	ˈspɛndɪŋ	The act of using money to buy goods or services	freetalk
 steel	ˈstil	A hard, strong, gray or bluish-gray alloy of iron with carbon and usually other elements, used extensively as a structural and fabricating material	freetalk
 supporting	səˈpɔɹtɪŋ	To bear the weight of something	freetalk
 terrible	ˈtɛɹəbəl	Extremely bad or serious	freetalk
+they'll	ˈðeɪl	Short for 'they will'	shadowline
 tired	ˈtaɪɝd	In need of sleep or rest	freetalk
 treated	ˈtɹitɪd	To act or behave toward someone in a certain way	freetalk
 turning	ˈtɝnɪŋ	The act of changing direction or position	freetalk
@@ -1895,6 +1941,7 @@ republican	ɹɪˈpʌblɪkən	Advocating or supporting a republic as a form of go
 soldiers	ˈsoʊldʒɝz	A person who serves in an army	freetalk
 suit	ˈsut	A set of clothes made to be worn together, typically consisting of a jacket and trousers or a jacket and skirt	freetalk
 wins	ˈwɪnz	To achieve victory in a competition or conflict	freetalk
+women's	ˈwɪmənz	Belonging to or relating to women	shadowline
 appearance	əˈpɪɹəns	The way that someone or something looks	freetalk
 attorney	əˈtɝni	A person appointed to act for another in business or legal matters	freetalk
 banks	ˈbæŋks	The land alongside a body of water, such as a river or lake	freetalk
@@ -1954,6 +2001,7 @@ joke	ˈdʒoʊk	A humorous anecdote or remark intended to provoke laughter	freeta
 loan	ˈloʊn	A sum of money that is borrowed and expected to be paid back with interest	freetalk
 methods	ˈmɛθədz	A way of doing something, especially a systematic or established one	freetalk
 officials	əˈfɪʃəlz	A person who holds a position of authority in an organization or government	freetalk
+people's	ˈpipəlz	Belonging to or relating to people	shadowline
 performed	pɝˈfɔɹmd	Carry out or fulfill (an action, task, or function)	freetalk
 planet	ˈplænət	A celestial body that orbits the sun and is not a comet or asteroid	freetalk
 relationships	ɹiˈleɪʃənˌʃɪps	The way in which two or more people or things are connected, or the state of being connected	freetalk
@@ -1969,6 +2017,7 @@ supported	səˈpɔɹtɪd	Bear all or part of the weight of; hold up	freetalk
 surprised	sɝˈpɹaɪzd	To feel mild astonishment or shock	freetalk
 taught	ˈtɔt	past tense of teach	freetalk
 transport	tɹænˈspɔɹt	To carry or move from one place to another	freetalk
+weren't	ˈwɝənt	Short for 'were not'	shadowline
 accepted	ækˈsɛptɪd	Generally approved or recognized	freetalk
 adding	ˈædɪŋ	To combine two or more numbers to find their total	freetalk
 affairs	əˈfɛɹz	Matters or events of a particular kind	freetalk
@@ -2277,6 +2326,7 @@ ticket	ˈtɪkət	A pass or permit for a specific purpose, such as parking or adm
 unable	əˈneɪbəl	Lacking the necessary power, skill, or means	freetalk
 upset	əpˈsɛt	To disturb the normal state or condition of	freetalk
 wing	ˈwɪŋ	One of the paired movable feathered or membranous appendages by means of which a bird, bat, or insect is able to fly	freetalk
+world's	ˈwɝldz	Belonging to or relating to world	shadowline
 answers	ˈænsɝz	A response to a question or problem	freetalk
 birds	ˈbɝdz	A person of a specified kind or character	freetalk
 bomb	ˈbɑm	A device that explodes with great force	freetalk
@@ -2381,6 +2431,7 @@ ha	ˈhɑ	Used to express laughter or amusement	freetalk
 heaven	ˈhɛvən	A place regarded in various religions as the abode of God and the angels, and of the good after death	freetalk
 independence	ˌɪndɪˈpɛndəns	Freedom from control or influence of others	freetalk
 institutions	ˌɪnstɪˈtuʃənz	An established organization or foundation dedicated to a particular purpose	freetalk
+it'll	ˈɪtəl	Short for 'it will'	shadowline
 kiss	ˈkɪs	To touch with the lips as a sign of love or greeting	freetalk
 load	ˈloʊd	A heavy or bulky thing that is being carried or is about to be carried	freetalk
 plot	ˈplɑt	A secret plan or scheme to accomplish a purpose	freetalk
@@ -2417,6 +2468,7 @@ diet	ˈdaɪət	The kinds of food that a person, animal, or community habitually 
 em	ˈɛm	Them	freetalk
 fruit	ˈfɹut	The sweet and fleshy product of a tree or other plant that contains seeds and can be eaten as food	freetalk
 harder	ˈhɑɹdɝ	More difficult or challenging	freetalk
+he'd	ˈhid	Short for 'he would' or 'he had'	shadowline
 index	ˈɪndɛks	An alphabetical list of names, subjects, etc., with references to the places where they occur	freetalk
 item	ˈaɪtəm	An individual article or unit, especially one that is part of a list, collection, or set	freetalk
 lane	ˈleɪn	A narrow road or path, typically with trees or hedges on either side	freetalk
@@ -2571,6 +2623,7 @@ dumb	ˈdʌm	Lacking the power of speech	freetalk
 empire	ˈɛmpaɪɝ	A group of countries or regions under a single supreme authority	freetalk
 exciting	ɪkˈsaɪtɪŋ	Causing great enthusiasm and eagerness	freetalk
 expansion	ɪkˈspænʃən	The action of becoming larger or more extensive	freetalk
+he'll	ˈhil	Short for 'he will'	shadowline
 heavily	ˈhɛvəli	To a great degree; in large amounts	freetalk
 hide	ˈhaɪd	to conceal oneself	freetalk
 incident	ˈɪnsədənt	An event or occurrence	freetalk
@@ -2634,6 +2687,7 @@ solar	ˈsoʊlɝ	Of or relating to the sun	freetalk
 somehow	ˈsʌmˌhaʊ	In some way or by some means	freetalk
 stayed	ˈsteɪd	To remain in a particular place or position	freetalk
 suffering	ˈsʌfɝɪŋ	The state of undergoing pain, distress, or hardship	freetalk
+today's	təˈdeɪz	Belonging to or relating to today	shadowline
 tries	ˈtɹaɪz	Attempt to do something	freetalk
 ultimate	ˈʌltəmət	Being or happening at the end of a process; final	freetalk
 unknown	ənˈnoʊn	Not known; not familiar; not within the range of one's knowledge, experience, or understanding	freetalk
@@ -2893,6 +2947,7 @@ bone	ˈboʊn	Any of the pieces of hard, whitish tissue making up the skeleton in
 bullshit	ˈbʊlˌʃɪt	Nonsense or foolishness	freetalk
 chamber	ˈtʃeɪmbɝ	A room used for a specific purpose, such as sleeping or eating	freetalk
 chart	ˈtʃɑɹt	A visual representation of data	freetalk
+children's	ˈtʃɪldɹənz	Belonging to or relating to children	shadowline
 circuit	ˈsɝkət	A complete and closed path around which a current can flow	freetalk
 clothing	ˈkloʊðɪŋ	Items worn to cover the body	freetalk
 complicated	ˈkɑmpləˌkeɪtəd	Involving many different and confusing aspects or elements	freetalk
@@ -2974,6 +3029,7 @@ infrastructure	ˌɪnfɹəˈstɹʌktʃɝ	The basic physical and organizational st
 locations	loʊˈkeɪʃənz	A particular place or position	freetalk
 loose	ˈlus	Not firmly or tightly fixed in place	freetalk
 machines	məˈʃinz	A device that transmits or modifies force or motion	freetalk
+men's	ˈmɛnz	Belonging to or relating to men	shadowline
 moral	ˈmɔɹəl	Concerned with the principles of right and wrong behavior	freetalk
 offensive	əˈfɛnsɪv	causing someone to feel hurt, angry, or upset	freetalk
 pa	ˈpɑ	Father	freetalk
@@ -3116,6 +3172,7 @@ thread	ˈθɹɛd	A long, thin strand of cotton, nylon, or other fibers used in s
 victoria	vɪkˈtɔɹiə	A state of being victorious or successful	freetalk
 visiting	ˈvɪzɪtɪŋ	To go to see or spend time with (someone) socially	freetalk
 wage	ˈweɪdʒ	A fixed regular payment, typically paid on a daily or weekly basis, made by an employer to an employee	freetalk
+we'd	ˈwid	Short for 'we would' or 'we had'	shadowline
 wings	ˈwɪŋz	A pair of movable appendages on the body of a bird or insect, used for flying	freetalk
 avenue	ˈævəˌnu	A wide road or thoroughfare	freetalk
 bags	ˈbæɡz	A flexible container with an opening at the top, used for carrying things	freetalk
@@ -3318,6 +3375,7 @@ enemies	ˈɛnəmiz	A person who is actively opposed or hostile to someone or som
 forgotten	fɝˈɡɑtən	No longer remembered; not recalled to mind	freetalk
 forth	ˈfɔɹθ	Out into view or consideration	freetalk
 gods	ˈɡɑdz	(noun) a superhuman being or spirit worshipped as having power over nature or human fortunes	freetalk
+hadn't	ˈhædənt	Short for 'had not'	shadowline
 hire	ˈhaɪɝ	To employ for wages or salary	freetalk
 hop	ˈhɑp	To move by jumping on one foot	freetalk
 hopes	ˈhoʊps	A feeling of expectation and desire for a certain thing to happen	freetalk
@@ -3389,6 +3447,7 @@ narrative	ˈnæɹətɪv	a story or account of events	freetalk
 narrow	ˈnɛɹoʊ	Of small width in relation to length	freetalk
 observed	əbˈzɝvd	Notice or perceive (something) and register it as being significant	freetalk
 occasionally	əˈkeɪʒənəli	At infrequent or irregular intervals	freetalk
+one's	ˈwʌnz	Belonging to a person in general	shadowline
 pan	ˈpæn	A shallow, wide, open container used for cooking	freetalk
 physics	ˈfɪzɪks	The branch of science concerned with the nature and properties of matter and energy	freetalk
 posting	ˈpoʊstɪŋ	The act of displaying or affixing something in a public place	freetalk
@@ -3404,6 +3463,7 @@ serves	ˈsɝvz	Perform duties or services for someone or something	freetalk
 shell	ˈʃɛl	The hard outer covering of an egg	freetalk
 silly	ˈsɪli	Having or showing a lack of common sense or judgment; foolish	freetalk
 subsequent	ˈsʌbsəkwənt	Coming after something in time; following	freetalk
+they'd	ˈðeɪd	Short for 'they would' or 'they had'	shadowline
 towns	ˈtaʊnz	An urban area that is larger than a village and smaller than a city	freetalk
 translation	tɹænzˈleɪʃən	The act or process of translating words or text from one language into another	freetalk
 visible	ˈvɪzəbəl	Able to be seen	freetalk
@@ -3462,6 +3522,7 @@ thirty	ˈθɝˌdi	The number 30	freetalk
 valid	ˈvælɪd	Legally acceptable or binding	freetalk
 vital	ˈvaɪtəl	Absolutely necessary or important; essential	freetalk
 whilst	ˈwaɪlst	During the time that	freetalk
+year's	ˈjɪɹz	Belonging to or relating to year	shadowline
 agriculture	ˈæɡɹɪˌkʌltʃɝ	The production of crops, livestock, or poultry	freetalk
 alleged	əˈlɛdʒd	Asserted but not proven	freetalk
 anna	ˈænə	A former Indian coin worth one sixteenth of a rupee	freetalk
@@ -3476,6 +3537,7 @@ exhibition	ˌɛksəˈbɪʃən	A public display or demonstration of a skill or it
 fraud	ˈfɹɔd	Wrongful or criminal deception intended to result in financial or personal gain	freetalk
 funeral	ˈfjunɝəl	A ceremony or service held to honor and remember a deceased person	freetalk
 genuine	ˈdʒɛnjəwən	Truly what something is said to be; authentic	freetalk
+god's	ˈɡɑdz	Belonging to or relating to god	shadowline
 honey	ˈhʌni	A sweet, sticky yellowish-brown fluid made by bees	freetalk
 honour	ˈɑnɝ	High respect; esteem	freetalk
 hook	ˈhʊk	A curved or bent piece of metal or other hard material for catching, holding, or pulling something	freetalk
@@ -3489,6 +3551,7 @@ legacy	ˈlɛɡəsi	Something handed down from an ancestor or predecessor	freetal
 log	ˈlɔɡ	A thick piece of tree trunk or branch, especially one cut for burning in a fire	freetalk
 merely	ˈmɪɹli	Only, just, simply	freetalk
 monitor	ˈmɑnətɝ	A person who observes, supervises, or checks on something	freetalk
+mother's	ˈmʌðɝz	Belonging to or relating to mother	shadowline
 prisoners	ˈpɹɪzənɝz	A person who is confined in prison	freetalk
 programming	ˈpɹoʊˌɡɹæmɪŋ	The process of writing computer programs	freetalk
 publishing	ˈpʌblɪʃɪŋ	Prepare and issue (a book, journal, etc.) for public sale	freetalk
@@ -3565,6 +3628,7 @@ threatened	ˈθɹɛtənd	Expressing a warning of intention to harm or punish	fre
 transferred	tɹænsˈfɝd	To move from one place to another	freetalk
 tube	ˈtub	A long, hollow cylinder used for conveying fluids or gases	freetalk
 universities	ˌjunəˈvɝsətiz	Institutions of higher education offering undergraduate and graduate degrees	freetalk
+would've	ˈwʊdəv	Short for 'would have'	shadowline
 writes	ˈɹaɪts	To form letters, words, or symbols on a surface with a pen, pencil, or typewriter	freetalk
 ambassador	æmˈbæsədɝ	A person who represents their country in a foreign land	freetalk
 ann	ˈæn	A female given name	freetalk
@@ -3665,6 +3729,7 @@ investors	ˌɪnˈvɛstɝz	A person who puts money into financial schemes, shares
 involves	ˌɪnˈvɑlvz	To include as a necessary part or result	freetalk
 kills	ˈkɪlz	Cause the death of	freetalk
 liberty	ˈlɪbɝˌti	The state of being free within society from oppressive restrictions imposed by authority on one's way of life, behavior, or political views	freetalk
+man's	ˈmænz	Belonging to or relating to man	shadowline
 maria	mɝˈiə	Plural of 'mare', meaning a large, dark area on the moon's surface	freetalk
 ministers	ˈmɪnəstɝz	A member of the clergy	freetalk
 monitoring	ˈmɑnətɝɪŋ	To observe and check the progress or quality of something	freetalk
@@ -3810,6 +3875,7 @@ registration	ˌɹɛdʒɪˈstɹeɪʃən	The action or process of registering or b
 releases	ɹɪˈlisɪz	Allow (something) to move, act, or flow freely	freetalk
 rick	ˈɹɪk	A stack of hay, straw, or similar material	freetalk
 romance	ɹoʊˈmæns	A feeling of excitement and mystery associated with love	freetalk
+someone's	ˈsʌmˌwʌnz	Belonging to or relating to someone	shadowline
 submitted	səbˈmɪtɪd	To present for consideration or approval	freetalk
 sufficient	səˈfɪʃənt	Adequate for the purpose; enough	freetalk
 survived	sɝˈvaɪvd	Continue to live or exist, especially in spite of danger or hardship	freetalk
@@ -3838,6 +3904,7 @@ burned	ˈbɝnd	Injured or damaged by fire or heat	freetalk
 categories	ˈkætəˌɡɔɹiz	A class or division of people or things regarded as having particular shared characteristics	freetalk
 checks	ˈtʃɛks	To stop or slow down the progress of something	freetalk
 chip	ˈtʃɪp	A small piece of something broken off from a larger whole	freetalk
+company's	ˈkʌmpəniz	Belonging to or relating to company	shadowline
 concerning	kənˈsɝnɪŋ	Relating to; about; regarding	freetalk
 dare	ˈdɛɹ	Have the courage to do something	freetalk
 database	ˈdeɪtəˌbeɪs	A structured set of data held in a computer, especially one that is accessible in various ways	freetalk
@@ -4104,6 +4171,7 @@ dawn	ˈdɔn	The first appearance of light in the sky before sunrise	freetalk
 dispute	dɪˈspjut	A disagreement or argument	freetalk
 earnings	ˈɝnɪŋz	Money received for work or services performed	freetalk
 editing	ˈɛdətɪŋ	Prepare (written material) for publication by correcting, condensing, or otherwise modifying it	freetalk
+everyone's	ˈɛvɹiˌwʌnz	Belonging to or relating to everyone	shadowline
 executed	ˈɛksəˌkjutɪd	Carry out or put into effect (a plan, order, or course of action)	freetalk
 firing	ˈfaɪɹɪŋ	Discharging a gun or weapon	freetalk
 fits	ˈfɪts	A sudden outburst of emotion or action	freetalk
@@ -4171,6 +4239,7 @@ equality	ɪˈkwɑləti	The state of being equal, especially in status, rights, a
 exam	ɪɡˈzæm	A formal test of a person's knowledge or proficiency in a subject or skill	freetalk
 examination	ɪɡˌzæməˈneɪʃən	The act of looking at or considering something closely and carefully	freetalk
 fails	ˈfeɪlz	To be unsuccessful in achieving one's goal	freetalk
+father's	ˈfɑðɝz	Belonging to or relating to father	shadowline
 federation	ˌfɛdɝˈeɪʃən	A group of states with a central government but independence in internal affairs	freetalk
 fiscal	ˈfɪskəl	Of or relating to government revenue, especially taxes	freetalk
 guardian	ˈɡɑɹdiən	A person who guards, protects, or looks after something	freetalk
@@ -4376,6 +4445,7 @@ casual	ˈkæʒəwəl	relaxed and unconcerned	freetalk
 certified	ˈsɝtəˌfaɪd	Officially recognized as possessing certain qualifications or meeting certain standards	freetalk
 charter	ˈtʃɑɹtɝ	A contract by which an entire ship, or part of it, is leased for a voyage or a stated time	freetalk
 chef	ˈʃɛf	A professional cook	freetalk
+city's	ˈsɪtiz	Belonging to or relating to city	shadowline
 civilian	səˈvɪljən	A person not in the armed services or the police force	freetalk
 coalition	ˌkoʊəˈlɪʃən	An alliance for combined action	freetalk
 cock	ˈkɑk	A male bird, especially a rooster	freetalk
@@ -4683,6 +4753,7 @@ adopt	əˈdɑpt	To take up and practice or use	freetalk
 airlines	ˈɛɹˌlaɪnz	A company that provides scheduled flights for passengers and cargo	freetalk
 alaska	əˈlæskə	A state in the United States known for its vast wilderness and natural beauty	freetalk
 albums	ˈælbəmz	A collection of recordings, typically in the form of a CD or vinyl record	freetalk
+america's	əˈmɛɹəkəz	Belonging to or relating to america	shadowline
 anytime	ˈɛniˌtaɪm	At any time	freetalk
 bacteria	bækˈtɪɹiə	Microscopic organisms that can cause disease or aid in digestion	freetalk
 beings	ˈbiɪŋz	Existence	freetalk
@@ -4722,6 +4793,7 @@ graphics	ˈɡɹæfɪks	The visual representation of data or information	freetalk
 humor	ˈhjumɝ	The quality of being amusing or entertaining	freetalk
 insight	ˈɪnˌsaɪt	The capacity to gain an accurate and deep understanding of a person or thing	freetalk
 invested	ˌɪnˈvɛstəd	To put money into something in order to earn a profit or interest	freetalk
+it'd	ˈɪtəd	Short for 'it would' or 'it had'	shadowline
 lit	ˈlɪt	illuminated	freetalk
 mar	ˈmɑɹ	To damage or spoil the appearance of	freetalk
 meals	ˈmilz	The food eaten or prepared for eating at one time	freetalk
@@ -4836,6 +4908,8 @@ rifle	ˈɹaɪfəl	To search quickly through something in a rough or disorderly m
 rival	ˈɹaɪvəl	A person or thing competing with another for the same objective or for superiority in the same field of activity	freetalk
 runner	ˈɹʌnɝ	A person who runs, especially as a sport or for exercise	freetalk
 sadly	ˈsædli	In a sad manner	freetalk
+she'd	ˈʃid	Short for 'she would' or 'she had'	shadowline
+she'll	ˈʃil	Short for 'she will'	shadowline
 shoulders	ˈʃoʊldɝz	The part of the body between the neck and upper arm	freetalk
 significance	səɡˈnɪfɪkəns	The quality of being important or having meaning	freetalk
 sits	ˈsɪts	To rest on the buttocks or haunches	freetalk
@@ -4878,6 +4952,7 @@ contrary	ˈkɑntɹɛɹi	Opposite in nature, direction, or meaning	freetalk
 controlling	kənˈtɹoʊlɪŋ	To exercise authority or influence over	freetalk
 corporations	ˌkɔɹpɝˈeɪʃənz	A company or group of people authorized to act as a single entity and recognized as such in law	freetalk
 couch	ˈkaʊtʃ	A piece of furniture for seating multiple people	freetalk
+country's	ˈkʌntɹiz	Belonging to or relating to country	shadowline
 crush	ˈkɹʌʃ	To press or squeeze with force	freetalk
 dam	ˈdæm	A barrier constructed to hold back water and raise its level, forming a reservoir	freetalk
 decrease	dɪˈkɹis	To become smaller or fewer	freetalk
@@ -5008,6 +5083,7 @@ tommy	ˈtɑmi	A British soldier	freetalk
 travelling	ˈtɹævəlɪŋ	The act of going from one place to another, especially over a long distance	freetalk
 vocal	ˈvoʊkəl	Expressed in spoken words	freetalk
 warrior	ˈwɔɹiɝ	A person engaged in or experienced in warfare	freetalk
+woman's	ˈwʊmənz	Belonging to or relating to woman	shadowline
 worries	ˈwɝiz	Feel anxious or troubled about actual or potential problems	freetalk
 yield	ˈjild	Produce or provide (a natural, agricultural, or industrial product)	freetalk
 accomplished	əˈkɑmplɪʃt	Successfully completed or achieved	freetalk
@@ -5568,6 +5644,7 @@ sells	ˈsɛlz	To exchange for money	freetalk
 sentenced	ˈsɛntənst	To declare the punishment decided for a crime	freetalk
 servant	ˈsɝvənt	A person who performs duties for others, especially a domestic worker	freetalk
 setup	ˈsɛˌtʌp	The way in which something is arranged or organized	freetalk
+should've	ˈʃʊdəv	Short for 'should have'	shadowline
 skull	ˈskʌl	The bony framework of the head, enclosing the brain and supporting the face	freetalk
 slot	ˈslɑt	A narrow opening or groove	freetalk
 smash	ˈsmæʃ	Break violently into pieces	freetalk
@@ -5575,6 +5652,7 @@ statue	ˈstæˌtʃu	A representation of a person or animal in a three-dimensiona
 surprisingly	sɝˈpɹaɪzɪŋli	In a way that causes surprise or astonishment	freetalk
 surrender	sɝˈɛndɝ	To give up or hand over control or possession	freetalk
 suspicious	səˈspɪʃəs	Having or showing a cautious distrust of someone or something	freetalk
+team's	ˈtimz	Belonging to or relating to team	shadowline
 teenager	ˈtiˌneɪdʒɝ	A person aged between 13 and 19 years old	freetalk
 tender	ˈtɛndɝ	Showing gentleness or kindness	freetalk
 thoroughly	ˈθɝoʊli	In a thorough manner; completely or entirely	freetalk
@@ -5582,6 +5660,7 @@ treatments	ˈtɹitmənts	The manner in which someone behaves towards or deals wi
 tweeted	ˈtwitɪd	To post a message on Twitter	freetalk
 vacuum	ˈvækjum	A space entirely devoid of matter	freetalk
 variations	ˌvɛɹiˈeɪʃənz	A different form or version of something	freetalk
+where's	ˈwɛɹz	Short for 'where is' or 'where has'	shadowline
 wont	ˈwoʊnt	Accustomed or used to	freetalk
 acknowledged	ækˈnɑlɪdʒd	Recognized or accepted as true or valid	freetalk
 advances	ədˈvænsəz	To move forward in a purposeful way	freetalk
@@ -5817,6 +5896,7 @@ completing	kəmˈplitɪŋ	To finish making or doing something	freetalk
 consulting	kənˈsʌltɪŋ	To seek advice or information from someone	freetalk
 cooling	ˈkulɪŋ	Becoming cooler in temperature	freetalk
 corners	ˈkɔɹnɝz	The point where two converging lines meet	freetalk
+could've	ˈkʊdəv	Short for 'could have'	shadowline
 deficit	ˈdɛfəsət	The amount by which something, especially a sum of money, is too small	freetalk
 demo	ˈdɛmoʊ	A recording or performance intended to showcase the abilities of an artist or musician	freetalk
 demon	ˈdimən	An evil spirit or devil	freetalk
@@ -5968,6 +6048,7 @@ spam	ˈspæm	Irrelevant or unsolicited messages, especially sent over the intern
 speeds	ˈspidz	The rate at which someone or something moves or operates	freetalk
 stack	ˈstæk	A pile of objects placed one on top of another	freetalk
 stance	ˈstæns	The way in which someone stands, especially as an expression of their feelings or opinions	freetalk
+state's	ˈsteɪts	Belonging to or relating to state	shadowline
 static	ˈstætɪk	Lacking in movement, action, or change	freetalk
 subway	ˈsʌbˌweɪ	An underground electric railroad	freetalk
 supportive	səˈpɔɹtɪv	Providing encouragement or emotional help	freetalk
@@ -5980,6 +6061,7 @@ tide	ˈtaɪd	The regular rise and fall of the sea caused by the gravitational pu
 travels	ˈtɹævəlz	The act of going from one place to another, especially on a long journey	freetalk
 warfare	ˈwɔɹˌfɛɹ	The activity or skill of fighting a war	freetalk
 warming	ˈwɔɹmɪŋ	The act of making something warm or warmer	freetalk
+week's	ˈwiks	Belonging to or relating to week	shadowline
 weekends	ˈwiˌkɛndz	The end of the week, typically Saturday and Sunday, regarded as a time for leisure	freetalk
 withdraw	wɪðˈdɹɔ	To remove or take away	freetalk
 withdrawal	wɪðˈdɹɔəl	The act of taking something away or removing it	freetalk
@@ -6046,8 +6128,10 @@ nails	ˈneɪlz	A small metal spike with a broadened flat head, driven typically 
 newest	ˈnuəst	Most recent	freetalk
 nonetheless	ˌnʌnðəˈlɛs	In spite of that; nevertheless	freetalk
 nut	ˈnʌt	A hard-shelled fruit or seed with an edible kernel	freetalk
+o'clock	əˈklɑk	Used after a number to say the hour of the day	shadowline
 opposing	əˈpoʊzɪŋ	To act against or provide resistance to something	freetalk
 origins	ˈɔɹədʒɪnz	The point or place where something begins, arises, or is derived	freetalk
+person's	ˈpɝsənz	Belonging to or relating to person	shadowline
 physicians	fəˈzɪʃənz	A person qualified to practice medicine, especially one who specializes in diagnosis and treatment	freetalk
 pipeline	ˈpaɪˌplaɪn	A long pipe, typically underground, used for conveying oil, gas, or other products	freetalk
 placement	ˈpleɪsmənt	The act of placing or arranging something in a particular position	freetalk
@@ -6104,6 +6188,7 @@ elect	ɪˈlɛkt	Chosen or preferred	freetalk
 elevated	ˈɛləˌveɪtɪd	Raised to a higher level or position	freetalk
 essence	ˈɛsəns	The intrinsic nature or indispensable quality of something	freetalk
 executives	ɪɡˈzɛkjətɪvz	A person or group having administrative or supervisory authority in an organization	freetalk
+family's	ˈfæməliz	Belonging to or relating to family	shadowline
 flames	ˈfleɪmz	Burning gas or vapor, as from wood or coal, that is undergoing combustion	freetalk
 fork	ˈfɔɹk	A utensil with prongs used for eating or serving food	freetalk
 fur	ˈfɝ	The short, fine, soft hair of certain animals	freetalk
@@ -6116,6 +6201,7 @@ insist	ˌɪnˈsɪst	To demand something forcefully	freetalk
 jo	ˈdʒoʊ	A sweetheart or beloved person	freetalk
 junk	ˈdʒʌŋk	Discarded or old items that are considered useless or of little value	freetalk
 kidney	ˈkɪdni	Either of a pair of organs in the abdominal cavity of mammals, birds, and reptiles, excreting urine	freetalk
+king's	ˈkɪŋz	Belonging to or relating to king	shadowline
 ladder	ˈlædɝ	A device consisting of a series of bars or steps between two upright lengths of wood, metal, or rope, used for climbing up or down	freetalk
 lobby	ˈlɑbi	A room providing a space out of which one or more other rooms or corridors lead, typically one near the entrance of a public building	freetalk
 marc	ˈmɑɹk	The residue of grapes or other fruit that remains after pressing for juice	freetalk
@@ -6234,6 +6320,7 @@ mercury	ˈmɝkjɝi	A heavy, silver-white metallic element that is liquid at room
 namely	ˈneɪmli	That is to say; explicitly	freetalk
 needing	ˈnidɪŋ	To require something because it is essential or very important	freetalk
 nerves	ˈnɝvz	The bundles of fibers that transmit impulses between the brain and other parts of the body	freetalk
+obama's	ˌoʊˈbɑməz	Belonging to or relating to obama	shadowline
 observations	ˌɑbzɝˈveɪʃənz	The action or process of observing something or someone carefully or in order to gain information	freetalk
 ordering	ˈɔɹdɝɪŋ	The act of putting things in a particular sequence or arrangement	freetalk
 palmer	ˈpɑmɝ	A person who travels to different places for religious reasons	freetalk
@@ -6345,6 +6432,7 @@ theoretical	ˌθiɝˈɛtɪkəl	Relating to or based on theory	freetalk
 thumb	ˈθʌm	The short, thick first digit of the human hand, set lower and apart from the other four and opposable to them	freetalk
 timber	ˈtɪmbɝ	Trees or wooded land suitable for building or woodworking	freetalk
 transparent	tɹænˈspɛɹənt	Allowing light to pass through so that objects behind can be distinctly seen	freetalk
+trump's	ˈtɹʌmps	Belonging to or relating to trump	shadowline
 tweets	ˈtwits	A short message posted on the social media platform Twitter	freetalk
 upside	ˈʌpˈsaɪd	The upper side or surface of something	freetalk
 urged	ˈɝdʒd	To strongly encourage or persuade someone to do something	freetalk
@@ -6389,6 +6477,7 @@ documented	ˈdɑkjəˌmɛntəd	Record in written or electronic form	freetalk
 donation	doʊˈneɪʃən	Something that is given to a charity or organization	freetalk
 dragged	ˈdɹæɡd	past tense of drag	freetalk
 drone	ˈdɹoʊn	A male bee in a colony of social bees, whose sole function is to mate with the queen	freetalk
+else's	ˈɛlsɪz	Belonging to somebody else, as in 'someone else's'	shadowline
 encounters	ɪnˈkaʊntɝz	To come upon or meet with, especially unexpectedly	freetalk
 ensuring	ɛnˈʃʊɹɪŋ	Make certain that (something) shall occur or be the case	freetalk
 enterprises	ˈɛntɝˌpɹaɪzɪz	A project or undertaking, typically one that is difficult or requires effort	freetalk
@@ -6451,6 +6540,7 @@ barn	ˈbɑɹn	A large building used for storing grain, hay, or other agricultura
 bent	ˈbɛnt	A natural talent or inclination	freetalk
 cathedral	kəˈθidɹəl	The principal church of a diocese, containing the bishop's throne	freetalk
 centered	ˈsɛntɝd	Positioned at or near the center	freetalk
+child's	ˈtʃaɪldz	Belonging to or relating to child	shadowline
 clause	ˈklɔz	A group of words containing a subject and predicate, typically forming part of a sentence	freetalk
 cluster	ˈklʌstɝ	A group of similar things or people positioned or occurring closely together	freetalk
 complained	kəmˈpleɪnd	Express dissatisfaction or annoyance about something	freetalk
@@ -6492,6 +6582,7 @@ launching	ˈlɔntʃɪŋ	To set or thrust in motion	freetalk
 liking	ˈlaɪkɪŋ	A feeling of attraction or affection towards someone or something	freetalk
 mates	ˈmeɪts	A person's friend or companion	freetalk
 mediterranean	ˌmɛdətɝˈeɪniən	A type of climate characterized by hot, dry summers and mild, wet winters	freetalk
+nation's	ˈneɪʃənz	Belonging to or relating to nation	shadowline
 neat	ˈnit	Clean or orderly in appearance	freetalk
 negotiate	nəˈɡoʊʃiˌeɪt	To discuss something in order to reach an agreement	freetalk
 obligations	ˌɑbləˈɡeɪʃənz	A duty or commitment to fulfill a responsibility	freetalk
@@ -6575,6 +6666,7 @@ furious	ˈfjʊɹiəs	Full of anger or rage	freetalk
 gameplay	ˈɡeɪmˌpleɪ	The manner in which a game is played	freetalk
 geography	dʒiˈɑɡɹəfi	The study of the physical features of the earth and its atmosphere	freetalk
 gig	ˈɡɪɡ	A job, especially a temporary one	freetalk
+government's	ˈɡʌvɝmənts	Belonging to or relating to government	shadowline
 habitat	ˈhæbəˌtæt	The natural home or environment of an animal, plant, or other organism	freetalk
 harbour	ˈhɑɹbɝ	A place on the coast where ships may moor in shelter	freetalk
 hazard	ˈhæzɝd	A danger or risk	freetalk
@@ -6764,6 +6856,7 @@ florence	ˈflɔɹəns	A city in Italy	freetalk
 flu	ˈflu	A highly contagious viral infection causing fever, aching muscles, and respiratory symptoms	freetalk
 forbidden	ˈfɔɹbɪdən	Not allowed; prohibited	freetalk
 fraction	ˈfɹækʃən	A numerical quantity that is not a whole number, typically represented as a ratio of two integers	freetalk
+girl's	ˈɡɝlz	Belonging to or relating to girl	shadowline
 infantry	ˈɪnfəntɹi	Soldiers trained and equipped to fight on foot	freetalk
 integral	ˈɪntəɡɹəl	Necessary for completeness; essential	freetalk
 investor	ˌɪnˈvɛstɝ	A person who puts money into financial schemes, shares, property, or a commercial venture with the expectation of achieving a profit	freetalk
@@ -6810,6 +6903,7 @@ superb	sʊˈpɝb	Of the highest quality or degree; excellent	freetalk
 supposedly	səˈpoʊzədli	According to what is generally assumed or believed	freetalk
 tab	ˈtæb	A small flap or strip of material attached to something for holding, manipulation, or identification	freetalk
 tendency	ˈtɛndənsi	An inclination toward a particular characteristic or behavior	freetalk
+that'll	ˈðætəl	Short for 'that will'	shadowline
 theirs	ˈðɛɹz	Belonging to or associated with them	freetalk
 toast	ˈtoʊst	Sliced bread browned by exposure to heat	freetalk
 toes	ˈtoʊz	One of the five digits of the foot	freetalk
@@ -6869,11 +6963,13 @@ excuses	ɪkˈskjusɪz	A reason or explanation given to justify a fault or offens
 execute	ˈɛksəˌkjut	Carry out or put into effect (a plan, order, or course of action)	freetalk
 factories	ˈfæktɝiz	Buildings or group of buildings where goods are manufactured or assembled	freetalk
 feast	ˈfist	A large meal, typically a celebratory one	freetalk
+friend's	ˈfɹɛndz	Belonging to or relating to friend	shadowline
 frost	ˈfɹɔst	A deposit of small white ice crystals formed on the ground or other surfaces when the temperature falls below freezing	freetalk
 herald	ˈhɛɹəld	A person or thing that precedes or comes before; forerunner	freetalk
 hike	ˈhaɪk	A long walk, especially in the countryside or wilderness	freetalk
 hollow	ˈhɑloʊ	Having a hole or empty space inside	freetalk
 homeland	ˈhoʊmˌlænd	The country of one's birth or citizenship	freetalk
+how's	ˈhaʊz	Short for 'how is' or 'how has'	shadowline
 imported	ˌɪmˈpɔɹtɪd	Brought in from another country for sale or use	freetalk
 ing	ˈɪŋ	A suffix used to form the present participle of verbs	freetalk
 internationally	ˌɪntɝˈnæʃənəli	In a way that relates to or involves two or more countries	freetalk
@@ -6984,12 +7080,14 @@ newer	ˈnuɝ	More recent in time	freetalk
 newton	ˈnutən	A fig tree of the Mediterranean region, widely cultivated for its edible fruit	freetalk
 oppose	əˈpoʊz	To act against or provide resistance to something	freetalk
 optimal	ˈɑptəməl	Best or most favorable	freetalk
+other's	ˈʌðɝz	Belonging to or relating to other	shadowline
 overtime	ˈoʊvɝˌtaɪm	Time worked beyond regular working hours	freetalk
 packs	ˈpæks	A group of wild animals, especially wolves, living and hunting together	freetalk
 permits	pɝˈmɪts	Give authorization or consent for something to happen	freetalk
 pops	ˈpɑps	A sudden, explosive sound	freetalk
 postal	ˈpoʊstəl	Of or relating to mail services	freetalk
 predictions	pɹiˈdɪkʃənz	A statement about what will happen in the future	freetalk
+president's	ˈpɹɛzɪdənts	Belonging to or relating to president	shadowline
 profound	pɹoʊˈfaʊnd	Having deep insight or understanding	freetalk
 prosecutor	ˈpɹɑsɪˌkjutɝ	A person who institutes legal proceedings against someone	freetalk
 rebellion	ɹɪˈbɛljən	Opposition to authority or control	freetalk
@@ -7094,6 +7192,7 @@ orthodox	ˈɔɹθəˌdɑks	Adhering to traditional beliefs or practices	freetalk
 overhead	ˈoʊvɝˈhɛd	Located above someone's head	freetalk
 pac	ˈpæk	A group or coalition that works together for a common purpose	freetalk
 painter	ˈpeɪntɝ	A person who paints surfaces, such as walls or buildings	freetalk
+party's	ˈpɑɹtiz	Belonging to or relating to party	shadowline
 pierce	ˈpɪɹs	To make a hole in or through something with a sharp object	freetalk
 pistol	ˈpɪstəl	A small firearm designed to be held in one hand	freetalk
 printer	ˈpɹɪntɝ	A person or company that prints books, newspapers, etc	freetalk
@@ -7238,6 +7337,7 @@ catalog	ˈkætəlɔɡ	A list or record of items	freetalk
 catalogue	ˈkætəˌlɔɡ	A complete list of items, typically organized in a systematic way	freetalk
 charitable	ˈtʃæɹətəbəl	Generous in giving money or help to those in need	freetalk
 clicking	ˈklɪkɪŋ	Make a short, sharp sound	freetalk
+club's	ˈklʌbz	Belonging to or relating to club	shadowline
 collector	kəˈlɛktɝ	A person who collects things, especially as a hobby	freetalk
 compliment	ˈkɑmpləmɛnt	An expression of praise or admiration	freetalk
 consisted	kənˈsɪstəd	To be made up or composed of	freetalk
@@ -7345,6 +7445,7 @@ cardinal	ˈkɑɹdənəl	A leading dignitary of the Roman Catholic Church	freetal
 champ	ˈtʃæmp	To chew or bite noisily	freetalk
 champagne	ʃæmˈpeɪn	A pale beige color	freetalk
 cheated	ˈtʃitəd	Act dishonestly or unfairly in order to gain an advantage	freetalk
+china's	ˈtʃaɪnəz	Belonging to or relating to china	shadowline
 chorus	ˈkɔɹəs	A group of singers or dancers performing together	freetalk
 chrome	ˈkɹoʊm	Chromium, especially in a metallic form	freetalk
 clarity	ˈklɛɹəti	The quality of being clear, transparent, or easy to understand	freetalk
@@ -7393,6 +7494,7 @@ leagues	ˈliɡz	A group of sports teams that play against each other	freetalk
 listings	ˈlɪstɪŋz	A list or catalog of items or properties for sale or rent	freetalk
 literacy	ˈlɪtɝəsi	The ability to read and write	freetalk
 marriages	ˈmɛɹɪdʒɪz	The legally or formally recognized union of two people as partners in a personal relationship	freetalk
+mcdonald's	məkˈdɑnəldz	Belonging to or relating to mcdonald	shadowline
 migrants	ˈmaɪɡɹənts	A person who moves from one place to another in order to find work or better living conditions	freetalk
 misleading	mɪˈslidɪŋ	Giving the wrong idea or impression	freetalk
 moisture	ˈmɔɪstʃɝ	A small amount of liquid, often in the form of water particles in the air	freetalk
@@ -7506,6 +7608,7 @@ landmark	ˈlændˌmɑɹk	An event, discovery, or change marking an important sta
 launches	ˈlɔntʃəz	To set or thrust in motion	freetalk
 leaning	ˈlinɪŋ	Inclining or bending from a vertical position	freetalk
 liable	ˈlaɪəbəl	Legally responsible for something	freetalk
+life's	ˈlaɪfs	Belonging to or relating to life	shadowline
 midst	ˈmɪdst	In the middle of	freetalk
 misery	ˈmɪzɝi	A state of great distress or discomfort	freetalk
 module	ˈmɑdʒul	A separate unit or self-contained component of a larger system	freetalk
@@ -7584,6 +7687,7 @@ geometry	dʒiˈɑmətɹi	The branch of mathematics that deals with the propertie
 ghosts	ˈɡoʊsts	The soul of a dead person believed to appear to the living	freetalk
 gossip	ˈɡɑsəp	Casual or unconstrained conversation or reports about other people, typically involving details that are not confirmed as true	freetalk
 grandparents	ˈɡɹændˌpɛɹənts	The parents of one's father or mother	freetalk
+group's	ˈɡɹups	Belonging to or relating to group	shadowline
 haul	ˈhɔl	To pull or drag with effort or force	freetalk
 header	ˈhɛdɝ	A person or thing that removes or puts a head on something	freetalk
 headphones	ˈhɛdˌfoʊnz	A pair of small speakers worn over the ears to listen to audio from a computer, music player, etc	freetalk
@@ -7609,6 +7713,7 @@ masks	ˈmæsks	Covering for the face, often worn for protection or disguise	free
 metric	ˈmɛtɹɪk	A system of measurement based on the meter, gram, and liter as units of length, weight, and capacity	freetalk
 militia	məˈlɪʃə	A military force composed of ordinary citizens	freetalk
 naming	ˈneɪmɪŋ	A word or set of words by which a person, animal, place, or thing is known or addressed	freetalk
+night's	ˈnaɪts	Belonging to or relating to night	shadowline
 node	ˈnoʊd	A point at which lines or pathways intersect or branch off	freetalk
 obstacles	ˈɑbstəkəlz	Something that obstructs or hinders progress	freetalk
 opener	ˈoʊpənɝ	A person or thing that opens something	freetalk
@@ -7632,6 +7737,7 @@ selective	səˈlɛktɪv	Carefully choosing only the best or most suitable option
 seniors	ˈsinjɝz	A person who is older than another	freetalk
 shiny	ˈʃaɪni	Bright or glossy in appearance	freetalk
 socialism	ˈsoʊʃəˌlɪzəm	A political and economic theory advocating for collective or governmental ownership and administration of the means of production and distribution of goods	freetalk
+son's	ˈsʌnz	Belonging to or relating to son	shadowline
 sour	ˈsaʊɝ	Having a sharp, biting taste like that of lemon or vinegar	freetalk
 spoon	ˈspun	A utensil consisting of a small, shallow bowl on a long handle, used for eating or serving food	freetalk
 stressful	ˈstɹɛsfəl	Causing mental or emotional strain or tension	freetalk
@@ -7648,6 +7754,7 @@ uniforms	ˈjunəˌfɔɹmz	Identical or consistent in form, type, or nature	freet
 verify	ˈvɛɹəˌfaɪ	Confirm the truth or accuracy of something	freetalk
 villain	ˈvɪlən	A character in a play, novel, or movie who is typically evil and who causes harm or trouble to others	freetalk
 whistle	ˈwɪsəl	A clear, high-pitched sound made by forcing breath through a small hole between one's lips or teeth	freetalk
+wife's	ˈwaɪfs	Belonging to or relating to wife	shadowline
 workshops	ˈwɝkˌʃɑps	A room or building where goods are manufactured or repaired	freetalk
 yale	ˈjeɪl	A mythical creature resembling an antelope with goat-like features	freetalk
 yearly	ˈjɪɹli	Happening or done once a year	freetalk
@@ -7797,6 +7904,7 @@ greens	ˈɡɹinz	The color of growing foliage, between yellow and blue in the sp
 handbook	ˈhændˌbʊk	A book giving information such as facts on a particular subject or instructions for operating a device	freetalk
 hardy	ˈhɑɹdi	Capable of enduring difficult conditions	freetalk
 honors	ˈɑnɝz	High respect; esteem	freetalk
+india's	ˈɪndiəz	Belonging to or relating to india	shadowline
 insights	ˈɪnˌsaɪts	The capacity to gain an accurate and deep understanding of a person or thing	freetalk
 instinct	ˈɪnstɪŋkt	An innate, typically fixed pattern of behavior in animals in response to certain stimuli	freetalk
 inviting	ˌɪnˈvaɪtɪŋ	Attractive or tempting	freetalk
@@ -7917,10 +8025,12 @@ geographical	ˌdʒiəˈɡɹæfɪkəl	Relating to the natural features, populatio
 governed	ˈɡʌvɝnd	Control, influence, or regulate	freetalk
 governmental	ˈɡʌvɝˌmɛntəl	Of or relating to government	freetalk
 grandson	ˈɡɹændˌsʌn	A son of one's son or daughter	freetalk
+guy's	ˈɡaɪz	Belonging to or relating to guy	shadowline
 halls	ˈhɔlz	A large room for meetings or entertainment	freetalk
 handles	ˈhændəlz	A part of an object designed to be held or grasped by the hand	freetalk
 heavier	ˈhɛviɝ	Having a greater weight than something else	freetalk
 hints	ˈhɪnts	A slight or indirect indication or suggestion	freetalk
+husband's	ˈhʌzbəndz	Belonging to or relating to husband	shadowline
 incomplete	ˌɪnkəmˈplit	Not complete; lacking some part or element	freetalk
 incorporate	ˌɪnˈkɔɹpɝˌeɪt	To combine or include something as part of a whole	freetalk
 interrupted	ˌɪntɝˈʌptɪd	stopped briefly	freetalk
@@ -8032,6 +8142,7 @@ renewal	ɹɪˈnuəl	The action of extending the period of validity of something	
 repeating	ɹɪˈpitɪŋ	To say or do something again	freetalk
 rifles	ˈɹaɪfəlz	A type of firearm with a long barrel and a spirally grooved bore for increased accuracy	freetalk
 ruler	ˈɹulɝ	A person who rules or governs	freetalk
+school's	ˈskulz	Belonging to or relating to school	shadowline
 screams	ˈskɹimz	A loud, sharp, piercing cry	freetalk
 sellers	ˈsɛlɝz	A person who sells something	freetalk
 sights	ˈsaɪts	Things that are seen	freetalk
@@ -8101,6 +8212,7 @@ distances	ˈdɪstənsəz	The extent or amount of space between two things	freeta
 dominance	ˈdɑmənəns	Power and influence over others	freetalk
 donors	ˈdoʊnɝz	A person who donates something, especially money to a charity or organization	freetalk
 downloaded	ˈdaʊnˌloʊdɪd	To transfer data or files from a server or computer to a local device	freetalk
+earth's	ˈɝθs	Belonging to or relating to earth	shadowline
 economically	ˌɛkəˈnɑmɪkli	In a way that relates to the economy	freetalk
 entertain	ˌɛntɝˈteɪn	Provide amusement or enjoyment for (someone)	freetalk
 evaluated	ɪˈvæljuˌeɪtəd	To judge or determine the significance, worth, or quality of something	freetalk
@@ -8109,6 +8221,7 @@ fireworks	ˈfaɪɹˌwɝks	Explosive devices used for entertainment or celebratio
 flown	ˈfloʊn	past participle of fly	freetalk
 founders	ˈfaʊndɝz	A person who establishes an organization or institution	freetalk
 freeman	ˈfɹimən	A person who is not a slave or under bondage	freetalk
+game's	ˈɡeɪmz	Belonging to or relating to game	shadowline
 gateway	ˈɡeɪˌtweɪ	An entrance or opening that can be closed by a gate	freetalk
 guarantees	ˌɡɛɹənˈtiz	A formal assurance that certain conditions will be fulfilled	freetalk
 humidity	hjuˈmɪdəti	The state or quality of being humid	freetalk
@@ -8386,6 +8499,7 @@ melody	ˈmɛlədi	A sequence of single notes that is musically satisfying	freeta
 memo	ˈmɛˌmoʊ	A short note or written reminder	freetalk
 mic	ˈmɪk	A unit of length equal to one millionth of a meter	freetalk
 mirrors	ˈmɪɹɝz	A surface, typically of glass coated with a metal amalgam, that reflects a clear image	freetalk
+mom's	ˈmɑmz	Belonging to or relating to mom	shadowline
 narrator	ˈnɛɹeɪtɝ	A person who tells a story	freetalk
 nets	ˈnɛts	A device made of threads or cords woven together in a grid-like pattern, used for catching fish or other objects	freetalk
 obesity	oʊˈbisəti	The condition of being grossly overweight	freetalk
@@ -8446,6 +8560,7 @@ broncos	ˈbɹɑŋkoʊz	A horse or pony of a small breed known for its strength a
 builders	ˈbɪldɝz	A person or company that constructs buildings	freetalk
 burton	ˈbɝtən	A strong tackle for hoisting heavy weights	freetalk
 caesar	ˈsizɝ	A title of Roman emperors	freetalk
+canada's	ˈkænədəz	Belonging to or relating to canada	shadowline
 cans	ˈkænz	A cylindrical metal container used for storing food or drink	freetalk
 cavalry	ˈkævəlɹi	Soldiers on horseback	freetalk
 coffin	ˈkɔfɪn	A box or chest for burying a corpse	freetalk
@@ -8456,6 +8571,7 @@ conductor	kənˈdʌktɝ	A person who directs the performance of an orchestra or 
 confront	kənˈfɹʌnt	Face up to and deal with (a problem or difficult situation)	freetalk
 constraints	kənˈstɹeɪnts	Limitations that restrict or control something	freetalk
 crow	ˈkɹoʊ	A large, black bird with a loud, harsh call	freetalk
+dad's	ˈdædz	Belonging to or relating to dad	shadowline
 decisive	dɪˈsaɪsɪv	Settling an issue or producing a definite result	freetalk
 decorative	ˈdɛkɹətɪv	Serving to make something look more attractive or festive	freetalk
 definitive	dɪˈfɪnɪtɪv	Most reliable or complete; final and conclusive	freetalk
@@ -8548,6 +8664,7 @@ analyses	əˈnæləˌsiz	The process of examining something in detail to underst
 asses	ˈæsəz	Plural of ass	freetalk
 assessments	əˈsɛsmənts	The action of assessing someone or something	freetalk
 assisting	əˈsɪstɪŋ	To help or support someone in doing something	freetalk
+australia's	ɔˈstɹeɪljəz	Belonging to or relating to australia	shadowline
 axe	ˈæks	A tool with a heavy metal head mounted across a handle, used for chopping wood	freetalk
 backgrounds	ˈbækˌɡɹaʊndz	The area or scenery behind the main object or subject of focus	freetalk
 belle	ˈbɛl	A beautiful woman	freetalk
@@ -8608,6 +8725,7 @@ judy	ˈdʒudi	A female given name	freetalk
 kindergarten	ˈkɪndɝˌɡɑɹtən	A school or class for young children before they start formal education	freetalk
 latino	lɑˈtinoʊ	A person of Latin American descent	freetalk
 loudly	ˈlaʊdli	In a manner that produces a great deal of noise	freetalk
+master's	ˈmæstɝz	Belonging to or relating to master	shadowline
 mechanic	məˈkænɪk	A person who repairs machines or engines	freetalk
 modify	ˈmɑdəˌfaɪ	Make partial or minor changes to (something)	freetalk
 neglect	nəˈɡlɛkt	Fail to care for properly	freetalk
@@ -8682,6 +8800,7 @@ conventions	kənˈvɛnʃənz	A way in which something is usually done or a commo
 cosmic	ˈkɑzmɪk	Relating to the universe or cosmos	freetalk
 crystals	ˈkɹɪstəlz	A solid substance in which the atoms, molecules, or ions are arranged in an orderly repeating pattern	freetalk
 daisy	ˈdeɪzi	A small flower with white petals and a yellow center	freetalk
+daughter's	ˈdɔtɝz	Belonging to or relating to daughter	shadowline
 definite	ˈdɛfənət	Clearly defined or determined	freetalk
 demonstrations	ˌdɛmənˈstɹeɪʃənz	The action or process of showing the existence or truth of something by giving proof or evidence	freetalk
 departed	dɪˈpɑɹtɪd	No longer living; dead	freetalk
@@ -8692,6 +8811,7 @@ distraction	dɪˈstɹækʃən	a thing that prevents someone from giving full att
 dom	ˈdɑm	A suffix forming nouns that refer to a state or condition (e.g. kingdom, freedom)	freetalk
 doses	ˈdoʊsəz	A quantity of medicine or drug taken at one time	freetalk
 drawer	ˈdɹɔɹ	A box-shaped container that slides in and out of a piece of furniture, used for storing items	freetalk
+driver's	ˈdɹaɪvɝz	Belonging to or relating to driver	shadowline
 drones	ˈdɹoʊnz	A low continuous humming sound	freetalk
 ecological	ikəˈlɑdʒɪkəl	Relating to or concerned with the relation of living organisms to one another and to their physical surroundings	freetalk
 ecosystem	ˈikoʊˌsɪstəm	A biological community of interacting organisms and their physical environment	freetalk
@@ -8752,6 +8872,7 @@ retaining	ɹɪˈteɪnɪŋ	To keep possession of	freetalk
 sailor	ˈseɪlɝ	A person whose occupation is sailing	freetalk
 seventy	ˈsɛvənti	The number 70	freetalk
 shouted	ˈʃaʊtɪd	To utter a loud cry or call	freetalk
+show's	ˈʃoʊz	Belonging to or relating to show	shadowline
 sims	ˈsɪmz	A person's name or nickname	freetalk
 slides	ˈslaɪdz	Moves smoothly along a surface	freetalk
 sociology	ˌsoʊsiˈɑlədʒi	The study of society, social institutions, and social relationships	freetalk
@@ -8768,8 +8889,10 @@ traction	ˈtɹækʃən	The action of drawing or pulling something over a surface
 tractor	ˈtɹæktɝ	A vehicle used for pulling farm machinery or trailers	freetalk
 trout	ˈtɹaʊt	A freshwater fish of the salmon family, typically found in cold, clear streams	freetalk
 turnover	ˈtɝˌnoʊvɝ	The action or process of turning over	freetalk
+university's	ˌjunəˈvɝsətiz	Belonging to or relating to university	shadowline
 unwanted	ənˈwɔntɪd	Not desired or wished for	freetalk
 upgrades	əpˈɡɹeɪdz	To improve or enhance something	freetalk
+valentine's	ˈvælənˌtaɪnz	Belonging to or relating to valentine	shadowline
 variant	ˈvɛɹiənt	A different form or version of something	freetalk
 vegetarian	ˌvɛdʒəˈtɛˌɹiən	A person who does not eat meat	freetalk
 visibility	ˌvɪzəˈbɪlɪti	The state of being able to see or be seen	freetalk
@@ -8806,6 +8929,7 @@ continuity	ˌkɑntəˈnuəti	The state or quality of being continuous	freetalk
 crawl	ˈkɹɔl	Move forward on hands and knees	freetalk
 credible	ˈkɹɛdəbəl	Able to be believed; convincing	freetalk
 cursed	ˈkɝst	Under a curse	freetalk
+day's	ˈdeɪz	Belonging to or relating to day	shadowline
 deepest	ˈdipəst	Extending far down from the top or surface	freetalk
 defects	ˈdifɛkts	A shortcoming or imperfection	freetalk
 delightful	dɪˈlaɪtfəl	Causing delight; charming or pleasing	freetalk
@@ -8878,6 +9002,7 @@ presenter	ˈpɹɛzəntɝ	a person who presents or introduces a program or event	
 proclaimed	pɹoʊˈkleɪmd	Announced officially or publicly	freetalk
 prohibition	ˌpɹoʊəˈbɪʃən	The action of forbidding something, especially by law	freetalk
 prop	ˈpɹɑp	A support or brace used to hold something in position	freetalk
+queen's	ˈkwinz	Belonging to or relating to queen	shadowline
 recognizing	ˈɹɛkəɡˌnaɪzɪŋ	Identify or know someone or something from past experience or knowledge	freetalk
 recommends	ˌɹɛkəˈmɛndz	To suggest or endorse as being suitable, desirable, or beneficial	freetalk
 registry	ˈɹɛdʒɪstɹi	An official list or record, especially one for keeping track of names or items	freetalk
@@ -9068,6 +9193,7 @@ borrowing	ˈbɑɹoʊɪŋ	To take and use (something that belongs to someone else
 bowls	ˈboʊlz	A round, deep dish or basin used for holding food or liquid	freetalk
 bum	ˈbʌm	A person's buttocks	freetalk
 butcher	ˈbʊtʃɝ	A person who slaughters animals for food	freetalk
+c'mon	kəˈmɑn	Informal short form of 'come on'	shadowline
 chandler	ˈtʃændlɝ	A person who makes or sells candles	freetalk
 cheapest	ˈtʃipəst	Of low cost or price	freetalk
 communists	ˈkɑmjənəsts	A person who supports or advocates for communism	freetalk
@@ -9164,6 +9290,7 @@ telescope	ˈtɛləˌskoʊp	An optical instrument designed to make distant object
 tended	ˈtɛndɪd	To care for or look after	freetalk
 terminated	ˈtɝməˌneɪtɪd	To bring to an end	freetalk
 textile	ˈtɛkˌstaɪl	A type of material made from fibers or yarn that is used for making fabrics or cloth	freetalk
+that'd	ˈðætɪd	Short for 'that would' or 'that had'	shadowline
 thickness	ˈθɪknəs	The state or quality of being thick	freetalk
 threatens	ˈθɹɛtənz	To utter intentions of injury or punishment against	freetalk
 tossed	ˈtɔst	To throw lightly or casually	freetalk
@@ -9184,6 +9311,7 @@ allocation	ˌæləˈkeɪʃən	The action or process of distributing something	fr
 amusement	əˈmjuzmənt	The state or experience of finding something funny or entertaining	freetalk
 antibiotics	ˌæntibaɪˈɑtɪks	A medicine that inhibits the growth of or destroys microorganisms	freetalk
 anticipation	ænˌtɪsəˈpeɪʃən	The act of looking forward to or expecting something	freetalk
+anyone's	ˈɛniˌwʌnz	Belonging to or relating to anyone	shadowline
 appropriately	əˈpɹoʊpɹiɪtli	In a suitable or proper manner	freetalk
 arrests	ɝˈɛsts	Stop or check the progress of (something)	freetalk
 arrogant	ˈɛɹəɡənt	Having or revealing an exaggerated sense of one's own importance or abilities	freetalk
@@ -9323,6 +9451,7 @@ bacterial	bækˈtɪɹiəl	Relating to or caused by bacteria	freetalk
 bankrupt	ˈbæŋkɹəpt	Declared in law unable to pay outstanding debts	freetalk
 blink	ˈblɪŋk	To close and open one or both eyes quickly	freetalk
 brighter	ˈbɹaɪtɝ	Giving off or reflecting a lot of light; shining	freetalk
+brother's	ˈbɹʌðɝz	Belonging to or relating to brother	shadowline
 ceremonies	ˈsɛɹəˌmoʊniz	Formal acts or series of acts prescribed by ritual, protocol, or convention	freetalk
 chang	ˈtʃæŋ	To make or become different	freetalk
 childish	ˈtʃaɪldɪʃ	Of, like, or suitable for a child in behavior or attitude	freetalk
@@ -9373,6 +9502,7 @@ impacted	ˈɪmˌpæktɪd	To have a strong effect on something or someone	freetal
 imposing	ˌɪmˈpoʊzɪŋ	Grand or impressive in appearance	freetalk
 inflammation	ˌɪnfləˈmeɪʃən	A localized physical condition in which part of the body becomes reddened, swollen, hot, and often painful, especially as a reaction to injury or infection	freetalk
 innovations	ˌɪnəˈveɪʃənz	The action or process of innovating	freetalk
+john's	ˈdʒɑnz	Belonging to or relating to john	shadowline
 ko	ˈkoʊ	Knockout	freetalk
 lambert	ˈlæmbɝt	A unit of brightness equal to one lumen per square centimeter	freetalk
 lamps	ˈlæmps	A device for giving light, consisting of a light source and a shade or cover	freetalk
@@ -9457,6 +9587,7 @@ awakening	əˈweɪkənɪŋ	The act of waking from sleep	freetalk
 bedrooms	ˈbɛˌdɹumz	A room furnished and used for sleeping	freetalk
 bilateral	baɪˈlætɝəl	Having or relating to two sides	freetalk
 bleed	ˈblid	To lose blood from the body	freetalk
+boy's	ˈbɔɪz	Belonging to or relating to boy	shadowline
 brace	ˈbɹeɪs	A device that holds things together or in place	freetalk
 burgers	ˈbɝɡɝz	A sandwich consisting of a cooked patty of ground meat placed inside a sliced bread roll or bun	freetalk
 caption	ˈkæpʃən	A title or brief explanation accompanying an illustration or photograph	freetalk
@@ -9596,6 +9727,7 @@ apex	ˈeɪˌpɛks	The top or highest part of something	freetalk
 apocalypse	əˈpɑkəˌlɪps	A great disaster or catastrophe	freetalk
 appliances	əˈplaɪənsəz	A device or piece of equipment designed to perform a specific task, typically a household task	freetalk
 assholes	ˈæshoʊlz	A contemptible or detestable person	freetalk
+baby's	ˈbeɪbiz	Belonging to or relating to baby	shadowline
 backward	ˈbækwɝd	Directed toward the back or past	freetalk
 badass	ˈbæˌdæs	A tough, uncompromising, or intimidating person	freetalk
 barred	ˈbɑɹd	Prevented from entering or accessing	freetalk
@@ -9629,6 +9761,7 @@ directive	dɝˈɛktɪv	An official or authoritative instruction or order	freetal
 disadvantage	ˌdɪsədˈvæntɪdʒ	To cause harm or loss to	freetalk
 disruption	dɪsˈɹʌpʃən	The act or process of disrupting or being disrupted	freetalk
 distract	dɪˈstɹækt	To draw away the attention of	freetalk
+doctor's	ˈdɑktɝz	Belonging to or relating to doctor	shadowline
 downward	ˈdaʊnwɝd	Moving or extending toward a lower position	freetalk
 emphasized	ˈɛmfəˌsaɪzd	To give special importance or prominence to something	freetalk
 energetic	ˌɛnɝˈdʒɛtɪk	Showing or involving great activity or vitality	freetalk
@@ -9877,6 +10010,7 @@ vows	ˈvaʊz	A solemn promise or pledge, especially one made to a deity or a lov
 vulnerability	ˌvʌlnɝəˈbɪlɪti	The quality or state of being exposed to the possibility of being attacked or harmed, either physically or emotionally	freetalk
 whichever	wɪˈtʃɛvɝ	Any one out of all possible options	freetalk
 whipped	ˈwɪpt	To beat or stir vigorously	freetalk
+who've	huv	Short for 'who have'	shadowline
 wo	ˈwoʊ	Expressing sorrow or grief	freetalk
 wrath	ˈɹæθ	Extreme anger or rage	freetalk
 yuan	juˈɑn	The basic monetary unit of China	freetalk
@@ -10025,6 +10159,7 @@ boiled	ˈbɔɪld	Heated to the point of vaporization	freetalk
 bonding	ˈbɑndɪŋ	The formation of a close relationship between people or groups	freetalk
 bounds	ˈbaʊndz	Limits within which something can be done or achieved	freetalk
 breeds	ˈbɹidz	A group of animals or plants with similar characteristics that can produce offspring	freetalk
+britain's	ˈbɹɪtənz	Belonging to or relating to britain	shadowline
 cardiovascular	ˌkɑɹdioʊˈvæskjəlɝ	Relating to the heart and blood vessels	freetalk
 chic	ˈʃik	Stylish or fashionable	freetalk
 clone	ˈkloʊn	An organism or cell produced asexually from one ancestor or parent	freetalk
@@ -10283,6 +10418,7 @@ absorption	əbˈzɔɹpʃən	The process of absorbing or being absorbed	freetalk
 accelerate	ækˈsɛlɝˌeɪt	To increase in speed	freetalk
 acne	ˈækni	A skin condition characterized by red pimples on the face and body	freetalk
 advertise	ˈædvɝˌtaɪz	To make something known to the public through various forms of media	freetalk
+alzheimer's	ˈælzˌhaɪmɝz	Belonging to or relating to alzheimer	shadowline
 apologise	əˈpɑləˌdʒaɪz	Express regret for something that one has done wrong	freetalk
 aspirations	ˌæspɝˈeɪʃənz	Strong desire or ambition to achieve something	freetalk
 assassin	əˈsæsən	A person who murders a prominent person for political or religious reasons	freetalk
@@ -10386,6 +10522,7 @@ repay	ɹiˈpeɪ	To pay back (money that is owed)	freetalk
 ropes	ˈɹoʊps	A length of strong cord made by twisting together strands of natural fibers such as hemp or synthetic fibers such as nylon	freetalk
 rouge	ˈɹuʒ	A red powder or cream used as a cosmetic for coloring the cheeks or lips	freetalk
 rumours	ˈɹumɝz	A currently circulating story or report of uncertain or doubtful truth	freetalk
+russia's	ˈɹʌʃəz	Belonging to or relating to russia	shadowline
 saturated	ˈsætʃɝˌeɪtɪd	Filled to capacity; unable to hold or contain more	freetalk
 scares	ˈskɛɹz	To cause fear or frighten	freetalk
 screened	ˈskɹind	To show a movie or television program on a screen	freetalk
@@ -10412,6 +10549,7 @@ tangible	ˈtændʒəbəl	Perceptible by touch; capable of being touched or felt	
 tara	ˈtɛɹə	A star in the constellation Scorpius	freetalk
 textbooks	ˈtɛkstˌbʊks	A book used as a standard work for the study of a particular subject	freetalk
 tilt	ˈtɪlt	To move or cause to move into a sloping position	freetalk
+tonight's	təˈnaɪts	Belonging to or relating to tonight	shadowline
 tougher	ˈtʌfɝ	Stronger or more resilient	freetalk
 trivial	ˈtɹɪviəl	Of little value or importance	freetalk
 unofficial	ˌʌnəˈfɪʃəl	Not authorized or recognized	freetalk
@@ -10422,6 +10560,7 @@ wed	ˈwɛd	To marry	freetalk
 acknowledging	ækˈnɑlɪdʒɪŋ	Accepting the truth or existence of something	freetalk
 alec	ˈælɪk	A male given name	freetalk
 anthropology	ˌænθɹəˈpɑlədʒi	The study of human societies and cultures	freetalk
+apple's	ˈæpəlz	Belonging to or relating to apple	shadowline
 artery	ˈɑɹtɝi	A blood vessel that carries blood away from the heart to the rest of the body	freetalk
 bamboo	bæmˈbu	A plant of the grass family, with hollow stems used for furniture and construction	freetalk
 basil	ˈbæzəl	An aromatic herb used in cooking	freetalk
@@ -10476,6 +10615,7 @@ inception	ˌɪnˈsɛpʃən	The beginning or start of something	freetalk
 incompetent	ˌɪnˈkɑmpətənt	Not having the necessary skills or abilities to do something successfully	freetalk
 indefinitely	ˌɪnˈdɛfənətli	For an unlimited or unspecified period of time	freetalk
 intervene	ˌɪntɝˈvin	To come between disputing people, groups, etc	freetalk
+japan's	dʒəˈpænz	Belonging to or relating to japan	shadowline
 jerseys	ˈdʒɝziz	A type of knitted garment typically made of wool or cotton, with long sleeves and a high collar, worn by athletes	freetalk
 kin	ˈkɪn	A person's relatives	freetalk
 kris	ˈkɹɪs	A traditional Malay dagger with a wavy blade	freetalk
@@ -10504,6 +10644,7 @@ obsolete	ˈɑbsəˌlit	No longer in use or no longer useful	freetalk
 optic	ˈɑptɪk	Of or relating to the eye or vision	freetalk
 panda	ˈpændə	A large bear-like mammal with distinctive black and white markings, native to China	freetalk
 panther	ˈpænθɝ	A large wild cat with a black coat and distinctive markings	freetalk
+paul's	ˈpɔlz	Belonging to or relating to paul	shadowline
 peas	ˈpiz	A spherical green seed eaten as a vegetable	freetalk
 posture	ˈpɑstʃɝ	The position of the body or the way in which someone holds themselves	freetalk
 preseason	ˌpɹiˈsizən	The period of time before the regular season begins in sports	freetalk

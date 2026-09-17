@@ -21,6 +21,15 @@ anything, either get that licence or run
 `python -m shadowline.seedwords --requeue-source freetalk`, which sends every
 one of these words back through the sources that are licensed for it.
 
+## The apostrophe words are not from the dictionary
+
+It has no entry containing an apostrophe — not one — so `it's`, `don't`, `i'm`
+and `you're` would all come back blank, which in a shadowing app is the worst
+gap there is. They are written out in `tools/contractions.py` instead, marked
+`source=shadowline` because they are ours, and they are the easiest words in
+English to get right without asking anybody: a contraction means the words it
+is short for, and a possessive means belonging to its noun.
+
 ## Why this and not WordNet
 
 WordNet was tried first and measured: 93% coverage, and unusable at the top of
@@ -36,8 +45,9 @@ nothing.
 This dictionary answers all of them correctly — `was` is "past tense of 'be'",
 `be` is "exist", `see` is "Perceive with the eyes" — and it has the spoken
 words a shadowing app actually meets, `gonna` and `okay` and `guys` among them.
-It covers 89% of the 12,000 against WordNet's 93%, and the 11% is mostly
-contractions it files under no name at all: `don't`, `it's`, `i'm`. Those go to
+It covers 89% of the 12,000 against WordNet's 93%. Most of what it is missing
+is apostrophe words, handled above, and proper nouns — `london`, `june`,
+`david` — which a learner does not need a dictionary for. What is left goes to
 the sources behind it, which is what they are for.
 
 The `pos` field in the data is not used. It is wrong often enough to notice —
@@ -53,6 +63,9 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import contractions  # noqa: E402
 
 from shadowline import ipa  # noqa: E402
 
@@ -95,9 +108,21 @@ def definition_for(entry: dict, word: str) -> str:
 
 
 def build(dictionary: Path) -> list[tuple[str, str, str, str]]:
+    words = WORDS.read_text(encoding="utf-8").split()
+
+    # Apostrophe words first, because the dictionary has no entry containing
+    # one — not a single `it's`, `don't` or `i'm` — and in a shadowing app that
+    # is the worst gap there is: captions of real speech are made of them.
+    # They are also the easiest words in English to define without asking
+    # anybody, so they are written out in tools/contractions.py.
+    written = contractions.entries(words)
+
     rows = []
     missing = unusable = 0
-    for word in WORDS.read_text(encoding="utf-8").split():
+    for word in words:
+        if word in written:
+            rows.append((word, ipa.for_word(word), written[word], contractions.SOURCE))
+            continue
         path = dictionary / f"{word}.json"
         if not path.exists():
             missing += 1
@@ -114,8 +139,9 @@ def build(dictionary: Path) -> list[tuple[str, str, str, str]]:
         rows.append((word, ipa.for_word(word), text, SOURCE))
 
     print(
-        f"{len(rows)} glosses; {missing} words the dictionary does not have, "
-        f"{unusable} with no usable sense — both left for the sources behind it"
+        f"{len(rows)} glosses ({len(written)} contractions and possessives written "
+        f"here, the rest from the dictionary); {missing} words the dictionary does "
+        f"not have, {unusable} with no usable sense — both left for the sources behind it"
     )
     return rows
 
@@ -137,12 +163,20 @@ def main(argv: list[str] | None = None) -> int:
     rows = build(args.dictionary)
     with DEST.open("w", encoding="utf-8") as out:
         out.write("# word\tipa\tmeaning\tsource\n")
-        out.write("# Definitions from the FreeTalk Dictionary V1, "
-                  "Copyright 2024-present FreeTalk.fun, CC BY-NC 4.0.\n")
-        out.write("# https://github.com/freetalk-fun/freetalk-dictionary-v1\n")
-        out.write("# Changed: the first short, non-circular sense of each word was taken,\n")
-        out.write("# and nothing else was kept. See FREETALK_LICENSE beside this file.\n")
-        out.write("# NON-COMMERCIAL. A product that makes money needs a licence from them.\n")
+        out.write("#\n")
+        out.write("# Two sources, and the fourth column says which is which.\n")
+        out.write("#\n")
+        out.write("# source=freetalk: the FreeTalk Dictionary V1, Copyright 2024-present\n")
+        out.write("#   FreeTalk.fun, CC BY-NC 4.0 — NON-COMMERCIAL. A product that makes\n")
+        out.write("#   money needs a licence from them. See FREETALK_LICENSE beside this\n")
+        out.write("#   file. https://github.com/freetalk-fun/freetalk-dictionary-v1\n")
+        out.write("#   Changed: the first short, non-circular sense of each word was\n")
+        out.write("#   taken, and nothing else was kept.\n")
+        out.write("#\n")
+        out.write("# source=shadowline: the contractions and possessives, written for this\n")
+        out.write("#   project in tools/contractions.py and under its licence, because the\n")
+        out.write("#   dictionary has no entry containing an apostrophe.\n")
+        out.write("#\n")
         out.write("# Rebuild with tools/build_seed_glosses.py.\n")
         for word, said, meaning, source in rows:
             out.write(f"{word}\t{said}\t{meaning}\t{source}\n")
