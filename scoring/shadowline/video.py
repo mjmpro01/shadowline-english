@@ -103,3 +103,36 @@ def has_video_stream(path: Path) -> bool:
     except (subprocess.TimeoutExpired, FileNotFoundError):
         return False
     return done.returncode == 0 and b"video" in done.stdout
+
+
+def poster(source: Path, at: float, dest: Path, height: int = 360) -> None:
+    """Writes a single frame as a jpg, for the library card.
+
+    Taken from the source rather than from the cut, so it costs one more seek
+    rather than a second decode of a file that is already on disk either way.
+    A few kilobytes: the grid shows twenty of these, and downloading twenty
+    videos to show twenty thumbnails would be the alternative.
+    """
+    command = [
+        "ffmpeg",
+        "-nostdin",
+        "-loglevel", "error",
+        "-accurate_seek",
+        "-ss", f"{max(0.0, at):.3f}",
+        "-i", str(source),
+        "-frames:v", "1",
+        "-vf", f"scale=-2:{height}",
+        "-q:v", "4",
+        "-y",
+        str(dest),
+    ]
+    try:
+        done = subprocess.run(command, capture_output=True, timeout=120, check=False)
+    except subprocess.TimeoutExpired as err:
+        raise CutFailed("ffmpeg timed out taking a poster frame") from err
+    except FileNotFoundError as err:
+        raise CutFailed("ffmpeg is not installed") from err
+
+    if done.returncode != 0 or not dest.exists() or dest.stat().st_size == 0:
+        detail = done.stderr.decode("utf-8", "replace").strip().splitlines()
+        raise CutFailed(detail[-1] if detail else "ffmpeg produced no poster frame")

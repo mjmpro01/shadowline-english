@@ -87,11 +87,14 @@ class CutQueue:
                 end=claimed["end_seconds"],
             )
 
-    def complete(self, job: CutJob, video_key: str) -> None:
-        """Record the key and remove the job at once, so a clip never reads as
+    def complete(self, job: CutJob, video_key: str, poster_key: str) -> None:
+        """Record both keys and remove the job at once, so a clip never reads as
         having a video while its job is still queued."""
         with self.conn.transaction(), self.conn.cursor() as cur:
-            cur.execute("update clips set video_key = %s where id = %s", (video_key, job.clip_id))
+            cur.execute(
+                "update clips set video_key = %s, poster_key = %s where id = %s",
+                (video_key, poster_key, job.clip_id),
+            )
             cur.execute("delete from cut_jobs where id = %s", (job.id,))
 
     def fail(self, job: CutJob, reason: str) -> None:

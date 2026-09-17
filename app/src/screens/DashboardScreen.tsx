@@ -137,7 +137,11 @@ export function DashboardScreen() {
                   onClick={() => navigate(`/library/${video.id}`)}
                   aria-label={`Open ${video.title}`}
                 >
-                  <Icon name="play" size={28} />
+                  {video.posterUrl ? (
+                    <img className="thumb-poster" src={video.posterUrl} alt="" loading="lazy" />
+                  ) : (
+                    <Icon name="play" size={28} />
+                  )}
                   <span className="tag tag-accent" style={{ position: 'absolute', left: 8, top: 8 }}>
                     featured
                   </span>

@@ -5,7 +5,7 @@ import { LoadFailure, Loading } from '../components/LoadState'
 import { NoSuchClip } from '../components/NoSuchClip'
 import { SegmentedControl } from '../components/SegmentedControl'
 import { clock } from '../lib/time'
-import { urlOf, useClipAudio, useTakeAudio } from '../lib/useAudioUrl'
+import { urlOf, useClipAudio, useClipVideo, useTakeAudio } from '../lib/useAudioUrl'
 import { useApp } from '../store/context'
 
 export function DubScreen() {
@@ -13,6 +13,9 @@ export function DubScreen() {
   const navigate = useNavigate()
   const { data, state, statsFor } = useApp()
   const audioRef = useRef<HTMLAudioElement>(null)
+  /** The picture. Muted and along for the ride: the audio element is the clock,
+   *  because which voice is playing is the whole point of this screen. */
+  const videoRef = useRef<HTMLVideoElement>(null)
   /** Live playhead, captured when swapping voices — `position` only ticks a few times a second. */
   const resumeAt = useRef(0)
   /** Set while a swap is in flight: the reload resets currentTime to 0 and
@@ -30,6 +33,7 @@ export function DubScreen() {
   const take = stats.takes.find((t) => t.id === takeId) ?? stats.takes[stats.takes.length - 1]
   const myVoiceUrl = urlOf(useTakeAudio(take?.hasAudio ? take.id : null))
   const originalUrl = urlOf(useClipAudio(video?.id ?? null))
+  const clipVideoUrl = urlOf(useClipVideo(video?.id ?? null))
 
   if (state === 'loading') return <Loading />
   if (state === 'error') return <LoadFailure />
@@ -38,8 +42,24 @@ export function DubScreen() {
   const activeUrl = source === 'mine' ? myVoiceUrl : originalUrl
   const canPlay = !!activeUrl
 
+  /** Moves the picture to where the sound is.
+   *
+   * Only when they have drifted apart by more than a fifth of a second:
+   * assigning currentTime on every tick makes the video stutter, and a fifth of
+   * a second is under what anyone watching a mouth would notice.
+   */
+  const followWithPicture = (seconds: number, force = false) => {
+    const picture = videoRef.current
+    if (!picture) return
+    if (force || Math.abs(picture.currentTime - seconds) > 0.2) {
+      picture.currentTime = Math.min(seconds, picture.duration || seconds)
+    }
+  }
+
   const rewind = () => {
     audioRef.current?.pause()
+    videoRef.current?.pause()
+    followWithPicture(0, true)
     resumeAt.current = 0
     setPosition(0)
     setPlaying(false)
@@ -63,9 +83,12 @@ export function DubScreen() {
     if (!el) return
     if (playing) {
       el.pause()
+      videoRef.current?.pause()
       setPlaying(false)
     } else {
       void el.play()
+      followWithPicture(el.currentTime, true)
+      void videoRef.current?.play()
       setPlaying(true)
     }
   }
@@ -74,6 +97,7 @@ export function DubScreen() {
     resumeAt.current = value
     setPosition(value)
     if (audioRef.current) audioRef.current.currentTime = value
+    followWithPicture(value, true)
   }
 
   return (
@@ -92,10 +116,24 @@ export function DubScreen() {
         <h3 style={{ margin: 0 }}>{video.title}</h3>
 
         <div className="thumb" style={{ borderRadius: 'var(--radius-lg)' }}>
+          {/* Muted on purpose, and the tag says so: the sound comes from the
+              voice below, which is what dubbing is. No controls either — the
+              transport under it drives both. */}
+          {clipVideoUrl && (
+            <video
+              ref={videoRef}
+              className="thumb-poster"
+              src={clipVideoUrl}
+              muted
+              playsInline
+              preload="metadata"
+              aria-label={`${video.title}, without its sound`}
+            />
+          )}
           <span className="tag tag-neutral" style={{ position: 'absolute', top: 10, left: 10 }}>
             original audio muted
           </span>
-          <Icon name="play" size={32} />
+          {!clipVideoUrl && <Icon name="play" size={32} />}
         </div>
 
         <SegmentedControl
@@ -174,8 +212,12 @@ export function DubScreen() {
               if (swapping.current) return
               resumeAt.current = e.currentTarget.currentTime
               setPosition(e.currentTarget.currentTime)
+              followWithPicture(e.currentTarget.currentTime)
             }}
-            onEnded={() => setPlaying(false)}
+            onEnded={() => {
+              videoRef.current?.pause()
+              setPlaying(false)
+            }}
           />
         )}
 

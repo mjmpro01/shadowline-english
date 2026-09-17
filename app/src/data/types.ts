@@ -54,6 +54,9 @@ export interface Video {
    * False covers two cases the app treats alike: a clip cut from audio, and one
    * cut from video whose cut has not finished yet. Both play the audio. */
   hasVideo: boolean
+  /** A still from the clip, for the card. Empty for a clip cut from audio, and
+   *  for one whose cut has not finished — both fall back to the play icon. */
+  posterUrl: string
   createdAt: string
 }
 

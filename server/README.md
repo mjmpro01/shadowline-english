@@ -147,6 +147,20 @@ the way it slices a wav, so the cut happens here:
    the mp4 and records `clips.video_key`.
 4. `GET /api/clips/{id}/video` answers with a signed URL, or null.
 
+The cutter takes a still in the same run, a third of the way into the clip —
+far enough in that the frame is the speaker rather than the tail of a shot
+change. It is signed into the clip listing rather than fetched per card: the
+library is a grid, and asking where twenty thumbnails live would be twenty
+round trips on a screen that already has the whole list.
+
+Where the picture ends up:
+
+| Screen | Shows |
+| --- | --- |
+| Library, Dashboard | the still, or the play icon for a clip that has none |
+| Practice, Analysis | the video, in place of the audio element |
+| Dub Review | the video, muted, under whichever voice is playing |
+
 Null is the ordinary answer, not a failure: a clip cut from audio never has a
 video, and one cut from video does not have it yet while the cut is queued. The
 app plays the audio in both cases, so publishing is never blocked on cutting and

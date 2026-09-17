@@ -95,9 +95,9 @@ test('both voices play on one timeline in dub review', async ({ page }) => {
   await asLearner(page)
   await practise(page, LINE(1))
   await recordOnce(page, 'Record')
-  await expect(page.getByRole('button', { name: 'Watch' })).toBeEnabled({ timeout: 20_000 })
+  await expect(page.getByRole('button', { name: 'Dub review' })).toBeEnabled({ timeout: 20_000 })
 
-  await page.getByRole('button', { name: 'Watch' }).click()
+  await page.getByRole('button', { name: 'Dub review' }).click()
   await page.waitForURL('**/dub')
 
   await page.getByRole('button', { name: 'Play' }).click()

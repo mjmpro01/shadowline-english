@@ -84,7 +84,14 @@ export function LibraryScreen() {
                 onClick={() => navigate(`/library/${video.id}`)}
                 aria-label={`Open analysis for ${video.title}`}
               >
-                <Icon name="play" size={28} />
+                {/* The still when the cutter has made one; the icon otherwise,
+                    which is every clip cut from audio and every one whose cut
+                    is still queued. */}
+                {video.posterUrl ? (
+                  <img className="thumb-poster" src={video.posterUrl} alt="" loading="lazy" />
+                ) : (
+                  <Icon name="play" size={28} />
+                )}
                 <span className="tag tag-neutral thumb-tag">{clock(video.durationSeconds)}</span>
               </button>
 

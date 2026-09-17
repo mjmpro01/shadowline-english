@@ -84,6 +84,10 @@ def video_key(conn, clip_id):
     return conn.execute("select video_key from clips where id = %s", (clip_id,)).fetchone()[0]
 
 
+def poster_key(conn, clip_id):
+    return conn.execute("select poster_key from clips where id = %s", (clip_id,)).fetchone()[0]
+
+
 def test_a_queued_clip_is_cut_and_written_back(db, blobs, tmp_path):
     store, root = blobs
     [clip_id] = seed(db, root, start=2.0, end=5.0)
@@ -176,3 +180,31 @@ def test_one_source_is_downloaded_once_for_a_whole_batch(db, blobs, tmp_path):
     assert len(downloads) == 1, f"downloaded the source {len(downloads)} times for 3 clips"
     for clip_id in clip_ids:
         assert video_key(db, clip_id), "every clip in the batch should have been cut"
+
+
+def test_a_cut_clip_also_gets_a_poster_frame(db, blobs, tmp_path):
+    """The library is a grid of cards. A still each is what makes a clip
+    choosable by its picture, and it costs kilobytes where the video costs
+    megabytes."""
+    store, root = blobs
+    [clip_id] = seed(db, root, start=1.0, end=4.0)
+
+    assert run_once(CutQueue(db), store, SourceCache(tmp_path), tmp_path) is True
+
+    key = poster_key(db, clip_id)
+    assert key and key.endswith(".jpg"), f"poster key is {key!r}"
+
+    still = root / "clips" / key
+    assert still.exists(), "the poster key points at nothing"
+    # A real jpeg, not an empty file ffmpeg gave up on.
+    assert still.stat().st_size > 1000
+    assert still.read_bytes()[:2] == b"\xff\xd8", "not a jpeg"
+
+
+def test_a_clip_that_cannot_be_cut_gets_no_poster_either(db, blobs, tmp_path):
+    store, root = blobs
+    [clip_id] = seed(db, root, source="audio", start=0.5, end=2.0)
+
+    run_once(CutQueue(db), store, SourceCache(tmp_path), tmp_path)
+
+    assert poster_key(db, clip_id) is None
