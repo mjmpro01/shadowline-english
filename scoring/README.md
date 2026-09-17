@@ -104,7 +104,7 @@ shadowline/dictionary.py  Merriam-Webster's Learner's Dictionary
 shadowline/glossqueue.py  claim / complete / fail, for lookups
 shadowline/glosser.py   the lookup loop
 shadowline/seedwords.py   filling the cache before anybody taps anything
-shadowline/data/        the 12,000 commonest English words
+shadowline/data/        the 12,000 commonest words, and a definition for most
 reference/              the archived TypeScript scorer, for the fixtures
 ```
 
@@ -135,39 +135,63 @@ a fifth of that on `claude-haiku-4-5`.
 
 ### Seeding the cache
 
-An empty cache means the first learner to tap each word waits for it.
-`shadowline/data/common_words.txt` holds the 12,000 commonest English words, in
-frequency order, every one of them in CMUdict.
+An empty cache means the first learner to tap each word waits for it — which,
+at the start, is every word. Two files ship beside the worker:
+
+- `shadowline/data/common_words.txt` — the 12,000 commonest English words in
+  frequency order, every one of them in CMUdict.
+- `shadowline/data/glosses.tsv` — a definition for 10,629 of them, from the
+  FreeTalk Dictionary.
 
 ```bash
-python -m shadowline.seedwords                # 12,000 pronunciations: free, instant, no key
-python -m shadowline.seedwords --meanings     # queue the meanings; the glosser works through them
+python -m shadowline.seedwords               # 12,000 pronunciations + 10,629 definitions
+python -m shadowline.seedwords --meanings    # queue the ~1,400 left, which need a key
 python -m shadowline.seedwords --meanings --limit 2000
 ```
 
-The two halves cost very different things, so they are separate. Pronunciations
-are CMUdict and land in under a second with no key of any kind. Meanings are
-opt-in, and the command says what it is about to commit to before it does it.
+The first line takes about a second, needs no key and touches no network. It is
+what the browser tests run, and what `docker compose` deployments should run
+once before opening the doors.
 
-Meanings only have to be produced once, by anybody:
+**Licence.** Those definitions are **CC BY-NC 4.0**: free for personal and
+research use, and a product that makes money needs a licence from
+freetalk.fun. The app credits the source under every definition it wrote,
+because attribution is a condition rather than a courtesy, and
+`shadowline/data/FREETALK_LICENSE` travels with the data. If that does not
+suit:
+
+```bash
+python -m shadowline.seedwords --requeue-source freetalk
+```
+
+sends every one of those words back through Merriam-Webster and the model, and
+the file can then be deleted. The old meaning stays until the new one lands, so
+nothing goes blank in front of a learner while the queue drains.
+
+Meanings produced by the paid sources only have to be produced once, by
+anybody:
 
 ```bash
 python -m shadowline.seedwords --export data/glosses.tsv   # after the glosser has run
 python -m shadowline.seedwords --import data/glosses.tsv   # anywhere else, instantly
 ```
 
-Commit that file and every deployment afterwards starts with the definitions
-and asks nobody for anything. Definitions do not change; paying for the same
-12,000 twice buys nothing.
-
 `--requeue-empty` is the one to run after turning a key on. A glosser with no
 source of meanings still answers taps — it writes the pronunciation and settles
 the word, because the alternative is a popup that spins for ever — so words met
 during that time need asking about again.
 
-`tools/build_wordlist.py` rebuilds the word list from `wordfreq`. It is checked
-in rather than generated at runtime so that seeding needs nothing but this
-repository, and so that two deployments seeded a year apart hold the same words.
+`tools/build_wordlist.py` rebuilds the word list from `wordfreq` and
+`tools/build_seed_glosses.py` rebuilds the definitions from a
+freetalk-dictionary-v1 checkout. Both are checked in rather than generated at
+runtime, so seeding needs nothing but this repository and two deployments a
+year apart hold the same words.
+
+WordNet was tried first and measured: 93% coverage, and unusable at the top of
+the frequency list, where it indexes chemical symbols and state abbreviations
+as ordinary words. It defines `was` as a state in the Pacific northwest and
+`be` as a brittle grey metal. The reasoning is in
+`tools/build_seed_glosses.py`.
 
 `python -m shadowline.dictionary <word>` prints Merriam-Webster's raw answer
 beside what the parser made of it. It exists because the network this was

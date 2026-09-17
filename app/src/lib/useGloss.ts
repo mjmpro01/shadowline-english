@@ -5,6 +5,9 @@ import { repository } from '../repository'
 /** Where a meaning came from, as the app says it out loud. An unknown source
  *  is credited by its own name rather than silently dropped. */
 export const SOURCE_LABEL: Record<string, string> = {
+  // CC BY-NC 4.0, so the credit and the link are a licence condition rather
+  // than a courtesy. See scoring/shadowline/data/FREETALK_LICENSE.
+  freetalk: 'FreeTalk Dictionary (CC BY-NC 4.0)',
   'merriam-webster-learners': "Merriam-Webster's Learner's Dictionary",
   claude: 'Claude',
 }

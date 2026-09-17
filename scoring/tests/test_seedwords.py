@@ -11,6 +11,7 @@ from shadowline.seedwords import (
     import_glosses,
     load_words,
     pending_meanings,
+    queue_by_source,
     queue_meanings,
 )
 
@@ -176,3 +177,39 @@ def test_a_tab_inside_a_definition_cannot_shift_the_columns(db, tmp_path):
 
     row = db.execute("select ipa, meaning, source from glosses").fetchone()
     assert row == ("x", "very bright indeed", "claude")
+
+
+def test_the_seeded_definitions_can_be_replaced_wholesale(db):
+    """The licence escape hatch. The seeded definitions are non-commercial, so
+    there has to be one command that sends every one of them back through the
+    sources that are licensed differently."""
+    db.execute(
+        "insert into glosses (word, ipa, meaning, source) values "
+        "('brilliant', 'x', 'Exceptionally clever', 'freetalk'), "
+        "('gonna', 'x', 'going to', 'claude')"
+    )
+
+    assert queue_by_source(db, "freetalk") == 1
+
+    assert jobs(db) == {"brilliant"}
+    # The old meaning stays until a new one lands, so nothing goes blank in
+    # front of a learner while the queue drains.
+    assert db.execute(
+        "select meaning from glosses where word = 'brilliant'"
+    ).fetchone()[0] == "Exceptionally clever"
+
+
+def test_the_bundled_seed_is_readable_and_credited():
+    """It ships under CC BY-NC 4.0, so the notice is a licence condition."""
+    from shadowline.seedwords import SEED_GLOSSES
+
+    text = SEED_GLOSSES.read_text(encoding="utf-8")
+    header = [line for line in text.splitlines() if line.startswith("#")]
+    assert any("CC BY-NC 4.0" in line for line in header)
+    assert any("freetalk" in line.lower() for line in header)
+    assert any("NON-COMMERCIAL" in line for line in header)
+
+    rows = [line for line in text.splitlines() if line and not line.startswith("#")]
+    assert len(rows) > 10_000, f"only {len(rows)} definitions"
+    # Four columns everywhere, or the import shifts fields into each other.
+    assert all(len(row.split("\t")) == 4 for row in rows)

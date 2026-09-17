@@ -1,31 +1,38 @@
 """Filling the gloss cache before anybody taps anything.
 
 Without this the cache starts empty and the first learner to tap each word
-waits for it. Twelve thousand words covers most of what anybody taps in
-ordinary speech, so seeding turns nearly every tap into a single indexed read
-from the first day.
+waits for it — which, at the start, is every word.
 
-Two halves, and they cost very different things.
+Two files ship beside this one. `data/common_words.txt` is the 12,000 commonest
+English words in frequency order, every one of them in CMUdict.
+`data/glosses.tsv` is a definition for 10,629 of them, taken from the FreeTalk
+Dictionary. Between them, running this with no key of any kind and no network
+gives a database where nearly every word a learner taps already has an answer.
 
-**Pronunciations are free and instant.** They come from CMUdict, every word in
-the list has one — that is how the list was filtered — and writing twelve
-thousand of them takes a second. This happens whenever the command runs, with
-no key of any kind, and is worth doing on its own: a popup showing /ˈbrɪljənt/
-and nothing else is still useful.
-
-**Meanings are not free**, so they are opt-in. Asking for them queues the words
-and the glosser drains the queue at whatever rate the keys allow — through
-Merriam-Webster first, where a thousand a day costs nothing, and only then
-through the model. The command says what it is about to commit to before it
-does it.
-
-    python -m shadowline.seedwords               # pronunciations, and an estimate
-    python -m shadowline.seedwords --meanings    # queue the meanings too
+    python -m shadowline.seedwords               # pronunciations and definitions, free
+    python -m shadowline.seedwords --meanings    # queue what is still missing
     python -m shadowline.seedwords --meanings --limit 2000
 
-Safe to run again. Words already glossed are skipped, and a word that already
-has a meaning is never re-queued — so the usual way to spend less is to run it
-with a small `--limit`, see how it goes, and raise it.
+Pronunciations come from CMUdict and land in under a second. Definitions are
+read from the file, which costs nothing either. What is left after that — about
+1,300 words, mostly contractions the dictionary files under no name (`don't`,
+`it's`, `i'm`) — is the only part that needs a key, and `--meanings` is what
+asks for it. The command says what it is about to commit to before it does.
+
+The seeded definitions are **CC BY-NC 4.0**: free for personal and research use,
+and a product that makes money needs a licence from freetalk.fun. See
+`data/FREETALK_LICENSE`. If that does not suit, `--requeue-source freetalk`
+sends every one of those words back through the sources that are licensed for
+it, and the file can be deleted.
+
+Safe to run again. A gloss already in the database always wins, so nothing it
+does can undo what the glosser paid for.
+
+    python -m shadowline.seedwords --export data/glosses.tsv   # after the glosser has run
+    python -m shadowline.seedwords --import data/glosses.tsv   # anywhere else, instantly
+
+is how a set of meanings produced once gets committed and reused. Definitions
+do not change; paying for the same words twice buys nothing.
 
     python -m shadowline.seedwords --requeue-empty
 
@@ -34,16 +41,6 @@ still answers taps — it writes the pronunciation and settles the word, because
 the alternative is a popup that spins for ever — so words met during that time
 have a gloss with nothing in the meaning, and nothing would ever ask about them
 again. This asks.
-
-Meanings only have to be produced once, ever, by anybody:
-
-    python -m shadowline.seedwords --export data/glosses.tsv   # after the glosser has run
-    python -m shadowline.seedwords --import data/glosses.tsv   # anywhere else, instantly
-
-Commit the file and every deployment afterwards — a colleague's laptop, CI, a
-rebuild — starts with twelve thousand definitions and asks nobody for anything.
-Which is the point: definitions do not change, and paying for the same twelve
-thousand a second time buys nothing.
 """
 
 from __future__ import annotations
@@ -59,6 +56,7 @@ import psycopg
 log = logging.getLogger("shadowline.seedwords")
 
 WORDS = Path(__file__).parent / "data" / "common_words.txt"
+SEED_GLOSSES = Path(__file__).parent / "data" / "glosses.tsv"
 
 # Roughly what one word costs on the default model, from Anthropic's published
 # per-token prices and the size of the request this sends. An estimate for a
@@ -179,6 +177,30 @@ def import_glosses(conn: psycopg.Connection, source_file: Path) -> int:
     return len(rows)
 
 
+def queue_by_source(conn: psycopg.Connection, source: str) -> int:
+    """Queues every word whose meaning came from one particular place.
+
+    The upgrade path, and the licence escape hatch. The seeded definitions are
+    non-commercial; `--requeue-source freetalk` sends all of them back through
+    Merriam-Webster and the model, which are licensed differently and write
+    better sentences anyway. Same command replaces anything else that turns out
+    to be a mistake.
+
+    The old meaning stays until the new one lands, so nothing goes blank in
+    front of a learner while the queue drains.
+    """
+    with conn.transaction(), conn.cursor() as cur:
+        cur.execute(
+            """
+            insert into gloss_jobs (word, context)
+            select word, '' from glosses where source = %s
+            on conflict (word) do nothing
+            """,
+            (source,),
+        )
+        return cur.rowcount
+
+
 def queue_every_empty(conn: psycopg.Connection) -> int:
     """Queues every word in the cache that has no meaning, list or no list.
 
@@ -235,6 +257,16 @@ def main(argv: list[str] | None = None) -> int:
         help="load a file written by --export, instead of asking anybody for anything",
     )
     parser.add_argument(
+        "--requeue-source", metavar="SOURCE",
+        help="queue every word whose meaning came from SOURCE, to replace it — "
+             "`freetalk` is how to drop the non-commercial seeded definitions",
+    )
+    parser.add_argument(
+        "--no-seed-file",
+        action="store_true",
+        help="skip the bundled definitions and leave every word to the sources",
+    )
+    parser.add_argument(
         "--requeue-empty",
         action="store_true",
         help="queue every word in the cache that has no meaning, not just the listed "
@@ -271,6 +303,11 @@ def main(argv: list[str] | None = None) -> int:
             log.info("loaded %d glosses from %s", loaded, args.import_from)
             return 0
 
+        if args.requeue_source:
+            queued = queue_by_source(conn, args.requeue_source)
+            log.info("queued %d words glossed from %s", queued, args.requeue_source)
+            return 0
+
         if args.requeue_empty:
             queued = queue_every_empty(conn)
             log.info("queued %d words that had no meaning", queued)
@@ -278,6 +315,13 @@ def main(argv: list[str] | None = None) -> int:
 
         said = fill_pronunciations(conn, words)
         log.info("%d of %d words have a pronunciation", said, len(words))
+
+        # The free half of the meanings, read from the file rather than asked
+        # for. Runs before anything is queued so that the words it covers are
+        # never paid for.
+        if not args.no_seed_file and SEED_GLOSSES.exists():
+            loaded = import_glosses(conn, SEED_GLOSSES)
+            log.info("%d definitions read from %s", loaded, SEED_GLOSSES.name)
 
         missing = pending_meanings(conn, words)
         if not missing:
@@ -287,7 +331,7 @@ def main(argv: list[str] | None = None) -> int:
         if not args.meanings:
             log.info(
                 "%d still have no meaning. Queue them with --meanings: free through "
-                "Merriam-Webster at 1,000 a day, or about $%.0f in one go if the "
+                "Merriam-Webster at 1,000 a day, or about $%.2f in one go if the "
                 "model answers all of them.",
                 missing, missing * COST_PER_WORD_USD,
             )

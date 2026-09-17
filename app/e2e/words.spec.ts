@@ -10,10 +10,16 @@ import { startFresh } from './session'
  * spelling in slashes. Now the tap goes to the server, which queues a lookup
  * and keeps the answer for everybody.
  *
- * Only the free half is checked here. Definitions come from a model, cost
- * money and are worded differently every run; pronunciations come from CMUdict
- * and are the same every time, so they are what a browser test can pin. The
- * model side is covered in ../../../scoring/tests/test_glosser.py.
+ * Both halves are checked, because both are free now. The 12,000 commonest
+ * words are seeded from files checked in beside the worker before this suite
+ * starts, exactly as a real deployment seeds itself, so an ordinary word
+ * answers with a real definition and a real pronunciation and no key anywhere.
+ * A word outside that list still goes through the queue, which is the path the
+ * second test takes.
+ *
+ * What is not checked here is the paid sources. A model call costs money and is
+ * worded differently every run; ../../../scoring/tests/test_glosser.py covers
+ * that side against a stand-in.
  */
 
 /** The word card, which is the one with a Close button on it. */
@@ -74,4 +80,35 @@ test('the same word tapped again answers straight away', async ({ page }) => {
   await expect(popupOf(page).locator('.card-title')).toHaveText(text)
   // Already looked up, so no wait at all: the request and the read are one call.
   await expect(popupOf(page).locator('.mono')).toHaveText(first, { timeout: 1000 })
+})
+
+
+test('a seeded word answers with a definition, not just a pronunciation', async ({ page }) => {
+  const words = page.locator('.caption-word')
+  await expect(words.first()).toBeVisible()
+
+  // A word certain to be among the 12,000 commonest, so it is answered from the
+  // seed rather than from the queue.
+  let tapped = ''
+  for (let i = 0; i < (await words.count()); i++) {
+    const text = (await words.nth(i).innerText()).trim().toLowerCase().replace(/[^a-z']/g, '')
+    if (text.length < 4) continue
+    await words.nth(i).click()
+    tapped = text
+    break
+  }
+  expect(tapped, 'no word on the line was long enough to look up').not.toBe('')
+
+  const popup = popupOf(page)
+  const meaning = popup.locator('.card-body')
+  await expect(meaning).not.toHaveText(/Looking this word up|No definition/, { timeout: 10_000 })
+
+  const text = (await meaning.innerText()).trim()
+  expect(text.length, `"${tapped}" came back as ${text}`).toBeGreaterThan(3)
+  // A definition that is the word again is no help to the person who tapped it.
+  expect(text.toLowerCase()).not.toBe(tapped)
+
+  // CC BY-NC 4.0 requires the credit, so it is not decoration: it has to be on
+  // screen wherever the definition is.
+  await expect(popup.getByText(/FreeTalk Dictionary/)).toBeVisible()
 })

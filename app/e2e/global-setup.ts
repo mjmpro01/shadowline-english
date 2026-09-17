@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from 'node:child_process'
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process'
 import { SCORING_DIR, serverEnv } from './environment'
 
 const workers: ChildProcess[] = []
@@ -13,6 +13,7 @@ const workers: ChildProcess[] = []
  * score.
  */
 export default async function globalSetup(): Promise<void> {
+  seedGlosses()
   start('shadowline.worker', 'takes will never be scored')
   start('shadowline.cutter', 'published clips will never get their video')
   start('shadowline.dubber', 'exported dubs will never be produced')
@@ -21,6 +22,29 @@ export default async function globalSetup(): Promise<void> {
   // pronunciations, which are the same every time. The model side is covered in
   // ../../../scoring/tests/test_glosser.py against a stand-in.
   start('shadowline.glosser', 'tapped words will never get a pronunciation')
+}
+
+/**
+ * Fills the word cache from the files checked in beside the worker.
+ *
+ * Not a convenience: this is the state a real deployment is in, because the
+ * same command is what sets one up. Running the browser tests against an empty
+ * cache would test a database no installation ever has.
+ *
+ * Synchronous and before the workers, so nothing races it. It reads two files
+ * and writes 12,000 rows — about a second, no network, no keys.
+ */
+function seedGlosses(): void {
+  const seeded = spawnSync('python3', ['-m', 'shadowline.seedwords'], {
+    cwd: SCORING_DIR,
+    env: serverEnv(),
+    encoding: 'utf8',
+  })
+  if (seeded.status !== 0) {
+    // Not fatal: the lookup tests below say what they need, and a suite that
+    // refuses to start hides every other failure behind this one.
+    console.error(`seeding the word cache failed — tapped words will have no definitions\n${seeded.stderr ?? ''}`)
+  }
 }
 
 function start(module: string, consequence: string): void {

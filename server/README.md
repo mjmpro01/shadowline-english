@@ -367,26 +367,37 @@ answer rather than a broken one, and how the browser tests run.
 
 ### Seeding the cache
 
-An empty cache means the first learner to tap each word waits for it.
-`scoring/shadowline/data/common_words.txt` holds the 12,000 commonest English
-words in frequency order, and `python -m shadowline.seedwords` fills them in
-ahead of anybody.
+An empty cache means the first learner to tap each word waits for it — which,
+at the start, is every word. Two files ship beside the worker: the 12,000
+commonest English words in frequency order, and a definition for 10,629 of them
+taken from the FreeTalk Dictionary. `python -m shadowline.seedwords` loads both
+in about a second, with no key of any kind and no network, and that is what a
+deployment should run once before opening the doors.
 
-The two halves cost very different things, so they are separate. Pronunciations
-are CMUdict: 12,000 of them land in under a second with no key of any kind.
-Meanings are opt-in behind `--meanings`, and the command prints what it is
-about to commit to before it does it.
+What is left afterwards is about 1,400 words — mostly contractions the
+dictionary files under no name, `don't` and `it's` and `i'm` — and those are the
+only ones that need a key. `--meanings` queues them: free through
+Merriam-Webster at 1,000 a day, or roughly $3 in one go through the model.
 
-Meanings only have to be produced once, by anybody. `--export` writes every
-finished gloss to a tab-separated file and `--import` loads one, so the
-generated definitions get committed and every deployment afterwards starts with
-them and asks nobody for anything. Definitions do not change; paying for the
-same 12,000 twice buys nothing.
+**The seeded definitions are CC BY-NC 4.0.** Free for personal and research
+use; a product that makes money needs a licence from freetalk.fun. That is the
+same class of condition Merriam-Webster's free tier carries, and it is a
+decision to make before charging for anything, not after. The app credits the
+source under every definition, because attribution is a licence condition
+rather than a courtesy, and `python -m shadowline.seedwords --requeue-source
+freetalk` replaces the lot through sources licensed differently — the old
+meaning stays until the new one lands, so nothing goes blank in front of a
+learner.
+
+Meanings produced by the paid sources only have to be produced once, by
+anybody: `--export` writes every finished gloss to a tab-separated file and
+`--import` loads one, so generated definitions get committed and every
+deployment afterwards starts with them.
 
 Seeding gives up one thing: the sentence. A word glossed before anybody has met
 it has no caption behind it, so it gets the ordinary sense rather than the one
-a particular line uses. Words tapped outside the 12,000 still get the sentence,
-which is where it matters most — an unusual word in an unusual place.
+a particular line uses. Words outside the 12,000 still get the sentence, which
+is where it matters most — an unusual word in an unusual place.
 
 ### A caveat on the Merriam-Webster parsing
 
