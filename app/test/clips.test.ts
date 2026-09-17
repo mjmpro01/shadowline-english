@@ -5,6 +5,8 @@ import {
   parseCategories,
   playlistClips,
   playlistProgress,
+  clipName,
+  nextClipNumber,
   searchClips,
 } from '../src/lib/clips'
 import type { Video } from '../src/data/types'
@@ -144,5 +146,47 @@ describe('playlistProgress', () => {
     // Practised means "has been to", not "did well" — that is what the score
     // is for, and a bad take is still a clip you have practised.
     expect(playlistProgress(clips, () => true).practised).toBe(3)
+  })
+})
+
+describe('nextClipNumber', () => {
+  const named = (title: string, playlist = 'Episode one') => clip({ id: title, title, playlist })
+
+  it('starts at one in an empty playlist', () => {
+    expect(nextClipNumber([], 'Episode one')).toBe(1)
+    expect(nextClipNumber([named('Clip 1', 'Another')], 'Episode one')).toBe(1)
+  })
+
+  it('continues from the highest already there', () => {
+    // Publishing more lines into an episode later must not give it a second
+    // "Clip 1".
+    const videos = [named('Clip 1'), named('Clip 2'), named('Clip 3')]
+
+    expect(nextClipNumber(videos, 'Episode one')).toBe(4)
+  })
+
+  it('continues from the highest, not the count', () => {
+    // A gap left by a deleted clip does not hand its number out again.
+    const videos = [named('Clip 1'), named('Clip 7')]
+
+    expect(nextClipNumber(videos, 'Episode one')).toBe(8)
+  })
+
+  it('ignores names the admin chose themselves', () => {
+    const videos = [named('Clip 1'), named('The one with the pivot'), named('Clipped')]
+
+    expect(nextClipNumber(videos, 'Episode one')).toBe(2)
+  })
+
+  it('counts a name whatever its spacing or case', () => {
+    expect(nextClipNumber([named('clip 4')], 'Episode one')).toBe(5)
+    expect(nextClipNumber([named('CLIP  9')], 'Episode one')).toBe(10)
+  })
+})
+
+describe('clipName', () => {
+  it('is what the studio and the publish path both write', () => {
+    expect(clipName(1)).toBe('Clip 1')
+    expect(clipName(12)).toBe('Clip 12')
   })
 })

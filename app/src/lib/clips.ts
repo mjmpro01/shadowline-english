@@ -89,3 +89,37 @@ export function playlistProgress(
     next: clips.find((clip) => !hasTake(clip.id)) ?? null,
   }
 }
+
+/**
+ * What an unnamed clip is called: "Clip 1", "Clip 2", and so on.
+ *
+ * "Clip" rather than "take" or "line", both of which already mean something
+ * here: a take is a learner's recording, and a line is one caption inside a
+ * clip — the Practice screen says "Line 1 of 1" within one. Clip is the thing
+ * itself, and the word the studio already uses on screen.
+ */
+export function clipName(n: number): string {
+  return `Clip ${n}`
+}
+
+const CLIP_NAME = /^clip\s+(\d+)$/i
+
+/**
+ * The number the next unnamed clip in a playlist should carry.
+ *
+ * Continues from the highest one already there rather than restarting at one.
+ * Publishing an episode in a single batch is the common case and the two are
+ * identical there; going back to cut a few more lines into the same playlist is
+ * where restarting would give it a second "Take 1".
+ *
+ * Only names of exactly that shape count. A clip the admin named themselves is
+ * not part of the sequence and should not push it along.
+ */
+export function nextClipNumber(videos: Video[], playlist: string): number {
+  const used = videos
+    .filter((video) => video.playlist === playlist)
+    .map((video) => CLIP_NAME.exec(video.title.trim())?.[1])
+    .filter((digits): digits is string => digits !== undefined)
+    .map(Number)
+  return used.length === 0 ? 1 : Math.max(...used) + 1
+}

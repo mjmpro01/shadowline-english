@@ -181,6 +181,23 @@ and a keyframe is typically seconds from where a line starts — which, for a cl
 a few seconds long, means cutting the wrong thing. Output is h264/aac mp4,
 because that is what plays everywhere, Safari included.
 
+## What an unnamed clip is called
+
+A clip the admin did not name is "Clip 1", "Clip 2", numbered across the batch
+being published and continuing from whatever the playlist already holds — so
+going back to cut a few more lines into an episode does not give it a second
+"Clip 1". Only names of exactly that shape are counted, so a clip somebody
+named themselves does not push the sequence along.
+
+It used to be named after its line. Transcription now fills a line into every
+clip, and a library whose titles are whole sentences is a library you cannot
+scan. The line is shown under the title on the cards instead, which is where it
+was always more use.
+
+"Clip" rather than "take" or "line": both already mean something here. A take
+is a learner's recording, and a line is one caption inside a clip — the Practice
+screen says "Line 1 of 1" within one.
+
 ## Playlists
 
 A playlist is a column on the clip, not a table: the studio names a batch and

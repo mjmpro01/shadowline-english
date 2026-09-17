@@ -125,8 +125,7 @@ test('a clip published from video reaches the learner with its picture', async (
     .poll(
       async () => {
         const clips = await (await page.request.get(`${API_URL}/api/clips`)).json()
-        return clips.filter((clip: { title: string; hasVideo: boolean }) =>
-          clip.title.startsWith('Watch this line') && clip.hasVideo).length
+        return clips.filter((clip: { hasVideo: boolean }) => clip.hasVideo).length
       },
       { timeout: 90_000, intervals: [1000] },
     )
@@ -232,10 +231,9 @@ async function publishFromVideo(page: import('@playwright/test').Page) {
     .poll(
       async () => {
         const clips = await (await page.request.get(`${API_URL}/api/clips`)).json()
-        return clips.filter(
-          (clip: { title: string; posterUrl: string }) =>
-            clip.title.startsWith('Watch this line') && clip.posterUrl,
-        ).length
+        // By poster rather than by name: an unnamed clip is called "Clip N",
+        // and the starter clips — the only others here — have no poster.
+        return clips.filter((clip: { posterUrl: string }) => clip.posterUrl).length
       },
       { timeout: 90_000, intervals: [1000] },
     )

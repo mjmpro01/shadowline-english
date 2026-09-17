@@ -120,7 +120,12 @@ export function LibraryScreen() {
                 <span className="card-title clamp-2" style={{ fontSize: 15, marginTop: 'var(--space-2)' }}>
                   {video.title}
                 </span>
-                <span className="card-meta">{video.playlist || video.source}</span>
+                {/* The line, not the playlist: names are numbers now, so this
+                    is the only thing on the card that says what is said in it.
+                    The playlist is a chip above and a page of its own. */}
+                <span className="card-meta clamp-2">
+                  {video.captions[0]?.text || video.playlist || video.source}
+                </span>
                 <span className="row between gap-2" style={{ marginTop: 2 }}>
                   <span className="score-big" style={{ color }}>
                     {stats.lastScore ?? '—'}

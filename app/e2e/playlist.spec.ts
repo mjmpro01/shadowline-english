@@ -47,10 +47,12 @@ test('it says how far through the episode you are', async ({ page }) => {
 test('practice next goes to the first clip nobody has been to', async ({ page }) => {
   await openPlaylist(page)
 
-  await expect(page.getByRole('button', { name: `Practice next — ${LINE(1)}` })).toBeVisible()
+  // Named "Clip 1", because nobody typed a name for it — the line is what the
+  // row below shows, and what the Practice screen puts on screen to shadow.
+  await expect(page.getByRole('button', { name: 'Practice next — Clip 1' })).toBeVisible()
   await page.getByRole('button', { name: /Practice next/ }).click()
   await page.waitForURL('**/practice')
-  await expect(page.getByRole('heading', { name: LINE(1) })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Clip 1' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Record', exact: true }).click()
   await page.waitForTimeout(1200)
@@ -62,7 +64,7 @@ test('practice next goes to the first clip nobody has been to', async ({ page })
   // Back on the playlist, the count has moved and "next" has stepped on.
   await openPlaylist(page)
   await expect(page.getByText('4 clips · 1 practised')).toBeVisible()
-  await expect(page.getByRole('button', { name: `Practice next — ${LINE(2)}` })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Practice next — Clip 2' })).toBeVisible()
 })
 
 test('a row opens the clip it names', async ({ page }) => {
@@ -70,7 +72,12 @@ test('a row opens the clip it names', async ({ page }) => {
 
   await page.locator('.playlist-row').nth(2).getByRole('button', { name: 'Practice' }).click()
   await page.waitForURL('**/practice')
-  await expect(page.getByRole('heading', { name: LINE(3) })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Clip 3' })).toBeVisible()
+  // The heading names the clip; the line is what there is to shadow. It is
+  // rendered a word at a time, because every word is a button for adding it to
+  // Vocabulary, so the words are joined back up to compare.
+  const words = await page.locator('.caption-word').allInnerTexts()
+  expect(words.join(' ')).toBe(LINE(3))
 })
 
 test('a playlist nobody published says so rather than showing an empty page', async ({ page }) => {
