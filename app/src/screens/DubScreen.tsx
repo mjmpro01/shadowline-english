@@ -5,7 +5,9 @@ import { LoadFailure, Loading } from '../components/LoadState'
 import { NoSuchClip } from '../components/NoSuchClip'
 import { SegmentedControl } from '../components/SegmentedControl'
 import { clock } from '../lib/time'
+import { DubExport } from '../components/DubExport'
 import { urlOf, useClipAudio, useClipVideo, useTakeAudio } from '../lib/useAudioUrl'
+import { useDub } from '../lib/useDub'
 import { useApp } from '../store/context'
 
 export function DubScreen() {
@@ -27,13 +29,16 @@ export function DubScreen() {
   const [position, setPosition] = useState(0)
   const [duration, setDuration] = useState(0)
   const [playing, setPlaying] = useState(false)
-
   const video = data.videos.find((v) => v.id === videoId)
   const stats = statsFor(videoId ?? '')
   const take = stats.takes.find((t) => t.id === takeId) ?? stats.takes[stats.takes.length - 1]
+  /** Which take the export applies to. A take with no recording has nothing to
+   *  mux, so there is nothing to ask about either. */
+  const takeIdForDub = take?.hasAudio ? take.id : null
   const myVoiceUrl = urlOf(useTakeAudio(take?.hasAudio ? take.id : null))
   const originalUrl = urlOf(useClipAudio(video?.id ?? null))
   const clipVideoUrl = urlOf(useClipVideo(video?.id ?? null))
+  const dubState = useDub(takeIdForDub)
 
   if (state === 'loading') return <Loading />
   if (state === 'error') return <LoadFailure />
@@ -220,6 +225,19 @@ export function DubScreen() {
             }}
           />
         )}
+
+        {/* The dub as a file, rather than only as something this screen can
+            play: a learner who has nailed a line wants to keep it and send it. */}
+        <div className="stack gap-2">
+          <div className="card-kicker">This dub as a video</div>
+          <DubExport
+            state={dubState}
+            filename={video.title}
+            canDub={video.hasVideo}
+            hasRecording={!!takeIdForDub}
+            label="Export this dub"
+          />
+        </div>
 
         <div className="stack gap-2">
           <div className="card-kicker">Takes</div>

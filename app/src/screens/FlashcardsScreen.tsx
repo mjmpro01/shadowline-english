@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import { Icon } from '../components/Icon'
 import { EXAMPLES } from '../data/seed'
 import { buildDeck, summarise } from '../lib/flashcards'
+import { meaningOrWait } from '../lib/text'
 import { useApp } from '../store/context'
 
 export function FlashcardsScreen() {
@@ -77,8 +78,11 @@ export function FlashcardsScreen() {
 
             {revealed ? (
               <>
-                <div className="card-body" style={{ textAlign: 'center' }}>
-                  {card.meaning}
+                <div
+                  className="card-body"
+                  style={{ textAlign: 'center', opacity: card.meaning ? 1 : 0.6 }}
+                >
+                  {meaningOrWait(card.meaning)}
                 </div>
                 <div className="divider" style={{ width: '100%' }} />
                 <div style={{ fontSize: 14, fontStyle: 'italic' }}>

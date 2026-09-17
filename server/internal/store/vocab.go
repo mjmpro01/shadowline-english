@@ -18,7 +18,18 @@ type VocabWord struct {
 	ReviewedAt *time.Time `json:"reviewedAt"`
 }
 
-const vocabColumns = `id, word, ipa, meaning, status, clip_id, reviewed_at`
+// A learner's card reads its pronunciation and meaning from the shared gloss
+// when there is one, and keeps its own otherwise.
+//
+// The gloss belongs to the word, not to anybody's copy of it: one lookup
+// answers for every learner who has collected it, including the ones who
+// collected it before the lookup finished. The card's own columns are the
+// fallback, which is what keeps the starter words — written by hand, never
+// looked up — showing what they always showed.
+const vocabColumns = `id, word,
+	coalesce(nullif((select g.ipa from glosses g where g.word = vocab_words.word), ''), vocab_words.ipa),
+	coalesce(nullif((select g.meaning from glosses g where g.word = vocab_words.word), ''), vocab_words.meaning),
+	status, clip_id, reviewed_at`
 
 func scanVocab(row pgx.Row) (VocabWord, error) {
 	var v VocabWord

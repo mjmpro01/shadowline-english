@@ -1,12 +1,15 @@
 import { useCallback, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ClipPlayer } from '../components/ClipPlayer'
+import { DubExport } from '../components/DubExport'
 import { Icon } from '../components/Icon'
 import { LoadFailure, Loading } from '../components/LoadState'
 import { NoSuchClip } from '../components/NoSuchClip'
 import { MAX_CLIP_SECONDS, type Take } from '../data/types'
 import { colorFor, scoreLabel } from '../lib/score'
 import { urlOf, useClipAudio, useClipVideo } from '../lib/useAudioUrl'
+import { useDub } from '../lib/useDub'
+import { SOURCE_LABEL, useGloss } from '../lib/useGloss'
 import { useRecorder } from '../lib/useRecorder'
 import { normalizeWord } from '../lib/text'
 import { useApp } from '../store/context'
@@ -16,10 +19,14 @@ const POPUP_LABEL = {
   removed: 'Removed from Vocabulary',
 }
 
+/** The word tapped and what tapping it did. What it *means* is not in here:
+ *  that is looked up separately and arrives when it arrives. */
 interface Popup {
   word: string
-  ipa: string
-  meaning: string
+  /** The line it was tapped in, kept so the lookup can pick the sense that
+   *  sentence uses. Held here rather than read live, so moving to the next line
+   *  does not re-ask for the word still on screen. */
+  context: string
   statusLabel: string
 }
 
@@ -59,17 +66,28 @@ export function PracticeScreen() {
   const attachSource = useCallback((element: HTMLMediaElement | null) => {
     sourcePlayer.current = element
   }, [])
+  // Bumped whenever the screen stops caring about the take being scored — a new
+  // recording, a reset, the next line. Scoring is a poll that runs for seconds,
+  // so without this the take that finishes last wins rather than the take the
+  // learner is actually looking at: pressing Record mid-scoring used to put the
+  // abandoned take's score on screen underneath the new recording's waveform.
+  const attempt = useRef(0)
+
   const recorder = useRecorder({
     onComplete: async (recording, capturedLevels) => {
       // A null recording means the microphone gave us nothing; there is no take
       // to store, and sending an empty body would only queue a job that fails.
       if (!video || !recording) return
+      const mine = attempt.current
       setCapturedLevels(capturedLevels)
       setAnalysing(true)
       try {
-        setTake(await addTake(video.id, recording))
+        const scored = await addTake(video.id, recording)
+        // Stored either way — it is the learner's recording and it is theirs to
+        // keep — but only shown while it is still the one on screen.
+        if (attempt.current === mine) setTake(scored)
       } finally {
-        setAnalysing(false)
+        if (attempt.current === mine) setAnalysing(false)
       }
     },
   })
@@ -78,9 +96,14 @@ export function PracticeScreen() {
   const sourceAudio = useClipAudio(video?.id ?? null)
   const sourceUrl = urlOf(sourceAudio)
   const sourceVideoUrl = urlOf(useClipVideo(video?.id ?? null))
+  const dubState = useDub(take?.hasAudio ? take.id : null)
   /** Either form of the clip counts as having something to play. */
   const playable = sourceVideoUrl ?? sourceUrl
   const line = video?.captions[Math.min(lineIndex, (video?.captions.length ?? 1) - 1)]
+
+  // Before the early returns, because it is a hook. No popup means no word and
+  // no lookup.
+  const gloss = useGloss(popup?.word ?? null, popup?.context ?? '')
 
   const words =
     line?.text.split(' ').map((raw) => ({
@@ -99,13 +122,7 @@ export function PracticeScreen() {
 
   const tapWord = async (raw: string) => {
     const result = await toggleVocabWord(raw, video.id)
-    const entry = data.vocab.find((v) => v.word === result.word)
-    setPopup({
-      word: result.word,
-      ipa: entry?.ipa ?? `/${result.word}/`,
-      meaning: entry?.meaning ?? 'Auto-translated definition',
-      statusLabel: POPUP_LABEL[result.status],
-    })
+    setPopup({ word: result.word, context: line.text, statusLabel: POPUP_LABEL[result.status] })
   }
 
   const toggleRecord = async () => {
@@ -113,15 +130,19 @@ export function PracticeScreen() {
       await recorder.stop()
       return
     }
+    attempt.current += 1
     setTake(null)
     setCapturedLevels([])
+    setAnalysing(false)
     await recorder.start()
   }
 
   const resetMic = () => {
+    attempt.current += 1
     recorder.reset()
     setTake(null)
     setCapturedLevels([])
+    setAnalysing(false)
   }
 
   const nextLine = () => {
@@ -143,8 +164,13 @@ export function PracticeScreen() {
 
       <div className="practice-grid">
         <div className="stack gap-3">
+          {/* The frame the design left for the picture. It held a play icon
+              and nothing else until clips had video; the player used to be
+              bolted on beside the buttons instead, which left the screen with
+              two video areas and a picture in the wrong one. */}
           <div className="practice-video">
-            <Icon name="play" size={34} />
+            <ClipPlayer attach={attachSource} videoUrl={sourceVideoUrl} audioUrl={sourceUrl} />
+            {!sourceVideoUrl && <Icon name="play" size={34} />}
           </div>
 
           <div style={{ fontSize: 16, fontStyle: 'italic', textAlign: 'center' }}>
@@ -182,9 +208,25 @@ export function PracticeScreen() {
               </button>
               <div className="card-title">{popup.word}</div>
               <div className="mono" style={{ fontSize: 13, opacity: 0.6 }}>
-                {popup.ipa}
+                {gloss?.ipa}
               </div>
-              <div className="card-body">{popup.meaning}</div>
+              {/* Three answers, and the popup says which: the definition, the
+                  wait for one nobody has ever asked for, and the admission
+                  that none is coming. Saying nothing would read as a blank. */}
+              <div className="card-body" style={{ opacity: gloss?.meaning ? 1 : 0.6 }}>
+                {gloss?.meaning || (gloss === null || gloss.status === 'pending'
+                  ? 'Looking this word up…'
+                  : 'No definition for this one yet.')}
+              </div>
+              {/* Merriam-Webster's free tier requires their name wherever their
+                  definitions appear. Credited whoever wrote it, though: a
+                  learner should know whether they are reading a lexicographer
+                  or a model. */}
+              {gloss?.source && (
+                <div style={{ fontSize: 11, opacity: 0.55 }}>
+                  {SOURCE_LABEL[gloss.source] ?? gloss.source}
+                </div>
+              )}
               <span className="tag tag-accent-2" style={{ alignSelf: 'flex-start' }}>
                 {popup.statusLabel}
               </span>
@@ -279,10 +321,14 @@ export function PracticeScreen() {
           >
             {sourceVideoUrl ? 'Watch clip again' : 'Hear clip again'}
           </button>
-          <ClipPlayer attach={attachSource} videoUrl={sourceVideoUrl} audioUrl={sourceUrl} />
           <button
             type="button"
             className={`btn ${recording ? 'btn-secondary' : 'btn-primary'} btn-block`}
+            // Scoring takes seconds, and starting another recording through it
+            // leaves the learner watching two takes at once. Stopping is always
+            // allowed; starting waits until there is an answer about the last.
+            disabled={analysing && !recording}
+            title={analysing && !recording ? 'Waiting for the last take to be scored' : undefined}
             onClick={toggleRecord}
           >
             <Icon name={recording ? 'square' : 'mic'} size={14} />
@@ -316,6 +362,16 @@ export function PracticeScreen() {
           >
             See analysis
           </button>
+          {/* Keeping the take is offered here, not only on Dub Review: a
+              learner who has just nailed a line should not have to go to
+              another screen to save it. */}
+          <DubExport
+            state={dubState}
+            filename={video.title}
+            canDub={video.hasVideo}
+            hasRecording={!!take?.hasAudio}
+            label="Save dub"
+          />
           <div className="divider" style={{ margin: '4px 0' }} />
           <button type="button" className="btn btn-ghost btn-block" onClick={resetMic}>
             Reset mic

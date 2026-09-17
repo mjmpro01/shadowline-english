@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { LOOKUP } from '../data/seed'
 import { MAX_CLIP_SECONDS, type AppData, type Take, type VocabStatus } from '../data/types'
 import { ApiError } from '../lib/api'
 import { clipName, nextClipNumber } from '../lib/clips'
@@ -214,13 +213,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return { word, status: 'removed' as const }
     }
 
-    const looked = LOOKUP[word]
-    const created = await repository.createVocabWord({
-      word,
-      ipa: looked?.ipa ?? `/${word}/`,
-      meaning: looked?.meaning ?? 'Auto-translated definition',
-      videoId,
-    })
+    // No pronunciation and no meaning sent: the server holds a gloss per word,
+    // shared by everyone who has collected it, and fills both in as soon as the
+    // lookup lands — including on cards collected before it finished. The
+    // fifteen-word table this used to read from could not do that, and every
+    // word outside it got the literal string "Auto-translated definition".
+    const created = await repository.createVocabWord({ word, ipa: '', meaning: '', videoId })
     setData((prev) => ({ ...prev, vocab: [...prev.vocab, created] }))
     return { word, status: 'added' as const }
   }, [])

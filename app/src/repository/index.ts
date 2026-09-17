@@ -1,5 +1,15 @@
 import { api } from '../lib/api'
-import type { CaptionLine, Profile, Take, Transcript, Video, VocabStatus, VocabWord } from '../data/types'
+import type {
+  CaptionLine,
+  Dub,
+  Gloss,
+  Profile,
+  Take,
+  Transcript,
+  Video,
+  VocabStatus,
+  VocabWord,
+} from '../data/types'
 
 /**
  * The app's data seam. Records live on the server now; this is the only module
@@ -33,6 +43,16 @@ export interface Repository {
   createTake(clipId: string, audio: Blob): Promise<Take>
   getTake(takeId: string): Promise<Take>
   takeAudioURL(takeId: string): Promise<string | null>
+  /** Asks for the take to be muxed onto its clip, and reads how that is going. */
+  requestDub(takeId: string): Promise<Dub>
+  dub(takeId: string): Promise<Dub>
+
+  /** Asks for a word to be looked up, and answers with the gloss if somebody
+   *  already has. The line it was tapped in decides which sense gets written
+   *  down, the first time anybody taps it. */
+  lookUpWord(word: string, context: string): Promise<Gloss>
+  /** Reads a lookup already asked for, for the wait after a `pending`. */
+  wordGloss(word: string): Promise<Gloss>
 
   listVocab(): Promise<VocabWord[]>
   createVocabWord(word: NewVocabWord): Promise<VocabWord>
@@ -167,6 +187,22 @@ class ApiRepository implements Repository {
     return url
   }
 
+
+  requestDub(takeId: string) {
+    return api.send<Dub>('POST', `/api/takes/${takeId}/dub`, {})
+  }
+
+  dub(takeId: string) {
+    return api.get<Dub>(`/api/takes/${takeId}/dub`)
+  }
+
+  lookUpWord(word: string, context: string) {
+    return api.send<Gloss>('POST', `/api/words/${encodeURIComponent(word)}`, { context })
+  }
+
+  wordGloss(word: string) {
+    return api.get<Gloss>(`/api/words/${encodeURIComponent(word)}`)
+  }
 
   listVocab() {
     return api.get<VocabWord[]>('/api/vocab')

@@ -28,14 +28,19 @@ type Take struct {
 	RecordedAt time.Time          `json:"recordedAt"`
 	HasAudio   bool               `json:"hasAudio"`
 	AudioKey   *string            `json:"-"`
+	DubKey     *string            `json:"-"`
+	// HasDub is what the app needs: whether there is a file to offer. The
+	// endpoint says whether one is still being made.
+	HasDub bool `json:"hasDub"`
 }
 
-const takeColumns = `id, clip_id, score, scores, analysis, status, error, recorded_at, audio_key`
+const takeColumns = `id, clip_id, score, scores, analysis, status, error, recorded_at, audio_key, dub_key`
 
 func scanTake(row pgx.Row) (Take, error) {
 	var t Take
 	var scores, analysis []byte
-	err := row.Scan(&t.ID, &t.ClipID, &t.Score, &scores, &analysis, &t.Status, &t.Error, &t.RecordedAt, &t.AudioKey)
+	err := row.Scan(&t.ID, &t.ClipID, &t.Score, &scores, &analysis, &t.Status, &t.Error, &t.RecordedAt,
+		&t.AudioKey, &t.DubKey)
 	if err != nil {
 		return t, mapErr(err)
 	}
@@ -50,6 +55,7 @@ func scanTake(row pgx.Row) (Take, error) {
 		t.Analysis = analysis
 	}
 	t.HasAudio = t.AudioKey != nil
+	t.HasDub = t.DubKey != nil
 	return t, nil
 }
 

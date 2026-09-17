@@ -198,6 +198,35 @@ was always more use.
 is a learner's recording, and a line is one caption inside a clip — the Practice
 screen says "Line 1 of 1" within one.
 
+## Exporting a dub
+
+A learner who has nailed a line can take it away: `POST /api/takes/{id}/dub`
+queues the take's recording to be muxed onto the clip's picture, and
+`GET` the same path reads back `none`, `pending` or `ready` with a signed url.
+
+On request, not for every take: a line gets practised a dozen times and nobody
+wants a file for each attempt. Refused with 409 for a clip that has no
+video — an audio clip, or one whose cut has not landed — so the worker is never
+handed a job it can only fail.
+
+ffmpeg copies the video stream and re-encodes only the audio, because the
+picture is unchanged and a take arrives as whatever MediaRecorder produced,
+which mp4 will not carry. `-shortest`, because a learner runs long or stops
+early and the dub should end when either side runs out.
+
+The fourth queue and the fourth worker, and the only one somebody is watching a
+spinner for: a cut and a transcript happen while an admin gets on with
+something else. Queueing dubs behind a batch of cuts would make a learner wait
+minutes for sub-second work.
+
+## Practice history
+
+Every take is kept: its recording, its score, the four metrics and the pitch
+contour it was measured from, against the clip it was recorded for. Nothing
+prunes them. Dub Review lists a clip's takes and plays any of them against the
+picture, so going back to an old attempt — or to a dub exported weeks ago — is
+picking it off that row.
+
 ## Playlists
 
 A playlist is a column on the clip, not a table: the studio names a batch and
@@ -271,6 +300,129 @@ apart.
 If transcription fails, the studio says so and the admin types the lines, which
 is what they did before any of this existed. Nothing else about the upload is
 affected.
+
+## Looking words up
+
+Tapping a word in a caption used to be answered from a fifteen-word table
+compiled into the bundle. Every other word came back with the literal string
+"Auto-translated definition" and a pronunciation that was just its own spelling
+between slashes — a made-up transcription shown to somebody learning to
+pronounce things.
+
+Now the tap goes to the server:
+
+1. `POST /api/words/{word}` answers with the gloss if anybody has ever tapped
+   that word, and queues a lookup if not.
+2. The glosser (`python -m shadowline.glosser`) claims the job, reads CMUdict
+   for the pronunciation, and asks for the meaning — Merriam-Webster's
+   Learner's Dictionary first, the Claude API for what it does not have.
+3. `GET /api/words/{word}` is what the popup polls while it waits. It reports
+   `ready`, `pending`, or `none` — and `none`, which covers both "never asked
+   for" and "gave up", shows the word without a meaning rather than a spinner
+   that never resolves.
+
+The gloss is keyed by the word alone and kept for ever, which is the whole
+design. One learner's first tap pays for the lookup; everybody else's is a
+single indexed read. A word collected before its lookup finished picks the
+meaning up afterwards, because `vocab_words` reads its pronunciation and
+meaning from `glosses` and falls back to its own columns
+(`internal/store/vocab.go`) — the gloss belongs to the word, not to anybody's
+copy of it.
+
+### Why these two sources, in this order
+
+Oxford was the obvious first thought and does not work: there is no free plan
+any more. A sandbox account gives 500 calls to evaluate with, v2 returns 403 on
+a free account, and real use starts at £50 a month billed annually.
+
+The offline route was measured and rejected before either of these. The English
+dictionaries bundled on PyPI are Webster derivatives: seven of fifteen ordinary
+conversational words, missing `brilliant`, `gonna`, `okay`, `kidding` and `guys`
+outright, and defining what they did have in words harder than the word being
+defined.
+
+The keyless `dictionaryapi.dev` is genuinely free and genuinely unreliable — its
+own status page reports 93.8% uptime over thirty days and a seven-day mean
+response of twenty-one seconds, and a learner is watching the popup.
+
+**Merriam-Webster's Learner's Dictionary** is first because it is the one
+dictionary written for people learning English rather than for people who
+already have it, and because it is free: 1,000 lookups a day per key, which the
+cache makes plenty. Two conditions come with that and neither is optional — the
+Merriam-Webster logo has to appear wherever their definitions do, and an app
+that makes money needs a licence. The popup credits the source under every
+definition; **the logo itself still has to be added** before this goes anywhere
+public.
+
+**The Claude API** is second because it answers what no dictionary can. Two
+things: words no dictionary has an entry for — `gonna`, a name, something coined
+last year — and the sentence. `really` in "Are you really going?" is not
+`really` in "I really like it", and the caption is right there. A dictionary
+cannot use it; that is the cost of asking one first, and it is why the model
+sits behind the dictionary rather than instead of it.
+
+Both keys are optional and the worker says at startup which it has. With
+neither, a tapped word still comes back with its pronunciation — a smaller
+answer rather than a broken one, and how the browser tests run.
+
+### Seeding the cache
+
+An empty cache means the first learner to tap each word waits for it — which,
+at the start, is every word. Two files ship beside the worker: the 12,000
+commonest English words in frequency order, and a definition for 10,761 of
+them. `python -m shadowline.seedwords` loads both in about a second, with no key
+of any kind and no network, and that is what a deployment should run once before
+opening the doors.
+
+Most of those definitions are the FreeTalk Dictionary's. The apostrophe words
+are not: it has no entry containing one, and a shadowing app cannot leave
+`it's`, `don't` and `i'm` blank, so those 132 are written out in
+`scoring/tools/contractions.py` and marked `source=shadowline`.
+
+What is left afterwards is about 1,200 words, mostly proper nouns — `london`,
+`june`, `david` — which a learner does not need a dictionary for. `--meanings`
+queues them: free through Merriam-Webster at 1,000 a day, or roughly $2.50 in
+one go through the model.
+
+**The seeded definitions are CC BY-NC 4.0.** Free for personal and research
+use; a product that makes money needs a licence from freetalk.fun. That is the
+same class of condition Merriam-Webster's free tier carries, and it is a
+decision to make before charging for anything, not after. The app credits the
+source under every definition, because attribution is a licence condition
+rather than a courtesy, and `python -m shadowline.seedwords --requeue-source
+freetalk` replaces the lot through sources licensed differently — the old
+meaning stays until the new one lands, so nothing goes blank in front of a
+learner.
+
+Meanings produced by the paid sources only have to be produced once, by
+anybody: `--export` writes every finished gloss to a tab-separated file and
+`--import` loads one, so generated definitions get committed and every
+deployment afterwards starts with them.
+
+Seeding gives up one thing: the sentence. A word glossed before anybody has met
+it has no caption behind it, so it gets the ordinary sense rather than the one
+a particular line uses. Words outside the 12,000 still get the sentence, which
+is where it matters most — an unusual word in an unusual place.
+
+### A caveat on the Merriam-Webster parsing
+
+The network this was written on blocks `dictionaryapi.com`, so
+`scoring/shadowline/dictionary.py` follows Merriam-Webster's published JSON
+shape rather than a response anybody here had seen. Everything about it is
+built so that being wrong costs a fall-through to the model and nothing else:
+an unrecognised shape, a missing field, a `null`, a body that is not JSON and a
+network error all return "no definition from here" rather than raising.
+
+`python -m shadowline.dictionary <word>` prints what came back beside what was
+made of it, so one command against a real key settles whether the parsing is
+right. `scoring/tests/test_dictionary.py` pins the rest, including the case
+that matters most: an entry belonging to a neighbouring headword must not be
+shown, because a definition for the wrong word looks exactly like a right one.
+
+Lookups are a fifth queue and a fifth worker. Same reason as the others, with
+one difference: what a lookup costs is an allowance or a fraction of a cent
+rather than CPU, so the thing worth scaling is not the worker count but the
+number of words that ever reach it — which is what the cache is.
 
 ## Why the queue is a table
 

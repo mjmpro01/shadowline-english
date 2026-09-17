@@ -1,11 +1,13 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/shadowline/server/internal/auth"
 	"github.com/shadowline/server/internal/storage"
+	"github.com/shadowline/server/internal/store"
 )
 
 func (s *Server) handleListTakes(w http.ResponseWriter, r *http.Request) {
@@ -73,6 +75,82 @@ func (s *Server) handleCreateTake(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, take)
+}
+
+// handleRequestDub asks for the learner's voice to be muxed onto the clip's
+// picture. Answers with the same shape as reading it, so the screen gets the
+// state straight back rather than having to ask again.
+//
+// Requested rather than made for every take: a line gets practised a dozen
+// times, and a file for each attempt is a dozen files nobody wants.
+func (s *Server) handleRequestDub(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	// TakeByID scopes to the owner, so this is also what stops one learner
+	// dubbing another's recording.
+	take, err := s.Store.TakeByID(r.Context(), u.ID, id)
+	if err != nil {
+		s.failErr(w, err, "get take")
+		return
+	}
+	if take.DubKey != nil {
+		s.writeDub(w, r, take)
+		return
+	}
+	if err := s.Store.EnqueueDub(r.Context(), id); err != nil {
+		if errors.Is(err, store.ErrNoVideo) {
+			// Not a failure of the request: an audio clip has no picture, and
+			// one whose cut is still queued does not have it yet.
+			fail(w, http.StatusConflict, "this clip has no video to dub onto")
+			return
+		}
+		s.failErr(w, err, "queue dub")
+		return
+	}
+	writeJSON(w, http.StatusAccepted, map[string]any{"status": "pending", "url": nil})
+}
+
+// handleTakeDub answers with the dub, or with what it is still waiting for.
+func (s *Server) handleTakeDub(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	take, err := s.Store.TakeByID(r.Context(), u.ID, id)
+	if err != nil {
+		s.failErr(w, err, "get take")
+		return
+	}
+	s.writeDub(w, r, take)
+}
+
+// writeDub reports one of three states: ready with a url, pending while the
+// worker has it, or none — which covers both "never asked for" and "asked for
+// and given up on", because in each case the screen offers the button again.
+func (s *Server) writeDub(w http.ResponseWriter, r *http.Request, take store.Take) {
+	if take.DubKey != nil {
+		url, err := s.Storage.SignedGetURL(r.Context(), storage.Takes, *take.DubKey, audioURLTTL)
+		if err != nil {
+			s.failErr(w, err, "sign dub url")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"status": "ready", "url": url})
+		return
+	}
+	queued, err := s.Store.DubQueued(r.Context(), take.ID)
+	if err != nil {
+		s.failErr(w, err, "read dub queue")
+		return
+	}
+	status := "none"
+	if queued {
+		status = "pending"
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"status": status, "url": nil})
 }
 
 func (s *Server) handleTakeAudio(w http.ResponseWriter, r *http.Request) {

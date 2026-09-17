@@ -98,5 +98,114 @@ shadowline/audio.py     ffmpeg: whatever the browser recorded -> mono 8kHz
 shadowline/queue.py     claim / complete / fail, against the Postgres table
 shadowline/storage.py   reading audio from S3/MinIO or from a directory
 shadowline/worker.py    the loop
+shadowline/ipa.py       CMUdict -> IPA, for transcripts and word lookups
+shadowline/gloss.py     what a tapped word means, and which source said so
+shadowline/dictionary.py  Merriam-Webster's Learner's Dictionary
+shadowline/glossqueue.py  claim / complete / fail, for lookups
+shadowline/glosser.py   the lookup loop
+shadowline/seedwords.py   filling the cache before anybody taps anything
+shadowline/data/        the 12,000 commonest words, and a definition for most
 reference/              the archived TypeScript scorer, for the fixtures
 ```
+
+## Looking words up
+
+`python -m shadowline.glosser` answers "what does this word mean" for words a
+learner taps in a caption. The pronunciation is a CMUdict lookup — free,
+offline, the same every run. The meaning is asked for in order, cheapest first:
+
+1. **Merriam-Webster's Learner's Dictionary** (`DICTIONARY_API_KEY`). Free for
+   non-commercial use at 1,000 lookups a day, and the one dictionary written
+   for people learning English rather than for people who already have it.
+2. **The Claude API** (`ANTHROPIC_API_KEY`, `GLOSS_MODEL`), for the words it has
+   no entry for — `gonna`, names, anything coined recently — and the only source
+   that reads the sentence the word was tapped in.
+
+```bash
+DATABASE_URL=postgres://... \
+DICTIONARY_API_KEY=... ANTHROPIC_API_KEY=sk-ant-... \
+  python -m shadowline.glosser
+```
+
+Both keys are optional and the worker says at startup which ones it has. With
+neither, words get their pronunciation and no meaning, which is what the browser
+tests run against. A gloss is written once and read for ever, so the model is
+priced per distinct word that reaches it — about $0.002 on the default model,
+a fifth of that on `claude-haiku-4-5`.
+
+### Seeding the cache
+
+An empty cache means the first learner to tap each word waits for it — which,
+at the start, is every word. Two files ship beside the worker:
+
+- `shadowline/data/common_words.txt` — the 12,000 commonest English words in
+  frequency order, every one of them in CMUdict.
+- `shadowline/data/glosses.tsv` — a definition for 10,761 of them: the
+  FreeTalk Dictionary, plus the contractions and possessives written in
+  `tools/contractions.py` because no dictionary we found files a word with an
+  apostrophe in it, and `it's`, `don't` and `i'm` are what captions of real
+  speech are made of.
+
+```bash
+python -m shadowline.seedwords               # 12,000 pronunciations + 10,761 definitions
+python -m shadowline.seedwords --meanings    # queue the ~1,200 left, which need a key
+python -m shadowline.seedwords --meanings --limit 2000
+```
+
+The first line takes about a second, needs no key and touches no network. It is
+what the browser tests run, and what `docker compose` deployments should run
+once before opening the doors.
+
+**Licence.** Those definitions are **CC BY-NC 4.0**: free for personal and
+research use, and a product that makes money needs a licence from
+freetalk.fun. The app credits the source under every definition it wrote,
+because attribution is a condition rather than a courtesy, and
+`shadowline/data/FREETALK_LICENSE` travels with the data. If that does not
+suit:
+
+```bash
+python -m shadowline.seedwords --requeue-source freetalk
+```
+
+sends every one of those words back through Merriam-Webster and the model, and
+the file can then be deleted. The old meaning stays until the new one lands, so
+nothing goes blank in front of a learner while the queue drains.
+
+Meanings produced by the paid sources only have to be produced once, by
+anybody:
+
+```bash
+python -m shadowline.seedwords --export data/glosses.tsv   # after the glosser has run
+python -m shadowline.seedwords --import data/glosses.tsv   # anywhere else, instantly
+```
+
+`--requeue-empty` is the one to run after turning a key on. A glosser with no
+source of meanings still answers taps — it writes the pronunciation and settles
+the word, because the alternative is a popup that spins for ever — so words met
+during that time need asking about again.
+
+`tools/build_wordlist.py` rebuilds the word list from `wordfreq` and
+`tools/build_seed_glosses.py` rebuilds the definitions from a
+freetalk-dictionary-v1 checkout. Both are checked in rather than generated at
+runtime, so seeding needs nothing but this repository and two deployments a
+year apart hold the same words.
+
+WordNet was tried first and measured: 93% coverage, and unusable at the top of
+the frequency list, where it indexes chemical symbols and state abbreviations
+as ordinary words. It defines `was` as a state in the Pacific northwest and
+`be` as a brittle grey metal. The reasoning is in
+`tools/build_seed_glosses.py`.
+
+`python -m shadowline.dictionary <word>` prints Merriam-Webster's raw answer
+beside what the parser made of it. It exists because the network this was
+written on blocks `dictionaryapi.com`: the parsing follows their published JSON
+shape rather than a response anybody here had seen, and one command against a
+real key settles it. Being wrong about the shape costs a fall-through to the
+model and nothing else — every unexpected shape, missing field and network
+error returns "no definition from here" rather than raising.
+
+Why not Oxford: no free plan any more. A 500-call sandbox to evaluate with, 403
+on v2 for free accounts, then £50 a month billed annually. Why not the keyless
+`dictionaryapi.dev`: its own status page reports 93.8% uptime over thirty days
+and a seven-day mean response of twenty-one seconds. The full design is in
+`../server/README.md`.

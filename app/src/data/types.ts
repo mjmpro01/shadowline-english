@@ -17,6 +17,15 @@ export interface CaptionLine {
   ipa: string
 }
 
+/** A learner's voice muxed onto the clip's picture: a file to keep or send.
+ *
+ * `none` covers both "never asked for" and "asked for and given up on" — the
+ * screen offers the button again either way. */
+export interface Dub {
+  status: 'none' | 'pending' | 'ready'
+  url: string | null
+}
+
 /** One word Whisper heard, when it was said, and how to say it. */
 export interface TranscriptWord {
   start: number
@@ -24,6 +33,26 @@ export interface TranscriptWord {
   text: string
   /** Empty when CMUdict has never heard of the word. */
   ipa: string
+}
+
+/** What a word means and how it is said, looked up once and kept for ever.
+ *
+ * `pending` while the worker has it — the first tap on a word nobody has ever
+ * tapped. `none` means no meaning is coming: either nothing asked for one or
+ * the lookup gave up. Both still carry whatever is known, which for a word
+ * CMUdict has is a real pronunciation and no definition. */
+export interface Gloss {
+  status: 'ready' | 'pending' | 'none'
+  word: string
+  /** Empty when CMUdict has never heard of the word. */
+  ipa: string
+  /** Empty while the lookup is running, and when it failed. */
+  meaning: string
+  /** Which dictionary or model wrote the meaning. Shown under it: Merriam-
+   *  Webster's free tier requires their name wherever their definitions
+   *  appear, and a learner is owed the difference anyway between a
+   *  lexicographer's sentence and a model's. Empty when there is no meaning. */
+  source: string
 }
 
 export interface Transcript {
