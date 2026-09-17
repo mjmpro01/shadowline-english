@@ -8,15 +8,26 @@ Two halves, from two places:
 
 * the pronunciation is CMUdict, which is a dictionary — free, offline, and the
   same answer every run;
-* the meaning is a model, because no bundled dictionary is any use here. The
-  offline ones are Webster derivatives: they miss `gonna`, `okay`, `kidding`
-  and `guys` outright, and define what they do have in words harder than the
-  word being defined. A learner at B1 reading "brilliant: characterized by
-  refulgence" has been given a second thing to look up.
+* the meaning is asked for in order, cheapest first, and the first source with
+  an answer wins.
 
-The model is also the only thing that can read the sentence. `really` in "Are
-you really going?" and `really` in "I really like it" are different words to a
-learner, and the caption is right there.
+The order is Merriam-Webster's Learner's Dictionary, then the model. The
+dictionary is free and is written for people learning English, so for ordinary
+words it is both cheaper and better suited than a model gloss. What it cannot
+do is read the sentence — `really` in "Are you really going?" and `really` in
+"I really like it" are different words to a learner — or say anything at all
+about `gonna`, a name, or something coined last year.
+
+So the model sits behind it rather than beside it: it answers the words the
+dictionary has no entry for, and it is what runs when there is no dictionary
+key. Neither source is required. With neither, a word still comes back with its
+pronunciation, which is a smaller answer rather than a broken one.
+
+The offline option was measured and rejected before either of these. The
+English dictionaries bundled on PyPI are Webster derivatives: seven of fifteen
+ordinary conversational words, missing `brilliant`, `gonna`, `okay`, `kidding`
+and `guys` outright, and defining what they did have in words harder than the
+word being defined.
 """
 
 from __future__ import annotations
@@ -65,15 +76,32 @@ class GlossFailed(RuntimeError):
 
 
 class Glosser(Protocol):
+    """One place a meaning can come from.
+
+    Returning "" means "I do not have this word", which passes it to the next
+    source. Raising GlossFailed means the same and says why. Anything else
+    raising is a real failure and puts the job back on the queue.
+    """
+
+    #: Recorded on the gloss, so the app can credit the source it came from —
+    #: which Merriam-Webster's licence requires and honesty recommends.
+    name: str
+
     def meaning(self, word: str, context: str) -> str: ...
 
 
 class ClaudeGlosser:
     """Definitions from the Claude API.
 
+    The backstop rather than the first stop: it answers the words no dictionary
+    has, and it is the only source that reads the sentence the word was tapped
+    in.
+
     Constructed lazily so a worker with no API key still starts and still fills
     in the pronunciations; see `gloss` below.
     """
+
+    name = "claude"
 
     def __init__(self, model: str | None = None) -> None:
         import anthropic
@@ -102,14 +130,12 @@ class ClaudeGlosser:
                 system=SYSTEM,
                 messages=[{"role": "user", "content": asked}],
             )
-        except anthropic.APIStatusError as err:
-            # 4xx is the request — a word the model will not define, a model
-            # name that does not exist. Retrying sends the same request again.
-            if err.status_code < 500:
-                raise GlossFailed(f"{err.status_code}: {err.message}") from err
-            raise
+        # Nothing here is caught as "this word has no definition". A 401, a
+        # model name with a typo in it and a rate limit are all configuration
+        # or weather, and treating any of them as an answer about the word
+        # would write an empty meaning into the cache for ever. They travel,
+        # the job goes back on the queue, and the operator sees them.
         except anthropic.APIConnectionError as err:
-            # Worth another go: the queue will bring the job back.
             raise RuntimeError(f"cannot reach the API: {err}") from err
 
         if response.stop_reason == "refusal":
@@ -131,22 +157,48 @@ def _tidy(text: str) -> str:
     return line.strip('"').strip("'").rstrip(".").strip()
 
 
-def gloss(word: str, context: str, glosser: Glosser | None) -> tuple[str, str]:
-    """A word's pronunciation and meaning.
+def first_answer(sources: list[Glosser], word: str, context: str) -> tuple[str, str]:
+    """The first source with something to say, and which one it was.
 
-    The two are looked up independently on purpose. CMUdict has no idea what
-    `gonna` means and the model has no business guessing at stress marks, and
-    either half being empty is a worse answer than it could be rather than no
-    answer at all: a popup showing /ˈbrɪljənt/ and nothing else is still useful.
+    A source that does not have the word steps aside rather than ending the
+    lookup: that is the whole point of having more than one. A source that is
+    broken does not — the exception travels, the job goes back on the queue,
+    and the next attempt gets a fresh go at it.
+    """
+    for source in sources:
+        try:
+            meaning = source.meaning(word, context)
+        except GlossFailed as err:
+            log.info("%s has nothing for %r (%s)", source.name, word, err)
+            continue
+        if meaning:
+            return meaning, source.name
+        log.info("%s has nothing for %r", source.name, word)
+    return "", ""
+
+
+def gloss(word: str, context: str, sources: list[Glosser]) -> tuple[str, str, str]:
+    """A word's pronunciation, its meaning, and where the meaning came from.
+
+    The pronunciation is looked up independently of the meaning on purpose.
+    CMUdict has no idea what `gonna` means and no source of meanings has any
+    business guessing at stress marks, and either half being empty is a worse
+    answer than it could be rather than no answer at all: a popup showing
+    /ˈbrɪljənt/ and nothing else is still useful.
     """
     said = ipa.for_word(word)
     if not said:
         log.info("no pronunciation for %r — CMUdict has not heard of it", word)
 
-    if glosser is None:
-        return said, ""
-
-    meaning = glosser.meaning(word, context)
-    if not meaning:
-        raise GlossFailed("the model returned nothing")
-    return said, meaning
+    meaning, source = first_answer(sources, word, context)
+    if sources and not meaning:
+        # Every source was asked and none of them had this word — a name, a
+        # coinage, something the model declined. That is an answer, so it is
+        # written down: the pronunciation is still worth showing, and caching
+        # it stops the next tap paying to be told the same thing.
+        #
+        # Only a definitive "not this word" reaches here. A source that is
+        # down, rate-limited or misconfigured raises instead, and the job goes
+        # back on the queue rather than into the cache.
+        log.warning("no source had a definition for %r", word)
+    return said, meaning, source

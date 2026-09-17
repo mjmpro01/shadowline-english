@@ -108,5 +108,6 @@ func glossBody(status string, g store.Gloss) map[string]any {
 		"word":    g.Word,
 		"ipa":     g.IPA,
 		"meaning": g.Meaning,
+		"source":  g.Source,
 	}
 }

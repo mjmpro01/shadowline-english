@@ -9,7 +9,7 @@ import { MAX_CLIP_SECONDS, type Take } from '../data/types'
 import { colorFor, scoreLabel } from '../lib/score'
 import { urlOf, useClipAudio, useClipVideo } from '../lib/useAudioUrl'
 import { useDub } from '../lib/useDub'
-import { useGloss } from '../lib/useGloss'
+import { SOURCE_LABEL, useGloss } from '../lib/useGloss'
 import { useRecorder } from '../lib/useRecorder'
 import { normalizeWord } from '../lib/text'
 import { useApp } from '../store/context'
@@ -203,6 +203,15 @@ export function PracticeScreen() {
                   ? 'Looking this word up…'
                   : 'No definition for this one yet.')}
               </div>
+              {/* Merriam-Webster's free tier requires their name wherever their
+                  definitions appear. Credited whoever wrote it, though: a
+                  learner should know whether they are reading a lexicographer
+                  or a model. */}
+              {gloss?.source && (
+                <div style={{ fontSize: 11, opacity: 0.55 }}>
+                  {SOURCE_LABEL[gloss.source] ?? gloss.source}
+                </div>
+              )}
               <span className="tag tag-accent-2" style={{ alignSelf: 'flex-start' }}>
                 {popup.statusLabel}
               </span>

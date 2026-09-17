@@ -314,7 +314,8 @@ Now the tap goes to the server:
 1. `POST /api/words/{word}` answers with the gloss if anybody has ever tapped
    that word, and queues a lookup if not.
 2. The glosser (`python -m shadowline.glosser`) claims the job, reads CMUdict
-   for the pronunciation and asks the Claude API for the meaning.
+   for the pronunciation, and asks for the meaning — Merriam-Webster's
+   Learner's Dictionary first, the Claude API for what it does not have.
 3. `GET /api/words/{word}` is what the popup polls while it waits. It reports
    `ready`, `pending`, or `none` — and `none`, which covers both "never asked
    for" and "gave up", shows the word without a meaning rather than a spinner
@@ -328,29 +329,61 @@ meaning from `glosses` and falls back to its own columns
 (`internal/store/vocab.go`) — the gloss belongs to the word, not to anybody's
 copy of it.
 
-The line the word was tapped in is sent with the request and steers which sense
-gets written down, which is the one thing no dictionary can do: `really` in
-"Are you really going?" is not `really` in "I really like it". It is not part
-of the key, though — a card in a vocabulary list wants one settled meaning per
-word, not one per sentence it was met in.
+### Why these two sources, in this order
 
-A model rather than a bundled dictionary because the bundled ones do not work
-here. The offline English dictionaries on PyPI are Webster derivatives: on
-fifteen ordinary conversational words they had seven, missing `brilliant`,
-`gonna`, `okay`, `kidding` and `guys` outright, and defining what they did have
-in words harder than the word being defined.
+Oxford was the obvious first thought and does not work: there is no free plan
+any more. A sandbox account gives 500 calls to evaluate with, v2 returns 403 on
+a free account, and real use starts at £50 a month billed annually.
 
-`ANTHROPIC_API_KEY` is optional. Without it the glosser still runs and still
-fills in pronunciations; words come back with how to say them and no
-definition, which is a smaller answer rather than a broken one. That is also
-how the browser tests run — definitions cost money and are worded differently
-every run, so `e2e/words.spec.ts` checks the CMUdict half and
-`scoring/tests/test_glosser.py` covers the model half against a stand-in.
+The offline route was measured and rejected before either of these. The English
+dictionaries bundled on PyPI are Webster derivatives: seven of fifteen ordinary
+conversational words, missing `brilliant`, `gonna`, `okay`, `kidding` and `guys`
+outright, and defining what they did have in words harder than the word being
+defined.
+
+The keyless `dictionaryapi.dev` is genuinely free and genuinely unreliable — its
+own status page reports 93.8% uptime over thirty days and a seven-day mean
+response of twenty-one seconds, and a learner is watching the popup.
+
+**Merriam-Webster's Learner's Dictionary** is first because it is the one
+dictionary written for people learning English rather than for people who
+already have it, and because it is free: 1,000 lookups a day per key, which the
+cache makes plenty. Two conditions come with that and neither is optional — the
+Merriam-Webster logo has to appear wherever their definitions do, and an app
+that makes money needs a licence. The popup credits the source under every
+definition; **the logo itself still has to be added** before this goes anywhere
+public.
+
+**The Claude API** is second because it answers what no dictionary can. Two
+things: words no dictionary has an entry for — `gonna`, a name, something coined
+last year — and the sentence. `really` in "Are you really going?" is not
+`really` in "I really like it", and the caption is right there. A dictionary
+cannot use it; that is the cost of asking one first, and it is why the model
+sits behind the dictionary rather than instead of it.
+
+Both keys are optional and the worker says at startup which it has. With
+neither, a tapped word still comes back with its pronunciation — a smaller
+answer rather than a broken one, and how the browser tests run.
+
+### A caveat on the Merriam-Webster parsing
+
+The network this was written on blocks `dictionaryapi.com`, so
+`scoring/shadowline/dictionary.py` follows Merriam-Webster's published JSON
+shape rather than a response anybody here had seen. Everything about it is
+built so that being wrong costs a fall-through to the model and nothing else:
+an unrecognised shape, a missing field, a `null`, a body that is not JSON and a
+network error all return "no definition from here" rather than raising.
+
+`python -m shadowline.dictionary <word>` prints what came back beside what was
+made of it, so one command against a real key settles whether the parsing is
+right. `scoring/tests/test_dictionary.py` pins the rest, including the case
+that matters most: an entry belonging to a neighbouring headword must not be
+shown, because a definition for the wrong word looks exactly like a right one.
 
 Lookups are a fifth queue and a fifth worker. Same reason as the others, with
-one difference: what a lookup costs is money rather than CPU, so the thing
-worth scaling is not the worker count but the number of words that ever reach
-it — which is what the cache is.
+one difference: what a lookup costs is an allowance or a fraction of a cent
+rather than CPU, so the thing worth scaling is not the worker count but the
+number of words that ever reach it — which is what the cache is.
 
 ## Why the queue is a table
 

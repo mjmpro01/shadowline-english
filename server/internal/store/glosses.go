@@ -26,6 +26,11 @@ type Gloss struct {
 	Word    string `json:"word"`
 	IPA     string `json:"ipa"`
 	Meaning string `json:"meaning"`
+	// Which dictionary or model wrote the meaning. Merriam-Webster's free tier
+	// requires their name to appear wherever their definitions do, and a
+	// learner is owed the difference anyway between a lexicographer's sentence
+	// and a model's. Empty when there is no meaning to credit.
+	Source string `json:"source"`
 }
 
 // GlossFor reads a word's gloss. ErrNotFound means nobody has looked it up yet,
@@ -33,7 +38,8 @@ type Gloss struct {
 func (s *Store) GlossFor(ctx context.Context, word string) (Gloss, error) {
 	var g Gloss
 	err := s.pool.QueryRow(ctx,
-		`select word, ipa, meaning from glosses where word = $1`, word).Scan(&g.Word, &g.IPA, &g.Meaning)
+		`select word, ipa, meaning, source from glosses where word = $1`,
+		word).Scan(&g.Word, &g.IPA, &g.Meaning, &g.Source)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Gloss{}, ErrNotFound
 	}

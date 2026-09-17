@@ -11,14 +11,21 @@ type glossJSON struct {
 	Word    string `json:"word"`
 	IPA     string `json:"ipa"`
 	Meaning string `json:"meaning"`
+	Source  string `json:"source"`
 }
 
 // storeGloss writes a gloss the way the glosser does. The glosser itself is
 // Python and lives in ../../../scoring.
 func storeGloss(t *testing.T, h *harness, word, ipa, meaning string) {
 	t.Helper()
+	storeGlossFrom(t, h, word, ipa, meaning, "claude")
+}
+
+func storeGlossFrom(t *testing.T, h *harness, word, ipa, meaning, source string) {
+	t.Helper()
 	_, err := h.pool.Exec(context.Background(),
-		`insert into glosses (word, ipa, meaning) values ($1, $2, $3)`, word, ipa, meaning)
+		`insert into glosses (word, ipa, meaning, source) values ($1, $2, $3, $4)`,
+		word, ipa, meaning, source)
 	if err != nil {
 		t.Fatalf("store gloss: %v", err)
 	}
@@ -162,4 +169,18 @@ func TestLookingUpAWordNeedsALogin(t *testing.T) {
 
 	expectStatus(t, h.anonymous().json("POST", "/api/words/brilliant", nil), http.StatusUnauthorized)
 	expectStatus(t, h.anonymous().do("GET", "/api/words/brilliant", "", nil), http.StatusUnauthorized)
+}
+
+// Merriam-Webster's free tier requires their name wherever their definitions
+// appear, so the source has to survive the trip to the popup.
+func TestTheSourceOfAMeaningIsReported(t *testing.T) {
+	h := newHarness(t)
+	c := h.login("learner@example.com")
+	storeGlossFrom(t, h, "brilliant", "ˈbɹɪljənt", "very bright", "merriam-webster-learners")
+
+	got := expect[glossJSON](t, c.do("GET", "/api/words/brilliant", "", nil), http.StatusOK)
+
+	if got.Source != "merriam-webster-learners" {
+		t.Fatalf("source is %q", got.Source)
+	}
 }

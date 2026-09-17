@@ -48,6 +48,11 @@ export interface Gloss {
   ipa: string
   /** Empty while the lookup is running, and when it failed. */
   meaning: string
+  /** Which dictionary or model wrote the meaning. Shown under it: Merriam-
+   *  Webster's free tier requires their name wherever their definitions
+   *  appear, and a learner is owed the difference anyway between a
+   *  lexicographer's sentence and a model's. Empty when there is no meaning. */
+  source: string
 }
 
 export interface Transcript {

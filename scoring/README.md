@@ -99,7 +99,8 @@ shadowline/queue.py     claim / complete / fail, against the Postgres table
 shadowline/storage.py   reading audio from S3/MinIO or from a directory
 shadowline/worker.py    the loop
 shadowline/ipa.py       CMUdict -> IPA, for transcripts and word lookups
-shadowline/gloss.py     what a tapped word means: CMUdict + the Claude API
+shadowline/gloss.py     what a tapped word means, and which source said so
+shadowline/dictionary.py  Merriam-Webster's Learner's Dictionary
 shadowline/glossqueue.py  claim / complete / fail, for lookups
 shadowline/glosser.py   the lookup loop
 reference/              the archived TypeScript scorer, for the fixtures
@@ -108,25 +109,38 @@ reference/              the archived TypeScript scorer, for the fixtures
 ## Looking words up
 
 `python -m shadowline.glosser` answers "what does this word mean" for words a
-learner taps in a caption. Two halves from two places: the pronunciation is a
-CMUdict lookup, which is free and the same every run, and the meaning is one
-short Claude API call, because no bundled dictionary covers the words people
-actually tap — `gonna`, `okay`, `kidding`, `guys` — or defines what it does
-cover in words a learner already has.
+learner taps in a caption. The pronunciation is a CMUdict lookup — free,
+offline, the same every run. The meaning is asked for in order, cheapest first:
+
+1. **Merriam-Webster's Learner's Dictionary** (`DICTIONARY_API_KEY`). Free for
+   non-commercial use at 1,000 lookups a day, and the one dictionary written
+   for people learning English rather than for people who already have it.
+2. **The Claude API** (`ANTHROPIC_API_KEY`, `GLOSS_MODEL`), for the words it has
+   no entry for — `gonna`, names, anything coined recently — and the only source
+   that reads the sentence the word was tapped in.
 
 ```bash
-DATABASE_URL=postgres://... ANTHROPIC_API_KEY=sk-ant-... python -m shadowline.glosser
+DATABASE_URL=postgres://... \
+DICTIONARY_API_KEY=... ANTHROPIC_API_KEY=sk-ant-... \
+  python -m shadowline.glosser
 ```
 
-`ANTHROPIC_API_KEY` is optional and the worker says so at startup. Without it
-words get their pronunciation and no definition, which is what the tests run
-against: `tests/test_glosser.py` puts a stand-in in place of the model, because
-a real call costs money and comes back worded differently every run.
+Both keys are optional and the worker says at startup which ones it has. With
+neither, words get their pronunciation and no meaning, which is what the browser
+tests run against. A gloss is written once and read for ever, so the model is
+priced per distinct word that reaches it — about $0.002 on the default model,
+a fifth of that on `claude-haiku-4-5`.
 
-A gloss is written once and read for ever, so the cost is per distinct word
-ever tapped rather than per tap. `GLOSS_MODEL` picks the model; the default is
-`claude-opus-5` and `claude-haiku-4-5` costs about a fifth as much.
+`python -m shadowline.dictionary <word>` prints Merriam-Webster's raw answer
+beside what the parser made of it. It exists because the network this was
+written on blocks `dictionaryapi.com`: the parsing follows their published JSON
+shape rather than a response anybody here had seen, and one command against a
+real key settles it. Being wrong about the shape costs a fall-through to the
+model and nothing else — every unexpected shape, missing field and network
+error returns "no definition from here" rather than raising.
 
-The sentence the word was tapped in is sent with it, which is the one thing a
-dictionary cannot do — `really` in "Are you really going?" is not `really` in
-"I really like it". The full design is in `../server/README.md`.
+Why not Oxford: no free plan any more. A 500-call sandbox to evaluate with, 403
+on v2 for free accounts, then £50 a month billed annually. Why not the keyless
+`dictionaryapi.dev`: its own status page reports 93.8% uptime over thirty days
+and a seven-day mean response of twenty-one seconds. The full design is in
+`../server/README.md`.

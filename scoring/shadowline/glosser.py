@@ -3,10 +3,12 @@
 Answers "what does this word mean" for any word in the app, which until now
 only fifteen words had an answer to.
 
-Runs without an API key, deliberately. With one, a tapped word comes back with
-a pronunciation and a definition; without one, it comes back with a
-pronunciation and no definition, because CMUdict is free and the model is not.
-Nothing in the app breaks either way — the popup shows what it was given.
+Meanings are asked for in order, cheapest first: Merriam-Webster's Learner's
+Dictionary, then the Claude API for the words it has no entry for. Both are
+optional and the worker says at startup which ones it has. With neither, a word
+still comes back with its pronunciation from CMUdict, because that is free and
+offline. Nothing in the app breaks at any of these settings — the popup shows
+what it was given.
 """
 
 from __future__ import annotations
@@ -19,6 +21,7 @@ import time
 
 import psycopg
 
+from .dictionary import LearnersDictionary
 from .gloss import ClaudeGlosser, Glosser, GlossFailed, gloss
 from .glossqueue import GlossQueue
 
@@ -30,7 +33,7 @@ IDLE_SLEEP = 0.25
 MAX_BACKOFF = 30.0
 
 
-def run_once(queue: GlossQueue, glosser: Glosser | None) -> bool:
+def run_once(queue: GlossQueue, sources: list[Glosser]) -> bool:
     """Looks one word up. Returns False when the queue was empty."""
     job = queue.claim()
     if job is None:
@@ -38,7 +41,7 @@ def run_once(queue: GlossQueue, glosser: Glosser | None) -> bool:
 
     started = time.monotonic()
     try:
-        said, meaning = gloss(job.word, job.context, glosser)
+        said, meaning, source = gloss(job.word, job.context, sources)
     except GlossFailed as err:
         # The word keeps its place in the learner's list; only the definition
         # is missing, and the popup says so rather than spinning.
@@ -50,32 +53,43 @@ def run_once(queue: GlossQueue, glosser: Glosser | None) -> bool:
         queue.fail(job, "lookup failed")
         return True
 
-    queue.complete(job, said, meaning)
-    log.info("glossed %r (%.0fms)", job.word, (time.monotonic() - started) * 1000)
+    queue.complete(job, said, meaning, source)
+    log.info(
+        "glossed %r from %s (%.0fms)",
+        job.word, source or "nowhere", (time.monotonic() - started) * 1000,
+    )
     return True
 
 
-def _glosser() -> Glosser | None:
-    """The model client, or None when there is no key to use one with.
+def _sources() -> list[Glosser]:
+    """Where meanings come from, cheapest first.
 
-    Starting anyway rather than exiting: a deployment that has not been given a
-    key still wants pronunciations, and a worker that refuses to run leaves
-    every tapped word queued for ever.
+    Every source is optional and a missing one is announced rather than fatal:
+    a deployment given neither key still wants pronunciations, and a worker
+    that refuses to start leaves every tapped word queued for ever.
     """
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        log.warning(
-            "ANTHROPIC_API_KEY is not set — words will get a pronunciation and no meaning"
-        )
-        return None
-    try:
-        return ClaudeGlosser()
-    # Broadly, because every way this can fail — the package not installed, a
-    # key the client rejects out of hand — is a reason to run without meanings
-    # rather than a reason not to run. A worker that refuses to start leaves
-    # every tapped word queued for ever.
-    except Exception as err:
-        log.warning("no definitions this run (%s) — pronunciations only", err)
-        return None
+    sources: list[Glosser] = []
+
+    key = os.environ.get("DICTIONARY_API_KEY", "").strip()
+    if key:
+        sources.append(LearnersDictionary(key))
+    else:
+        log.info("DICTIONARY_API_KEY is not set — no dictionary in front of the model")
+
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        try:
+            sources.append(ClaudeGlosser())
+        # Broadly, because every way this can fail — the package not installed,
+        # a key rejected out of hand — is a reason to run with one source fewer
+        # rather than a reason not to run.
+        except Exception as err:
+            log.warning("the model is unavailable this run (%s)", err)
+    else:
+        log.info("ANTHROPIC_API_KEY is not set — no meanings for words the dictionary lacks")
+
+    if not sources:
+        log.warning("no source of meanings configured — words get a pronunciation only")
+    return sources
 
 
 def main() -> int:
@@ -89,7 +103,7 @@ def main() -> int:
         log.error("DATABASE_URL is required")
         return 1
 
-    glosser = _glosser()
+    sources = _sources()
     running = True
 
     def stop(*_: object) -> None:
@@ -108,7 +122,7 @@ def main() -> int:
                 queue = GlossQueue(conn)
                 backoff = 1.0
                 while running:
-                    if not run_once(queue, glosser):
+                    if not run_once(queue, sources):
                         time.sleep(IDLE_SLEEP)
         # Every database error, not just a dropped connection: a worker started
         # beside a server still migrating finds no table yet, and dying there

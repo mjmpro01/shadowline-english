@@ -128,13 +128,14 @@ services:
         condition: service_healthy
 
   # Looks up what a tapped word means, once per word ever. The fifth queue, and
-  # the only one whose cost is money rather than CPU: the pronunciation comes
-  # from CMUdict and is free, the definition comes from the Claude API and is
-  # not. Its own service for the same reason as dubbing — a learner has tapped
-  # a word and a popup is waiting on it.
+  # the only one whose cost is a network allowance rather than CPU: the
+  # pronunciation comes from CMUdict and is free, the meaning comes from
+  # Merriam-Webster and then, for what they do not have, the Claude API. Its
+  # own service for the same reason as dubbing — a learner has tapped a word
+  # and a popup is waiting on it.
   #
-  # Runs without ANTHROPIC_API_KEY. Words then come back with a pronunciation
-  # and no definition, which is a smaller answer rather than a broken one.
+  # Runs with neither key set. Words then come back with a pronunciation and no
+  # meaning, which is a smaller answer rather than a broken one.
   glossing:
     build:
       context: ../scoring

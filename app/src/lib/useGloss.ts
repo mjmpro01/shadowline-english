@@ -2,6 +2,13 @@ import { useEffect, useState } from 'react'
 import type { Gloss } from '../data/types'
 import { repository } from '../repository'
 
+/** Where a meaning came from, as the app says it out loud. An unknown source
+ *  is credited by its own name rather than silently dropped. */
+export const SOURCE_LABEL: Record<string, string> = {
+  'merriam-webster-learners': "Merriam-Webster's Learner's Dictionary",
+  claude: 'Claude',
+}
+
 /** How often to ask whether the lookup has landed. One API call with a short
  *  ceiling, and a learner is looking at the popup waiting for it. */
 const POLL_MS = 800
