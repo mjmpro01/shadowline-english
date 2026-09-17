@@ -1,5 +1,14 @@
 import { api } from '../lib/api'
-import type { CaptionLine, Profile, Take, Transcript, Video, VocabStatus, VocabWord } from '../data/types'
+import type {
+  CaptionLine,
+  Dub,
+  Profile,
+  Take,
+  Transcript,
+  Video,
+  VocabStatus,
+  VocabWord,
+} from '../data/types'
 
 /**
  * The app's data seam. Records live on the server now; this is the only module
@@ -33,6 +42,9 @@ export interface Repository {
   createTake(clipId: string, audio: Blob): Promise<Take>
   getTake(takeId: string): Promise<Take>
   takeAudioURL(takeId: string): Promise<string | null>
+  /** Asks for the take to be muxed onto its clip, and reads how that is going. */
+  requestDub(takeId: string): Promise<Dub>
+  dub(takeId: string): Promise<Dub>
 
   listVocab(): Promise<VocabWord[]>
   createVocabWord(word: NewVocabWord): Promise<VocabWord>
@@ -167,6 +179,14 @@ class ApiRepository implements Repository {
     return url
   }
 
+
+  requestDub(takeId: string) {
+    return api.send<Dub>('POST', `/api/takes/${takeId}/dub`, {})
+  }
+
+  dub(takeId: string) {
+    return api.get<Dub>(`/api/takes/${takeId}/dub`)
+  }
 
   listVocab() {
     return api.get<VocabWord[]>('/api/vocab')

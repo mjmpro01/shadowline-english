@@ -93,6 +93,23 @@ services:
       minio:
         condition: service_healthy
 
+  # Muxes a learner's recording onto the clip's picture, on request. Its own
+  # service because it is the one piece of queued work somebody is sitting in
+  # front of waiting for — a batch of cuts running ahead of it would make them
+  # wait minutes for sub-second work.
+  dubbing:
+    build:
+      context: ../scoring
+    entrypoint: ["python", "-m", "shadowline.dubber"]
+    env_file: .env
+    deploy:
+      replicas: 1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
   # Runs Whisper over each upload and stores the words with their times and
   # their IPA, so the studio fills its own lines in. The third worker and the
   # third queue: a learner waits on a score in seconds, nobody waits on a cut,

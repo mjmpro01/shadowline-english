@@ -136,3 +136,48 @@ def poster(source: Path, at: float, dest: Path, height: int = 360) -> None:
     if done.returncode != 0 or not dest.exists() or dest.stat().st_size == 0:
         detail = done.stderr.decode("utf-8", "replace").strip().splitlines()
         raise CutFailed(detail[-1] if detail else "ffmpeg produced no poster frame")
+
+
+def dub(video: Path, voice: Path, dest: Path) -> None:
+    """Writes the clip's picture with the learner's voice over it.
+
+    The video stream is copied, not re-encoded: the picture is unchanged and
+    decoding it again would cost seconds for a file nobody is going to look at
+    differently. Only the audio is encoded, because a take arrives as whatever
+    MediaRecorder produced — webm/opus in Chrome — and mp4 will not carry that.
+
+    `-shortest` because the two are rarely the same length: a learner runs long
+    or stops early, and the dub ends when either side runs out rather than
+    holding a frozen frame or playing to silence.
+    """
+    command = [
+        "ffmpeg",
+        "-nostdin",
+        "-loglevel", "error",
+        "-i", str(video),
+        "-i", str(voice),
+        # Picture from the first input, sound from the second: the whole job.
+        "-map", "0:v:0",
+        "-map", "1:a:0",
+        "-c:v", "copy",
+        "-c:a", "aac",
+        "-b:a", "128k",
+        "-shortest",
+        "-movflags", "+faststart",
+        "-y",
+        str(dest),
+    ]
+
+    try:
+        done = subprocess.run(command, capture_output=True, timeout=120, check=False)
+    except subprocess.TimeoutExpired as err:
+        raise CutFailed("ffmpeg timed out muxing the dub") from err
+    except FileNotFoundError as err:
+        raise CutFailed("ffmpeg is not installed") from err
+
+    if done.returncode != 0:
+        detail = done.stderr.decode("utf-8", "replace").strip().splitlines()
+        raise CutFailed(detail[-1] if detail else f"ffmpeg exited {done.returncode}")
+
+    if not dest.exists() or dest.stat().st_size == 0:
+        raise CutFailed("ffmpeg produced no dub")

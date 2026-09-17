@@ -17,6 +17,15 @@ export interface CaptionLine {
   ipa: string
 }
 
+/** A learner's voice muxed onto the clip's picture: a file to keep or send.
+ *
+ * `none` covers both "never asked for" and "asked for and given up on" — the
+ * screen offers the button again either way. */
+export interface Dub {
+  status: 'none' | 'pending' | 'ready'
+  url: string | null
+}
+
 /** One word Whisper heard, when it was said, and how to say it. */
 export interface TranscriptWord {
   start: number

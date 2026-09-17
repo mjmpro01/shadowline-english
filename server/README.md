@@ -198,6 +198,35 @@ was always more use.
 is a learner's recording, and a line is one caption inside a clip — the Practice
 screen says "Line 1 of 1" within one.
 
+## Exporting a dub
+
+A learner who has nailed a line can take it away: `POST /api/takes/{id}/dub`
+queues the take's recording to be muxed onto the clip's picture, and
+`GET` the same path reads back `none`, `pending` or `ready` with a signed url.
+
+On request, not for every take: a line gets practised a dozen times and nobody
+wants a file for each attempt. Refused with 409 for a clip that has no
+video — an audio clip, or one whose cut has not landed — so the worker is never
+handed a job it can only fail.
+
+ffmpeg copies the video stream and re-encodes only the audio, because the
+picture is unchanged and a take arrives as whatever MediaRecorder produced,
+which mp4 will not carry. `-shortest`, because a learner runs long or stops
+early and the dub should end when either side runs out.
+
+The fourth queue and the fourth worker, and the only one somebody is watching a
+spinner for: a cut and a transcript happen while an admin gets on with
+something else. Queueing dubs behind a batch of cuts would make a learner wait
+minutes for sub-second work.
+
+## Practice history
+
+Every take is kept: its recording, its score, the four metrics and the pitch
+contour it was measured from, against the clip it was recorded for. Nothing
+prunes them. Dub Review lists a clip's takes and plays any of them against the
+picture, so going back to an old attempt — or to a dub exported weeks ago — is
+picking it off that row.
+
 ## Playlists
 
 A playlist is a column on the clip, not a table: the studio names a batch and

@@ -104,6 +104,31 @@ func (h *harness) storeTranscript(t *testing.T, sourceID string) {
 	}
 }
 
+// dubQueueDepth is how many takes are waiting to be muxed onto their clip. The
+// dubber itself is Python and lives in ../../../scoring.
+func (h *harness) dubQueueDepth(t *testing.T) int {
+	t.Helper()
+	n, err := h.store.DubQueueDepth(context.Background())
+	if err != nil {
+		t.Fatalf("read dub queue depth: %v", err)
+	}
+	return n
+}
+
+// attachDub puts an object where a finished dub would have left one, and
+// records it the way the dubber does.
+func (h *harness) attachDub(t *testing.T, takeID string) {
+	t.Helper()
+	ctx := context.Background()
+	key := "dub/" + takeID + "/dub.mp4"
+	if err := h.blobs.Put(ctx, storage.Takes, key, strings.NewReader("dub"), -1, "video/mp4"); err != nil {
+		t.Fatalf("store dub: %v", err)
+	}
+	if _, err := h.pool.Exec(ctx, `update takes set dub_key = $2 where id = $1`, takeID, key); err != nil {
+		t.Fatalf("record dub key: %v", err)
+	}
+}
+
 // attachVideo puts an object where a finished cut would have left one, and
 // records it on the clip the way the cutter does.
 func (h *harness) attachVideo(t *testing.T, clipID string) {

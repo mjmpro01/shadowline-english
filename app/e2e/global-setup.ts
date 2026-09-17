@@ -15,6 +15,7 @@ const workers: ChildProcess[] = []
 export default async function globalSetup(): Promise<void> {
   start('shadowline.worker', 'takes will never be scored')
   start('shadowline.cutter', 'published clips will never get their video')
+  start('shadowline.dubber', 'exported dubs will never be produced')
 }
 
 function start(module: string, consequence: string): void {
