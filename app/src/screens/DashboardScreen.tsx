@@ -165,16 +165,24 @@ export function DashboardScreen() {
                 <div className="card-title clamp-2" style={{ fontSize: 15, marginTop: 'var(--space-2)' }}>
                   {video.title}
                 </div>
-                {/* The line, for the same reason the library card shows it:
-                    an unnamed clip is called "Clip 3", which says where it is
-                    and nothing about what is said in it. */}
+                {/* Never the same thing twice, exactly as on the library card:
+                    a clip with no still says its line on the tile above, so
+                    this carries the playlist; one with a still has nowhere else
+                    to put the line, so it comes back here. An unnamed clip is
+                    called "Clip 3", which says where it is and nothing about
+                    what is said in it, so one of the two always has to be the
+                    line. */}
                 <div className="card-meta clamp-2">
-                  {video.captions[0]?.text || video.playlist || video.source}
+                  {(video.posterUrl ? video.captions[0]?.text : video.playlist) ||
+                    video.playlist ||
+                    video.source}
                 </div>
                 <button
                   type="button"
                   className="btn btn-primary btn-block"
-                  style={{ marginTop: 2 }}
+                  // Pinned to the bottom, so a row of cards has a row of
+                  // buttons rather than a ragged edge wherever a title wraps.
+                  style={{ marginTop: 'auto' }}
                   onClick={() => navigate(`/library/${video.id}/practice`)}
                 >
                   <Icon name="mic" size={14} />
