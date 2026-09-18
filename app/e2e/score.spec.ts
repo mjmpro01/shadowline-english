@@ -38,7 +38,26 @@ const STARTER = 'One step at a time'
 async function scoreOf(page: import('@playwright/test').Page): Promise<number> {
   const card = page.locator('.card', { hasText: 'PITCH MATCH SCORE' })
   await expect(card).toBeVisible({ timeout: 20_000 })
-  return Number((await card.locator('div').last().innerText()).trim())
+  // The number itself, by name. This used to read the card's last div, which
+  // made every change to the card's shape a failing score test.
+  //
+  // It counts up when it lands, so reading it once can catch it mid-climb.
+  // Polling until two reads in a row agree waits for the climb to finish
+  // without hard-coding how long the animation takes.
+  const number = card.locator('.score-badge-number')
+  let previous = ''
+  await expect
+    .poll(
+      async () => {
+        const now = (await number.innerText()).trim()
+        const settled = now === previous && now !== '0'
+        previous = now
+        return settled
+      },
+      { timeout: 10_000 },
+    )
+    .toBe(true)
+  return Number(previous)
 }
 
 test('a starter clip has no original audio, so a take is kept but not scored', async ({ page }) => {

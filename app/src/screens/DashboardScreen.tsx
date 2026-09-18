@@ -17,11 +17,22 @@ export function DashboardScreen() {
   const rest = rows.slice(3)
   const featured = data.videos.filter((video) => video.featured)
 
+  /* The HUD. Four numbers a learner checks before deciding whether to practise,
+     so each carries its own glyph: at a glance the row reads as a row of
+     things rather than as four numbers that have to be labelled apart.
+
+     `lit` is what separates a streak that is alive from one that is not. A
+     zero on a flame tile in full colour would be a lie told in amber. */
   const summary = [
-    { label: 'Clips practised', value: new Set(data.takes.map((take) => take.videoId)).size },
-    { label: 'Takes recorded', value: mine.takes },
-    { label: 'Average score', value: mine.averageScore ?? '—', color: mine.averageScore ? colorFor(mine.averageScore) : undefined },
-    { label: 'Day streak', value: mine.streak },
+    { label: 'Clips practised', value: new Set(data.takes.map((take) => take.videoId)).size, icon: 'library' as const },
+    { label: 'Takes recorded', value: mine.takes, icon: 'mic' as const },
+    {
+      label: 'Average score',
+      value: mine.averageScore ?? '—',
+      color: mine.averageScore ? colorFor(mine.averageScore) : undefined,
+      icon: 'trophy' as const,
+    },
+    { label: 'Day streak', value: mine.streak, icon: 'flame' as const, lit: mine.streak > 0 },
   ]
 
   return (
@@ -33,11 +44,14 @@ export function DashboardScreen() {
 
       <div className="grid-scores">
         {summary.map((stat) => (
-          <div className="card elev-sm gap-1 stat-tile" key={stat.label}>
-            <div className="card-kicker">{stat.label}</div>
-            <div className="mono" style={{ fontSize: 28, color: stat.color }}>
+          <div className="card elev-sm gap-1 stat-tile" data-lit={stat.lit ? '' : undefined} key={stat.label}>
+            <div className="stat-tile-icon">
+              <Icon name={stat.icon} size={16} />
+            </div>
+            <div className="mono stat-tile-value" style={{ color: stat.color }}>
               {stat.value}
             </div>
+            <div className="card-kicker">{stat.label}</div>
           </div>
         ))}
       </div>

@@ -2,6 +2,19 @@
     the prototype crashed when an icon runtime swapped nodes out underneath it. */
 const PATHS: Record<string, React.ReactNode> = {
   'chevron-left': <polyline points="15 18 9 12 15 6" />,
+  flame: (
+    <path d="M12 2c1 4 4 5 4 9a4 4 0 0 1-8 0c0-1.5.6-2.4 1.2-3.3C8.4 9.6 7 11.4 7 14a5 5 0 0 0 10 0c0-5-3-8-5-12z" />
+  ),
+  trophy: (
+    <>
+      <path d="M7 4h10v5a5 5 0 0 1-10 0z" />
+      <path d="M7 6H4a3 3 0 0 0 3 3" />
+      <path d="M17 6h3a3 3 0 0 1-3 3" />
+      <path d="M12 14v3" />
+      <path d="M9 20h6" />
+      <path d="M10 17h4l1 3H9z" />
+    </>
+  ),
   download: (
     <>
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />

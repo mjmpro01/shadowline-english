@@ -48,3 +48,22 @@ export function wordScore(word: string, takeScore: number): number {
 export function scoreLabel(score: number): string {
   return score >= 75 ? 'Great shadowing' : score >= 50 ? 'Getting there — try again' : 'Needs another take'
 }
+
+/** Which band a score lands in.
+ *
+ * Four bands rather than a gradient, and they line up with the wording
+ * `scoreLabel` already uses. A gradient makes 61 and 64 look like different
+ * results when they are the same result twice; a band makes crossing into the
+ * next one mean something, which is the only reason to show a tier at all. */
+export type Tier = 'bronze' | 'silver' | 'gold'
+
+export function tierOf(score: number): Tier {
+  return score >= 75 ? 'gold' : score >= 50 ? 'silver' : 'bronze'
+}
+
+/** What the next band costs, so a learner knows what they are re-recording for.
+ *  Null at the top: there is nothing above gold to reach for. */
+export function pointsToNextTier(score: number): number | null {
+  if (score >= 75) return null
+  return (score >= 50 ? 75 : 50) - score
+}
