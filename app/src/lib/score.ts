@@ -48,3 +48,38 @@ export function wordScore(word: string, takeScore: number): number {
 export function scoreLabel(score: number): string {
   return score >= 75 ? 'Great shadowing' : score >= 50 ? 'Getting there — try again' : 'Needs another take'
 }
+
+/** Which band a score lands in.
+ *
+ * Four bands rather than a gradient, and they line up with the wording
+ * `scoreLabel` already uses. A gradient makes 61 and 64 look like different
+ * results when they are the same result twice; a band makes crossing into the
+ * next one mean something, which is the only reason to show a tier at all. */
+export type Tier = 'bronze' | 'silver' | 'gold'
+
+export function tierOf(score: number): Tier {
+  return score >= 75 ? 'gold' : score >= 50 ? 'silver' : 'bronze'
+}
+
+/** What the next band costs, so a learner knows what they are re-recording for.
+ *  Null at the top: there is nothing above gold to reach for. */
+export function pointsToNextTier(score: number): number | null {
+  if (score >= 75) return null
+  return (score >= 50 ? 75 : 50) - score
+}
+
+/** Tints for a clip that has no still of its own.
+ *
+ * Six rather than a full spectrum, all dark enough for the app's cream text to
+ * sit on them, all within the palette's own world. A generated hue would give
+ * a library of cards that clash with each other and with the amber the rest of
+ * the app is built from.
+ */
+const TILE_TINTS = ['#3b3326', '#2f3a2d', '#3d2f2b', '#2a323a', '#372e39', '#26363a']
+
+/** Which tint a clip gets. Deterministic, so a clip looks the same every time
+ *  it is loaded and different from the one beside it — which is the whole job:
+ *  a grid where every card is the same grey rectangle cannot be scanned. */
+export function tintOf(id: string): string {
+  return TILE_TINTS[hashStr(id) % TILE_TINTS.length]
+}

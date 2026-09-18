@@ -519,6 +519,38 @@ export function AdminScreen() {
       </div>
       )}
 
+      {/* What the tab looked like before a file is chosen: two buttons on an
+          empty page, with nothing saying what pressing one leads to. An admin
+          opening this for the first time has no idea whether it wants a
+          three-second clip or an hour-long lecture, or that the lines write
+          themselves. Four steps is the whole answer. */}
+      {tab === 'cut' && !loaded && !busy && (
+        <div className="card elev-sm stack gap-3" style={{ maxWidth: 640 }}>
+          <div className="card-kicker">What happens next</div>
+          <ol className="studio-steps">
+            <li>
+              <b>Upload a recording.</b> An hour is fine — it is cut into single lines, not
+              practised whole.
+            </li>
+            <li>
+              <b>The words write themselves.</b> Whisper transcribes it in the background and
+              fills each line in, with its pronunciation. Keep cutting meanwhile.
+            </li>
+            <li>
+              <b>Move the boundaries.</b> Every clip is proposed from the silences; drag, split
+              or unselect the ones you do not want.
+            </li>
+            <li>
+              <b>Publish.</b> The selected clips reach the library, and their video is cut in the
+              background.
+            </li>
+          </ol>
+          <div className="card-meta">
+            Learners practise what is published here. They cannot add clips of their own.
+          </div>
+        </div>
+      )}
+
       {saved !== null && (
         <div className="card elev-sm">
           <div className="card-kicker">Published</div>

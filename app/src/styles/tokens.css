@@ -51,7 +51,7 @@
   /* Dark + amber surface, as the prototype overrides it. */
   --color-bg: #201e1d;
   --color-text: #f5ead8;
-  --color-surface: #2c2a27;
+  --color-surface: #332f2b;
   --color-divider: rgba(245, 234, 216, 0.14);
   --color-accent: #d9a433;
   --color-accent-100: #3a2f14;
@@ -68,4 +68,34 @@
   --score-good: #a8c17e;
   --score-medium: #c9bfae;
   --score-attention: #e2905a;
+
+  /* --- 2D game surface ----------------------------------------------------
+     Depth here is a hard offset, never a blur. A panel is a sticker lying on
+     the board with a dark edge beneath it; a button is a key that travels when
+     you push it down. That is the whole trick, and it is why none of these
+     shadows has a blur radius: a blurred shadow reads as a photograph of a
+     thing, a hard one reads as the thing itself.
+
+     The edge is darker than the background rather than black, so panels look
+     cut from the board instead of floating over a hole in it. */
+  --game-edge: #100f0e;
+  --game-rim: rgba(245, 234, 216, 0.17);
+
+  /* How far a panel sits off the board, and how far a key travels when pressed.
+     A key that travels its whole lift bottoms out, which is what makes the
+     press feel like a press rather than a wobble. */
+  --game-lift: 5px;
+  --game-lift-lg: 8px;
+
+  /* Overshoot, for anything that appears rather than moves. Scores, badges and
+     popups land with a small bounce; nothing that a learner reads while it is
+     still moving uses this. */
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Where a score lands. Four bands rather than a gradient, because a number
+     that is nearly the same two days running should look the same, and a
+     number that crosses into the next band should look different. */
+  --tier-bronze: #c47b3f;
+  --tier-silver: #b8c0c9;
+  --tier-gold: #f0c04a;
 }

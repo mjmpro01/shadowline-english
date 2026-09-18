@@ -99,6 +99,36 @@ img {
   opacity: 0.45;
   cursor: not-allowed;
 }
+/* The two solid buttons are keys: they stand off the board and travel when
+   pushed. Ghost and icon buttons are not — they are text and glyphs, and a
+   piece of text that pops up off the page reads as a mistake. */
+.btn-primary,
+.btn-secondary {
+  box-shadow: 0 var(--game-lift) 0 var(--game-edge);
+  transition:
+    transform 90ms ease-out,
+    box-shadow 90ms ease-out,
+    background 120ms ease-out;
+}
+.btn-primary:hover:not(:disabled),
+.btn-secondary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 calc(var(--game-lift) + 1px) 0 var(--game-edge);
+}
+/* Pressed all the way down: travels its whole lift and bottoms out on the
+   board. Anything less feels like a wobble rather than a press. */
+.btn-primary:active:not(:disabled),
+.btn-secondary:active:not(:disabled) {
+  transform: translateY(var(--game-lift));
+  box-shadow: 0 0 0 var(--game-edge);
+}
+/* A key that cannot be pressed should not look pressable, so it lies flat. */
+.btn-primary:disabled,
+.btn-secondary:disabled {
+  box-shadow: none;
+  transform: none;
+}
+
 .btn-primary {
   background: var(--color-accent);
   color: var(--color-bg);
@@ -111,12 +141,13 @@ img {
 }
 .btn-secondary {
   border-color: var(--color-divider);
+  background: color-mix(in srgb, var(--color-text) 5%, var(--color-surface));
 }
 .btn-secondary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+  background: color-mix(in srgb, var(--color-text) 11%, var(--color-surface));
 }
 .btn-secondary:active:not(:disabled) {
-  background: color-mix(in srgb, var(--color-text) 14%, transparent);
+  background: color-mix(in srgb, var(--color-text) 16%, var(--color-surface));
 }
 .btn-ghost {
   color: var(--color-accent);
@@ -209,6 +240,11 @@ img {
   padding: var(--space-3);
   border-radius: calc(var(--radius-lg) * 1.15);
   background: var(--color-surface);
+  /* A rim, so a panel has an edge where it meets the board. Without it the
+     hard shadow below reads as a smudge under a shape that has no outline.
+     Two pixels rather than one: at one it is a hairline the eye reads as an
+     artefact, at two it is a drawn line. */
+  border: 2px solid var(--game-rim);
 }
 .card-kicker {
   font-size: 10px;
@@ -236,13 +272,13 @@ img {
   color: color-mix(in srgb, var(--color-text) 50%, transparent);
 }
 .elev-sm {
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 3px 0 var(--game-edge);
 }
 .elev-md {
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 var(--game-lift) 0 var(--game-edge);
 }
 .elev-lg {
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 var(--game-lift-lg) 0 var(--game-edge);
 }
 
 /* — tags — */
@@ -337,4 +373,21 @@ img {
   justify-content: flex-end;
   gap: var(--space-2);
   margin-top: var(--space-2);
+}
+
+
+/* Somebody who has asked their system for less motion has asked for it here
+   too. The depth stays — it is what the layout is built on — and only the
+   travel goes. */
+@media (prefers-reduced-motion: reduce) {
+  .btn-primary,
+  .btn-secondary {
+    transition: background 120ms ease-out;
+  }
+  .btn-primary:hover:not(:disabled),
+  .btn-secondary:hover:not(:disabled),
+  .btn-primary:active:not(:disabled),
+  .btn-secondary:active:not(:disabled) {
+    transform: none;
+  }
 }

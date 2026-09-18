@@ -2,11 +2,13 @@ import { useCallback, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ClipPlayer } from '../components/ClipPlayer'
 import { DubExport } from '../components/DubExport'
+import { ClipFace } from '../components/ClipFace'
 import { Icon } from '../components/Icon'
+import { ScoreBadge } from '../components/ScoreBadge'
 import { LoadFailure, Loading } from '../components/LoadState'
 import { NoSuchClip } from '../components/NoSuchClip'
 import { MAX_CLIP_SECONDS, type Take } from '../data/types'
-import { colorFor, scoreLabel } from '../lib/score'
+import { colorFor, pointsToNextTier as nextTierIn, scoreLabel } from '../lib/score'
 import { urlOf, useClipAudio, useClipVideo } from '../lib/useAudioUrl'
 import { useDub } from '../lib/useDub'
 import { SOURCE_LABEL, useGloss } from '../lib/useGloss'
@@ -170,7 +172,12 @@ export function PracticeScreen() {
               two video areas and a picture in the wrong one. */}
           <div className="practice-video">
             <ClipPlayer attach={attachSource} videoUrl={sourceVideoUrl} audioUrl={sourceUrl} />
-            {!sourceVideoUrl && <Icon name="play" size={34} />}
+            {/* The same tint the library card gives this clip, so it looks like
+                itself wherever it turns up rather than becoming an anonymous
+                brown box the moment it is opened. No line on it: the line is
+                directly below with every word tappable, and that copy is the
+                useful one. */}
+            {!sourceVideoUrl && <ClipFace id={video.id} posterUrl="" line="" />}
           </div>
 
           <div style={{ fontSize: 16, fontStyle: 'italic', textAlign: 'center' }}>
@@ -272,14 +279,26 @@ export function PracticeScreen() {
           )}
 
           {take && take.score !== null && (
-            <div className="card elev-sm row between">
-              <div>
+            <div className="card elev-sm row between gap-3">
+              <div className="stack gap-1" style={{ flex: 1 }}>
                 <div className="card-kicker">Pitch match score</div>
-                <div style={{ fontSize: 13, opacity: 0.75 }}>{scoreLabel(take.score)} — re-record to improve</div>
+                <div style={{ fontSize: 13, opacity: 0.75 }}>{scoreLabel(take.score)}</div>
+                {/* What the next band costs, rather than a bare "re-record to
+                    improve": a learner deciding whether to go again wants to
+                    know how far away it is. */}
+                <div style={{ fontSize: 12, opacity: 0.6 }}>
+                  {nextTierIn(take.score) === null
+                    ? 'Top band — nothing above this one'
+                    : `${nextTierIn(take.score)} more for the next band`}
+                </div>
+                <div className="meter" style={{ marginTop: 2 }}>
+                  <span style={{ width: `${take.score}%`, background: colorFor(take.score) }} />
+                </div>
               </div>
-              <div style={{ fontFamily: 'var(--font-heading)', fontSize: 32, color: colorFor(take.score) }}>
-                {take.score}
-              </div>
+              {/* Keyed by the result, so a re-record mounts a fresh badge and
+                  the number climbs again rather than sliding from the last
+                  take's score to this one. */}
+              <ScoreBadge key={`${take.id}-${take.score}`} score={take.score} />
             </div>
           )}
 

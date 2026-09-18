@@ -226,17 +226,106 @@
   height: 1px;
   background: var(--color-divider);
 }
+/* A stat bar, read in pips rather than as a continuous fill.
+   The track is drawn with a repeating gradient, so twenty segments cost one
+   element and the fill above it needs no knowledge of them: it is still a
+   percentage width, and the notches simply show through where it stops. */
 .meter {
   width: 100%;
-  height: 5px;
+  height: 10px;
   background: var(--color-neutral-200);
-  border-radius: 99px;
+  border: 2px solid var(--game-edge);
+  border-radius: 4px;
   overflow: hidden;
+  position: relative;
 }
 .meter > span {
   display: block;
   height: 100%;
-  border-radius: 99px;
+  transition: width 500ms var(--ease-pop);
+}
+/* The notches, over both the fill and the empty track. 5% apart, so a bar
+   reads as twenty pips and a single pip is worth five points. */
+.meter::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to right,
+    transparent 0,
+    transparent calc(5% - 2px),
+    var(--game-edge) calc(5% - 2px),
+    var(--game-edge) 5%
+  );
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .meter > span {
+    transition: none;
+  }
+}
+
+/* --- The score, when it lands ---------------------------------------------
+   The one reward moment in the app: a learner recorded something and is
+   waiting to find out how it went. It is drawn as a token stamped with a
+   number — a thick rim in the band's colour, the band named underneath — so
+   that crossing from silver into gold is something you can see from across the
+   room rather than a two-point difference in a small figure. */
+.score-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-width: 84px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 3px solid var(--tier);
+  background: color-mix(in srgb, var(--tier) 14%, var(--color-surface));
+  box-shadow: 0 var(--game-lift) 0 var(--game-edge);
+  animation: score-land 420ms var(--ease-pop) both;
+}
+.score-badge.tier-bronze {
+  --tier: var(--tier-bronze);
+}
+.score-badge.tier-silver {
+  --tier: var(--tier-silver);
+}
+.score-badge.tier-gold {
+  --tier: var(--tier-gold);
+}
+.score-badge-number {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 34px;
+  line-height: 1;
+  color: var(--tier);
+  /* Tabular figures, so a number counting up from 0 to 100 does not shuffle
+     the badge's width three times on the way. */
+  font-variant-numeric: tabular-nums;
+}
+.score-badge-tier {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--tier);
+  opacity: 0.85;
+}
+
+@keyframes score-land {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .score-badge {
+    animation: none;
+  }
 }
 .score-big {
   font-family: var(--font-heading);
@@ -604,4 +693,110 @@
     height: 30px;
     font-size: 12px;
   }
+}
+
+
+/* --- The dashboard HUD -----------------------------------------------------
+   Four tiles a learner reads before deciding whether to practise. Each carries
+   its own glyph so the row reads as four things rather than four numbers that
+   have to be told apart by their labels, and the number comes before its label
+   because the number is what anybody is looking for. */
+.stat-tile {
+  align-items: flex-start;
+  gap: 2px;
+}
+.stat-tile-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  margin-bottom: 2px;
+  color: var(--color-neutral-400);
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+  border: 2px solid var(--game-rim);
+}
+.stat-tile-value {
+  font-size: 28px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+/* A streak that is alive. Lighting the tile only when there is one to light is
+   the whole point: a zero on a burning tile would be a lie told in amber. */
+.stat-tile[data-lit] {
+  border-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
+}
+.stat-tile[data-lit] .stat-tile-icon {
+  color: var(--color-bg);
+  background: var(--color-accent);
+  border-color: var(--color-accent-400);
+}
+.stat-tile[data-lit] .stat-tile-value {
+  color: var(--color-accent-700);
+}
+
+/* The face of a clip with no still: the line it says, on a tint it keeps.
+   Fills the frame exactly as a poster does, so a grid mixing the two still
+   reads as one grid. */
+.thumb-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  padding: var(--space-3);
+  /* Room for the duration tag, which sits in the bottom right. */
+  padding-bottom: 38px;
+}
+.thumb-face-line {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 17px;
+  line-height: 1.25;
+  color: var(--color-text);
+  /* Four lines at most. A long line would otherwise push its own last words
+     out through the bottom of the frame. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+}
+
+
+/* Dub review: the picture on one side, everything that drives it on the other.
+   A 9:16 frame is tall, and stacking the transport, the export and the takes
+   under it left a four-hundred-pixel column with half the screen empty either
+   side. Below 760px it stacks, which is the shape a phone wants anyway. */
+.dub-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+@media (max-width: 760px) {
+  .dub-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+}
+
+
+/* The studio's opening explanation. Numbered because the four steps happen in
+   an order and two of them happen without the admin doing anything. */
+.studio-steps {
+  margin: 0;
+  padding-left: 1.3em;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: 14px;
+  line-height: 1.45;
+}
+.studio-steps ::marker,
+.studio-steps > li::marker {
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+}
+.studio-steps b {
+  font-weight: 600;
 }

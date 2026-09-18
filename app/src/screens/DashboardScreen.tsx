@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { ClipFace } from '../components/ClipFace'
 import { Icon } from '../components/Icon'
 import { statsFor } from '../lib/leaderboard'
 import { colorFor } from '../lib/score'
@@ -17,11 +18,22 @@ export function DashboardScreen() {
   const rest = rows.slice(3)
   const featured = data.videos.filter((video) => video.featured)
 
+  /* The HUD. Four numbers a learner checks before deciding whether to practise,
+     so each carries its own glyph: at a glance the row reads as a row of
+     things rather than as four numbers that have to be labelled apart.
+
+     `lit` is what separates a streak that is alive from one that is not. A
+     zero on a flame tile in full colour would be a lie told in amber. */
   const summary = [
-    { label: 'Clips practised', value: new Set(data.takes.map((take) => take.videoId)).size },
-    { label: 'Takes recorded', value: mine.takes },
-    { label: 'Average score', value: mine.averageScore ?? '—', color: mine.averageScore ? colorFor(mine.averageScore) : undefined },
-    { label: 'Day streak', value: mine.streak },
+    { label: 'Clips practised', value: new Set(data.takes.map((take) => take.videoId)).size, icon: 'library' as const },
+    { label: 'Takes recorded', value: mine.takes, icon: 'mic' as const },
+    {
+      label: 'Average score',
+      value: mine.averageScore ?? '—',
+      color: mine.averageScore ? colorFor(mine.averageScore) : undefined,
+      icon: 'trophy' as const,
+    },
+    { label: 'Day streak', value: mine.streak, icon: 'flame' as const, lit: mine.streak > 0 },
   ]
 
   return (
@@ -33,11 +45,14 @@ export function DashboardScreen() {
 
       <div className="grid-scores">
         {summary.map((stat) => (
-          <div className="card elev-sm gap-1 stat-tile" key={stat.label}>
-            <div className="card-kicker">{stat.label}</div>
-            <div className="mono" style={{ fontSize: 28, color: stat.color }}>
+          <div className="card elev-sm gap-1 stat-tile" data-lit={stat.lit ? '' : undefined} key={stat.label}>
+            <div className="stat-tile-icon">
+              <Icon name={stat.icon} size={16} />
+            </div>
+            <div className="mono stat-tile-value" style={{ color: stat.color }}>
               {stat.value}
             </div>
+            <div className="card-kicker">{stat.label}</div>
           </div>
         ))}
       </div>
@@ -137,11 +152,11 @@ export function DashboardScreen() {
                   onClick={() => navigate(`/library/${video.id}`)}
                   aria-label={`Open ${video.title}`}
                 >
-                  {video.posterUrl ? (
-                    <img className="thumb-poster" src={video.posterUrl} alt="" loading="lazy" />
-                  ) : (
-                    <Icon name="play" size={28} />
-                  )}
+                  <ClipFace
+                    id={video.id}
+                    posterUrl={video.posterUrl}
+                    line={video.captions[0]?.text ?? ''}
+                  />
                   <span className="tag tag-accent" style={{ position: 'absolute', left: 8, top: 8 }}>
                     featured
                   </span>
@@ -150,16 +165,24 @@ export function DashboardScreen() {
                 <div className="card-title clamp-2" style={{ fontSize: 15, marginTop: 'var(--space-2)' }}>
                   {video.title}
                 </div>
-                {/* The line, for the same reason the library card shows it:
-                    an unnamed clip is called "Clip 3", which says where it is
-                    and nothing about what is said in it. */}
+                {/* Never the same thing twice, exactly as on the library card:
+                    a clip with no still says its line on the tile above, so
+                    this carries the playlist; one with a still has nowhere else
+                    to put the line, so it comes back here. An unnamed clip is
+                    called "Clip 3", which says where it is and nothing about
+                    what is said in it, so one of the two always has to be the
+                    line. */}
                 <div className="card-meta clamp-2">
-                  {video.captions[0]?.text || video.playlist || video.source}
+                  {(video.posterUrl ? video.captions[0]?.text : video.playlist) ||
+                    video.playlist ||
+                    video.source}
                 </div>
                 <button
                   type="button"
                   className="btn btn-primary btn-block"
-                  style={{ marginTop: 2 }}
+                  // Pinned to the bottom, so a row of cards has a row of
+                  // buttons rather than a ragged edge wherever a title wraps.
+                  style={{ marginTop: 'auto' }}
                   onClick={() => navigate(`/library/${video.id}/practice`)}
                 >
                   <Icon name="mic" size={14} />

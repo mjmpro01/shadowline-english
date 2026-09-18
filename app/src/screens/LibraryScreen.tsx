@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ClipFace } from '../components/ClipFace'
 import { Icon } from '../components/Icon'
 import { allCategories, allPlaylists, searchClips } from '../lib/clips'
 import { colorFor, sparkPoints } from '../lib/score'
@@ -100,11 +101,11 @@ export function LibraryScreen() {
                 {/* The still when the cutter has made one; the icon otherwise,
                     which is every clip cut from audio and every one whose cut
                     is still queued. */}
-                {video.posterUrl ? (
-                  <img className="thumb-poster" src={video.posterUrl} alt="" loading="lazy" />
-                ) : (
-                  <Icon name="play" size={28} />
-                )}
+                <ClipFace
+                  id={video.id}
+                  posterUrl={video.posterUrl}
+                  line={video.captions[0]?.text ?? ''}
+                />
                 <span className="tag tag-neutral thumb-tag">{clock(video.durationSeconds)}</span>
               </button>
 
@@ -120,11 +121,15 @@ export function LibraryScreen() {
                 <span className="card-title clamp-2" style={{ fontSize: 15, marginTop: 'var(--space-2)' }}>
                   {video.title}
                 </span>
-                {/* The line, not the playlist: names are numbers now, so this
-                    is the only thing on the card that says what is said in it.
-                    The playlist is a chip above and a page of its own. */}
+                {/* Never the same thing twice. A clip with no still shows its
+                    line on the tile above, so this carries the playlist; one
+                    with a still has nowhere else to put the line, so it comes
+                    back here. Names are numbers now — "Clip 3" says nothing —
+                    which is why one of the two always has to be the line. */}
                 <span className="card-meta clamp-2">
-                  {video.captions[0]?.text || video.playlist || video.source}
+                  {(video.posterUrl ? video.captions[0]?.text : video.playlist) ||
+                    video.playlist ||
+                    video.source}
                 </span>
                 <span className="row between gap-2" style={{ marginTop: 2 }}>
                   <span className="score-big" style={{ color }}>
@@ -140,7 +145,10 @@ export function LibraryScreen() {
               <button
                 type="button"
                 className="btn btn-primary btn-block"
-                style={{ marginTop: 2 }}
+                // Pinned to the bottom of the card rather than to whatever the
+                // text above happens to end at, so a row of cards has a row of
+                // buttons instead of a ragged edge wherever a title wraps.
+                style={{ marginTop: 'auto' }}
                 onClick={() => navigate(`/library/${video.id}/practice`)}
               >
                 <Icon name="mic" size={14} />
