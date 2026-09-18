@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { ClipFace } from '../components/ClipFace'
 import { Icon } from '../components/Icon'
 import { statsFor } from '../lib/leaderboard'
 import { colorFor } from '../lib/score'
@@ -151,11 +152,11 @@ export function DashboardScreen() {
                   onClick={() => navigate(`/library/${video.id}`)}
                   aria-label={`Open ${video.title}`}
                 >
-                  {video.posterUrl ? (
-                    <img className="thumb-poster" src={video.posterUrl} alt="" loading="lazy" />
-                  ) : (
-                    <Icon name="play" size={28} />
-                  )}
+                  <ClipFace
+                    id={video.id}
+                    posterUrl={video.posterUrl}
+                    line={video.captions[0]?.text ?? ''}
+                  />
                   <span className="tag tag-accent" style={{ position: 'absolute', left: 8, top: 8 }}>
                     featured
                   </span>

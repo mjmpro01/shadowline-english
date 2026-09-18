@@ -735,3 +735,29 @@
 .stat-tile[data-lit] .stat-tile-value {
   color: var(--color-accent-700);
 }
+
+/* The face of a clip with no still: the line it says, on a tint it keeps.
+   Fills the frame exactly as a poster does, so a grid mixing the two still
+   reads as one grid. */
+.thumb-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  padding: var(--space-3);
+  /* Room for the duration tag, which sits in the bottom right. */
+  padding-bottom: 38px;
+}
+.thumb-face-line {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 17px;
+  line-height: 1.25;
+  color: var(--color-text);
+  /* Four lines at most. A long line would otherwise push its own last words
+     out through the bottom of the frame. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+}
