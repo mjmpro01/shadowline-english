@@ -1,15 +1,10 @@
 import { useEffect, useState } from 'react'
+import { useT } from '../i18n'
 import { type Tier, tierOf } from '../lib/score'
 
 /** How long the number takes to climb. Long enough to be a moment, short
  *  enough that nobody is waiting to read their score. */
 const COUNT_MS = 650
-
-const TIER_LABEL: Record<Tier, string> = {
-  bronze: 'Bronze',
-  silver: 'Silver',
-  gold: 'Gold',
-}
 
 /**
  * Counts from zero to the score once, when the score arrives.
@@ -54,14 +49,18 @@ function useCountUp(target: number): number {
   return shown
 }
 
+/** The band's name, as a message key. */
+const TIER_KEY = { bronze: 'tier.bronze', silver: 'tier.silver', gold: 'tier.gold' } as const
+
 export function ScoreBadge({ score }: { score: number }) {
+  const t = useT()
   const shown = useCountUp(score)
-  const tier = tierOf(score)
+  const tier: Tier = tierOf(score)
 
   return (
     <div className={`score-badge tier-${tier}`} data-tier={tier}>
       <div className="score-badge-number">{shown}</div>
-      <div className="score-badge-tier">{TIER_LABEL[tier]}</div>
+      <div className="score-badge-tier">{t(TIER_KEY[tier])}</div>
     </div>
   )
 }

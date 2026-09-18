@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
+import { useT } from '../i18n'
 import { Icon } from '../components/Icon'
 import { EXAMPLES } from '../data/seed'
 import { buildDeck, summarise } from '../lib/flashcards'
@@ -9,6 +10,7 @@ import { useApp } from '../store/context'
 export function FlashcardsScreen() {
   const { data, reviewWord } = useApp()
   const navigate = useNavigate()
+  const t = useT()
 
   // Fixed when the session starts: answering a card must not reshuffle the rest.
   const [deck] = useState(() => buildDeck(data.vocab))
@@ -94,7 +96,7 @@ export function FlashcardsScreen() {
                   onClick={() => setSaidAloud((v) => !v)}
                 >
                   <Icon name={saidAloud ? 'check-circle' : 'mic'} size={14} />
-                  {saidAloud ? 'Said it aloud' : 'Say it aloud'}
+                  {saidAloud ? t('cards.saidAloud') : t('cards.sayAloud')}
                 </button>
               </>
             ) : (

@@ -1,3 +1,4 @@
+import { useT } from '../i18n'
 import type { DubState } from '../lib/useDub'
 import { Icon } from './Icon'
 
@@ -26,13 +27,14 @@ export function DubExport({
   label: string
 }) {
   const { dub, error, request } = state
+  const t = useT()
 
   if (dub?.status === 'ready' && dub.url) {
     return (
       <div className="stack gap-2">
         <a className="btn btn-primary btn-block" href={dub.url} download={`${filename}.mp4`}>
           <Icon name="download" size={14} />
-          Download
+          {t('dub.download')}
         </a>
         <a className="btn btn-secondary btn-block" href={dub.url} target="_blank" rel="noreferrer">
           Open
@@ -44,7 +46,7 @@ export function DubExport({
   if (dub?.status === 'pending') {
     return (
       <div className="card-meta" role="status" style={{ textAlign: 'center' }}>
-        Putting your voice on the picture…
+        {t('dub.making')}
       </div>
     )
   }
@@ -57,10 +59,10 @@ export function DubExport({
         disabled={!hasRecording || !canDub}
         title={
           !hasRecording
-            ? 'Record a take first'
+            ? t('dub.recordFirst')
             : canDub
-              ? 'Make a video of this take over the original'
-              : 'This clip has no video to dub onto'
+              ? t('dub.makeVideo')
+              : t('dub.noVideoToDub')
         }
         onClick={() => void request()}
       >

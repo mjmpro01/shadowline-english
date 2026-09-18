@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useT } from '../i18n'
 import { Icon } from '../components/Icon'
 import { SegmentedControl } from '../components/SegmentedControl'
 import { ThumbnailStrip } from '../components/ThumbnailStrip'
@@ -67,6 +68,7 @@ function lengthLabel(seconds: number): string {
 type Tab = 'cut' | 'clips'
 
 export function AdminScreen() {
+  const t = useT()
   const { data, addClips, updateClip, deleteClip } = useApp()
   const [tab, setTab] = useState<Tab>('cut')
   const [manageQuery, setManageQuery] = useState('')
@@ -96,7 +98,7 @@ export function AdminScreen() {
 
   const open = async (file: File | undefined) => {
     if (!file) return
-    setBusy('Decoding…')
+    setBusy(t('studio.decoding'))
     setSaved(null)
     // The strip's slots exist from the moment a video is chosen, so it shows
     // as an empty filmstrip filling in rather than appearing once it is done.
@@ -357,7 +359,7 @@ export function AdminScreen() {
       .filter(({ line }) => line?.include)
     if (chosen.length === 0) return
 
-    setBusy('Saving…')
+    setBusy(t('studio.saving'))
     await addClips(
       chosen.map(({ segment, line }) => ({
         title: line.title.trim(),
@@ -418,9 +420,9 @@ export function AdminScreen() {
   return (
     <div className="stack gap-6">
       <div>
-        <h1 style={{ marginBottom: 2 }}>Clip studio</h1>
+        <h1 style={{ marginBottom: 2 }}>{t('studio.title')}</h1>
         <div className="card-meta">
-          Cut a recording into single lines for the library. Learners practise these; they cannot add their own.
+          {t('studio.subtitle')}
         </div>
       </div>
 
@@ -429,7 +431,7 @@ export function AdminScreen() {
         value={tab}
         onChange={setTab}
         options={[
-          { value: 'cut', label: 'Cut a recording' },
+          { value: 'cut', label: t('studio.tabCut') },
           { value: 'clips', label: `Clips (${data.videos.length})` },
         ]}
       />
@@ -455,7 +457,7 @@ export function AdminScreen() {
                     className={`btn ${video.featured ? 'btn-primary' : 'btn-secondary'}`}
                     onClick={() => void updateClip(video.id, { featured: !video.featured })}
                   >
-                    {video.featured ? 'Featured' : 'Feature'}
+                    {video.featured ? t('studio.featured') : t('studio.feature')}
                   </button>
                   <button type="button" className="btn btn-ghost" onClick={() => void deleteClip(video.id)}>
                     Delete clip
@@ -493,14 +495,14 @@ export function AdminScreen() {
               />
             </div>
           ))}
-          {data.videos.length === 0 && <div className="card-meta">No clips yet — cut a recording first.</div>}
+          {data.videos.length === 0 && <div className="card-meta">{t('studio.noClips')}</div>}
         </div>
       )}
 
       {tab === 'cut' && (
       <div className="row gap-3 wrap">
         <button type="button" className="btn btn-primary" onClick={() => fileInput.current?.click()}>
-          Upload audio or video
+          {t('studio.upload')}
         </button>
         <input
           ref={fileInput}
@@ -512,8 +514,8 @@ export function AdminScreen() {
         {/* Still not wired: fetching a video and stripping its audio is an
             endpoint the API does not have, and the button says so rather than
             failing when pressed. */}
-        <button type="button" className="btn btn-secondary" disabled title="Not available yet — upload a file instead">
-          Paste a YouTube URL
+        <button type="button" className="btn btn-secondary" disabled title={t('studio.youtubeSoon')}>
+          {t('studio.youtube')}
         </button>
         {busy && <span style={{ fontSize: 13, opacity: 0.7 }}>{busy}</span>}
       </div>
@@ -526,34 +528,30 @@ export function AdminScreen() {
           themselves. Four steps is the whole answer. */}
       {tab === 'cut' && !loaded && !busy && (
         <div className="card elev-sm stack gap-3" style={{ maxWidth: 640 }}>
-          <div className="card-kicker">What happens next</div>
+          <div className="card-kicker">{t('studio.stepsKicker')}</div>
           <ol className="studio-steps">
             <li>
-              <b>Upload a recording.</b> An hour is fine — it is cut into single lines, not
-              practised whole.
+              <b>{t('studio.step1Title')}</b> {t('studio.step1')}
             </li>
             <li>
-              <b>The words write themselves.</b> Whisper transcribes it in the background and
-              fills each line in, with its pronunciation. Keep cutting meanwhile.
+              <b>{t('studio.step2Title')}</b> {t('studio.step2')}
             </li>
             <li>
-              <b>Move the boundaries.</b> Every clip is proposed from the silences; drag, split
-              or unselect the ones you do not want.
+              <b>{t('studio.step3Title')}</b> {t('studio.step3')}
             </li>
             <li>
-              <b>Publish.</b> The selected clips reach the library, and their video is cut in the
-              background.
+              <b>{t('studio.step4Title')}</b> {t('studio.step4')}
             </li>
           </ol>
           <div className="card-meta">
-            Learners practise what is published here. They cannot add clips of their own.
+            {t('studio.stepsFooter')}
           </div>
         </div>
       )}
 
       {saved !== null && (
         <div className="card elev-sm">
-          <div className="card-kicker">Published</div>
+          <div className="card-kicker">{t('studio.published')}</div>
           <div style={{ fontSize: 14 }}>{saved} clips are now in the library.</div>
           {savedVideo && (
             <div className="card-meta">
@@ -568,27 +566,27 @@ export function AdminScreen() {
         <>
           <div className="row gap-3 wrap" style={{ alignItems: 'flex-end' }}>
             <div className="field" style={{ flex: '1 1 220px' }}>
-              <label htmlFor="playlist">Playlist</label>
+              <label htmlFor="playlist">{t('studio.playlist')}</label>
               <input
                 id="playlist"
                 className="input"
-                placeholder="Lesson or episode name"
+                placeholder={t('studio.playlistHint')}
                 value={playlist}
                 onChange={(e) => setPlaylist(e.target.value)}
               />
             </div>
             <div className="field" style={{ flex: '1 1 220px' }}>
-              <label htmlFor="batch-categories">Categories for the batch</label>
+              <label htmlFor="batch-categories">{t('studio.batchCategories')}</label>
               <input
                 id="batch-categories"
                 className="input"
-                placeholder="interview, daily conversation"
+                placeholder={t('studio.batchCategoriesHint')}
                 value={batchCategories}
                 onChange={(e) => setBatchCategories(e.target.value)}
               />
             </div>
             <button type="button" className="btn btn-secondary" onClick={applyCategoriesToAll}>
-              Apply to all clips
+              {t('studio.applyToAll')}
             </button>
           </div>
 
@@ -602,13 +600,13 @@ export function AdminScreen() {
 
             <div className="row between wrap gap-2">
               <div className="card-meta">
-                {transcript === null && 'Listening for the words…'}
+                {transcript === null && t('studio.listening')}
                 {transcript?.status === 'pending' &&
-                  'Transcribing — the lines fill themselves in when it finishes. Keep cutting meanwhile.'}
+                  t('studio.transcribing')}
                 {transcript?.status === 'ready' &&
                   `Transcribed ${transcript.words.length} words. Empty lines have been filled in — check them.`}
                 {transcript?.status === 'failed' &&
-                  'The words could not be transcribed, so the lines are yours to type.'}
+                  t('studio.noTranscript')}
               </div>
               {/* Boundaries move after the words arrive, and the lines are not
                   rewritten underneath the admin when they do. This is how that
@@ -736,19 +734,19 @@ export function AdminScreen() {
                   </div>
                   <div className="row gap-3 wrap">
                     <div className="field" style={{ flex: '1 1 200px' }}>
-                      <label htmlFor={`title-${index}`}>Name (optional)</label>
+                      <label htmlFor={`title-${index}`}>{t('studio.nameOptional')}</label>
                       <input
                         id={`title-${index}`}
                         className="input"
                         placeholder={
-                          clipNumbers[index] ? clipName(clipNumbers[index]) : 'Named when published'
+                          clipNumbers[index] ? clipName(clipNumbers[index]) : t('studio.namedWhenPublished')
                         }
                         value={lines[index]?.title ?? ''}
                         onChange={(e) => update(index, { title: e.target.value })}
                       />
                     </div>
                     <div className="field" style={{ flex: '1 1 200px' }}>
-                      <label htmlFor={`categories-${index}`}>Categories</label>
+                      <label htmlFor={`categories-${index}`}>{t('studio.categories')}</label>
                       <input
                         id={`categories-${index}`}
                         className="input"

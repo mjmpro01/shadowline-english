@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react'
+import { useT } from '../i18n'
 import { ACCEPTED_IMAGE_TYPES, isAcceptedImage, prepareAvatar } from '../lib/image'
 
 /**
@@ -16,6 +17,7 @@ export function AvatarSlot({
   editable?: boolean
   onPick?: (blob: Blob) => void
 }) {
+  const t = useT()
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -69,7 +71,7 @@ export function AvatarSlot({
         }}
         onDragLeave={() => setDragging(false)}
         onDrop={editable ? onDrop : undefined}
-        aria-label={editable ? 'Change avatar' : 'Avatar'}
+        aria-label={editable ? t('profile.changeAvatar') : t('profile.avatar')}
       >
         {shown ? <img src={shown} alt="" /> : 'Avatar'}
       </button>

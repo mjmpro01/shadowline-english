@@ -1,15 +1,19 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useT } from '../i18n'
+import type { MessageKey } from '../i18n/en'
 import { Icon } from '../components/Icon'
 import type { VocabStatus } from '../data/types'
 import { meaningOrWait } from '../lib/text'
 import { useApp } from '../store/context'
 
-const FILTERS: { label: string; value: 'All' | VocabStatus }[] = [
-  { label: 'All', value: 'All' },
-  { label: 'New', value: 'new' },
-  { label: 'Learning', value: 'learning' },
-  { label: 'Known', value: 'known' },
+/** Labels as keys: the filters are defined at module scope, where the language
+ *  is not known yet. */
+const FILTERS: { label: MessageKey; value: 'All' | VocabStatus }[] = [
+  { label: 'vocab.all', value: 'All' },
+  { label: 'vocab.new', value: 'new' },
+  { label: 'vocab.learning', value: 'learning' },
+  { label: 'vocab.known', value: 'known' },
 ]
 
 const STATUS_TAG: Record<VocabStatus, string> = {
@@ -18,15 +22,16 @@ const STATUS_TAG: Record<VocabStatus, string> = {
   new: 'tag tag-neutral',
 }
 
-const STATUS_LABEL: Record<VocabStatus, string> = {
-  known: 'Known',
-  learning: 'Learning',
-  new: 'New',
+const STATUS_LABEL: Record<VocabStatus, MessageKey> = {
+  known: 'vocab.known',
+  learning: 'vocab.learning',
+  new: 'vocab.new',
 }
 
 export function VocabularyScreen() {
   const { data, setVocabStatus } = useApp()
   const navigate = useNavigate()
+  const t = useT()
   const [filter, setFilter] = useState<'All' | VocabStatus>('All')
 
   const words = data.vocab.filter((word) => filter === 'All' || word.status === filter)
@@ -34,7 +39,7 @@ export function VocabularyScreen() {
   return (
     <div className="stack gap-6">
       <div className="row between wrap gap-2">
-        <h1 style={{ margin: 0 }}>Vocabulary</h1>
+        <h1 style={{ margin: 0 }}>{t('vocab.title')}</h1>
         <button
           type="button"
           className="btn btn-primary"
@@ -60,7 +65,7 @@ export function VocabularyScreen() {
       </div>
 
       {words.length === 0 && (
-        <div className="card-meta">No words here yet — tap a word while practising to add it.</div>
+        <div className="card-meta">{t('vocab.noWords')}</div>
       )}
 
       <div className="grid-vocab">
@@ -71,7 +76,7 @@ export function VocabularyScreen() {
             <div className="card elev-sm" key={word.id}>
               <div className="row between gap-2">
                 <div className="card-title">{word.word}</div>
-                <span className={STATUS_TAG[word.status]}>{STATUS_LABEL[word.status]}</span>
+                <span className={STATUS_TAG[word.status]}>{t(STATUS_LABEL[word.status])}</span>
               </div>
               <div className="mono" style={{ fontSize: 13, opacity: 0.6 }}>
                 {word.ipa}
@@ -103,7 +108,7 @@ export function VocabularyScreen() {
                 onClick={() => void setVocabStatus(word.id, known ? 'learning' : 'known')}
               >
                 <Icon name={known ? 'check-circle' : 'circle'} size={14} />
-                {known ? 'Learned' : 'Mark learned'}
+                {known ? t('vocab.learned') : t('vocab.markLearned')}
               </button>
             </div>
           )

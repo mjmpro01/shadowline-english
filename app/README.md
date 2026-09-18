@@ -98,6 +98,38 @@ scored, or measured and unscoreable — a recording with no speech in it, or a c
 that has no source audio to compare against. The starter clips have none, so a
 take against one is kept without a score being invented for it.
 
+## Languages
+
+English and Vietnamese, in `src/i18n/`. Adding a third is one file and one
+line: copy `vi.ts`, translate it, and add it to `LOCALES` in `index.ts`.
+
+`en.ts` is the source of truth twice over — it is what the app falls back to,
+and its keys are the type every other locale is checked against. A translation
+that misses a key, misspells one, or takes different arguments **does not
+compile**. That is the whole reason the messages are a typed object rather than
+a bag of JSON: the alternative is finding out in front of a learner, and a
+missing key in JSON is an empty space on a screen that nobody notices until
+somebody who reads that language does.
+
+A message is a string, or a function when the sentence depends on a number or a
+name. The function lives in the locale rather than at the call site because the
+rules are the translator's business: English needs "1 take" and "2 takes",
+Vietnamese needs neither, and a call site that built the sentence itself would
+be English wherever it was shown. The same goes for `scoreLabelKey` and
+`needsPractice` — both hand back keys and measurements, never wording.
+
+The language is chosen on the Profile screen and kept in `localStorage`. On a
+first visit it comes from the browser's own list of preferences, in order, so
+somebody whose first choice we do not speak still gets their second. Every
+language is named in itself: somebody who has landed in one they cannot read
+has to be able to find their own in the list.
+
+The tests hold two lines nothing else can. `test/i18n.test.ts` checks at
+runtime what the types check at build time, in case somebody silences the
+compiler with a cast, and it fails on any message left identical to the English
+outside a short list of words that are the same in both. The browser tests run
+in English, which is the default, so they read as they always did.
+
 ## Tests
 
 `test/` checks the cut proposal, the library search, the flashcard deck, the

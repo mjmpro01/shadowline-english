@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useT } from '../i18n'
 import { ClipPlayer } from '../components/ClipPlayer'
 import { Icon } from '../components/Icon'
 import { LoadFailure, Loading } from '../components/LoadState'
@@ -14,6 +15,7 @@ import { useApp } from '../store/context'
 export function AnalysisScreen() {
   const { videoId } = useParams()
   const navigate = useNavigate()
+  const t = useT()
   const { data, state, statsFor } = useApp()
   const [selected, setSelected] = useState<{ videoId: string; takeId: string } | null>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
@@ -52,7 +54,7 @@ export function AnalysisScreen() {
         </button>
         <h2 style={{ marginBottom: 4 }}>{video.title}</h2>
         <div className="card elev-sm">
-          <div className="card-body">No takes recorded yet — practice this clip to see your pitch analysis.</div>
+          <div className="card-body">{t('analysis.noTakes')}</div>
           <button type="button" className="btn btn-primary" style={{ alignSelf: 'flex-start' }} onClick={() => navigate(`/library/${video.id}/practice`)}>
             Start practising
           </button>
@@ -107,7 +109,7 @@ export function AnalysisScreen() {
       <div className="card elev-sm">
         <div className="row between wrap gap-2">
           <div className="row gap-2">
-            <div className="card-kicker">Pitch contour</div>
+            <div className="card-kicker">{t('analysis.pitchContour')}</div>
             <span className="tag tag-accent-2">measured</span>
           </div>
           <div className="row gap-2">
@@ -115,21 +117,21 @@ export function AnalysisScreen() {
               type="button"
               className="btn btn-secondary"
               disabled={!playable}
-              title={playable ? "Play the clip's original" : 'No original recording attached to this clip'}
+              title={playable ? t('analysis.playOriginal') : t('analysis.noOriginalAttached')}
               onClick={() => void sourceRef.current?.play()}
             >
               <Icon name="play" size={14} />
-              Original
+              {t('analysis.original')}
             </button>
             <button
               type="button"
               className="btn btn-secondary"
               disabled={!myVoiceUrl}
-              title={myVoiceUrl ? 'Play this take' : 'This take has no recording'}
+              title={myVoiceUrl ? t('analysis.playTake') : t('analysis.takeNoAudio')}
               onClick={() => audioRef.current?.play()}
             >
               <Icon name="play" size={14} />
-              My take
+              {t('analysis.myTake')}
             </button>
             {myVoiceUrl && <audio ref={audioRef} src={myVoiceUrl} />}
           </div>
@@ -142,7 +144,7 @@ export function AnalysisScreen() {
         {chart === null ? (
           <div className="card-meta" style={{ padding: '32px 0' }}>{contourPending(take)}</div>
         ) : (
-        <svg width="100%" viewBox="0 0 640 200" style={{ display: 'block' }} aria-label="Pitch contour chart">
+        <svg width="100%" viewBox="0 0 640 200" style={{ display: 'block' }} aria-label={t('analysis.chartLabel')}>
           <path d={chart.bandPath} fill="var(--color-neutral-300)" opacity="0.5" stroke="none" />
           {chart.gridLines.map((line) => (
             <line key={line.label} x1="30" y1={line.y} x2="630" y2={line.y} stroke="var(--color-divider)" strokeWidth="1" />
@@ -195,12 +197,12 @@ export function AnalysisScreen() {
           {chart.refPoints && (
             <div className="row gap-2">
               <div style={{ width: 14, height: 2, background: 'var(--color-neutral-600)' }} />
-              <span style={{ fontSize: 12, opacity: 0.7 }}>Source (±1 semitone)</span>
+              <span style={{ fontSize: 12, opacity: 0.7 }}>{t('analysis.source')}</span>
             </div>
           )}
           <div className="row gap-2">
             <div style={{ width: 14, height: 3, background: 'var(--score-good)', borderRadius: 2 }} />
-            <span style={{ fontSize: 12, opacity: 0.7 }}>You</span>
+            <span style={{ fontSize: 12, opacity: 0.7 }}>{t('analysis.you')}</span>
           </div>
         </div>
         )}
@@ -225,7 +227,7 @@ export function AnalysisScreen() {
         </div>
       ) : (
         <div className="card elev-sm stack gap-2">
-          <div className="card-kicker">{take.status === 'pending' ? 'Measuring' : 'Not scored'}</div>
+          <div className="card-kicker">{take.status === 'pending' ? t('analysis.measuring') : t('practice.notScored')}</div>
           <div style={{ fontSize: 14, opacity: 0.8 }}>{unscoredReason(take, sourceAudio.status === 'none')}</div>
           {take.status !== 'pending' && (
             <button
@@ -241,7 +243,7 @@ export function AnalysisScreen() {
       )}
 
       <div className="card elev-sm">
-        <div className="card-kicker">Summary</div>
+        <div className="card-kicker">{t('analysis.summary')}</div>
         <div style={{ fontSize: 15, lineHeight: 1.6 }}>
           {take.scores
             ? summariseTake(take.scores, take.analysis?.meanDeviation ?? null)
@@ -255,7 +257,7 @@ export function AnalysisScreen() {
         style={{ alignSelf: 'flex-start' }}
         onClick={() => navigate(`/library/${video.id}/dub`)}
       >
-        Watch dub playback
+        {t('analysis.watchDub')}
       </button>
     </div>
   )
