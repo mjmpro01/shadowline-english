@@ -1,4 +1,3 @@
-import { Icon } from './Icon'
 import { tintOf } from '../lib/score'
 
 /** How much of the line the tile shows. Enough to tell two clips apart at a
@@ -24,19 +23,20 @@ export function ClipFace({ id, posterUrl, line }: { id: string; posterUrl: strin
     return <img className="thumb-poster" src={posterUrl} alt="" loading="lazy" />
   }
 
+  // The tint always. The words only when nothing else on the screen is already
+  // saying them: on the practice screen the line sits under the frame with
+  // every word tappable, and printing it again above would be the same sentence
+  // twice, the smaller copy being the useful one. Those callers pass no line.
   const words = line.trim().split(/\s+/).filter(Boolean)
-  if (!words.length) {
-    // A clip with no picture and no line yet. The triangle is still the honest
-    // answer: there is nothing to say about it.
-    return <Icon name="play" size={28} />
-  }
 
   return (
     <span className="thumb-face" style={{ background: tintOf(id) }}>
-      <span className="thumb-face-line">
-        {words.slice(0, WORDS).join(' ')}
-        {words.length > WORDS ? '…' : ''}
-      </span>
+      {words.length > 0 && (
+        <span className="thumb-face-line">
+          {words.slice(0, WORDS).join(' ')}
+          {words.length > WORDS ? '…' : ''}
+        </span>
+      )}
     </span>
   )
 }

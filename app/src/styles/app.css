@@ -761,3 +761,42 @@
   -webkit-line-clamp: 4;
   overflow: hidden;
 }
+
+
+/* Dub review: the picture on one side, everything that drives it on the other.
+   A 9:16 frame is tall, and stacking the transport, the export and the takes
+   under it left a four-hundred-pixel column with half the screen empty either
+   side. Below 760px it stacks, which is the shape a phone wants anyway. */
+.dub-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+@media (max-width: 760px) {
+  .dub-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+}
+
+
+/* The studio's opening explanation. Numbered because the four steps happen in
+   an order and two of them happen without the admin doing anything. */
+.studio-steps {
+  margin: 0;
+  padding-left: 1.3em;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: 14px;
+  line-height: 1.45;
+}
+.studio-steps ::marker,
+.studio-steps > li::marker {
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+}
+.studio-steps b {
+  font-weight: 600;
+}

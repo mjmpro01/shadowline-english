@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ClipFace } from '../components/ClipFace'
 import { Icon } from '../components/Icon'
-import { needsPractice } from '../lib/practice'
+import { needsPractice, nextUp, weakestOverall } from '../lib/practice'
 import { METRIC_NAMES, type MetricName } from '../data/types'
 import { colorFor } from '../lib/score'
 import { useApp } from '../store/context'
@@ -49,7 +50,14 @@ export function ProgressScreen() {
   }))
   const linePoints = dots.map((d) => `${d.cx.toFixed(1)},${d.cy.toFixed(1)}`).join(' ')
 
-  const suggested = data.videos.find((v) => v.id === 'v5') ?? data.videos[0]
+  /* What to practise next, and why — both measured rather than asserted.
+     `v5` was a prototype clip id no real library has, so this always fell
+     through to whichever clip happened to be first, and offered it under a
+     sentence claiming a stress score had been measured and found wanting. With
+     no takes recorded at all, there was no such score to have. */
+  const suggested = nextUp(data.takes, data.videos)
+  const weakest = weakestOverall(data.takes)
+  const practised = new Set(data.takes.map((take) => take.videoId))
 
   const goPractice = (videoId: string) => navigate(`/library/${videoId}/practice`)
 
@@ -70,6 +78,46 @@ export function ProgressScreen() {
         ))}
       </div>
 
+      {/* A line needs two points. With none there is nothing to draw and the
+          chart was drawn anyway — three empty rules and an axis, which reads as
+          a chart that is broken rather than one that is waiting. With one there
+          was a single dot pinned to the left edge, which is worse: it looks
+          like a trend, and the trend it looks like is a cliff.
+
+          So below two days the card says what it has, which is a number and
+          how far off a line is. */}
+      {series.length === 0 ? (
+        <div className="card elev-sm stack gap-2">
+          <div className="card-kicker">No scores yet</div>
+          <div style={{ fontSize: 14, opacity: 0.8 }}>
+            Record a take and it lands here. Two days of practice and this becomes a line.
+          </div>
+          <button
+            type="button"
+            className="btn btn-primary"
+            style={{ alignSelf: 'flex-start' }}
+            onClick={() => navigate('/library')}
+          >
+            <Icon name="mic" size={14} />
+            Find a clip
+          </button>
+        </div>
+      ) : series.length === 1 ? (
+        <div className="card elev-sm row between gap-3">
+          <div className="stack gap-1">
+            <div className="card-kicker">{filter === 'All' ? 'Your score today' : `${filter} today`}</div>
+            <div style={{ fontSize: 13, opacity: 0.75 }}>
+              One day so far. Practise on another day and this becomes a line you can read.
+            </div>
+          </div>
+          <div
+            className="mono"
+            style={{ fontSize: 40, lineHeight: 1, color: colorFor(series[0].value) }}
+          >
+            {series[0].value}
+          </div>
+        </div>
+      ) : (
       <div className="card elev-sm">
         <svg width="100%" viewBox="0 0 640 180" style={{ display: 'block' }} aria-label="Average score over time">
           <line x1="30" y1="20" x2="630" y2="20" stroke="var(--color-divider)" />
@@ -95,6 +143,7 @@ export function ProgressScreen() {
           ))}
         </div>
       </div>
+      )}
 
       <div className="stack gap-2">
         <div className="card-kicker">Need practice</div>
@@ -136,15 +185,23 @@ export function ProgressScreen() {
               className="thumb"
               style={{ width: 52, height: 88, flexShrink: 0, aspectRatio: 'auto' }}
             >
-              <Icon name="play" size={20} />
+              <ClipFace
+                id={suggested.id}
+                posterUrl={suggested.posterUrl}
+                line={suggested.captions[0]?.text ?? ''}
+              />
             </span>
             <span style={{ minWidth: 0 }}>
               <span className="card-title" style={{ fontSize: 15, display: 'block' }}>
                 {suggested.title}
               </span>
-              <span className="card-meta">{suggested.source}</span>
+              <span className="card-meta">{suggested.playlist || suggested.source}</span>
               <span style={{ fontSize: 13, opacity: 0.75, marginTop: 4, display: 'block' }}>
-                Recommended — your stress score has been lowest this week.
+                {weakest
+                  ? `${weakest} is your lowest score so far — this is a good line to work it on.`
+                  : practised.has(suggested.id)
+                    ? 'Worth another take.'
+                    : 'You have not practised this one yet.'}
               </span>
             </span>
           </button>

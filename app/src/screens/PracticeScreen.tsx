@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ClipPlayer } from '../components/ClipPlayer'
 import { DubExport } from '../components/DubExport'
+import { ClipFace } from '../components/ClipFace'
 import { Icon } from '../components/Icon'
 import { ScoreBadge } from '../components/ScoreBadge'
 import { LoadFailure, Loading } from '../components/LoadState'
@@ -171,7 +172,12 @@ export function PracticeScreen() {
               two video areas and a picture in the wrong one. */}
           <div className="practice-video">
             <ClipPlayer attach={attachSource} videoUrl={sourceVideoUrl} audioUrl={sourceUrl} />
-            {!sourceVideoUrl && <Icon name="play" size={34} />}
+            {/* The same tint the library card gives this clip, so it looks like
+                itself wherever it turns up rather than becoming an anonymous
+                brown box the moment it is opened. No line on it: the line is
+                directly below with every word tappable, and that copy is the
+                useful one. */}
+            {!sourceVideoUrl && <ClipFace id={video.id} posterUrl="" line="" />}
           </div>
 
           <div style={{ fontSize: 16, fontStyle: 'italic', textAlign: 'center' }}>

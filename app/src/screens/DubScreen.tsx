@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { ClipFace } from '../components/ClipFace'
 import { Icon } from '../components/Icon'
 import { LoadFailure, Loading } from '../components/LoadState'
 import { NoSuchClip } from '../components/NoSuchClip'
@@ -117,9 +118,14 @@ export function DubScreen() {
         Analysis
       </button>
 
-      <div className="stack gap-4" style={{ maxWidth: 400, margin: '0 auto', width: '100%' }}>
-        <h3 style={{ margin: 0 }}>{video.title}</h3>
+      <h3 style={{ margin: 0 }}>{video.title}</h3>
 
+      {/* Picture on one side, everything that drives it on the other. A 9:16
+          frame is tall, and stacking the transport, the export and the takes
+          underneath it left a column of controls four hundred pixels wide with
+          half the screen empty either side of it. Below 760px it stacks, which
+          is the shape a phone wants anyway. */}
+      <div className="dub-grid">
         <div className="thumb" style={{ borderRadius: 'var(--radius-lg)' }}>
           {/* Muted on purpose, and the tag says so: the sound comes from the
               voice below, which is what dubbing is. No controls either — the
@@ -135,12 +141,21 @@ export function DubScreen() {
               aria-label={`${video.title}, without its sound`}
             />
           )}
-          <span className="tag tag-neutral" style={{ position: 'absolute', top: 10, left: 10 }}>
+          {/* Before the tag, not after it: the face fills the frame, so drawn
+              second it paints straight over the thing it is meant to sit
+              behind. */}
+          {!clipVideoUrl && (
+            <ClipFace id={video.id} posterUrl="" line={video.captions[0]?.text ?? ''} />
+          )}
+          <span
+            className="tag tag-neutral"
+            style={{ position: 'absolute', top: 10, left: 10, zIndex: 1 }}
+          >
             original audio muted
           </span>
-          {!clipVideoUrl && <Icon name="play" size={32} />}
         </div>
 
+        <div className="stack gap-4">
         <SegmentedControl
           name="audiosrc"
           value={source}
@@ -257,6 +272,7 @@ export function DubScreen() {
           {take && !take.hasAudio && (
             <div style={{ fontSize: 12, opacity: 0.6 }}>This take has no recording stored.</div>
           )}
+        </div>
         </div>
       </div>
     </div>

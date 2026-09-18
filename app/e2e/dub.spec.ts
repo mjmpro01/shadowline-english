@@ -167,8 +167,12 @@ test('the practice screen shows the clip in its own frame', async ({ page }) => 
   await expect(page.locator('video')).toHaveCount(1)
 })
 
-// An audio clip has no picture, so the frame keeps the icon it always showed.
-test('a clip with no video keeps the play icon in the frame', async ({ page }) => {
+// An audio clip has no picture, so the frame carries the clip's own face
+// instead: the tint it is given everywhere else, which is what keeps it looking
+// like itself rather than turning into an anonymous box the moment it is
+// opened. No line printed on it — the line is directly below, with every word
+// tappable, and that copy is the useful one.
+test('a clip with no video wears its own tint in the frame', async ({ page }) => {
   await resetServer(page)
   await asLearner(page)
 
@@ -177,6 +181,9 @@ test('a clip with no video keeps the play icon in the frame', async ({ page }) =
   await page.getByRole('button', { name: 'Practice', exact: true }).first().click()
   await page.waitForURL('**/practice')
 
-  await expect(page.locator('.practice-video svg')).toBeVisible()
+  const face = page.locator('.practice-video .thumb-face')
+  await expect(face).toBeVisible()
+  await expect(face).toHaveText('')
+  // Still no player, which is the part that matters: there is nothing to play.
   await expect(page.locator('video')).toHaveCount(0)
 })
