@@ -395,6 +395,14 @@
   padding: var(--space-3);
   background: var(--color-surface);
 }
+.wave-frame-guide {
+  border-color: color-mix(in srgb, #9b6bff 55%, var(--color-divider));
+  background: color-mix(in srgb, #9b6bff 6%, var(--color-surface));
+  min-height: 120px;
+}
+.wave-frame-guide[data-recording='true'] {
+  border-color: color-mix(in srgb, #3dd6c6 50%, var(--color-divider));
+}
 .wave-frame[data-recorded='true'] {
   border-color: var(--score-good);
 }

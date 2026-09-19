@@ -62,6 +62,9 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 			return fmt.Errorf("migration %s: %w", name, err)
 		}
 	}
+	if err := seedFreetalkOnce(ctx, pool); err != nil {
+		return fmt.Errorf("migration %s: %w", freetalkMigration, err)
+	}
 	return nil
 }
 
