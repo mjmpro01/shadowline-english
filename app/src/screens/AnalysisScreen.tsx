@@ -38,7 +38,7 @@ export function AnalysisScreen() {
   const myVoiceUrl = urlOf(useTakeAudio(take?.hasAudio ? take.id : null))
   const sourceAudio = useClipAudio(video?.id ?? null)
   const sourceUrl = urlOf(sourceAudio)
-  const sourceVideoUrl = urlOf(useClipVideo(video?.id ?? null))
+  const sourceVideoUrl = urlOf(useClipVideo(video?.id ?? null, Boolean(video?.videoPending)))
   const playable = sourceVideoUrl ?? sourceUrl
 
   if (state === 'loading') return <Loading />

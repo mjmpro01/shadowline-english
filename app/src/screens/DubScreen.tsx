@@ -40,7 +40,7 @@ export function DubScreen() {
   const takeIdForDub = take?.hasAudio ? take.id : null
   const myVoiceUrl = urlOf(useTakeAudio(take?.hasAudio ? take.id : null))
   const originalUrl = urlOf(useClipAudio(video?.id ?? null))
-  const clipVideoUrl = urlOf(useClipVideo(video?.id ?? null))
+  const clipVideoUrl = urlOf(useClipVideo(video?.id ?? null, Boolean(video?.videoPending)))
   const dubState = useDub(takeIdForDub)
 
   if (state === 'loading') return <Loading />

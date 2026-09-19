@@ -23,6 +23,9 @@ services:
     environment:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
+      # Lets the React app (localhost:5173) fetch presigned video/audio. Without
+      # this the player gets a URL and paints a black frame at 0:00.
+      MINIO_API_CORS_ALLOW_ORIGIN: ${APP_ORIGIN:-http://localhost:5173}
     volumes:
       - miniodata:/data
     ports:

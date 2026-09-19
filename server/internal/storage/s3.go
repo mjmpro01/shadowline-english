@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/cors"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
@@ -15,18 +16,32 @@ import (
 // browser reaches objects only through presigned URLs, so audio never passes
 // through the API process.
 type S3 struct {
-	client  *minio.Client
+	client *minio.Client
+	// sign is the client whose endpoint appears in presigned URLs. Inside
+	// Docker that is usually localhost:9000 (what the browser can reach), while
+	// client stays on minio:9000 (what this process can reach). Presigning does
+	// not dial the endpoint — it only stamps the host into the signature — so
+	// sign never has to be reachable from here.
+	sign    *minio.Client
 	buckets map[Bucket]string
 }
 
 type S3Options struct {
-	Endpoint    string
-	AccessKey   string
-	SecretKey   string
-	UseSSL      bool
-	Region      string
-	ClipsBucket string
-	TakesBucket string
+	Endpoint string
+	// PublicEndpoint is the host:port the browser uses to fetch objects. Empty
+	// means Endpoint is already public (typical for real S3). Required for the
+	// Docker Compose layout, where Endpoint is the internal service name.
+	PublicEndpoint string
+	AccessKey      string
+	SecretKey      string
+	UseSSL         bool
+	Region         string
+	ClipsBucket    string
+	TakesBucket    string
+	// CORSOrigins are the browser origins allowed to GET objects. The React
+	// app's origin belongs here; without it the video element loads a URL and
+	// paints nothing.
+	CORSOrigins []string
 }
 
 func NewS3(ctx context.Context, o S3Options) (*S3, error) {
@@ -39,8 +54,21 @@ func NewS3(ctx context.Context, o S3Options) (*S3, error) {
 		return nil, err
 	}
 
+	sign := client
+	if o.PublicEndpoint != "" && o.PublicEndpoint != o.Endpoint {
+		sign, err = minio.New(o.PublicEndpoint, &minio.Options{
+			Creds:  credentials.NewStaticV4(o.AccessKey, o.SecretKey, ""),
+			Secure: o.UseSSL,
+			Region: o.Region,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	s := &S3{
 		client:  client,
+		sign:    sign,
 		buckets: map[Bucket]string{Clips: o.ClipsBucket, Takes: o.TakesBucket},
 	}
 	for _, name := range s.buckets {
@@ -53,8 +81,31 @@ func NewS3(ctx context.Context, o S3Options) (*S3, error) {
 				return nil, err
 			}
 		}
+		if err := allowBrowserGets(ctx, client, name, o.CORSOrigins); err != nil {
+			// MinIO's CORS API varies by version; a failure here must not
+			// prevent the server from starting. Compose sets
+			// MINIO_API_CORS_ALLOW_ORIGIN as the reliable path for local use.
+			_ = err
+		}
 	}
 	return s, nil
+}
+
+// allowBrowserGets lets the React origin fetch presigned objects. MinIO
+// defaults to denying cross-origin GETs, which leaves <video> and <audio> on a
+// URL that never loads — a black player with 0:00 on the clock.
+func allowBrowserGets(ctx context.Context, client *minio.Client, bucket string, origins []string) error {
+	if len(origins) == 0 {
+		return nil
+	}
+	cfg := cors.NewConfig([]cors.Rule{{
+		AllowedOrigin: origins,
+		AllowedMethod: []string{"GET", "HEAD"},
+		AllowedHeader: []string{"*"},
+		ExposeHeader:  []string{"ETag", "Content-Length", "Content-Type", "Accept-Ranges", "Content-Range"},
+		MaxAgeSeconds: 3600,
+	}})
+	return client.SetBucketCors(ctx, bucket, cfg)
 }
 
 func (s *S3) Put(ctx context.Context, bucket Bucket, key string, r io.Reader, size int64, contentType string) error {
@@ -63,7 +114,7 @@ func (s *S3) Put(ctx context.Context, bucket Bucket, key string, r io.Reader, si
 }
 
 func (s *S3) SignedGetURL(ctx context.Context, bucket Bucket, key string, ttl time.Duration) (string, error) {
-	u, err := s.client.PresignedGetObject(ctx, s.buckets[bucket], key, ttl, url.Values{})
+	u, err := s.sign.PresignedGetObject(ctx, s.buckets[bucket], key, ttl, url.Values{})
 	if err != nil {
 		return "", err
 	}

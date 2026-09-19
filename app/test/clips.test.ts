@@ -19,6 +19,7 @@ const clip = (overrides: Partial<Video>): Video => ({
   categories: [],
   featured: false,
   hasVideo: false,
+  videoPending: false,
   posterUrl: '',
   startSeconds: 0,
   timestamp: '0:00–0:05',

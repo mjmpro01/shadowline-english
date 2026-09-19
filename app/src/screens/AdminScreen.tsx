@@ -95,6 +95,10 @@ export function AdminScreen() {
   /** The upload on the server, which the transcript and the cut both hang off.
    *  Null while it is still going up, or if it failed. */
   const [sourceId, setSourceId] = useState<string | null>(null)
+  /** In-flight upload promise so Publish can wait for the id the cutter needs
+   *  instead of racing a large file and saving audio-only by accident. */
+  const sourceUpload = useRef<Promise<string | null>>(Promise.resolve(null))
+  const [sourceUploading, setSourceUploading] = useState(false)
   const [transcript, setTranscript] = useState<Transcript | null>(null)
 
   const open = async (file: File | undefined) => {
@@ -103,8 +107,9 @@ export function AdminScreen() {
     setSaved(null)
     // The strip's slots exist from the moment a video is chosen, so it shows
     // as an empty filmstrip filling in rather than appearing once it is done.
-    setFrames(file.type.startsWith('video/') ? Array.from({ length: FILMSTRIP_SLOTS }, () => null) : [])
+    setFrames(looksLikeVideo(file.type, file.name) ? Array.from({ length: FILMSTRIP_SLOTS }, () => null) : [])
     setSourceId(null)
+    setSourceUploading(true)
     setTranscript(null)
     // The previous upload's url is dead the moment this one replaces it, and
     // an unrevoked one holds the whole file in memory until the tab closes.
@@ -141,16 +146,25 @@ export function AdminScreen() {
       // it is what fills the lines in and that cannot start until the server
       // has the file. Publishing then only has to reference it.
       //
-      // Not awaited: the cuts are already on screen and the admin can work
-      // while it uploads. A failure costs the transcript and the video, not the
-      // batch — which is exactly where the studio was before either existed.
-      void repository
+      // The studio stays interactive while it uploads; Publish awaits the
+      // promise so a quick split-and-publish cannot race past the source id.
+      const upload = repository
         .uploadSource(file, file.name)
-        .then(setSourceId)
-        .catch(() => setTranscript({ status: 'failed', language: '', words: [] }))
+        .then((id) => {
+          setSourceId(id)
+          setSourceUploading(false)
+          return id
+        })
+        .catch(() => {
+          setSourceUploading(false)
+          setTranscript({ status: 'failed', language: '', words: [] })
+          return null
+        })
+      sourceUpload.current = upload
     } catch {
       URL.revokeObjectURL(url)
       setBusy(null)
+      setSourceUploading(false)
       setLoaded(null)
       window.alert("That file couldn't be read as audio or video")
       return
@@ -363,6 +377,9 @@ export function AdminScreen() {
     if (chosen.length === 0) return
 
     setBusy(t('studio.saving'))
+    // Wait out an in-flight upload: sourceId state can still be null while the
+    // promise is about to resolve, and publishing without it skips the cut.
+    const uploadedId = sourceId ?? (await sourceUpload.current)
     await addClips(
       chosen.map(({ segment, line }) => ({
         title: line.title.trim(),
@@ -377,7 +394,7 @@ export function AdminScreen() {
       })),
       // Already on the server since the file was opened, so publishing sends
       // an id rather than the recording all over again.
-      sourceId,
+      uploadedId,
     )
     setBusy(null)
     setSaved(chosen.length)
@@ -391,6 +408,8 @@ export function AdminScreen() {
     setSelected(null)
     setFrames([])
     setSourceId(null)
+    setSourceUploading(false)
+    sourceUpload.current = Promise.resolve(null)
     setTranscript(null)
   }
 
@@ -788,10 +807,17 @@ export function AdminScreen() {
             type="button"
             className="btn btn-primary"
             style={{ alignSelf: 'flex-start' }}
-            disabled={included === 0 || tooLong > 0 || busy !== null}
+            disabled={
+              included === 0 ||
+              tooLong > 0 ||
+              busy !== null ||
+              (loaded.isVideo && sourceUploading)
+            }
             onClick={() => void publish()}
           >
-            Publish {included} clips to the library
+            {loaded.isVideo && sourceUploading
+              ? 'Uploading recording…'
+              : `Publish ${included} clips to the library`}
           </button>
         </>
       )}

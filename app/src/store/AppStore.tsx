@@ -18,6 +18,10 @@ const EMPTY: AppData = { videos: [], takes: [], vocab: [], profile: null }
 const POLL_MS = 700
 const POLL_TIMEOUT_MS = 60_000
 
+/** How often to refresh clips whose video cut is still running — library posters
+ *  and hasVideo flip when the cutter finishes, without a full-page reload. */
+const CUT_POLL_MS = 3_000
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AppData>(EMPTY)
   const [leaderboard, setLeaderboard] = useState<LeaderboardRow[]>([])
@@ -65,6 +69,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react/set-state-in-effect
     void load()
   }, [load])
+
+  // While any clip is waiting on the cutter, refresh the library so posters and
+  // hasVideo flip without a manual reload — the same moment Practice's player
+  // picks up the signed URL from its own poll.
+  const cutsPending = data.videos.some((video) => video.videoPending)
+  useEffect(() => {
+    if (!cutsPending || state !== 'ready') return
+    let active = true
+    const tick = async () => {
+      try {
+        const videos = await repository.listClips()
+        if (active) setData((prev) => ({ ...prev, videos }))
+      } catch {
+        // Keep the current list; the next tick retries.
+      }
+    }
+    const timer = setInterval(() => void tick(), CUT_POLL_MS)
+    return () => {
+      active = false
+      clearInterval(timer)
+    }
+  }, [cutsPending, state])
 
   const reload = useCallback(() => {
     setState('loading')

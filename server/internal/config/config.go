@@ -24,14 +24,18 @@ type Config struct {
 	AdminEmails map[string]bool
 
 	// Storage: S3/MinIO when Endpoint is set, otherwise a directory on disk.
-	S3Endpoint  string
-	S3AccessKey string
-	S3SecretKey string
-	S3UseSSL    bool
-	S3Region    string
-	ClipsBucket string
-	TakesBucket string
-	DiskRoot    string
+	S3Endpoint string
+	// S3PublicEndpoint is the host:port stamped into presigned URLs. Inside
+	// Docker, S3_ENDPOINT is the internal name (minio:9000) and this is
+	// localhost:9000 so the browser can actually fetch the object.
+	S3PublicEndpoint string
+	S3AccessKey      string
+	S3SecretKey      string
+	S3UseSSL         bool
+	S3Region         string
+	ClipsBucket      string
+	TakesBucket      string
+	DiskRoot         string
 
 	// Where the browser app is served from, for CORS and post-login redirects.
 	AppOrigin string
@@ -47,15 +51,16 @@ func Load() (Config, error) {
 		SessionSecret:      env("SESSION_SECRET", ""),
 		AuthFake:           env("AUTH_FAKE", "") == "1",
 		AdminEmails:        emailSet(env("ADMIN_EMAILS", "")),
-		S3Endpoint:         env("S3_ENDPOINT", ""),
-		S3AccessKey:        env("S3_ACCESS_KEY", ""),
-		S3SecretKey:        env("S3_SECRET_KEY", ""),
-		S3UseSSL:           env("S3_USE_SSL", "") == "1",
-		S3Region:           env("S3_REGION", "us-east-1"),
-		ClipsBucket:        env("S3_CLIPS_BUCKET", "clips"),
-		TakesBucket:        env("S3_TAKES_BUCKET", "takes"),
-		DiskRoot:           env("DISK_ROOT", ""),
-		AppOrigin:          env("APP_ORIGIN", "http://localhost:5173"),
+		S3Endpoint:       env("S3_ENDPOINT", ""),
+		S3PublicEndpoint: env("S3_PUBLIC_ENDPOINT", ""),
+		S3AccessKey:      env("S3_ACCESS_KEY", ""),
+		S3SecretKey:      env("S3_SECRET_KEY", ""),
+		S3UseSSL:         env("S3_USE_SSL", "") == "1",
+		S3Region:         env("S3_REGION", "us-east-1"),
+		ClipsBucket:      env("S3_CLIPS_BUCKET", "clips"),
+		TakesBucket:      env("S3_TAKES_BUCKET", "takes"),
+		DiskRoot:         env("DISK_ROOT", ""),
+		AppOrigin:        env("APP_ORIGIN", "http://localhost:5173"),
 	}
 
 	if c.DatabaseURL == "" {

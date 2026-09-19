@@ -110,13 +110,15 @@ func run(log *slog.Logger) error {
 func openStorage(ctx context.Context, cfg config.Config, signer *auth.Signer) (storage.Storage, error) {
 	if cfg.S3Endpoint != "" {
 		return storage.NewS3(ctx, storage.S3Options{
-			Endpoint:    cfg.S3Endpoint,
-			AccessKey:   cfg.S3AccessKey,
-			SecretKey:   cfg.S3SecretKey,
-			UseSSL:      cfg.S3UseSSL,
-			Region:      cfg.S3Region,
-			ClipsBucket: cfg.ClipsBucket,
-			TakesBucket: cfg.TakesBucket,
+			Endpoint:       cfg.S3Endpoint,
+			PublicEndpoint: cfg.S3PublicEndpoint,
+			AccessKey:      cfg.S3AccessKey,
+			SecretKey:      cfg.S3SecretKey,
+			UseSSL:         cfg.S3UseSSL,
+			Region:         cfg.S3Region,
+			ClipsBucket:    cfg.ClipsBucket,
+			TakesBucket:    cfg.TakesBucket,
+			CORSOrigins:    []string{cfg.AppOrigin},
 		})
 	}
 	base := publicBase(cfg)
