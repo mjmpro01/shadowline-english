@@ -368,11 +368,17 @@ answer rather than a broken one, and how the browser tests run.
 ### Seeding the cache
 
 An empty cache means the first learner to tap each word waits for it — which,
-at the start, is every word. Two files ship beside the worker: the 12,000
-commonest English words in frequency order, and a definition for 10,761 of
-them. `python -m shadowline.seedwords` loads both in about a second, with no key
-of any kind and no network, and that is what a deployment should run once before
-opening the doors.
+at the start, is every word. The API migrate step `00008_freetalk_glosses`
+loads ~10,761 FreeTalk definitions (plus Shadowline contractions) from
+`internal/db/data/glosses.tsv` the first time the API starts — no key, no
+network, and no separate seed command. Rebuild that file offline with
+`scoring/tools/build_seed_glosses.py` from a
+[freetalk-dictionary-v1](https://github.com/freetalk-fun/freetalk-dictionary-v1)
+checkout, then copy it to `server/internal/db/data/glosses.tsv`.
+
+`python -m shadowline.seedwords` still loads the same TSV from the scoring
+tree (and can queue the leftovers with `--meanings`); it is optional once the
+API has migrated.
 
 Most of those definitions are the FreeTalk Dictionary's. The apostrophe words
 are not: it has no entry containing one, and a shadowing app cannot leave

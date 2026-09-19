@@ -66,3 +66,26 @@ export function chartFromAnalysis(analysis: TakeAnalysis): PitchChart {
 
   return { refPoints, bandPath, segments, gridLines: GRID, xLabels: timeLabels(analysis.duration) }
 }
+
+/** Reference contour alone — what Practice shows so the learner can follow the
+ *  source pitch before and while they record. Time is mapped against the clip
+ *  duration so a recording playhead shares the same axis. */
+export function chartFromReference(points: ContourPoint[], duration: number): PitchChart {
+  if (!points.length) {
+    return { refPoints: '', bandPath: '', segments: [], gridLines: GRID, xLabels: timeLabels(duration) }
+  }
+  const span = duration > 0 ? duration : points[points.length - 1]?.t || 1
+  const mapX = (t: number) => PAD_L + (t / span) * plotW
+  const refPoints = points.map((p) => `${mapX(p.t).toFixed(1)},${mapY(p.s).toFixed(1)}`).join(' ')
+  const upper = points.map((p) => `${mapX(p.t).toFixed(1)},${mapY(p.s + 1).toFixed(1)}`)
+  const lower = points.map((p) => `${mapX(p.t).toFixed(1)},${mapY(p.s - 1).toFixed(1)}`).reverse()
+  const bandPath = `M${upper.join(' L')} L${lower.join(' L')} Z`
+  return { refPoints, bandPath, segments: [], gridLines: GRID, xLabels: timeLabels(span) }
+}
+
+/** X position of a playhead on the same chart axes as chartFromReference. */
+export function playheadX(elapsed: number, duration: number): number {
+  const span = duration > 0 ? duration : 1
+  const t = Math.max(0, Math.min(elapsed, span))
+  return PAD_L + (t / span) * plotW
+}

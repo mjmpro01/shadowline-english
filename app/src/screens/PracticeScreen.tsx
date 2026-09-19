@@ -10,7 +10,18 @@ import { LoadFailure, Loading } from '../components/LoadState'
 import { NoSuchClip } from '../components/NoSuchClip'
 import { MAX_CLIP_SECONDS, type Take } from '../data/types'
 import { colorFor, pointsToNextTier as nextTierIn, scoreLabelKey } from '../lib/score'
+import {
+  GUIDE_VIEW,
+  PLAYHEAD_RED,
+  SOURCE_PURPLE,
+  SOURCE_PURPLE_FILL,
+  YOU_CYAN,
+  YOU_CYAN_FILL,
+  envelopePath,
+  guideX,
+} from '../lib/practiceGuide'
 import { urlOf, useClipAudio, useClipVideo } from '../lib/useAudioUrl'
+import { useClipPitch } from '../lib/useClipPitch'
 import { useDub } from '../lib/useDub'
 import { SOURCE_LABEL, useGloss } from '../lib/useGloss'
 import { useRecorder } from '../lib/useRecorder'
@@ -33,27 +44,6 @@ interface Popup {
   statusLabel: string
 }
 
-const BAR_COUNT = 30
-
-/** Stretches however many loudness samples we captured across the full frame. */
-function waveBars(levels: number[], live: boolean) {
-  return Array.from({ length: BAR_COUNT }, (_, i) => {
-    const level = live
-      ? levels[i]
-      : levels.length
-        ? levels[Math.min(levels.length - 1, Math.floor((i / BAR_COUNT) * levels.length))]
-        : undefined
-    const height = level === undefined ? 3 : Math.max(4, 8 + level * 46)
-    return {
-      x: i * 10 + 1,
-      y: 32 - height / 2,
-      w: 7,
-      h: height,
-      color: level === undefined ? 'var(--color-neutral-400)' : 'var(--score-good)',
-    }
-  })
-}
-
 export function PracticeScreen() {
   const { videoId } = useParams()
   const navigate = useNavigate()
@@ -62,7 +52,6 @@ export function PracticeScreen() {
 
   const [lineIndex, setLineIndex] = useState(0)
   const [take, setTake] = useState<Take | null>(null)
-  const [capturedLevels, setCapturedLevels] = useState<number[]>([])
   const [popup, setPopup] = useState<Popup | null>(null)
   const [analysing, setAnalysing] = useState(false)
   const sourcePlayer = useRef<HTMLMediaElement | null>(null)
@@ -77,13 +66,21 @@ export function PracticeScreen() {
   // abandoned take's score on screen underneath the new recording's waveform.
   const attempt = useRef(0)
 
+  const video = data.videos.find((v) => v.id === videoId)
+  // Match the clip's own length so a one-second line does not wait out six.
+  // Floor at half a second so a zero/missing duration still stops itself.
+  const recordLimit = Math.min(
+    Math.max(video?.durationSeconds || MAX_CLIP_SECONDS, 0.5),
+    MAX_CLIP_SECONDS,
+  )
+
   const recorder = useRecorder({
-    onComplete: async (recording, capturedLevels) => {
+    maxSeconds: recordLimit,
+    onComplete: async (recording) => {
       // A null recording means the microphone gave us nothing; there is no take
       // to store, and sending an empty body would only queue a job that fails.
       if (!video || !recording) return
       const mine = attempt.current
-      setCapturedLevels(capturedLevels)
       setAnalysing(true)
       try {
         const scored = await addTake(video.id, recording)
@@ -96,10 +93,10 @@ export function PracticeScreen() {
     },
   })
 
-  const video = data.videos.find((v) => v.id === videoId)
   const sourceAudio = useClipAudio(video?.id ?? null)
   const sourceUrl = urlOf(sourceAudio)
   const sourceVideoUrl = urlOf(useClipVideo(video?.id ?? null, Boolean(video?.videoPending)))
+  const clipPitch = useClipPitch(sourceUrl)
   const dubState = useDub(take?.hasAudio ? take.id : null)
   /** Either form of the clip counts as having something to play. */
   const playable = sourceVideoUrl ?? sourceUrl
@@ -123,6 +120,18 @@ export function PracticeScreen() {
   if (!video || !line) return <NoSuchClip />
 
   const recording = recorder.status === 'recording' || recorder.status === 'requesting'
+  const guideReady = clipPitch.status === 'ready'
+  const guideDuration =
+    (guideReady ? video.durationSeconds || clipPitch.duration : recordLimit) || recordLimit
+  const sourceWave = guideReady ? envelopePath(clipPitch.envelope, guideDuration) : ''
+  // Live levels span 0..elapsed — not the full clip — or the cyan blob stretches
+  // across empty time and looks like a second purple wave.
+  const youWave =
+    recording && recorder.levels.length > 1 && recorder.elapsed > 0.05
+      ? envelopePath(recorder.levels, guideDuration, recorder.elapsed)
+      : ''
+  const headX =
+    recording && recorder.status === 'recording' ? guideX(recorder.elapsed, guideDuration) : null
 
   const tapWord = async (raw: string) => {
     const result = await toggleVocabWord(raw, video.id)
@@ -136,7 +145,6 @@ export function PracticeScreen() {
     }
     attempt.current += 1
     setTake(null)
-    setCapturedLevels([])
     setAnalysing(false)
     await recorder.start()
   }
@@ -145,7 +153,6 @@ export function PracticeScreen() {
     attempt.current += 1
     recorder.reset()
     setTake(null)
-    setCapturedLevels([])
     setAnalysing(false)
   }
 
@@ -154,8 +161,6 @@ export function PracticeScreen() {
     resetMic()
     setPopup(null)
   }
-
-  const bars = waveBars(recording ? recorder.levels : capturedLevels, recording)
 
   return (
     <div className="stack gap-4" style={{ maxWidth: 820 }}>
@@ -242,13 +247,60 @@ export function PracticeScreen() {
             </div>
           )}
 
-          <div className="wave-frame" data-recorded={!!take}>
-            <svg width="100%" height="64" viewBox="0 0 300 64" preserveAspectRatio="none" aria-hidden="true">
-              {bars.map((bar, i) => (
-                <rect key={i} x={bar.x} y={bar.y} width={bar.w} height={bar.h} fill={bar.color} rx="2" />
-              ))}
-            </svg>
+          <div className="wave-frame wave-frame-guide" data-recorded={!!take} data-recording={recording}>
+            {guideReady ? (
+              <svg
+                width="100%"
+                viewBox={`0 0 ${GUIDE_VIEW.W} ${GUIDE_VIEW.H}`}
+                style={{ display: 'block' }}
+                aria-label={t('practice.pitchGuide')}
+              >
+                <line
+                  x1={GUIDE_VIEW.PAD_L}
+                  y1={GUIDE_VIEW.midY}
+                  x2={GUIDE_VIEW.W - GUIDE_VIEW.PAD_R}
+                  y2={GUIDE_VIEW.midY}
+                  stroke="var(--color-divider)"
+                  strokeWidth="1"
+                  opacity="0.6"
+                />
+                {/* Source amplitude only — peaks = where to push. A pitch line
+                    on top of this filled the strip with two purple shapes. */}
+                {sourceWave && <path d={sourceWave} fill={SOURCE_PURPLE_FILL} stroke="none" />}
+                {youWave && <path d={youWave} fill={YOU_CYAN_FILL} stroke="none" />}
+                {headX !== null && (
+                  <line
+                    x1={headX}
+                    y1={GUIDE_VIEW.PAD_T}
+                    x2={headX}
+                    y2={GUIDE_VIEW.H - GUIDE_VIEW.PAD_B}
+                    stroke={PLAYHEAD_RED}
+                    strokeWidth="2"
+                  />
+                )}
+              </svg>
+            ) : (
+              <div className="card-meta" style={{ padding: '20px 0', textAlign: 'center' }}>
+                {clipPitch.status === 'loading'
+                  ? t('practice.pitchLoading')
+                  : sourceUrl
+                    ? t('practice.pitchUnavailable')
+                    : t('practice.noOriginal')}
+              </div>
+            )}
           </div>
+          {guideReady && (
+            <div className="row gap-4" style={{ justifyContent: 'center', flexWrap: 'wrap' }}>
+              <div className="row gap-2">
+                <div style={{ width: 14, height: 8, borderRadius: 2, background: SOURCE_PURPLE }} />
+                <span style={{ fontSize: 12, opacity: 0.7 }}>{t('practice.pitchSource')}</span>
+              </div>
+              <div className="row gap-2">
+                <div style={{ width: 14, height: 8, borderRadius: 2, background: YOU_CYAN }} />
+                <span style={{ fontSize: 12, opacity: 0.7 }}>{t('practice.pitchYou')}</span>
+              </div>
+            </div>
+          )}
 
           {recording && (
             <div className="row gap-2" style={{ justifyContent: 'center', fontSize: 13 }}>
@@ -259,7 +311,7 @@ export function PracticeScreen() {
                 <>
                   {t('practice.recording')}
                   <span className="mono" style={{ opacity: 0.7 }}>
-                    {t('practice.secondsLeft', Math.max(0, MAX_CLIP_SECONDS - recorder.elapsed).toFixed(1))}
+                    {t('practice.secondsLeft', Math.max(0, recordLimit - recorder.elapsed).toFixed(1))}
                   </span>
                 </>
               )}
@@ -408,4 +460,3 @@ export function PracticeScreen() {
     </div>
   )
 }
-

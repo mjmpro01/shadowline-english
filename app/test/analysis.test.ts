@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { chartFromAnalysis } from '../src/lib/chart'
+import { chartFromAnalysis, chartFromReference, playheadX } from '../src/lib/chart'
 import { summariseTake } from '../src/lib/summary'
 import type { TakeAnalysis } from '../src/data/types'
 
@@ -55,6 +55,28 @@ describe('chartFromAnalysis', () => {
   it('labels short takes in tenths rather than repeating whole seconds', () => {
     expect(chartFromAnalysis(analysis({ duration: 2.4 })).xLabels).toEqual(['0.0s', '0.6s', '1.2s', '1.8s'])
     expect(chartFromAnalysis(analysis({ duration: 80 })).xLabels[3]).toBe('1:00')
+  })
+})
+
+describe('chartFromReference', () => {
+  it('draws the source contour and a tolerance band', () => {
+    const chart = chartFromReference(
+      [
+        { t: 0, s: 0 },
+        { t: 0.5, s: 2 },
+        { t: 1, s: -1 },
+      ],
+      1,
+    )
+    expect(chart.refPoints.split(' ')).toHaveLength(3)
+    expect(chart.bandPath).not.toBe('')
+    expect(chart.segments).toHaveLength(0)
+  })
+
+  it('maps a playhead onto the same time axis', () => {
+    expect(playheadX(0, 2)).toBe(30)
+    expect(playheadX(2, 2)).toBe(630)
+    expect(playheadX(1, 2)).toBe(330)
   })
 })
 
