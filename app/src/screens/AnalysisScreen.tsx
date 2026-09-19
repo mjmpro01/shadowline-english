@@ -28,7 +28,7 @@ export function AnalysisScreen() {
   const video = data.videos.find((v) => v.id === videoId)
   const stats = statsFor(videoId ?? '')
   const chosen =
-    selected && selected.videoId === videoId ? stats.takes.find((t) => t.id === selected.takeId) : undefined
+    selected && selected.videoId === videoId ? stats.takes.find((one) => one.id === selected.takeId) : undefined
   const take = chosen ?? stats.takes[stats.takes.length - 1]
 
   // Every chart drawn here is a measurement. A take that has not been scored
@@ -78,15 +78,16 @@ export function AnalysisScreen() {
       </div>
 
       <div className="seg" style={{ alignSelf: 'flex-start', maxWidth: '100%', overflowX: 'auto' }}>
-        {stats.takes.map((t, i) => (
-          <label className="seg-opt mono" key={t.id}>
+        {/* `option`, not `t`, so the translate function is not shadowed. */}
+        {stats.takes.map((option, i) => (
+          <label className="seg-opt mono" key={option.id}>
             <input
               type="radio"
               name="take"
-              checked={t.id === take.id}
-              onChange={() => setSelected({ videoId: video.id, takeId: t.id })}
+              checked={option.id === take.id}
+              onChange={() => setSelected({ videoId: video.id, takeId: option.id })}
             />
-            Take {i + 1}
+            {t('analysis.take', i + 1)}
           </label>
         ))}
       </div>

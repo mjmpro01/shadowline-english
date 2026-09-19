@@ -138,6 +138,44 @@ func (s *Server) handleClipVideo(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"url": url})
 }
 
+// Extensions browsers routinely have no media type for. Chrome and Firefox
+// both hand back an empty `file.type` for these, which arrives here as
+// application/octet-stream.
+var videoExtensions = []string{
+	".mkv", ".m4v", ".mov", ".avi", ".wmv", ".flv", ".ts", ".mts", ".m2ts",
+	".mpg", ".mpeg", ".3gp", ".ogv", ".webm", ".mp4",
+}
+
+// looksLikeVideo decides whether an upload has a picture in it.
+//
+// The media type first, because when the browser knows one it is right. But it
+// often does not: `file.type` is empty for .mkv, .m4v, .ts and half a dozen
+// others, and an empty type reaches this server as application/octet-stream.
+// That used to mean the upload was filed as audio, no cut was ever queued, and
+// every clip published from it reached its learner with no picture — with
+// nothing anywhere saying why, because as far as the app was concerned nothing
+// had gone wrong.
+//
+// So the file name gets a say when the type has nothing to offer. It is the
+// admin's own file name rather than anything a stranger controls, and being
+// wrong about it is cheap in one direction only: a cut queued for an audio
+// file fails once and is dropped, while a cut never queued is silent for ever.
+func looksLikeVideo(contentType, name string) bool {
+	if strings.HasPrefix(contentType, "video/") {
+		return true
+	}
+	if strings.HasPrefix(contentType, "audio/") {
+		return false
+	}
+	lower := strings.ToLower(name)
+	for _, ext := range videoExtensions {
+		if strings.HasSuffix(lower, ext) {
+			return true
+		}
+	}
+	return false
+}
+
 // handleUploadSource stores the recording a batch will be cut out of, and
 // answers with the id the clips then reference.
 //
@@ -172,10 +210,9 @@ func (s *Server) handleUploadSource(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// What the browser said it was uploading decides whether cutting is even
-	// attempted. An audio file has no picture to cut, and its clips are queued
-	// for transcription alone.
-	hasVideo := strings.HasPrefix(contentType, "video/")
+	// Whether cutting is even attempted. An audio file has no picture to cut,
+	// and its clips are queued for transcription alone.
+	hasVideo := looksLikeVideo(contentType, name)
 	source, err := s.Store.CreateSource(r.Context(), name, key, contentType, hasVideo, u.ID)
 	if err != nil {
 		// The object is already stored; without a row nothing will ever point

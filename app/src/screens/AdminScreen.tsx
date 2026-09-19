@@ -5,6 +5,7 @@ import { SegmentedControl } from '../components/SegmentedControl'
 import { ThumbnailStrip } from '../components/ThumbnailStrip'
 import { WaveformEditor } from '../components/WaveformEditor'
 import { MAX_CLIP_SECONDS, type Transcript } from '../data/types'
+import { looksLikeVideo } from '../lib/media'
 import { decodeFile, peaks as computePeaks, type Column } from '../lib/audio/decode'
 import { proposeSegments, type Segment } from '../lib/audio/segment'
 import { clipName, formatCategories, nextClipNumber, parseCategories, searchClips } from '../lib/clips'
@@ -126,7 +127,9 @@ export function AdminScreen() {
         // What the browser says it is, not what the extension claims. An
         // audio-only file in a video container still has no picture, which the
         // frame walk discovers and reports as an empty strip.
-        isVideo: file.type.startsWith('video/'),
+        // Not `file.type` alone: it is empty for .mkv, .m4v and .ts, and
+        // the server has to reach the same answer or the cut never happens.
+        isVideo: looksLikeVideo(file.type, file.name),
       })
       setSegments(proposal)
       setLines(proposal.map(() => ({ ...EMPTY_LINE, categories: batchCategories })))

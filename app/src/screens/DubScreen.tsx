@@ -34,7 +34,7 @@ export function DubScreen() {
   const [playing, setPlaying] = useState(false)
   const video = data.videos.find((v) => v.id === videoId)
   const stats = statsFor(videoId ?? '')
-  const take = stats.takes.find((t) => t.id === takeId) ?? stats.takes[stats.takes.length - 1]
+  const take = stats.takes.find((one) => one.id === takeId) ?? stats.takes[stats.takes.length - 1]
   /** Which take the export applies to. A take with no recording has nothing to
    *  mux, so there is nothing to ask about either. */
   const takeIdForDub = take?.hasAudio ? take.id : null
@@ -259,13 +259,16 @@ export function DubScreen() {
         <div className="stack gap-2">
           <div className="card-kicker">{t('dub.takes')}</div>
           <div className="row gap-2" style={{ overflowX: 'auto' }}>
-            {stats.takes.map((t, i) => (
+            {/* `option`, not `t`: this list used to name its callback `t`, which
+                shadowed the translate function and turned every label into a
+                call on a Take object. */}
+            {stats.takes.map((option, i) => (
               <button
                 type="button"
-                key={t.id}
-                className={`btn ${t.id === take?.id ? 'btn-primary' : 'btn-secondary'} mono`}
+                key={option.id}
+                className={`btn ${option.id === take?.id ? 'btn-primary' : 'btn-secondary'} mono`}
                 style={{ flexShrink: 0 }}
-                onClick={() => selectTake(t.id)}
+                onClick={() => selectTake(option.id)}
               >
                 {t('analysis.take', i + 1)}
               </button>
