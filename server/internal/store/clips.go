@@ -35,6 +35,10 @@ type Clip struct {
 	// HasVideo is what the app needs: whether to ask for a picture at all. The
 	// key itself stays server-side, like the audio key.
 	HasVideo bool `json:"hasVideo"`
+	// VideoPending is true while a cut of the original is still queued or
+	// running. The app polls for the picture in that case, and plays audio
+	// meanwhile — the same as HasVideo false, except it knows to keep asking.
+	VideoPending bool `json:"videoPending"`
 	// Where in its source this clip was cut from, which the cutter needs long
 	// after the browser that chose the boundaries has gone.
 	SourceID *uuid.UUID `json:"-"`
@@ -46,16 +50,23 @@ type Clip struct {
 	CreatedAt    time.Time `json:"createdAt"`
 }
 
+// video_pending is derived: a source with a picture and no cut yet. An audio
+// source also has a source_id (transcription wants the file), so checking the
+// id alone would mark every audio clip as pending forever.
 const clipColumns = `id, title, source, playlist, categories, featured, timestamp_label,
 	duration_seconds, summary, captions, audio_key, video_key, poster_key,
-	source_id, start_seconds, end_seconds, created_at`
+	source_id, start_seconds, end_seconds, created_at,
+	(video_key is null and exists (
+		select 1 from clip_sources s where s.id = clips.source_id and s.has_video
+	))`
 
 func scanClip(row pgx.Row) (Clip, error) {
 	var c Clip
 	var captions []byte
 	err := row.Scan(&c.ID, &c.Title, &c.Source, &c.Playlist, &c.Categories, &c.Featured,
 		&c.TimestampLabel, &c.DurationSeconds, &c.Summary, &captions, &c.AudioKey, &c.VideoKey,
-		&c.PosterKey, &c.SourceID, &c.StartSeconds, &c.EndSeconds, &c.CreatedAt)
+		&c.PosterKey, &c.SourceID, &c.StartSeconds, &c.EndSeconds, &c.CreatedAt,
+		&c.VideoPending)
 	if err != nil {
 		return c, mapErr(err)
 	}

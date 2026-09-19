@@ -54,6 +54,12 @@ func TestPublishingFromASourceQueuesACut(t *testing.T) {
 	if published[0].ID == "" {
 		t.Fatal("the clip was not created")
 	}
+	if published[0].HasVideo {
+		t.Fatal("an uncut clip reported hasVideo")
+	}
+	if !published[0].VideoPending {
+		t.Fatal("an uncut video clip did not report videoPending")
+	}
 	if depth := h.cutQueueDepth(t); depth != 1 {
 		t.Fatalf("cut queue holds %d jobs, want 1", depth)
 	}
@@ -70,6 +76,12 @@ func TestPublishingWithoutASourceQueuesNothing(t *testing.T) {
 
 	if depth := h.cutQueueDepth(t); depth != 0 {
 		t.Fatalf("cut queue holds %d jobs for an audio clip, want 0", depth)
+	}
+	listed := expect[[]clipJSON](t, admin.do("GET", "/api/clips", "", nil), http.StatusOK)
+	for _, clip := range listed {
+		if clip.VideoPending {
+			t.Fatalf("an audio clip reported videoPending: %+v", clip)
+		}
 	}
 }
 

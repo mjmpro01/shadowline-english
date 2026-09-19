@@ -15,6 +15,7 @@ const video = (id: string): Video =>
     summary: '',
     captions: [{ text: 'a line', ipa: '' }],
     hasVideo: false,
+    videoPending: false,
     posterUrl: '',
     startSeconds: 0,
   }) as unknown as Video

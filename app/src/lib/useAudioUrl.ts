@@ -18,23 +18,56 @@ export type AudioURL =
 const LOADING: AudioURL = { status: 'loading' }
 const NONE: AudioURL = { status: 'none' }
 
-function useSignedURL(id: string | null, fetcher: (id: string) => Promise<string | null>): AudioURL {
+/** How often / how long to re-ask for a cut that has not landed yet. Matches the
+ *  e2e wait: a batch of cuts can take a minute on a cold ffmpeg, and giving up
+ *  early leaves the learner on audio forever even after the picture exists. */
+const VIDEO_POLL_MS = 2_000
+const VIDEO_POLL_TIMEOUT_MS = 120_000
+
+function useSignedURL(
+  id: string | null,
+  fetcher: (id: string) => Promise<string | null>,
+  options?: { pollWhileNone?: boolean },
+): AudioURL {
   const [resolved, setResolved] = useState<{ id: string; value: AudioURL } | null>(null)
+  const pollWhileNone = options?.pollWhileNone ?? false
 
   useEffect(() => {
     if (!id) return
     let active = true
-    fetcher(id).then(
-      (url) => active && setResolved({ id, value: url ? { status: 'ready', url } : NONE }),
-      () => active && setResolved({ id, value: { status: 'error' } }),
-    )
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const started = Date.now()
+
+    const ask = () => {
+      fetcher(id).then(
+        (url) => {
+          if (!active) return
+          if (url) {
+            setResolved({ id, value: { status: 'ready', url } })
+            return
+          }
+          // Still missing. Keep asking while a cut is expected; otherwise one
+          // null is the answer — audio clips never grow a picture.
+          if (pollWhileNone && Date.now() - started < VIDEO_POLL_TIMEOUT_MS) {
+            setResolved({ id, value: NONE })
+            timer = setTimeout(ask, VIDEO_POLL_MS)
+            return
+          }
+          setResolved({ id, value: NONE })
+        },
+        () => active && setResolved({ id, value: { status: 'error' } }),
+      )
+    }
+    ask()
+
     return () => {
       active = false
+      if (timer !== undefined) clearTimeout(timer)
     }
     // fetcher is a stable repository method; re-running on identity would refetch
     // on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id])
+  }, [id, pollWhileNone])
 
   if (!id) return NONE
   return resolved?.id === id ? resolved.value : LOADING
@@ -49,9 +82,10 @@ export function useClipAudio(clipId: string | null): AudioURL {
  *
  * `none` is the ordinary answer for most clips: one cut from audio never has a
  * video, and one cut from video does not have it yet while the cut is queued.
- * Both cases play the audio instead. */
-export function useClipVideo(clipId: string | null): AudioURL {
-  return useSignedURL(clipId, (id) => repository.clipVideoURL(id))
+ * Pass `pollWhileNone` when the clip reports `videoPending` so the picture
+ * replaces the audio player once the cutter finishes, without a manual reload. */
+export function useClipVideo(clipId: string | null, pollWhileNone = false): AudioURL {
+  return useSignedURL(clipId, (id) => repository.clipVideoURL(id), { pollWhileNone })
 }
 
 /** A learner's own recording. */

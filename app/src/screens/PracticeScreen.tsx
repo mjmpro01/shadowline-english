@@ -99,7 +99,7 @@ export function PracticeScreen() {
   const video = data.videos.find((v) => v.id === videoId)
   const sourceAudio = useClipAudio(video?.id ?? null)
   const sourceUrl = urlOf(sourceAudio)
-  const sourceVideoUrl = urlOf(useClipVideo(video?.id ?? null))
+  const sourceVideoUrl = urlOf(useClipVideo(video?.id ?? null, Boolean(video?.videoPending)))
   const dubState = useDub(take?.hasAudio ? take.id : null)
   /** Either form of the clip counts as having something to play. */
   const playable = sourceVideoUrl ?? sourceUrl
