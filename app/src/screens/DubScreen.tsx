@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useT } from '../i18n'
 import { ClipFace } from '../components/ClipFace'
 import { Icon } from '../components/Icon'
 import { LoadFailure, Loading } from '../components/LoadState'
@@ -14,6 +15,7 @@ import { useApp } from '../store/context'
 export function DubScreen() {
   const { videoId } = useParams()
   const navigate = useNavigate()
+  const t = useT()
   const { data, state, statsFor } = useApp()
   const audioRef = useRef<HTMLAudioElement>(null)
   /** The picture. Muted and along for the ride: the audio element is the clock,
@@ -32,7 +34,7 @@ export function DubScreen() {
   const [playing, setPlaying] = useState(false)
   const video = data.videos.find((v) => v.id === videoId)
   const stats = statsFor(videoId ?? '')
-  const take = stats.takes.find((t) => t.id === takeId) ?? stats.takes[stats.takes.length - 1]
+  const take = stats.takes.find((one) => one.id === takeId) ?? stats.takes[stats.takes.length - 1]
   /** Which take the export applies to. A take with no recording has nothing to
    *  mux, so there is nothing to ask about either. */
   const takeIdForDub = take?.hasAudio ? take.id : null
@@ -115,7 +117,7 @@ export function DubScreen() {
         onClick={() => navigate(`/library/${video.id}`)}
       >
         <Icon name="chevron-left" />
-        Analysis
+        {t('dub.back')}
       </button>
 
       <h3 style={{ margin: 0 }}>{video.title}</h3>
@@ -138,7 +140,7 @@ export function DubScreen() {
               muted
               playsInline
               preload="metadata"
-              aria-label={`${video.title}, without its sound`}
+              aria-label={t('dub.withoutSound', video.title)}
             />
           )}
           {/* Before the tag, not after it: the face fills the frame, so drawn
@@ -151,7 +153,7 @@ export function DubScreen() {
             className="tag tag-neutral"
             style={{ position: 'absolute', top: 10, left: 10, zIndex: 1 }}
           >
-            original audio muted
+            {t('dub.muted')}
           </span>
         </div>
 
@@ -167,7 +169,7 @@ export function DubScreen() {
               label: (
                 <>
                   <Icon name="mic" size={14} />
-                  My voice
+                  {t('dub.myVoice')}
                 </>
               ),
             },
@@ -176,7 +178,7 @@ export function DubScreen() {
               label: (
                 <>
                   <Icon name="volume" size={14} />
-                  Original
+                  {t('dub.original')}
                 </>
               ),
             },
@@ -190,7 +192,7 @@ export function DubScreen() {
               className="btn btn-primary btn-icon"
               onClick={togglePlay}
               disabled={!canPlay}
-              title={canPlay ? 'Play' : source === 'mine' ? 'This take has no recording' : 'No original audio attached'}
+              title={canPlay ? t('dub.play') : source === 'mine' ? t('dub.noTakeAudio') : t('dub.noOriginalAudio')}
             >
               <Icon name={playing ? 'square' : 'play'} size={14} />
             </button>
@@ -203,7 +205,7 @@ export function DubScreen() {
               disabled={!canPlay}
               onChange={(e) => seek(Number(e.target.value))}
               style={{ flex: 1, accentColor: 'var(--color-accent)' }}
-              aria-label="Playback position"
+              aria-label={t('dub.position')}
             />
           </div>
           <div className="row between mono" style={{ fontSize: 12, opacity: 0.65 }}>
@@ -212,7 +214,7 @@ export function DubScreen() {
           </div>
           {source === 'original' && !originalUrl && (
             <div style={{ fontSize: 12, opacity: 0.6 }}>
-              No original audio for this clip yet — attach it on the Practice screen to compare by ear.
+              {t('dub.noOriginal')}
             </div>
           )}
         </div>
@@ -244,33 +246,36 @@ export function DubScreen() {
         {/* The dub as a file, rather than only as something this screen can
             play: a learner who has nailed a line wants to keep it and send it. */}
         <div className="stack gap-2">
-          <div className="card-kicker">This dub as a video</div>
+          <div className="card-kicker">{t('dub.asVideo')}</div>
           <DubExport
             state={dubState}
             filename={video.title}
             canDub={video.hasVideo}
             hasRecording={!!takeIdForDub}
-            label="Export this dub"
+            label={t('dub.export')}
           />
         </div>
 
         <div className="stack gap-2">
-          <div className="card-kicker">Takes</div>
+          <div className="card-kicker">{t('dub.takes')}</div>
           <div className="row gap-2" style={{ overflowX: 'auto' }}>
-            {stats.takes.map((t, i) => (
+            {/* `option`, not `t`: this list used to name its callback `t`, which
+                shadowed the translate function and turned every label into a
+                call on a Take object. */}
+            {stats.takes.map((option, i) => (
               <button
                 type="button"
-                key={t.id}
-                className={`btn ${t.id === take?.id ? 'btn-primary' : 'btn-secondary'} mono`}
+                key={option.id}
+                className={`btn ${option.id === take?.id ? 'btn-primary' : 'btn-secondary'} mono`}
                 style={{ flexShrink: 0 }}
-                onClick={() => selectTake(t.id)}
+                onClick={() => selectTake(option.id)}
               >
-                Take {i + 1}
+                {t('analysis.take', i + 1)}
               </button>
             ))}
           </div>
           {take && !take.hasAudio && (
-            <div style={{ fontSize: 12, opacity: 0.6 }}>This take has no recording stored.</div>
+            <div style={{ fontSize: 12, opacity: 0.6 }}>{t('dub.noRecording')}</div>
           )}
         </div>
         </div>

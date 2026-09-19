@@ -1,4 +1,5 @@
 import { useNavigate, useParams } from 'react-router-dom'
+import { useT } from '../i18n'
 import { Icon } from '../components/Icon'
 import { LoadFailure, Loading } from '../components/LoadState'
 import { playlistClips, playlistProgress } from '../lib/clips'
@@ -22,6 +23,7 @@ export function PlaylistScreen() {
 
   const playlist = decodeURIComponent(name ?? '')
   const clips = playlistClips(data.videos, playlist)
+  const t = useT()
   const progress = playlistProgress(clips, (id) => statsFor(id).attempts > 0)
 
   if (state === 'loading') return <Loading />
@@ -35,7 +37,7 @@ export function PlaylistScreen() {
           Library
         </button>
         <h1 style={{ margin: 0 }}>{playlist}</h1>
-        <div className="card-meta">No clips in this playlist — it may have been renamed or emptied.</div>
+        <div className="card-meta">{t('playlist.noClips')}</div>
       </div>
     )
   }
@@ -52,7 +54,7 @@ export function PlaylistScreen() {
       <div className="stack" style={{ gap: 4 }}>
         <h1 style={{ margin: 0 }}>{playlist}</h1>
         <div className="card-meta">
-          {progress.total} clips · {progress.practised} practised
+          {t('playlist.clipsAndPractised', progress.total, progress.practised)}
         </div>
       </div>
 
@@ -68,12 +70,12 @@ export function PlaylistScreen() {
             onClick={() => navigate(`/library/${progress.next!.id}/practice`)}
           >
             <Icon name="mic" size={14} />
-            Practice next — {progress.next.title}
+            {t('playlist.practiceNext', progress.next.title)}
           </button>
         ) : (
           // Not a dead end: going round again is the point of shadowing, and
           // the list below is still there to pick from.
-          <div className="card-meta">Every clip here has been practised at least once.</div>
+          <div className="card-meta">{t('playlist.allPractised')}</div>
         )}
       </div>
 
@@ -110,7 +112,7 @@ export function PlaylistScreen() {
                 </span>
                 <span className="card-meta mono">
                   {clip.timestamp} · {clock(clip.durationSeconds)}
-                  {stats.attempts > 0 && ` · ${stats.attempts} takes`}
+                  {stats.attempts > 0 && ` · ${t('library.takes', stats.attempts)}`}
                 </span>
               </button>
 
@@ -127,7 +129,7 @@ export function PlaylistScreen() {
                 onClick={() => navigate(`/library/${clip.id}/practice`)}
               >
                 <Icon name="mic" size={14} />
-                Practice
+                {t('library.practice')}
               </button>
             </div>
           )

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useT } from '../i18n'
 import { ClipFace } from '../components/ClipFace'
 import { Icon } from '../components/Icon'
 import { needsPractice, nextUp, weakestOverall } from '../lib/practice'
@@ -19,6 +20,7 @@ const PAD_B = 24
 export function ProgressScreen() {
   const { data } = useApp()
   const navigate = useNavigate()
+  const t = useT()
   const [filter, setFilter] = useState<Filter>('All')
 
   // The clips you scored lowest, rather than three hand-written rows pointing
@@ -63,7 +65,7 @@ export function ProgressScreen() {
 
   return (
     <div className="stack gap-6">
-      <h1>Progress</h1>
+      <h1>{t('progress.title')}</h1>
 
       <div className="row gap-2 wrap">
         {(['All', ...METRIC_NAMES] as Filter[]).map((option) => (
@@ -73,7 +75,7 @@ export function ProgressScreen() {
             className={`btn ${filter === option ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setFilter(option)}
           >
-            {option}
+            {option === 'All' ? t('progress.all') : t(`metric.${option}`)}
           </button>
         ))}
       </div>
@@ -88,9 +90,9 @@ export function ProgressScreen() {
           how far off a line is. */}
       {series.length === 0 ? (
         <div className="card elev-sm stack gap-2">
-          <div className="card-kicker">No scores yet</div>
+          <div className="card-kicker">{t('progress.noScores')}</div>
           <div style={{ fontSize: 14, opacity: 0.8 }}>
-            Record a take and it lands here. Two days of practice and this becomes a line.
+            {t('progress.noScoresBody')}
           </div>
           <button
             type="button"
@@ -99,15 +101,15 @@ export function ProgressScreen() {
             onClick={() => navigate('/library')}
           >
             <Icon name="mic" size={14} />
-            Find a clip
+            {t('progress.findClip')}
           </button>
         </div>
       ) : series.length === 1 ? (
         <div className="card elev-sm row between gap-3">
           <div className="stack gap-1">
-            <div className="card-kicker">{filter === 'All' ? 'Your score today' : `${filter} today`}</div>
+            <div className="card-kicker">{filter === 'All' ? t('progress.scoreToday') : t('progress.metricToday', t(`metric.${filter}`))}</div>
             <div style={{ fontSize: 13, opacity: 0.75 }}>
-              One day so far. Practise on another day and this becomes a line you can read.
+              {t('progress.oneDay')}
             </div>
           </div>
           <div
@@ -119,7 +121,7 @@ export function ProgressScreen() {
         </div>
       ) : (
       <div className="card elev-sm">
-        <svg width="100%" viewBox="0 0 640 180" style={{ display: 'block' }} aria-label="Average score over time">
+        <svg width="100%" viewBox="0 0 640 180" style={{ display: 'block' }} aria-label={t('progress.chartLabel')}>
           <line x1="30" y1="20" x2="630" y2="20" stroke="var(--color-divider)" />
           <line x1="30" y1="90" x2="630" y2="90" stroke="var(--color-divider)" />
           <line x1="30" y1="156" x2="630" y2="156" stroke="var(--color-divider)" />
@@ -146,9 +148,9 @@ export function ProgressScreen() {
       )}
 
       <div className="stack gap-2">
-        <div className="card-kicker">Need practice</div>
+        <div className="card-kicker">{t('progress.needPractice')}</div>
         {suggestions.length === 0 && (
-          <div className="card-meta">Record a few takes and the weakest lines show up here.</div>
+          <div className="card-meta">{t('progress.needPracticeEmpty')}</div>
         )}
         {suggestions.map((item) => (
           <div className="card elev-sm row between gap-3" key={item.id}>
@@ -156,7 +158,16 @@ export function ProgressScreen() {
               <div className="card-title" style={{ fontSize: 15 }}>
                 {item.title}
               </div>
-              <div className="card-meta">{item.detail}</div>
+              <div className="card-meta">
+                {item.detail.metric
+                  ? t(
+                      'score.bestSoFarWeakest',
+                      item.detail.score,
+                      t(`metric.${item.detail.metric}`),
+                      item.detail.value ?? 0,
+                    )
+                  : t('score.bestSoFar', item.detail.score)}
+              </div>
             </div>
             <button
               type="button"
@@ -164,7 +175,7 @@ export function ProgressScreen() {
               style={{ flexShrink: 0 }}
               onClick={() => goPractice(item.videoId)}
             >
-              Practice now
+              {t('progress.practiceNow')}
             </button>
           </div>
         ))}
@@ -173,7 +184,7 @@ export function ProgressScreen() {
       {suggested && (
         <div>
           <div className="card-kicker" style={{ marginBottom: 'var(--space-2)' }}>
-            Next up
+            {t('progress.nextUp')}
           </div>
           <button
             type="button"
@@ -198,10 +209,10 @@ export function ProgressScreen() {
               <span className="card-meta">{suggested.playlist || suggested.source}</span>
               <span style={{ fontSize: 13, opacity: 0.75, marginTop: 4, display: 'block' }}>
                 {weakest
-                  ? `${weakest} is your lowest score so far — this is a good line to work it on.`
+                  ? t('progress.workOn', t(`metric.${weakest}`))
                   : practised.has(suggested.id)
-                    ? 'Worth another take.'
-                    : 'You have not practised this one yet.'}
+                    ? t('progress.anotherTake')
+                    : t('progress.notPractised')}
               </span>
             </span>
           </button>

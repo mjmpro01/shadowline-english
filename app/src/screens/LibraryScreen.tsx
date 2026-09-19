@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useT } from '../i18n'
 import { ClipFace } from '../components/ClipFace'
 import { Icon } from '../components/Icon'
 import { allCategories, allPlaylists, searchClips } from '../lib/clips'
@@ -10,6 +11,7 @@ import { useApp } from '../store/context'
 export function LibraryScreen() {
   const { data, statsFor } = useApp()
   const navigate = useNavigate()
+  const t = useT()
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('')
   const [playlist, setPlaylist] = useState('')
@@ -20,15 +22,15 @@ export function LibraryScreen() {
 
   return (
     <div className="stack gap-6">
-      <h1>Library</h1>
+      <h1>{t('library.title')}</h1>
 
       <input
         type="search"
         className="input"
-        placeholder="Search clips, lines, playlists"
+        placeholder={t('library.search')}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        aria-label="Search clips"
+        aria-label={t('library.searchLabel')}
       />
 
       {playlists.length > 0 && (
@@ -83,7 +85,7 @@ export function LibraryScreen() {
       )}
 
       {results.length === 0 && (
-        <div className="card-meta">Nothing matches that — try another word, or clear the filters.</div>
+        <div className="card-meta">{t('library.nothingMatches')}</div>
       )}
 
       <div className="grid-cards">
@@ -139,7 +141,7 @@ export function LibraryScreen() {
                     <polyline points={sparkPoints(stats.sparkline)} fill="none" stroke={color} strokeWidth="2" />
                   </svg>
                 </span>
-                <span className="card-meta">{stats.attempts} takes</span>
+                <span className="card-meta">{t('library.takes', stats.attempts)}</span>
               </button>
 
               <button
@@ -152,7 +154,7 @@ export function LibraryScreen() {
                 onClick={() => navigate(`/library/${video.id}/practice`)}
               >
                 <Icon name="mic" size={14} />
-                Practice
+                {t('library.practice')}
               </button>
             </div>
           )

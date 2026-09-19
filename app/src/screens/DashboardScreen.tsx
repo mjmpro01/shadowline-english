@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { useT } from '../i18n'
 import { ClipFace } from '../components/ClipFace'
 import { Icon } from '../components/Icon'
 import { statsFor } from '../lib/leaderboard'
@@ -11,6 +12,7 @@ export function DashboardScreen() {
   const navigate = useNavigate()
 
   const mine = statsFor(data.takes)
+  const t = useT()
   // Ranked by the server from everyone's scored takes. There is no filler: an
   // app with one learner shows one row.
   const rows = leaderboard.map((row, index) => ({ ...row, rank: index + 1 }))
@@ -25,22 +27,22 @@ export function DashboardScreen() {
      `lit` is what separates a streak that is alive from one that is not. A
      zero on a flame tile in full colour would be a lie told in amber. */
   const summary = [
-    { label: 'Clips practised', value: new Set(data.takes.map((take) => take.videoId)).size, icon: 'library' as const },
-    { label: 'Takes recorded', value: mine.takes, icon: 'mic' as const },
+    { label: t('dash.clipsPractised'), value: new Set(data.takes.map((take) => take.videoId)).size, icon: 'library' as const },
+    { label: t('dash.takesRecorded'), value: mine.takes, icon: 'mic' as const },
     {
-      label: 'Average score',
+      label: t('dash.averageScore'),
       value: mine.averageScore ?? '—',
       color: mine.averageScore ? colorFor(mine.averageScore) : undefined,
       icon: 'trophy' as const,
     },
-    { label: 'Day streak', value: mine.streak, icon: 'flame' as const, lit: mine.streak > 0 },
+    { label: t('dash.dayStreak'), value: mine.streak, icon: 'flame' as const, lit: mine.streak > 0 },
   ]
 
   return (
     <div className="stack gap-8">
       <div>
-        <h1 style={{ marginBottom: 2 }}>Dashboard</h1>
-        <div className="card-meta">Clips worth practising, and how your scores are going</div>
+        <h1 style={{ marginBottom: 2 }}>{t('dash.title')}</h1>
+        <div className="card-meta">{t('dash.subtitle')}</div>
       </div>
 
       <div className="grid-scores">
@@ -60,9 +62,9 @@ export function DashboardScreen() {
       <div>
         <div className="row between wrap gap-2" style={{ marginBottom: 'var(--space-2)' }}>
           <div className="card-kicker" style={{ margin: 0 }}>
-            Leaderboard
+            {t('dash.leaderboard')}
           </div>
-          <span className="tag tag-neutral">{rows.length === 1 ? 'you are the only learner so far' : `${rows.length} learners`}</span>
+          <span className="tag tag-neutral">{t('dash.learners', rows.length)}</span>
         </div>
 
         <div className="podium">
@@ -95,7 +97,7 @@ export function DashboardScreen() {
                 {Math.round(row.avg)}
               </div>
               <div className="card-meta mono">
-                {row.takes} {row.takes === 1 ? 'take' : 'takes'} · {row.clips} clips
+                {t('dash.takesAndClips', row.takes, row.clips)}
               </div>
             </div>
           ))}
@@ -106,10 +108,10 @@ export function DashboardScreen() {
             <table className="table" style={{ margin: 0 }}>
               <thead>
                 <tr>
-                  <th>Rank</th>
-                  <th>Learner</th>
-                  <th>Avg score</th>
-                  <th>Takes</th>
+                  <th>{t('dash.rank')}</th>
+                  <th>{t('dash.learner')}</th>
+                  <th>{t('dash.avgScore')}</th>
+                  <th>{t('dash.takes')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -132,16 +134,16 @@ export function DashboardScreen() {
 
       <div>
         <div className="card-kicker" style={{ marginBottom: 'var(--space-2)' }}>
-          Featured clips
+          {t('dash.featured')}
         </div>
         {rows.length === 0 && (
           <div className="card-meta" style={{ marginBottom: 'var(--space-3)' }}>
-            Nobody has a scored take yet — record one and you are on the board.
+            {t('dash.nobodyScored')}
           </div>
         )}
 
         {featured.length === 0 ? (
-          <div className="card-meta">Nothing featured yet — an admin picks these in the clip studio.</div>
+          <div className="card-meta">{t('dash.nothingFeatured')}</div>
         ) : (
           <div className="grid-cards">
             {featured.map((video) => (
@@ -186,7 +188,7 @@ export function DashboardScreen() {
                   onClick={() => navigate(`/library/${video.id}/practice`)}
                 >
                   <Icon name="mic" size={14} />
-                  Practice
+                  {t('library.practice')}
                 </button>
               </div>
             ))}

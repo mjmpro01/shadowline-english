@@ -28,9 +28,17 @@
   --color-accent-2-800: #3d472b;
   --color-accent-2-900: #272e1b;
 
-  --font-heading: 'Caprasimo', system-ui, sans-serif;
-  --font-heading-weight: 400;
-  --font-body: 'Figtree', system-ui, sans-serif;
+  /* Both faces carry Vietnamese, which is not a detail: Caprasimo and Figtree
+     were here first and neither serves a single Vietnamese glyph, so every
+     accented word fell back to whatever the system had. A Vietnamese screen
+     came out in two typefaces at once, and the headings lost the weight the
+     whole design is built on.
+     Checked against the unicode-range Google Fonts serves (U+1EA0-1EF9): Baloo
+     2 and Be Vietnam Pro have it, Caprasimo, Figtree, Fredoka, Lilita One and
+     Titan One do not. */
+  --font-heading: 'Baloo 2', system-ui, sans-serif;
+  --font-heading-weight: 700;
+  --font-body: 'Be Vietnam Pro', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
   --space-1: 4.4px;

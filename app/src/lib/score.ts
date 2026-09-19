@@ -45,8 +45,10 @@ export function wordScore(word: string, takeScore: number): number {
 }
 
 
-export function scoreLabel(score: number): string {
-  return score >= 75 ? 'Great shadowing' : score >= 50 ? 'Getting there — try again' : 'Needs another take'
+/** How a score reads, as a message key rather than a sentence: this is a pure
+ *  function of the number and knows nothing about who is reading it. */
+export function scoreLabelKey(score: number): 'score.great' | 'score.getting' | 'score.needs' {
+  return score >= 75 ? 'score.great' : score >= 50 ? 'score.getting' : 'score.needs'
 }
 
 /** Which band a score lands in.

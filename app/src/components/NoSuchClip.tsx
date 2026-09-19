@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { useT } from '../i18n'
 
 /**
  * A link to a clip the library does not have — deleted, or never there.
@@ -10,12 +11,13 @@ import { useNavigate } from 'react-router-dom'
  */
 export function NoSuchClip() {
   const navigate = useNavigate()
+  const t = useT()
   return (
     <div className="stack gap-3" style={{ padding: 32, maxWidth: 420, margin: '0 auto' }}>
-      <h2 style={{ margin: 0 }}>That clip isn’t here</h2>
-      <div className="card-meta">It may have been removed from the library.</div>
+      <h2 style={{ margin: 0 }}>{t('common.clipNotHere')}</h2>
+      <div className="card-meta">{t('common.clipRemoved')}</div>
       <button type="button" className="btn btn-primary" onClick={() => navigate('/library')}>
-        Back to the library
+        {t('common.backToLibrary')}
       </button>
     </div>
   )

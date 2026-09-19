@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useT } from '../i18n'
 import { ClipPlayer } from '../components/ClipPlayer'
 import { DubExport } from '../components/DubExport'
 import { ClipFace } from '../components/ClipFace'
@@ -8,7 +9,7 @@ import { ScoreBadge } from '../components/ScoreBadge'
 import { LoadFailure, Loading } from '../components/LoadState'
 import { NoSuchClip } from '../components/NoSuchClip'
 import { MAX_CLIP_SECONDS, type Take } from '../data/types'
-import { colorFor, pointsToNextTier as nextTierIn, scoreLabel } from '../lib/score'
+import { colorFor, pointsToNextTier as nextTierIn, scoreLabelKey } from '../lib/score'
 import { urlOf, useClipAudio, useClipVideo } from '../lib/useAudioUrl'
 import { useDub } from '../lib/useDub'
 import { SOURCE_LABEL, useGloss } from '../lib/useGloss'
@@ -17,9 +18,9 @@ import { normalizeWord } from '../lib/text'
 import { useApp } from '../store/context'
 
 const POPUP_LABEL = {
-  added: 'Added to Vocabulary',
-  removed: 'Removed from Vocabulary',
-}
+  added: 'practice.added',
+  removed: 'practice.removed',
+} as const
 
 /** The word tapped and what tapping it did. What it *means* is not in here:
  *  that is looked up separately and arrives when it arrives. */
@@ -56,6 +57,7 @@ function waveBars(levels: number[], live: boolean) {
 export function PracticeScreen() {
   const { videoId } = useParams()
   const navigate = useNavigate()
+  const t = useT()
   const { data, state, addTake, toggleVocabWord } = useApp()
 
   const [lineIndex, setLineIndex] = useState(0)
@@ -124,7 +126,7 @@ export function PracticeScreen() {
 
   const tapWord = async (raw: string) => {
     const result = await toggleVocabWord(raw, video.id)
-    setPopup({ word: result.word, context: line.text, statusLabel: POPUP_LABEL[result.status] })
+    setPopup({ word: result.word, context: line.text, statusLabel: t(POPUP_LABEL[result.status]) })
   }
 
   const toggleRecord = async () => {
@@ -160,7 +162,7 @@ export function PracticeScreen() {
       <div className="row between wrap gap-2">
         <h2 style={{ margin: 0 }}>{video.title}</h2>
         <div className="tag tag-neutral mono">
-          Line {Math.min(lineIndex + 1, video.captions.length)} of {video.captions.length}
+          {t('practice.lineOf', Math.min(lineIndex + 1, video.captions.length), video.captions.length)}
         </div>
       </div>
 
@@ -196,7 +198,7 @@ export function PracticeScreen() {
             ”
           </div>
           <div style={{ fontSize: 11, textAlign: 'center', opacity: 0.5 }}>
-            Tap a word to add it to Vocabulary — tap again to undo
+            {t('practice.tapWord')}
           </div>
           <div className="mono" style={{ fontSize: 13, textAlign: 'center', opacity: 0.6 }}>
             {line.ipa}
@@ -209,7 +211,7 @@ export function PracticeScreen() {
                 className="btn btn-icon btn-ghost"
                 style={{ position: 'absolute', top: 6, right: 6, width: 26, height: 26 }}
                 onClick={() => setPopup(null)}
-                aria-label="Close"
+                aria-label={t('practice.close')}
               >
                 <Icon name="x" size={14} />
               </button>
@@ -222,8 +224,8 @@ export function PracticeScreen() {
                   that none is coming. Saying nothing would read as a blank. */}
               <div className="card-body" style={{ opacity: gloss?.meaning ? 1 : 0.6 }}>
                 {gloss?.meaning || (gloss === null || gloss.status === 'pending'
-                  ? 'Looking this word up…'
-                  : 'No definition for this one yet.')}
+                  ? t('practice.lookingUp')
+                  : t('practice.noDefinition'))}
               </div>
               {/* Merriam-Webster's free tier requires their name wherever their
                   definitions appear. Credited whoever wrote it, though: a
@@ -252,12 +254,12 @@ export function PracticeScreen() {
             <div className="row gap-2" style={{ justifyContent: 'center', fontSize: 13 }}>
               <span className="rec-dot" />
               {recorder.status === 'requesting' ? (
-                'Waiting for microphone…'
+                t('practice.waitingMic')
               ) : (
                 <>
-                  Recording — read the line aloud
+                  {t('practice.recording')}
                   <span className="mono" style={{ opacity: 0.7 }}>
-                    {Math.max(0, MAX_CLIP_SECONDS - recorder.elapsed).toFixed(1)}s left
+                    {t('practice.secondsLeft', Math.max(0, MAX_CLIP_SECONDS - recorder.elapsed).toFixed(1))}
                   </span>
                 </>
               )}
@@ -265,31 +267,31 @@ export function PracticeScreen() {
           )}
           {recorder.status === 'denied' && (
             <div style={{ fontSize: 13, textAlign: 'center', color: 'var(--score-attention)' }}>
-              Microphone access was blocked. Allow it in your browser to record a take.
+              {t('practice.micBlocked')}
             </div>
           )}
           {recorder.status === 'unsupported' && (
             <div style={{ fontSize: 13, textAlign: 'center', color: 'var(--score-attention)' }}>
-              This browser can't record audio.
+              {t('practice.micUnsupported')}
             </div>
           )}
 
           {(analysing || take?.status === 'pending') && (
-            <div style={{ fontSize: 13, textAlign: 'center', opacity: 0.7 }}>Measuring your pitch…</div>
+            <div style={{ fontSize: 13, textAlign: 'center', opacity: 0.7 }}>{t('practice.measuring')}</div>
           )}
 
           {take && take.score !== null && (
             <div className="card elev-sm row between gap-3">
               <div className="stack gap-1" style={{ flex: 1 }}>
-                <div className="card-kicker">Pitch match score</div>
-                <div style={{ fontSize: 13, opacity: 0.75 }}>{scoreLabel(take.score)}</div>
+                <div className="card-kicker">{t('practice.scoreKicker')}</div>
+                <div style={{ fontSize: 13, opacity: 0.75 }}>{t(scoreLabelKey(take.score))}</div>
                 {/* What the next band costs, rather than a bare "re-record to
                     improve": a learner deciding whether to go again wants to
                     know how far away it is. */}
                 <div style={{ fontSize: 12, opacity: 0.6 }}>
                   {nextTierIn(take.score) === null
-                    ? 'Top band — nothing above this one'
-                    : `${nextTierIn(take.score)} more for the next band`}
+                    ? t('practice.topBand')
+                    : t('practice.toNextBand', nextTierIn(take.score) ?? 0)}
                 </div>
                 <div className="meter" style={{ marginTop: 2 }}>
                   <span style={{ width: `${take.score}%`, background: colorFor(take.score) }} />
@@ -312,17 +314,16 @@ export function PracticeScreen() {
               */}
               {take.status === 'failed' ? (
                 <>
-                  <div className="card-kicker">Nothing to measure</div>
+                  <div className="card-kicker">{t('practice.nothingToMeasure')}</div>
                   <div style={{ fontSize: 13, opacity: 0.75 }}>
-                    {take.error ?? 'The recording was too short or too quiet to track a pitch'} — try again
-                    closer to the mic.
+                    {take.error ?? t('practice.tooQuiet')} {t('practice.tryCloser')}
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="card-kicker">Take recorded</div>
+                  <div className="card-kicker">{t('practice.takeRecorded')}</div>
                   <div style={{ fontSize: 13, opacity: 0.75 }}>
-                    This clip has no original audio, so there is nothing to score your delivery against.
+                    {t('practice.nothingToScore')}
                   </div>
                 </>
               )}
@@ -335,10 +336,10 @@ export function PracticeScreen() {
             type="button"
             className="btn btn-secondary btn-block"
             disabled={!playable}
-            title={playable ? "Play the clip's original" : 'This clip has no original recording'}
+            title={playable ? t('practice.hearClipTitle') : t('practice.noOriginal')}
             onClick={() => void sourcePlayer.current?.play()}
           >
-            {sourceVideoUrl ? 'Watch clip again' : 'Hear clip again'}
+            {sourceVideoUrl ? t('practice.watchClip') : t('practice.hearClip')}
           </button>
           <button
             type="button"
@@ -347,11 +348,11 @@ export function PracticeScreen() {
             // leaves the learner watching two takes at once. Stopping is always
             // allowed; starting waits until there is an answer about the last.
             disabled={analysing && !recording}
-            title={analysing && !recording ? 'Waiting for the last take to be scored' : undefined}
+            title={analysing && !recording ? t('practice.waitingForScore') : undefined}
             onClick={toggleRecord}
           >
             <Icon name={recording ? 'square' : 'mic'} size={14} />
-            {recording ? 'Stop' : take ? 'Re-record' : 'Record'}
+            {recording ? t('practice.stop') : take ? t('practice.rerecord') : t('practice.record')}
           </button>
           <div className="divider" style={{ margin: '4px 0' }} />
           <button
@@ -360,7 +361,7 @@ export function PracticeScreen() {
             disabled={!take || lineIndex >= video.captions.length - 1}
             onClick={nextLine}
           >
-            Next line
+            {t('practice.nextLine')}
           </button>
           <button
             type="button"
@@ -371,7 +372,7 @@ export function PracticeScreen() {
             {/* Named for where it goes. It used to say "Watch", which was
                 unambiguous until the clip above it grew a picture and a button
                 that says "Watch clip again". */}
-            Dub review
+            {t('practice.dubReview')}
           </button>
           <button
             type="button"
@@ -379,7 +380,7 @@ export function PracticeScreen() {
             disabled={!take}
             onClick={() => navigate(`/library/${video.id}`)}
           >
-            See analysis
+            {t('practice.seeAnalysis')}
           </button>
           {/* Keeping the take is offered here, not only on Dub Review: a
               learner who has just nailed a line should not have to go to
@@ -389,11 +390,11 @@ export function PracticeScreen() {
             filename={video.title}
             canDub={video.hasVideo}
             hasRecording={!!take?.hasAudio}
-            label="Save dub"
+            label={t('practice.saveDub')}
           />
           <div className="divider" style={{ margin: '4px 0' }} />
           <button type="button" className="btn btn-ghost btn-block" onClick={resetMic}>
-            Reset mic
+            {t('practice.resetMic')}
           </button>
         </div>
       </div>
@@ -401,7 +402,7 @@ export function PracticeScreen() {
       <div className="row between">
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/library')}>
           <Icon name="log-out" size={15} />
-          Exit
+          {t('practice.exit')}
         </button>
       </div>
     </div>

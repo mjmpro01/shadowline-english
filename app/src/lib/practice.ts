@@ -3,7 +3,8 @@ import { METRIC_NAMES, type MetricName, type Take, type Video } from '../data/ty
 export interface PracticeSuggestion {
   id: string
   title: string
-  detail: string
+  /** The measurements behind the suggestion, for the screen to word. */
+  detail: { score: number; metric?: MetricName; value?: number }
   videoId: string
 }
 
@@ -33,13 +34,18 @@ export function needsPractice(takes: Take[], videos: Video[], limit = 3): Practi
       const video = videos.find((v) => v.id === take.videoId)
       if (!video) return []
       const weakest = weakestMetric(take)
+      // Only scored takes reach here — the loop above skips the rest — but the
+      // Map loses that for the compiler, and the same `?? 0` is already what
+      // the sort above uses.
+      const score = take.score ?? 0
       return [
         {
           id: take.videoId,
           title: video.title,
-          detail: weakest
-            ? `Best so far ${take.score} — ${weakest.name.toLowerCase()} is the weakest at ${weakest.value}`
-            : `Best so far ${take.score}`,
+          // The sentence is built where the language is known. This carries the
+          // parts, not the words: a suggestion assembled here would be English
+          // wherever it was shown.
+          detail: weakest ? { score, metric: weakest.name, value: weakest.value } : { score },
           videoId: take.videoId,
         },
       ]
