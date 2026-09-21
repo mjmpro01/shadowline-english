@@ -530,3 +530,11 @@ no recording to ship with the code — so a take against one is kept and its
 contour drawn, without a score being invented for it. Upload audio in the clip
 studio to make them scoreable. Running the seeder twice does nothing the second
 time.
+
+## CI/CD on a VPS (Jenkins)
+
+Production deploys are driven by Jenkins on the same Docker host — not GitHub
+Actions. Pipeline-as-Code lives in the repo root [`Jenkinsfile`](../Jenkinsfile);
+ops notes (webhook, RAM, backup, first boot) are in
+[`docs/ops-jenkins.md`](../docs/ops-jenkins.md). The SPA is the Compose service
+`web` (nginx serving `app/dist`).

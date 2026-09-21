@@ -1,0 +1,61 @@
+# Jenkins LTS on the same Docker host as Shadowline.
+#
+# From this directory (or with -f):
+#   docker compose -f docker-compose.jenkins.yml up -d
+#
+# First boot: docker compose logs jenkins | grep -i password
+# Then open http://VPS_IP:8085 (or put host nginx in front — see docs/ops-jenkins.md).
+#
+# The controller mounts the host Docker socket so Pipeline can run
+# `docker compose` against /opt/shadowline. That is powerful — keep Jenkins
+# behind HTTPS and a strong admin password.
+
+services:
+  jenkins:
+    build:
+      context: .
+      dockerfile: Dockerfile.jenkins
+    image: shadowline-jenkins:lts
+    container_name: shadowline-jenkins
+    restart: unless-stopped
+    # Root so the mounted docker.sock is usable without group gymnastics on a
+    # single-admin VPS. Lock the UI behind HTTPS + a strong password.
+    user: root
+    ports:
+      - "${JENKINS_HTTP_PORT:-8085}:8080"
+      - "${JENKINS_AGENT_PORT:-50000}:50000"
+    environment:
+      # Keep the heap modest so Postgres/Keycloak/workers still fit on a
+      # small VPS. Raise on a 4GB+ box if builds OOM.
+      JAVA_OPTS: >-
+        -Xmx768m
+        -Dhudson.plugins.git.GitSCM.ALLOW_LOCAL_CHECKOUT=true
+      # Suggested install set on first run (can also install from UI).
+      JENKINS_OPTS: "--httpPort=8080"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Deploy checkout: clone the repo here once on the VPS.
+      - ${SHADOWLINE_ROOT:-/opt/shadowline}:/opt/shadowline
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/login >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
+
+  # Optional: container GUI. Leave commented or set COMPOSE_PROFILES=portainer.
+  portainer:
+    profiles: ["portainer"]
+    image: portainer/portainer-ce:2.21.5
+    container_name: shadowline-portainer
+    restart: unless-stopped
+    ports:
+      - "${PORTAINER_PORT:-9002}:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+
+volumes:
+  jenkins_home:
+  portainer_data:

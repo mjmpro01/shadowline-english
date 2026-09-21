@@ -101,6 +101,20 @@ services:
       keycloak:
         condition: service_healthy
 
+  # Serves the Vite SPA. Build context is the monorepo root so the image can
+  # copy ops/nginx/app.conf. On a laptop you can keep using `yarn dev` and
+  # leave this service stopped; production / Jenkins deploy brings it up.
+  web:
+    build:
+      context: ..
+      dockerfile: app/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-}
+    ports:
+      - "${WEB_PORT:-8088}:80"
+    depends_on:
+      - api
+
   # Publishes the starter library once, so the first screen is not empty. It
   # exits immediately if the library already has clips, so leaving it in the
   # default set is harmless.

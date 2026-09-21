@@ -1,0 +1,10 @@
+# Plugins for Pipeline-as-Code + GitHub webhooks on a single VPS controller.
+workflow-aggregator
+git
+github
+github-branch-source
+credentials-binding
+docker-workflow
+pipeline-stage-view
+ws-cleanup
+timestamper
