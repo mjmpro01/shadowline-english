@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { LoadFailure, Loading } from '../components/LoadState'
 import { useT } from '../i18n'
@@ -11,6 +11,8 @@ import {
   registerWithPassword,
 } from '../lib/api'
 import { useApp } from '../store/context'
+
+const REMEMBER_EMAIL_KEY = 'shadowline.login.email'
 
 /**
  * What the server's ?error= codes mean, as keys rather than sentences.
@@ -39,8 +41,22 @@ export function LoginScreen() {
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [remember, setRemember] = useState(true)
   const [formError, setFormError] = useState<string | null>(null)
   const [forgotDone, setForgotDone] = useState(false)
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(REMEMBER_EMAIL_KEY)
+      if (saved) {
+        setEmail(saved)
+        setRemember(true)
+      }
+    } catch {
+      /* private mode — remember stays unchecked */
+    }
+  }, [])
 
   if (state === 'loading') return <Loading />
   if (state === 'error') return <LoadFailure />
@@ -73,6 +89,12 @@ export function LoginScreen() {
       } else {
         await loginWithPassword(email, password)
       }
+      try {
+        if (remember) localStorage.setItem(REMEMBER_EMAIL_KEY, email)
+        else localStorage.removeItem(REMEMBER_EMAIL_KEY)
+      } catch {
+        /* ignore */
+      }
       await reload()
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : t('login.error.server'))
@@ -81,50 +103,39 @@ export function LoginScreen() {
     }
   }
 
+  const submitLabel =
+    busy
+      ? t('login.signingIn')
+      : mode === 'register'
+        ? t('login.register')
+        : mode === 'forgot'
+          ? t('login.sendReset')
+          : t('login.signIn')
+
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 24,
-      }}
-    >
-      <div style={{ width: '100%', maxWidth: 360 }} className="stack gap-4">
-        <div className="stack" style={{ gap: 4 }}>
-          <h1 style={{ fontSize: 34, margin: 0 }}>Shadowline</h1>
-          <div style={{ fontSize: 14, opacity: 0.65 }}>{t('login.tagline')}</div>
+    <div className="login-hero">
+      <div className="login-hero-bg" aria-hidden="true" />
+      <div className="login-panel">
+        <div className="login-crest" aria-hidden="true">
+          <img src="/login/crest.png" alt="" width={90} height={90} />
         </div>
 
+        <header className="login-intro">
+          <h1 className="login-title">
+            <span>{t('login.brand')}</span>
+            <span className="login-title-accent">{t('login.brandAccent')}</span>
+          </h1>
+          <p className="login-tagline">{t('login.tagline')}</p>
+        </header>
+
         {message && (
-          <div
-            role="alert"
-            style={{
-              fontSize: 14,
-              lineHeight: 1.4,
-              padding: 'var(--space-3)',
-              borderRadius: 'var(--radius-sm)',
-              color: 'var(--score-attention)',
-              border: '1px solid color-mix(in srgb, var(--score-attention) 45%, transparent)',
-              background: 'color-mix(in srgb, var(--score-attention) 12%, transparent)',
-            }}
-          >
+          <div className="login-alert" role="alert">
             {message}
           </div>
         )}
 
         {forgotDone && (
-          <div
-            role="status"
-            style={{
-              fontSize: 14,
-              lineHeight: 1.4,
-              padding: 'var(--space-3)',
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid color-mix(in srgb, var(--ink) 18%, transparent)',
-            }}
-          >
+          <div className="login-note" role="status">
             {t('login.forgotSent')}
           </div>
         )}
@@ -133,84 +144,128 @@ export function LoginScreen() {
           Google stays a navigation out of the app; email/password stays here
           and talks to our API, which talks to Keycloak behind the scenes.
         */}
-        <a className="btn btn-secondary btn-block" href={loginURL()}>
-          {oauthMessage ? t('login.tryAgain') : t('login.google')}
+        <a className="login-google" href={loginURL()}>
+          <span className="login-google-mark" aria-hidden="true">
+            G
+          </span>
+          <span>{oauthMessage ? t('login.tryAgain') : t('login.google')}</span>
         </a>
 
-        <div className="card-meta" style={{ textAlign: 'center' }}>
-          {t('login.orEmail')}
+        <div className="login-divider">
+          <span />
+          <span>{t('login.orEmail')}</span>
+          <span />
         </div>
 
-        <form className="stack gap-3" onSubmit={(e) => void onSubmit(e)}>
+        <form className="login-form" onSubmit={(e) => void onSubmit(e)}>
           {mode === 'register' && (
-            <div className="field" style={{ textAlign: 'left' }}>
-              <label htmlFor="login-name">{t('login.name')}</label>
-              <input
-                id="login-name"
-                className="input"
-                autoComplete="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
+            <label className="login-field">
+              <span>{t('login.name')}</span>
+              <span className="login-input">
+                <input
+                  id="login-name"
+                  autoComplete="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t('login.namePlaceholder')}
+                />
+              </span>
+            </label>
           )}
 
-          <div className="field" style={{ textAlign: 'left' }}>
-            <label htmlFor="login-email">{t('login.emailLabel')}</label>
-            <input
-              id="login-email"
-              className="input"
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
+          <label className="login-field">
+            <span>{t('login.emailLabel')}</span>
+            <span className="login-input">
+              <img src="/login/mail.svg" alt="" width={18} height={18} aria-hidden="true" />
+              <input
+                id="login-email"
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={t('login.emailPlaceholder')}
+              />
+            </span>
+          </label>
 
           {mode !== 'forgot' && (
-            <div className="field" style={{ textAlign: 'left' }}>
-              <label htmlFor="login-password">{t('login.password')}</label>
-              <input
-                id="login-password"
-                className="input"
-                type="password"
-                required
-                minLength={mode === 'register' ? 8 : undefined}
-                autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+            <label className="login-field">
+              <span>{t('login.password')}</span>
+              <span className="login-input">
+                <img src="/login/key.svg" alt="" width={18} height={18} aria-hidden="true" />
+                <input
+                  id="login-password"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  minLength={mode === 'register' ? 8 : undefined}
+                  autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={t('login.passwordPlaceholder')}
+                />
+                <button
+                  type="button"
+                  className="login-eye"
+                  aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
+                  onClick={() => setShowPassword((v) => !v)}
+                >
+                  <img
+                    src="/login/eye-off.svg"
+                    alt=""
+                    width={18}
+                    height={18}
+                    style={{ opacity: showPassword ? 0.45 : 1 }}
+                  />
+                </button>
+              </span>
+            </label>
+          )}
+
+          {mode === 'login' && (
+            <div className="login-options">
+              <label className="login-remember">
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                />
+                <span className="login-check" aria-hidden="true">
+                  ✓
+                </span>
+                <span>{t('login.remember')}</span>
+              </label>
+              <button type="button" className="login-forgot" onClick={() => switchMode('forgot')}>
+                {t('login.forgot')}
+              </button>
             </div>
           )}
 
-          <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
-            {busy
-              ? t('login.signingIn')
-              : mode === 'register'
-                ? t('login.register')
-                : mode === 'forgot'
-                  ? t('login.sendReset')
-                  : t('login.signIn')}
+          <button type="submit" className="login-submit" disabled={busy}>
+            {submitLabel}
           </button>
         </form>
 
-        <div className="stack gap-2" style={{ textAlign: 'center', fontSize: 14 }}>
-          {mode === 'login' && (
-            <>
-              <button type="button" className="linkish" onClick={() => switchMode('forgot')}>
-                {t('login.forgot')}
-              </button>
-              <button type="button" className="linkish" onClick={() => switchMode('register')}>
+        <div className="login-switch">
+          {mode === 'login' ? (
+            <p>
+              {t('login.newHero')}{' '}
+              <button type="button" onClick={() => switchMode('register')}>
                 {t('login.toRegister')}
               </button>
-            </>
+            </p>
+          ) : (
+            <p>
+              <button type="button" onClick={() => switchMode('login')}>
+                {t('login.toSignIn')}
+              </button>
+            </p>
           )}
-          {mode !== 'login' && (
-            <button type="button" className="linkish" onClick={() => switchMode('login')}>
-              {t('login.toSignIn')}
-            </button>
-          )}
+        </div>
+
+        <div className="login-trust">
+          <img src="/login/trust.svg" alt="" width={18} height={18} aria-hidden="true" />
+          <p>{t('login.trust')}</p>
         </div>
       </div>
     </div>
