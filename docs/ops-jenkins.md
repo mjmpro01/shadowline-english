@@ -126,3 +126,6 @@ docker compose -f /opt/shadowline/server/docker-compose.yml exec -T postgres \
 - Do not expose port `50000` on the public internet unless you use inbound agents
   and know the threat model.
 - Production `.env` stays only under `/opt/shadowline/server/.env`.
+
+Observability (Grafana / Loki / Tempo / Prometheus) on the same host:
+[`docs/ops-observability.md`](ops-observability.md).

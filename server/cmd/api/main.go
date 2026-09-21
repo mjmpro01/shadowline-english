@@ -19,10 +19,15 @@ import (
 	"github.com/shadowline/server/internal/keycloak"
 	"github.com/shadowline/server/internal/storage"
 	"github.com/shadowline/server/internal/store"
+	"github.com/shadowline/server/internal/telemetry"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func main() {
-	log := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	log := telemetry.NewLogger()
 
 	if err := run(log); err != nil {
 		log.Error("server stopped", "error", err)
@@ -38,6 +43,18 @@ func run(log *slog.Logger) error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	otelShutdown, err := telemetry.Init(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := otelShutdown(shutdownCtx); err != nil {
+			log.Warn("otel shutdown", "error", err)
+		}
+	}()
 
 	pool, err := db.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
@@ -102,7 +119,7 @@ func run(log *slog.Logger) error {
 
 	httpSrv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           srv.Routes(),
+		Handler:           telemetry.WrapHTTP(srv.Routes(), "shadowline-api"),
 		ReadHeaderTimeout: 10 * time.Second,
 		// Generous because take uploads stream through this server when object
 		// storage is disk-backed.
@@ -133,8 +150,14 @@ func run(log *slog.Logger) error {
 // openStorage picks S3 when an endpoint is configured and the local disk
 // otherwise, so a laptop with no MinIO still runs the real code path.
 func openStorage(ctx context.Context, cfg config.Config, signer *auth.Signer) (storage.Storage, error) {
+	tracer := otel.Tracer("shadowline/storage")
+	ctx, span := tracer.Start(ctx, "storage.open", trace.WithAttributes(
+		attribute.Bool("s3", cfg.S3Endpoint != ""),
+	))
+	defer span.End()
+
 	if cfg.S3Endpoint != "" {
-		return storage.NewS3(ctx, storage.S3Options{
+		s, err := storage.NewS3(ctx, storage.S3Options{
 			Endpoint:       cfg.S3Endpoint,
 			PublicEndpoint: cfg.S3PublicEndpoint,
 			AccessKey:      cfg.S3AccessKey,
@@ -145,6 +168,12 @@ func openStorage(ctx context.Context, cfg config.Config, signer *auth.Signer) (s
 			TakesBucket:    cfg.TakesBucket,
 			CORSOrigins:    []string{cfg.AppOrigin},
 		})
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+			return nil, err
+		}
+		return s, nil
 	}
 	base := publicBase(cfg)
 	return storage.NewDisk(cfg.DiskRoot, base+"/files", func(b storage.Bucket, key string, exp time.Time) string {

@@ -1,0 +1,105 @@
+# Self-hosted LGTM stack (Loki + Grafana + Tempo + Prometheus) + Alloy.
+#
+# Create the shared network once (app compose also defines it):
+#   docker network create shadowline
+# Then:
+#   docker compose -f ops/observability/docker-compose.yml up -d
+#
+# Grafana: http://VPS:3000  (admin / see GF_SECURITY_ADMIN_PASSWORD)
+# See docs/ops-observability.md
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: shadowline-prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-remote-write-receiver
+      - --enable-feature=otlp-write-receiver
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks: [shadowline]
+
+  loki:
+    image: grafana/loki:3.3.2
+    container_name: shadowline-loki
+    restart: unless-stopped
+    command: ["-config.file=/etc/loki/loki-config.yml"]
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_data:/loki
+    networks: [shadowline]
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    container_name: shadowline-tempo
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo/tempo-config.yml"]
+    volumes:
+      - ./tempo/tempo-config.yml:/etc/tempo/tempo-config.yml:ro
+      - tempo_data:/var/tempo
+    networks: [shadowline]
+
+  alloy:
+    image: grafana/alloy:v1.5.1
+    container_name: shadowline-alloy
+    restart: unless-stopped
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --storage.path=/var/lib/alloy/data
+      - --server.http.listen-addr=0.0.0.0:12345
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - alloy_data:/var/lib/alloy/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      # OTLP from host tools / local non-compose clients
+      - "${OTLP_GRPC_PORT:-4317}:4317"
+      - "${OTLP_HTTP_PORT:-4318}:4318"
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    networks: [shadowline]
+
+  grafana:
+    image: grafana/grafana:11.3.1
+    container_name: shadowline-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
+      GF_FEATURE_TOGGLES_ENABLE: traceqlEditor
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    networks: [shadowline]
+
+volumes:
+  prometheus_data:
+  loki_data:
+  tempo_data:
+  alloy_data:
+  grafana_data:
+
+# Observability compose joins this network as external:true — create once:
+#   docker network create shadowline
+# App compose also uses name: shadowline for its default network.
+networks:
+  shadowline:
+    name: shadowline
+    external: true

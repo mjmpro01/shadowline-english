@@ -91,6 +91,10 @@ services:
       # Inside the compose network the API talks to Keycloak by service name;
       # KEYCLOAK_PUBLIC_URL (in .env) is what the browser uses.
       KEYCLOAK_URL: ${KEYCLOAK_URL:-http://keycloak:8080}
+      OTEL_SERVICE_NAME: shadowline-api
+      # Empty disables export (laptop without ops/observability). On the VPS set
+      # OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4318 in .env (shared network).
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     ports:
       - "8080:8080"
     depends_on:
@@ -132,6 +136,9 @@ services:
     build:
       context: ../scoring
     env_file: .env
+    environment:
+      OTEL_SERVICE_NAME: shadowline-scoring
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     # The worker is the part that scales: one replica scores roughly one take a
     # second, so add replicas until the queue stops growing.
     deploy:
@@ -152,6 +159,9 @@ services:
       context: ../scoring
     entrypoint: ["python", "-m", "shadowline.cutter"]
     env_file: .env
+    environment:
+      OTEL_SERVICE_NAME: shadowline-cutting
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     deploy:
       replicas: 1
     depends_on:
@@ -169,6 +179,9 @@ services:
       context: ../scoring
     entrypoint: ["python", "-m", "shadowline.dubber"]
     env_file: .env
+    environment:
+      OTEL_SERVICE_NAME: shadowline-dubbing
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     deploy:
       replicas: 1
     depends_on:
@@ -186,6 +199,9 @@ services:
       context: ../scoring
     entrypoint: ["python", "-m", "shadowline.transcriber"]
     env_file: .env
+    environment:
+      OTEL_SERVICE_NAME: shadowline-transcribing
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     deploy:
       replicas: 1
     depends_on:
@@ -208,6 +224,9 @@ services:
       context: ../scoring
     entrypoint: ["python", "-m", "shadowline.glosser"]
     env_file: .env
+    environment:
+      OTEL_SERVICE_NAME: shadowline-glossing
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     deploy:
       replicas: 1
     depends_on:
@@ -217,3 +236,8 @@ services:
 volumes:
   pgdata:
   miniodata:
+
+# Shared with ops/observability (Alloy DNS name `alloy`) and ops/jenkins.
+networks:
+  default:
+    name: shadowline

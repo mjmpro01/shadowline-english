@@ -24,6 +24,7 @@ import psycopg
 from .dubqueue import DubJob, DubQueue
 from .storage import ObjectMissing, Storage, from_env as storage_from_env
 from .video import CutFailed, dub, ffmpeg_available
+from . import telemetry
 
 log = logging.getLogger("shadowline.dubber")
 
@@ -68,29 +69,32 @@ def run_once(queue: DubQueue, blobs: Storage, workdir: Path) -> bool:
         return False
 
     started = time.monotonic()
-    try:
-        key = dub_job(job, blobs, workdir)
-    except Undubbable as err:
-        # The take keeps its recording and its score; only the file is missing,
-        # and the screen offers the button again rather than spinning.
-        log.warning("take %s cannot be dubbed: %s", job.take_id, err)
-        queue.fail(job, str(err))
-        return True
-    except Exception:
-        log.exception("take %s failed unexpectedly", job.take_id)
-        queue.fail(job, "dubbing failed")
-        return True
+    with telemetry.track_job(
+        "dubbing",
+        {"job.type": "dub", "take_id": str(job.take_id)},
+    ) as traced:
+        try:
+            key = dub_job(job, blobs, workdir)
+        except Undubbable as err:
+            traced["status"] = "rejected"
+            # The take keeps its recording and its score; only the file is missing,
+            # and the screen offers the button again rather than spinning.
+            log.warning("take %s cannot be dubbed: %s", job.take_id, err)
+            queue.fail(job, str(err))
+            return True
+        except Exception:
+            traced["status"] = "error"
+            log.exception("take %s failed unexpectedly", job.take_id)
+            queue.fail(job, "dubbing failed")
+            return True
 
-    queue.complete(job, key)
-    log.info("dubbed take %s (%.0fms)", job.take_id, (time.monotonic() - started) * 1000)
-    return True
+        queue.complete(job, key)
+        log.info("dubbed take %s (%.0fms)", job.take_id, (time.monotonic() - started) * 1000)
+        return True
 
 
 def main() -> int:
-    logging.basicConfig(
-        level=os.environ.get("LOG_LEVEL", "INFO").upper(),
-        format="%(asctime)s %(levelname)s %(name)s %(message)s",
-    )
+    telemetry.setup("shadowline-dubbing")
 
     dsn = os.environ.get("DATABASE_URL")
     if not dsn:

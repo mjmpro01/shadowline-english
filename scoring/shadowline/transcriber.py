@@ -22,6 +22,7 @@ from pathlib import Path
 import psycopg
 
 from . import ipa
+from . import telemetry
 from .storage import ObjectMissing, Storage, from_env as storage_from_env
 from .transcribe import TranscribeFailed, Transcriber, WhisperTranscriber
 from .transcribequeue import TranscribeJob, TranscribeQueue
@@ -73,34 +74,37 @@ def run_once(
         return False
 
     started = time.monotonic()
-    try:
-        language, words = transcribe_job(job, blobs, transcriber, workdir)
-    except Untranscribable as err:
-        # The studio falls back to what it always did: the admin types the
-        # lines. Nothing else about the upload is affected.
-        log.warning("source %s cannot be transcribed: %s", job.source_id, err)
-        queue.fail(job, str(err))
-        return True
-    except Exception:
-        log.exception("source %s failed unexpectedly", job.source_id)
-        queue.fail(job, "transcription failed")
-        return True
+    with telemetry.track_job(
+        "transcribing",
+        {"job.type": "transcribe", "source_id": str(job.source_id)},
+    ) as traced:
+        try:
+            language, words = transcribe_job(job, blobs, transcriber, workdir)
+        except Untranscribable as err:
+            traced["status"] = "rejected"
+            # The studio falls back to what it always did: the admin types the
+            # lines. Nothing else about the upload is affected.
+            log.warning("source %s cannot be transcribed: %s", job.source_id, err)
+            queue.fail(job, str(err))
+            return True
+        except Exception:
+            traced["status"] = "error"
+            log.exception("source %s failed unexpectedly", job.source_id)
+            queue.fail(job, "transcription failed")
+            return True
 
-    queue.complete(job, language, words)
-    log.info(
-        "transcribed source %s: %d words (%.0fs)",
-        job.source_id,
-        len(words),
-        time.monotonic() - started,
-    )
-    return True
+        queue.complete(job, language, words)
+        log.info(
+            "transcribed source %s: %d words (%.0fs)",
+            job.source_id,
+            len(words),
+            time.monotonic() - started,
+        )
+        return True
 
 
 def main() -> int:
-    logging.basicConfig(
-        level=os.environ.get("LOG_LEVEL", "INFO").upper(),
-        format="%(asctime)s %(levelname)s %(name)s %(message)s",
-    )
+    telemetry.setup("shadowline-transcribing")
 
     dsn = os.environ.get("DATABASE_URL")
     if not dsn:

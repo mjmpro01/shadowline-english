@@ -24,6 +24,7 @@ from .compare import compare_contours
 from .pitch import ANALYSIS_RATE, track_pitch
 from .queue import Job, Queue
 from .storage import ObjectMissing, Storage, from_env as storage_from_env
+from . import telemetry
 
 log = logging.getLogger("shadowline.worker")
 
@@ -69,31 +70,34 @@ def run_once(queue: Queue, blobs: Storage) -> bool:
         return False
 
     started = time.monotonic()
-    try:
-        score, scores, analysis = score_job(job, blobs)
-    except Unscoreable as err:
-        log.warning("take %s cannot be scored: %s", job.take_id, err)
-        queue.fail(job, str(err))
-        return True
-    except Exception:
-        # Unexpected: log the trace and let the job be retried, since the next
-        # attempt may land on a worker that is not having this problem.
-        log.exception("take %s failed unexpectedly", job.take_id)
-        queue.fail(job, "scoring failed")
-        return True
+    with telemetry.track_job(
+        "scoring",
+        {"job.type": "score", "take_id": str(job.take_id)},
+    ) as traced:
+        try:
+            score, scores, analysis = score_job(job, blobs)
+        except Unscoreable as err:
+            traced["status"] = "rejected"
+            log.warning("take %s cannot be scored: %s", job.take_id, err)
+            queue.fail(job, str(err))
+            return True
+        except Exception:
+            traced["status"] = "error"
+            # Unexpected: log the trace and let the job be retried, since the next
+            # attempt may land on a worker that is not having this problem.
+            log.exception("take %s failed unexpectedly", job.take_id)
+            queue.fail(job, "scoring failed")
+            return True
 
-    queue.complete(job, score, scores, analysis)
-    log.info(
-        "scored take %s: %d (%.0fms)", job.take_id, score, (time.monotonic() - started) * 1000
-    )
-    return True
+        queue.complete(job, score, scores, analysis)
+        log.info(
+            "scored take %s: %d (%.0fms)", job.take_id, score, (time.monotonic() - started) * 1000
+        )
+        return True
 
 
 def main() -> int:
-    logging.basicConfig(
-        level=os.environ.get("LOG_LEVEL", "INFO").upper(),
-        format="%(asctime)s %(levelname)s %(name)s %(message)s",
-    )
+    telemetry.setup("shadowline-scoring")
 
     dsn = os.environ.get("DATABASE_URL")
     if not dsn:

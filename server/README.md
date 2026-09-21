@@ -538,3 +538,9 @@ Actions. Pipeline-as-Code lives in the repo root [`Jenkinsfile`](../Jenkinsfile)
 ops notes (webhook, RAM, backup, first boot) are in
 [`docs/ops-jenkins.md`](../docs/ops-jenkins.md). The SPA is the Compose service
 `web` (nginx serving `app/dist`).
+
+## Observability (Grafana)
+
+Logs, metrics, and traces: self-hosted Grafana LGTM + Alloy. See
+[`docs/ops-observability.md`](../docs/ops-observability.md). Set
+`OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4318` in production `.env`.

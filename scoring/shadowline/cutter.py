@@ -25,6 +25,7 @@ import psycopg
 from .cutqueue import CutJob, CutQueue
 from .storage import ObjectMissing, Storage, from_env as storage_from_env
 from .video import CutFailed, cut, ffmpeg_available, has_video_stream, poster
+from . import telemetry
 
 log = logging.getLogger("shadowline.cutter")
 
@@ -112,29 +113,32 @@ def run_once(queue: CutQueue, blobs: Storage, sources: SourceCache, workdir: Pat
         return False
 
     started = time.monotonic()
-    try:
-        video_key, poster_key = cut_job(job, blobs, sources, workdir)
-    except Uncuttable as err:
-        # The clip keeps its audio and simply has no picture, which is the state
-        # every audio-only clip in the library is already in.
-        log.warning("clip %s cannot be cut: %s", job.clip_id, err)
-        queue.fail(job, str(err))
-        return True
-    except Exception:
-        log.exception("clip %s failed unexpectedly", job.clip_id)
-        queue.fail(job, "cutting failed")
-        return True
+    with telemetry.track_job(
+        "cutting",
+        {"job.type": "cut", "clip_id": str(job.clip_id)},
+    ) as traced:
+        try:
+            video_key, poster_key = cut_job(job, blobs, sources, workdir)
+        except Uncuttable as err:
+            traced["status"] = "rejected"
+            # The clip keeps its audio and simply has no picture, which is the state
+            # every audio-only clip in the library is already in.
+            log.warning("clip %s cannot be cut: %s", job.clip_id, err)
+            queue.fail(job, str(err))
+            return True
+        except Exception:
+            traced["status"] = "error"
+            log.exception("clip %s failed unexpectedly", job.clip_id)
+            queue.fail(job, "cutting failed")
+            return True
 
-    queue.complete(job, video_key, poster_key)
-    log.info("cut clip %s (%.0fms)", job.clip_id, (time.monotonic() - started) * 1000)
-    return True
+        queue.complete(job, video_key, poster_key)
+        log.info("cut clip %s (%.0fms)", job.clip_id, (time.monotonic() - started) * 1000)
+        return True
 
 
 def main() -> int:
-    logging.basicConfig(
-        level=os.environ.get("LOG_LEVEL", "INFO").upper(),
-        format="%(asctime)s %(levelname)s %(name)s %(message)s",
-    )
+    telemetry.setup("shadowline-cutting")
 
     dsn = os.environ.get("DATABASE_URL")
     if not dsn:

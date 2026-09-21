@@ -17,6 +17,7 @@ import (
 	"github.com/shadowline/server/internal/keycloak"
 	"github.com/shadowline/server/internal/storage"
 	"github.com/shadowline/server/internal/store"
+	"github.com/shadowline/server/internal/telemetry"
 )
 
 type Server struct {
@@ -42,6 +43,7 @@ func (s *Server) Routes() http.Handler {
 	r.Use(s.Sessions.Middleware)
 
 	r.Get("/healthz", s.handleHealth)
+	r.Handle("/metrics", telemetry.MetricsHandler())
 
 	if s.Cfg.AuthFake {
 		// Test-only, and absent entirely from a normal deployment.

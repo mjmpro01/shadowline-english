@@ -10,3 +10,7 @@ cmudict>=1.0
 # Definitions for tapped words. Optional at runtime: without an API key the
 # glosser still fills in pronunciations from CMUdict.
 anthropic>=1.0
+# OpenTelemetry → Grafana Alloy (optional at runtime if endpoint unset).
+opentelemetry-api>=1.27
+opentelemetry-sdk>=1.27
+opentelemetry-exporter-otlp-proto-http>=1.27

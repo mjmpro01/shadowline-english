@@ -24,6 +24,7 @@ import psycopg
 from .dictionary import LearnersDictionary
 from .gloss import ClaudeGlosser, Glosser, GlossFailed, gloss
 from .glossqueue import GlossQueue
+from . import telemetry
 
 log = logging.getLogger("shadowline.glosser")
 
@@ -40,25 +41,31 @@ def run_once(queue: GlossQueue, sources: list[Glosser]) -> bool:
         return False
 
     started = time.monotonic()
-    try:
-        said, meaning, source = gloss(job.word, job.context, sources)
-    except GlossFailed as err:
-        # The word keeps its place in the learner's list; only the definition
-        # is missing, and the popup says so rather than spinning.
-        log.warning("cannot gloss %r: %s", job.word, err)
-        queue.fail(job, str(err))
-        return True
-    except Exception:
-        log.exception("glossing %r failed unexpectedly", job.word)
-        queue.fail(job, "lookup failed")
-        return True
+    with telemetry.track_job(
+        "glossing",
+        {"job.type": "gloss", "word": job.word},
+    ) as traced:
+        try:
+            said, meaning, source = gloss(job.word, job.context, sources)
+        except GlossFailed as err:
+            traced["status"] = "rejected"
+            # The word keeps its place in the learner's list; only the definition
+            # is missing, and the popup says so rather than spinning.
+            log.warning("cannot gloss %r: %s", job.word, err)
+            queue.fail(job, str(err))
+            return True
+        except Exception:
+            traced["status"] = "error"
+            log.exception("glossing %r failed unexpectedly", job.word)
+            queue.fail(job, "lookup failed")
+            return True
 
-    queue.complete(job, said, meaning, source)
-    log.info(
-        "glossed %r from %s (%.0fms)",
-        job.word, source or "nowhere", (time.monotonic() - started) * 1000,
-    )
-    return True
+        queue.complete(job, said, meaning, source)
+        log.info(
+            "glossed %r from %s (%.0fms)",
+            job.word, source or "nowhere", (time.monotonic() - started) * 1000,
+        )
+        return True
 
 
 def _sources() -> list[Glosser]:
@@ -97,10 +104,7 @@ def _sources() -> list[Glosser]:
 
 
 def main() -> int:
-    logging.basicConfig(
-        level=os.environ.get("LOG_LEVEL", "INFO").upper(),
-        format="%(asctime)s %(levelname)s %(name)s %(message)s",
-    )
+    telemetry.setup("shadowline-glossing")
 
     dsn = os.environ.get("DATABASE_URL")
     if not dsn:
