@@ -4,6 +4,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 )
@@ -22,6 +23,17 @@ type Config struct {
 	// server can tell from its own environment.
 	AuthFake    bool
 	AdminEmails map[string]bool
+
+	// Keycloak: email/password login and Admin API user sync. Empty URL means
+	// the feature is off — Google still works, and EnsureUser is a no-op.
+	KeycloakURL          string
+	KeycloakPublicURL    string
+	KeycloakRealm        string
+	KeycloakClientID     string
+	KeycloakClientSecret string
+	KeycloakRedirectURL  string
+	KeycloakAdmin        string
+	KeycloakAdminPass    string
 
 	// Storage: S3/MinIO when Endpoint is set, otherwise a directory on disk.
 	S3Endpoint string
@@ -43,24 +55,35 @@ type Config struct {
 
 func Load() (Config, error) {
 	c := Config{
-		Addr:               env("ADDR", ":8080"),
-		DatabaseURL:        env("DATABASE_URL", ""),
-		GoogleClientID:     env("GOOGLE_CLIENT_ID", ""),
-		GoogleClientSecret: env("GOOGLE_CLIENT_SECRET", ""),
-		OAuthRedirectURL:   env("OAUTH_REDIRECT_URL", "http://localhost:8080/auth/google/callback"),
-		SessionSecret:      env("SESSION_SECRET", ""),
-		AuthFake:           env("AUTH_FAKE", "") == "1",
-		AdminEmails:        emailSet(env("ADMIN_EMAILS", "")),
-		S3Endpoint:       env("S3_ENDPOINT", ""),
-		S3PublicEndpoint: env("S3_PUBLIC_ENDPOINT", ""),
-		S3AccessKey:      env("S3_ACCESS_KEY", ""),
-		S3SecretKey:      env("S3_SECRET_KEY", ""),
-		S3UseSSL:         env("S3_USE_SSL", "") == "1",
-		S3Region:         env("S3_REGION", "us-east-1"),
-		ClipsBucket:      env("S3_CLIPS_BUCKET", "clips"),
-		TakesBucket:      env("S3_TAKES_BUCKET", "takes"),
-		DiskRoot:         env("DISK_ROOT", ""),
-		AppOrigin:        env("APP_ORIGIN", "http://localhost:5173"),
+		Addr:                 env("ADDR", ":8080"),
+		DatabaseURL:          env("DATABASE_URL", ""),
+		GoogleClientID:       env("GOOGLE_CLIENT_ID", ""),
+		GoogleClientSecret:   env("GOOGLE_CLIENT_SECRET", ""),
+		OAuthRedirectURL:     env("OAUTH_REDIRECT_URL", "http://localhost:8080/auth/google/callback"),
+		SessionSecret:        env("SESSION_SECRET", ""),
+		AuthFake:             env("AUTH_FAKE", "") == "1",
+		AdminEmails:          emailSet(env("ADMIN_EMAILS", "")),
+		KeycloakURL:          strings.TrimRight(env("KEYCLOAK_URL", ""), "/"),
+		KeycloakPublicURL:    strings.TrimRight(env("KEYCLOAK_PUBLIC_URL", ""), "/"),
+		KeycloakRealm:        env("KEYCLOAK_REALM", "shadowline"),
+		KeycloakClientID:     env("KEYCLOAK_CLIENT_ID", ""),
+		KeycloakClientSecret: env("KEYCLOAK_CLIENT_SECRET", ""),
+		KeycloakRedirectURL:  env("KEYCLOAK_REDIRECT_URL", "http://localhost:8080/auth/keycloak/callback"),
+		KeycloakAdmin:        env("KEYCLOAK_ADMIN", "admin"),
+		KeycloakAdminPass:    env("KEYCLOAK_ADMIN_PASSWORD", ""),
+		S3Endpoint:           env("S3_ENDPOINT", ""),
+		S3PublicEndpoint:     env("S3_PUBLIC_ENDPOINT", ""),
+		S3AccessKey:          env("S3_ACCESS_KEY", ""),
+		S3SecretKey:          env("S3_SECRET_KEY", ""),
+		S3UseSSL:             env("S3_USE_SSL", "") == "1",
+		S3Region:             env("S3_REGION", "us-east-1"),
+		ClipsBucket:          env("S3_CLIPS_BUCKET", "clips"),
+		TakesBucket:          env("S3_TAKES_BUCKET", "takes"),
+		DiskRoot:             env("DISK_ROOT", ""),
+		AppOrigin:            env("APP_ORIGIN", "http://localhost:5173"),
+	}
+	if c.KeycloakPublicURL == "" {
+		c.KeycloakPublicURL = c.KeycloakURL
 	}
 
 	if c.DatabaseURL == "" {
@@ -74,6 +97,14 @@ func Load() (Config, error) {
 	}
 	if !c.AuthFake && (c.GoogleClientID == "" || c.GoogleClientSecret == "") {
 		return c, fmt.Errorf("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are required unless AUTH_FAKE=1")
+	}
+	if c.KeycloakConfigured() {
+		if c.KeycloakClientID == "" || c.KeycloakClientSecret == "" {
+			return c, fmt.Errorf("KEYCLOAK_CLIENT_ID and KEYCLOAK_CLIENT_SECRET are required when KEYCLOAK_URL is set")
+		}
+		if c.KeycloakAdminPass == "" {
+			return c, fmt.Errorf("KEYCLOAK_ADMIN_PASSWORD is required when KEYCLOAK_URL is set")
+		}
 	}
 	// The stub signs in anyone as any address, so a deployment that reaches it
 	// has no authentication at all. https is the signal: a laptop and a CI
@@ -89,6 +120,22 @@ func Load() (Config, error) {
 		return c, fmt.Errorf("set S3_ENDPOINT for object storage, or DISK_ROOT to keep audio on local disk")
 	}
 	return c, nil
+}
+
+// KeycloakConfigured reports whether email/password login and Admin API sync
+// are wired up. Partial env is rejected in Load; empty URL means off.
+func (c Config) KeycloakConfigured() bool {
+	return c.KeycloakURL != ""
+}
+
+// ForgotPasswordURL is the Keycloak-hosted reset form the login screen links to.
+func (c Config) ForgotPasswordURL() string {
+	if !c.KeycloakConfigured() {
+		return ""
+	}
+	base := c.KeycloakPublicURL
+	return base + "/realms/" + c.KeycloakRealm +
+		"/login-actions/reset-credentials?client_id=" + url.QueryEscape(c.KeycloakClientID)
 }
 
 // httpsOrigin returns the first of these URLs served over https, or "" when

@@ -47,7 +47,7 @@ export function VocabularyScreen() {
           onClick={() => navigate('/vocabulary/practice')}
         >
           <Icon name="brain" size={15} />
-          Memory practice
+          {t('vocab.memoryPractice')}
         </button>
       </div>
 
@@ -59,7 +59,7 @@ export function VocabularyScreen() {
             className={`btn ${filter === option.value ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setFilter(option.value)}
           >
-            {option.label}
+            {t(option.label)}
           </button>
         ))}
       </div>

@@ -148,8 +148,8 @@ export function ProfileScreen() {
               onChange={(e) => setName(e.target.value)}
             />
           </div>
-          {/* The address comes from Google and is what identifies the account,
-              so it is shown rather than edited. */}
+          {/* The address comes from Google or Keycloak and identifies the
+              account, so it is shown rather than edited. */}
           <div className="field" style={{ textAlign: 'left' }}>
             <label htmlFor="profile-email">{t('profile.email')}</label>
             <input id="profile-email" className="input" value={profile.email} readOnly disabled />

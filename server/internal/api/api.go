@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/shadowline/server/internal/auth"
 	"github.com/shadowline/server/internal/config"
+	"github.com/shadowline/server/internal/keycloak"
 	"github.com/shadowline/server/internal/storage"
 	"github.com/shadowline/server/internal/store"
 )
@@ -25,7 +26,12 @@ type Server struct {
 	Sessions *auth.Manager
 	Signer   *auth.Signer
 	Provider auth.Provider
-	Log      *slog.Logger
+	// Keycloak is the email/password OIDC provider. Nil when unset.
+	Keycloak auth.Provider
+	// Users syncs every successful login into Keycloak's Admin API. Nil when
+	// Keycloak is not configured.
+	Users *keycloak.Admin
+	Log   *slog.Logger
 }
 
 func (s *Server) Routes() http.Handler {
@@ -46,6 +52,12 @@ func (s *Server) Routes() http.Handler {
 	r.Route("/auth", func(r chi.Router) {
 		r.Get("/google/start", s.handleAuthStart)
 		r.Get("/google/callback", s.handleAuthCallback)
+		r.Get("/keycloak/start", s.handleKeycloakStart)
+		r.Get("/keycloak/callback", s.handleKeycloakCallback)
+		r.Get("/keycloak/forgot", s.handleKeycloakForgot)
+		r.Post("/login", s.handlePasswordLogin)
+		r.Post("/register", s.handlePasswordRegister)
+		r.Post("/forgot", s.handlePasswordForgot)
 		r.Get("/me", s.handleMe)
 		r.Post("/logout", s.handleLogout)
 	})

@@ -10,8 +10,13 @@ cp .env.example .env     # then fill it in; see the OAuth note below
 docker compose up
 ```
 
-That brings up Postgres, MinIO, the API and the scoring worker, and publishes a
-starter library once. The React app is separate — `npm run dev` in `../app`.
+That brings up Postgres, MinIO, Keycloak, Mailhog, the API and the scoring
+worker, and publishes a starter library once. The React app is separate —
+`npm run dev` in `../app`.
+
+Email/password register, sign-in and forgot-password stay on the app's own
+login screen; the API talks to Keycloak behind the scenes. Google still
+redirects to Google.
 
 Without Docker, against a Postgres you already have:
 
@@ -110,9 +115,40 @@ login screen turns the code into a sentence:
 | `failed` | the code would not exchange | wrong client secret, or an unverified Google address |
 | `server` | our fault | see the server log, where the detail stays |
 
-Only `cancelled` and `failed` involve Google at all. A `redirect_uri_mismatch`
+Only `cancelled` and `failed` involve the provider at all. A `redirect_uri_mismatch`
 never reaches here — Google shows its own screen before redirecting, which means
 step 6 above does not match `OAUTH_REDIRECT_URL`.
+
+## Keycloak (email / password)
+
+Google stays as above. Keycloak runs in Compose as the store for email/password
+accounts and reset mail. The React login screen keeps its own forms; the API
+calls Keycloak (`POST /auth/login`, `/auth/register`, `/auth/forgot`) and then
+issues the Shadowline session cookie. Google logins still sync the address into
+Keycloak via the Admin API so reset mail can reach them later.
+
+| Service | URL |
+| --- | --- |
+| Keycloak Admin console | http://localhost:8081 (admin / `KEYCLOAK_ADMIN_PASSWORD`) |
+| Mailhog (reset mail) | http://localhost:8025 |
+
+Realm `shadowline` and client `shadowline-api` are imported from
+`keycloak/shadowline-realm.json` on first start. Defaults in `.env.example`
+match that file (`KEYCLOAK_CLIENT_SECRET=shadowline-dev-secret`). The client
+has Direct Access Grants enabled for the in-app password login.
+
+### Checking it works
+
+1. Fill the Keycloak block in `.env` (copy from `.env.example`).
+2. `docker compose up -d` — wait until `keycloak` is healthy.
+3. In the app login screen, create an account with email/password.
+4. You land on the dashboard with a Shadowline session cookie.
+5. **Forgot password?** → check Mailhog (`http://localhost:8025`) for the reset link.
+6. Sign in once with Google: the same email appears under Keycloak → Users.
+
+Leave `KEYCLOAK_URL` empty to disable email/password and Admin sync; Google
+still works, but Compose still starts Keycloak (remove the service if you do
+not want it).
 
 ### The fake provider
 

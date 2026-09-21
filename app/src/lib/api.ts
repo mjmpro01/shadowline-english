@@ -73,3 +73,15 @@ export const api = {
 export function loginURL(): string {
   return `${API_URL}/auth/google/start`
 }
+
+export function loginWithPassword(email: string, password: string) {
+  return api.send<{ user: unknown }>('POST', '/auth/login', { email, password })
+}
+
+export function registerWithPassword(email: string, password: string, name?: string) {
+  return api.send<{ user: unknown }>('POST', '/auth/register', { email, password, name })
+}
+
+export function forgotPassword(email: string) {
+  return api.send<void>('POST', '/auth/forgot', { email })
+}

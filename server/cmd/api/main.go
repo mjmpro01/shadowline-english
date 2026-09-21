@@ -16,6 +16,7 @@ import (
 	"github.com/shadowline/server/internal/auth"
 	"github.com/shadowline/server/internal/config"
 	"github.com/shadowline/server/internal/db"
+	"github.com/shadowline/server/internal/keycloak"
 	"github.com/shadowline/server/internal/storage"
 	"github.com/shadowline/server/internal/store"
 )
@@ -63,6 +64,28 @@ func run(log *slog.Logger) error {
 		log.Warn("AUTH_FAKE=1 — anyone can sign in as any address. Never set this in production.")
 	}
 
+	var kcProvider auth.Provider
+	var kcUsers *keycloak.Admin
+	if cfg.KeycloakConfigured() {
+		kcProvider = auth.NewKeycloakProvider(
+			cfg.KeycloakURL,
+			cfg.KeycloakPublicURL,
+			cfg.KeycloakRealm,
+			cfg.KeycloakClientID,
+			cfg.KeycloakClientSecret,
+			cfg.KeycloakRedirectURL,
+		)
+		kcUsers = &keycloak.Admin{
+			BaseURL:      cfg.KeycloakURL,
+			Realm:        cfg.KeycloakRealm,
+			AdminUser:    cfg.KeycloakAdmin,
+			AdminPass:    cfg.KeycloakAdminPass,
+			ClientID:     cfg.KeycloakClientID,
+			ClientSecret: cfg.KeycloakClientSecret,
+		}
+		log.Info("keycloak enabled", "realm", cfg.KeycloakRealm, "public", cfg.KeycloakPublicURL)
+	}
+
 	srv := &api.Server{
 		Cfg:      cfg,
 		Store:    st,
@@ -70,6 +93,8 @@ func run(log *slog.Logger) error {
 		Sessions: &auth.Manager{Store: st, Secure: strings.HasPrefix(cfg.AppOrigin, "https://")},
 		Signer:   signer,
 		Provider: provider,
+		Keycloak: kcProvider,
+		Users:    kcUsers,
 		Log:      log,
 	}
 

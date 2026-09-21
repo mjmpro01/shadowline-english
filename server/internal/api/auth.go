@@ -20,10 +20,49 @@ const (
 	loginErrServer    = "server"    // our fault, and already logged
 )
 
-// handleAuthStart sends the browser to the provider. The PKCE verifier goes into
-// a short-lived cookie rather than into the state parameter, so the value that
-// proves we started the exchange never travels through the provider.
+// handleAuthStart sends the browser to Google (or the fake provider).
 func (s *Server) handleAuthStart(w http.ResponseWriter, r *http.Request) {
+	s.startAuth(w, r, s.Provider)
+}
+
+// handleKeycloakStart sends the browser to Keycloak for email/password login
+// or registration. Absent when Keycloak is not configured.
+func (s *Server) handleKeycloakStart(w http.ResponseWriter, r *http.Request) {
+	if s.Keycloak == nil {
+		http.NotFound(w, r)
+		return
+	}
+	s.startAuth(w, r, s.Keycloak)
+}
+
+// handleKeycloakForgot redirects to Keycloak's hosted reset-password form.
+func (s *Server) handleKeycloakForgot(w http.ResponseWriter, r *http.Request) {
+	u := s.Cfg.ForgotPasswordURL()
+	if u == "" {
+		http.NotFound(w, r)
+		return
+	}
+	http.Redirect(w, r, u, http.StatusFound)
+}
+
+// handleAuthCallback finishes a Google (or fake) login.
+func (s *Server) handleAuthCallback(w http.ResponseWriter, r *http.Request) {
+	s.finishAuth(w, r, s.Provider)
+}
+
+// handleKeycloakCallback finishes an email/password login through Keycloak.
+func (s *Server) handleKeycloakCallback(w http.ResponseWriter, r *http.Request) {
+	if s.Keycloak == nil {
+		http.NotFound(w, r)
+		return
+	}
+	s.finishAuth(w, r, s.Keycloak)
+}
+
+// startAuth sends the browser to the provider. The PKCE verifier goes into a
+// short-lived cookie rather than into the state parameter, so the value that
+// proves we started the exchange never travels through the provider.
+func (s *Server) startAuth(w http.ResponseWriter, r *http.Request, provider auth.Provider) {
 	nonce, err := auth.RandomID()
 	if err != nil {
 		s.failLogin(w, r, loginErrServer, err, "generate oauth nonce")
@@ -38,9 +77,9 @@ func (s *Server) handleAuthStart(w http.ResponseWriter, r *http.Request) {
 	s.Sessions.SetPKCE(w, verifier)
 	state := s.Signer.SignState(nonce, time.Now().Add(10*time.Minute))
 
-	provider := s.Provider
 	// Only the fake provider implements EmailChooser, so ?email= is inert
-	// against Google — there is no way to ask it to vouch for an address.
+	// against Google or Keycloak — there is no way to ask them to vouch for an
+	// address.
 	if chooser, ok := provider.(auth.EmailChooser); ok {
 		if email := r.URL.Query().Get("email"); email != "" {
 			provider = chooser.WithEmail(email)
@@ -49,12 +88,12 @@ func (s *Server) handleAuthStart(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, provider.AuthCodeURL(state, verifier), http.StatusFound)
 }
 
-func (s *Server) handleAuthCallback(w http.ResponseWriter, r *http.Request) {
+func (s *Server) finishAuth(w http.ResponseWriter, r *http.Request, provider auth.Provider) {
 	q := r.URL.Query()
 	verifier := s.Sessions.TakePKCE(w, r)
 
-	// Checked before the state: a learner who pressed "Cancel" at Google should
-	// be told that, not handed a story about an expired link.
+	// Checked before the state: a learner who pressed "Cancel" at the provider
+	// should be told that, not handed a story about an expired link.
 	if e := q.Get("error"); e != "" {
 		s.Log.Info("oauth provider declined", "error", e)
 		s.failLogin(w, r, loginErrCancelled, nil, "")
@@ -69,7 +108,7 @@ func (s *Server) handleAuthCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	identity, err := s.Provider.Exchange(r.Context(), q.Get("code"), verifier)
+	identity, err := provider.Exchange(r.Context(), q.Get("code"), verifier)
 	if err != nil {
 		s.Log.Warn("oauth exchange failed", "error", err)
 		s.failLogin(w, r, loginErrFailed, nil, "")
@@ -81,6 +120,16 @@ func (s *Server) handleAuthCallback(w http.ResponseWriter, r *http.Request) {
 		s.failLogin(w, r, loginErrServer, err, "upsert user")
 		return
 	}
+
+	// Mirror into Keycloak so forgot/reset password can reach this address
+	// later. Failure must not block login — Keycloak down should not lock
+	// Google out.
+	if s.Users != nil {
+		if err := s.Users.EnsureUser(r.Context(), identity.Email, identity.Name); err != nil {
+			s.Log.Warn("keycloak sync failed", "email", identity.Email, "error", err)
+		}
+	}
+
 	if err := s.Sessions.Issue(r.Context(), w, user.ID); err != nil {
 		s.failLogin(w, r, loginErrServer, err, "issue session")
 		return

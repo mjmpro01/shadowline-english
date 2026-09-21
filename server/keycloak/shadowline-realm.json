@@ -1,0 +1,48 @@
+{
+  "realm": "shadowline",
+  "enabled": true,
+  "displayName": "Shadowline",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "verifyEmail": false,
+  "sslRequired": "none",
+  "smtpServer": {
+    "host": "mailhog",
+    "port": "1025",
+    "from": "noreply@shadowline.local",
+    "fromDisplayName": "Shadowline",
+    "ssl": "false",
+    "starttls": "false",
+    "auth": "false"
+  },
+  "clients": [
+    {
+      "clientId": "shadowline-api",
+      "name": "Shadowline API",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "shadowline-dev-secret",
+      "redirectUris": [
+        "http://localhost:8080/auth/keycloak/callback",
+        "http://localhost:5173/login",
+        "http://localhost:5173/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173",
+        "http://localhost:8080"
+      ],
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    }
+  ]
+}

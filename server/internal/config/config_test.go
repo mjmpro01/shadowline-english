@@ -18,6 +18,10 @@ func base(t *testing.T) {
 	t.Setenv("AUTH_FAKE", "")
 	t.Setenv("APP_ORIGIN", "")
 	t.Setenv("OAUTH_REDIRECT_URL", "")
+	t.Setenv("KEYCLOAK_URL", "")
+	t.Setenv("KEYCLOAK_CLIENT_ID", "")
+	t.Setenv("KEYCLOAK_CLIENT_SECRET", "")
+	t.Setenv("KEYCLOAK_ADMIN_PASSWORD", "")
 }
 
 func TestGoogleCredentialsAreRequiredForTheRealProvider(t *testing.T) {
