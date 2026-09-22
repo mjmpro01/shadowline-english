@@ -32,10 +32,14 @@ func TestCollectingAWordTwiceKeepsOneCard(t *testing.T) {
 	h := newHarness(t)
 	c := h.login("learner@example.com")
 
+	// A word the shipped seed does not hold, so what comes back is the card's
+	// own meaning rather than the shared gloss — which is what this test is
+	// about. A seeded word would read through to the gloss by design.
+	const word = "blorptangle"
 	first := expect[vocabJSON](t, c.json("POST", "/api/vocab",
-		map[string]any{"word": "threshold", "ipa": "/ˈθrɛʃhoʊld/", "meaning": "a doorway"}), http.StatusCreated)
+		map[string]any{"word": word, "ipa": "/ˈθrɛʃhoʊld/", "meaning": "a doorway"}), http.StatusCreated)
 	second := expect[vocabJSON](t, c.json("POST", "/api/vocab",
-		map[string]any{"word": "threshold"}), http.StatusCreated)
+		map[string]any{"word": word}), http.StatusCreated)
 
 	if first.ID != second.ID {
 		t.Fatalf("the same word produced two cards: %s and %s", first.ID, second.ID)
