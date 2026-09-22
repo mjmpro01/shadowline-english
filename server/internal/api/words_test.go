@@ -6,6 +6,13 @@ import (
 	"testing"
 )
 
+// The server now ships the FreeTalk seed and loads it on migrate, so a test
+// database starts with ten thousand words already glossed. Every test below
+// that is about a word *nobody has looked up* therefore needs a word the seed
+// cannot contain — an invention, not a rare word, because the seed is the
+// 12,000 commonest and a rare word might still be in the next one.
+const unseeded = "blorptangle"
+
 type glossJSON struct {
 	Status  string `json:"status"`
 	Word    string `json:"word"`
@@ -23,8 +30,12 @@ func storeGloss(t *testing.T, h *harness, word, ipa, meaning string) {
 
 func storeGlossFrom(t *testing.T, h *harness, word, ipa, meaning, source string) {
 	t.Helper()
+	// An upsert, because the seed may already hold this word: the test is
+	// saying "this word means this", not "no row exists yet".
 	_, err := h.pool.Exec(context.Background(),
-		`insert into glosses (word, ipa, meaning, source) values ($1, $2, $3, $4)`,
+		`insert into glosses (word, ipa, meaning, source) values ($1, $2, $3, $4)
+		 on conflict (word) do update
+		 set ipa = excluded.ipa, meaning = excluded.meaning, source = excluded.source`,
 		word, ipa, meaning, source)
 	if err != nil {
 		t.Fatalf("store gloss: %v", err)
@@ -48,13 +59,13 @@ func TestAnUnknownWordIsQueuedForLookup(t *testing.T) {
 	h := newHarness(t)
 	c := h.login("learner@example.com")
 
-	got := expect[glossJSON](t, c.json("POST", "/api/words/brilliant",
-		map[string]any{"context": "The team came up with a brilliant plan."}), http.StatusAccepted)
+	got := expect[glossJSON](t, c.json("POST", "/api/words/"+unseeded,
+		map[string]any{"context": "The team came up with a blorptangle plan."}), http.StatusAccepted)
 
 	if got.Status != "pending" {
 		t.Fatalf("status is %q, wanted pending", got.Status)
 	}
-	if glossJobs(t, h, "brilliant") != 1 {
+	if glossJobs(t, h, unseeded) != 1 {
 		t.Fatal("the lookup was not queued")
 	}
 }
@@ -83,10 +94,10 @@ func TestTappingTheSameWordTwiceIsOneJob(t *testing.T) {
 	a := h.login("a@example.com")
 	b := h.login("b@example.com")
 
-	expect[glossJSON](t, a.json("POST", "/api/words/brilliant", map[string]any{"context": "one"}), http.StatusAccepted)
-	expect[glossJSON](t, b.json("POST", "/api/words/brilliant", map[string]any{"context": "two"}), http.StatusAccepted)
+	expect[glossJSON](t, a.json("POST", "/api/words/"+unseeded, map[string]any{"context": "one"}), http.StatusAccepted)
+	expect[glossJSON](t, b.json("POST", "/api/words/"+unseeded, map[string]any{"context": "two"}), http.StatusAccepted)
 
-	if n := glossJobs(t, h, "brilliant"); n != 1 {
+	if n := glossJobs(t, h, unseeded); n != 1 {
 		t.Fatalf("%d jobs queued for one word", n)
 	}
 }
@@ -111,7 +122,7 @@ func TestAWordNobodyAskedAboutReportsNone(t *testing.T) {
 	h := newHarness(t)
 	c := h.login("learner@example.com")
 
-	got := expect[glossJSON](t, c.do("GET", "/api/words/brilliant", "", nil), http.StatusOK)
+	got := expect[glossJSON](t, c.do("GET", "/api/words/"+unseeded, "", nil), http.StatusOK)
 
 	if got.Status != "none" {
 		t.Fatalf("status is %q, wanted none", got.Status)
@@ -124,17 +135,18 @@ func TestAQueuedWordReportsPendingUntilTheGlossLands(t *testing.T) {
 	h := newHarness(t)
 	c := h.login("learner@example.com")
 
-	expect[glossJSON](t, c.json("POST", "/api/words/brilliant", nil), http.StatusAccepted)
-	if got := expect[glossJSON](t, c.do("GET", "/api/words/brilliant", "", nil), http.StatusOK); got.Status != "pending" {
+	expect[glossJSON](t, c.json("POST", "/api/words/"+unseeded, nil), http.StatusAccepted)
+	if got := expect[glossJSON](t, c.do("GET", "/api/words/"+unseeded, "", nil), http.StatusOK); got.Status != "pending" {
 		t.Fatalf("status is %q, wanted pending", got.Status)
 	}
 
-	storeGloss(t, h, "brilliant", "ˈbɹɪljənt", "very good or very clever")
-	if _, err := h.pool.Exec(context.Background(), `delete from gloss_jobs where word = 'brilliant'`); err != nil {
+	storeGloss(t, h, unseeded, "ˈbɹɪljənt", "very good or very clever")
+	if _, err := h.pool.Exec(context.Background(),
+		`delete from gloss_jobs where word = $1`, unseeded); err != nil {
 		t.Fatalf("finish job: %v", err)
 	}
 
-	got := expect[glossJSON](t, c.do("GET", "/api/words/brilliant", "", nil), http.StatusOK)
+	got := expect[glossJSON](t, c.do("GET", "/api/words/"+unseeded, "", nil), http.StatusOK)
 	if got.Status != "ready" || got.IPA != "ˈbɹɪljənt" {
 		t.Fatalf("got %+v", got)
 	}
@@ -146,12 +158,12 @@ func TestACollectedWordPicksUpItsGlossAfterwards(t *testing.T) {
 	h := newHarness(t)
 	c := h.login("learner@example.com")
 
-	card := expect[vocabJSON](t, c.json("POST", "/api/vocab", map[string]any{"word": "brilliant"}), http.StatusCreated)
+	card := expect[vocabJSON](t, c.json("POST", "/api/vocab", map[string]any{"word": unseeded}), http.StatusCreated)
 	if card.Meaning != "" {
 		t.Fatalf("a word nobody has looked up came back with %q", card.Meaning)
 	}
 
-	storeGloss(t, h, "brilliant", "ˈbɹɪljənt", "very good or very clever")
+	storeGloss(t, h, unseeded, "ˈbɹɪljənt", "very good or very clever")
 
 	words := expect[[]vocabJSON](t, c.do("GET", "/api/vocab", "", nil), http.StatusOK)
 	if len(words) != 1 || words[0].Meaning != "very good or very clever" {

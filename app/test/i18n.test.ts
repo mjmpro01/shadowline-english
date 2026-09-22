@@ -33,10 +33,19 @@ describe('locales', () => {
       ([key, english]) =>
         typeof english === 'string' &&
         english === (vi as Record<string, unknown>)[key] &&
-        // Words that are the same in both on purpose. "Email" and "Playlist"
-        // are the Vietnamese too, and a message that is only punctuation or a
-        // proper noun has nothing to translate.
-        !['profile.email', 'studio.playlist'].includes(key),
+        // The ones that are the same in both on purpose, each for its own
+        // reason: a brand name is not translated, "Email" and "Playlist" are
+        // the Vietnamese words too, and an example address is an example
+        // address. Everything else has to differ, which is what stops a locale
+        // file being half-finished without anybody noticing.
+        ![
+          'profile.email',
+          'studio.playlist',
+          'login.brand',
+          'login.brandAccent',
+          'login.emailLabel',
+          'login.emailPlaceholder',
+        ].includes(key),
     )
     expect(untranslated.map(([key]) => key)).toEqual([])
   })
