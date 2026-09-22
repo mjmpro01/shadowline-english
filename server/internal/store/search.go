@@ -13,7 +13,7 @@ import (
 // different things.
 type Results struct {
 	Playlists []Playlist `json:"playlists"`
-	Videos    []Video    `json:"videos"`
+	Episodes  []Episode  `json:"episodes"`
 	Clips     []Clip     `json:"clips"`
 }
 
@@ -33,7 +33,7 @@ const searchLimit = 40
 // added with the playlists table are what make that fragment search an index
 // lookup instead of a scan of every caption in the library.
 func (s *Store) Search(ctx context.Context, query string) (Results, error) {
-	out := Results{Playlists: []Playlist{}, Videos: []Video{}, Clips: []Clip{}}
+	out := Results{Playlists: []Playlist{}, Episodes: []Episode{}, Clips: []Clip{}}
 	query = strings.TrimSpace(query)
 	if len(query) < MinSearch {
 		return out, nil
@@ -63,7 +63,7 @@ func (s *Store) Search(ctx context.Context, query string) (Results, error) {
 		return out, err
 	}
 
-	rows, err = s.pool.Query(ctx, `select `+videoColumns+`
+	rows, err = s.pool.Query(ctx, `select `+episodeColumns+`
 		from clip_sources s
 		where s.published and s.title ilike $1
 		order by s.position, s.created_at
@@ -72,12 +72,12 @@ func (s *Store) Search(ctx context.Context, query string) (Results, error) {
 		return out, err
 	}
 	for rows.Next() {
-		v, err := scanVideo(rows)
+		v, err := scanEpisode(rows)
 		if err != nil {
 			rows.Close()
 			return out, err
 		}
-		out.Videos = append(out.Videos, v)
+		out.Episodes = append(out.Episodes, v)
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {

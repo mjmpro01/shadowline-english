@@ -33,9 +33,9 @@ func (s *Server) signPlaylists(ctx context.Context, playlists []store.Playlist) 
 	}
 }
 
-func (s *Server) signVideos(ctx context.Context, videos []store.Video) {
-	for i := range videos {
-		videos[i].PosterURL = s.signPoster(ctx, videos[i].PosterKey, "video", videos[i].ID.String())
+func (s *Server) signEpisodes(ctx context.Context, episodes []store.Episode) {
+	for i := range episodes {
+		episodes[i].PosterURL = s.signPoster(ctx, episodes[i].PosterKey, "episode", episodes[i].ID.String())
 	}
 }
 
@@ -50,54 +50,54 @@ func (s *Server) handleGetPlaylist(w http.ResponseWriter, r *http.Request) {
 		s.failErr(w, err, "get playlist")
 		return
 	}
-	videos, err := s.Store.ListVideos(r.Context(), playlist.ID)
+	episodes, err := s.Store.ListEpisodes(r.Context(), playlist.ID)
 	if err != nil {
-		s.failErr(w, err, "list videos")
+		s.failErr(w, err, "list episodes")
 		return
 	}
 	playlist.CoverURL = s.signPoster(r.Context(), playlist.CoverKey, "playlist", playlist.Slug)
-	s.signVideos(r.Context(), videos)
-	writeJSON(w, http.StatusOK, map[string]any{"playlist": playlist, "videos": videos})
+	s.signEpisodes(r.Context(), episodes)
+	writeJSON(w, http.StatusOK, map[string]any{"playlist": playlist, "episodes": episodes})
 }
 
-// handleGetVideo answers with the episode, the series it is in, and its clips.
+// handleGetEpisode answers with the episode, the series it is in, and its clips.
 //
 // The series comes too so the screen can offer the way back up by name. Asking
 // for it separately would be a second round trip to render a breadcrumb.
-func (s *Server) handleGetVideo(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleGetEpisode(w http.ResponseWriter, r *http.Request) {
 	id, ok := parseID(w, r)
 	if !ok {
 		return
 	}
-	video, err := s.Store.VideoByID(r.Context(), id)
+	episode, err := s.Store.EpisodeByID(r.Context(), id)
 	if err != nil {
-		s.failErr(w, err, "get video")
+		s.failErr(w, err, "get episode")
 		return
 	}
-	clips, err := s.Store.ClipsByVideo(r.Context(), id)
+	clips, err := s.Store.ClipsByEpisode(r.Context(), id)
 	if err != nil {
-		s.failErr(w, err, "list clips of video")
+		s.failErr(w, err, "list clips of episode")
 		return
 	}
 	for i := range clips {
 		clips[i].PosterURL = s.posterURL(r.Context(), clips[i])
 	}
-	video.PosterURL = s.signPoster(r.Context(), video.PosterKey, "video", video.ID.String())
+	episode.PosterURL = s.signPoster(r.Context(), episode.PosterKey, "episode", episode.ID.String())
 
 	// A playlist of null is not an error: an episode an admin has moved out of
 	// every series still has its clips, and the screen drops the breadcrumb.
 	var playlist any
-	if video.PlaylistID != nil {
-		p, err := s.Store.PlaylistByID(r.Context(), *video.PlaylistID)
+	if episode.PlaylistID != nil {
+		p, err := s.Store.PlaylistByID(r.Context(), *episode.PlaylistID)
 		if err != nil {
-			s.failErr(w, err, "get playlist of video")
+			s.failErr(w, err, "get playlist of episode")
 			return
 		}
 		p.CoverURL = s.signPoster(r.Context(), p.CoverKey, "playlist", p.Slug)
 		playlist = p
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"video": video, "playlist": playlist, "clips": clips,
+		"episode": episode, "playlist": playlist, "clips": clips,
 	})
 }
 
@@ -113,7 +113,7 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.signPlaylists(r.Context(), results.Playlists)
-	s.signVideos(r.Context(), results.Videos)
+	s.signEpisodes(r.Context(), results.Episodes)
 	for i := range results.Clips {
 		results.Clips[i].PosterURL = s.posterURL(r.Context(), results.Clips[i])
 	}
@@ -145,12 +145,12 @@ func (s *Server) handleUpdatePlaylist(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, playlist)
 }
 
-func (s *Server) handleUpdateVideo(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleUpdateEpisode(w http.ResponseWriter, r *http.Request) {
 	id, ok := parseID(w, r)
 	if !ok {
 		return
 	}
-	var patch store.VideoPatch
+	var patch store.EpisodePatch
 	if err := decodeJSON(r, &patch); err != nil {
 		fail(w, http.StatusBadRequest, err.Error())
 		return
@@ -159,11 +159,11 @@ func (s *Server) handleUpdateVideo(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusBadRequest, "that is not a playlist")
 		return
 	}
-	video, err := s.Store.UpdateVideo(r.Context(), id, patch)
+	episode, err := s.Store.UpdateEpisode(r.Context(), id, patch)
 	if err != nil {
-		s.failErr(w, err, "update video")
+		s.failErr(w, err, "update episode")
 		return
 	}
-	video.PosterURL = s.signPoster(r.Context(), video.PosterKey, "video", video.ID.String())
-	writeJSON(w, http.StatusOK, video)
+	episode.PosterURL = s.signPoster(r.Context(), episode.PosterKey, "episode", episode.ID.String())
+	writeJSON(w, http.StatusOK, episode)
 }

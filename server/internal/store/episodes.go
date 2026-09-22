@@ -9,13 +9,19 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Video is one episode: the recording an admin uploaded, and the clips cut out
-// of it. The row is clip_sources — it has always been there, holding the file
-// the cutter goes back to — and until now no learner could see it.
+// Episode is the middle level of the library: the recording an admin uploaded,
+// and the clips cut out of it. The row is clip_sources — it has always been
+// there, holding the file the cutter goes back to — and until now no learner
+// could see it.
+//
+// "Episode" rather than "video", though a video is what it usually is, because
+// a clip is already called a video everywhere a learner can see one and two
+// things under one word in one library is a trap. A playlist is a series, so
+// the thing between a series and its clips is an episode.
 //
 // Counts and cover are read rather than stored, for the same reason a
 // playlist's are: a stored count is a count that goes stale.
-type Video struct {
+type Episode struct {
 	ID         uuid.UUID  `json:"id"`
 	PlaylistID *uuid.UUID `json:"playlistId"`
 	Title      string     `json:"title"`
@@ -31,7 +37,7 @@ type Video struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
-const videoColumns = `s.id, s.playlist_id, s.title, s.position, s.published,
+const episodeColumns = `s.id, s.playlist_id, s.title, s.position, s.published,
 	(select count(*) from clips c where c.source_id = s.id),
 	(select coalesce(sum(c.duration_seconds), 0) from clips c where c.source_id = s.id),
 	(select c.poster_key from clips c
@@ -39,17 +45,17 @@ const videoColumns = `s.id, s.playlist_id, s.title, s.position, s.published,
 	 order by c.start_seconds, c.created_at limit 1),
 	s.created_at`
 
-func scanVideo(row pgx.Row) (Video, error) {
-	var v Video
-	err := row.Scan(&v.ID, &v.PlaylistID, &v.Title, &v.Position, &v.Published,
-		&v.Clips, &v.Seconds, &v.PosterKey, &v.CreatedAt)
-	return v, mapErr(err)
+func scanEpisode(row pgx.Row) (Episode, error) {
+	var e Episode
+	err := row.Scan(&e.ID, &e.PlaylistID, &e.Title, &e.Position, &e.Published,
+		&e.Clips, &e.Seconds, &e.PosterKey, &e.CreatedAt)
+	return e, mapErr(err)
 }
 
-// ListVideos is a series' episodes. Unpublished uploads are left out: an admin
+// ListEpisodes is a series' episodes. Unpublished uploads are left out: an admin
 // half way through cutting one is not something to offer a learner.
-func (s *Store) ListVideos(ctx context.Context, playlistID uuid.UUID) ([]Video, error) {
-	rows, err := s.pool.Query(ctx, `select `+videoColumns+`
+func (s *Store) ListEpisodes(ctx context.Context, playlistID uuid.UUID) ([]Episode, error) {
+	rows, err := s.pool.Query(ctx, `select `+episodeColumns+`
 		from clip_sources s
 		where s.playlist_id = $1 and s.published
 		order by s.position, s.created_at`, playlistID)
@@ -58,18 +64,18 @@ func (s *Store) ListVideos(ctx context.Context, playlistID uuid.UUID) ([]Video, 
 	}
 	defer rows.Close()
 
-	out := []Video{}
+	out := []Episode{}
 	for rows.Next() {
-		v, err := scanVideo(rows)
+		e, err := scanEpisode(rows)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, v)
+		out = append(out, e)
 	}
 	return out, rows.Err()
 }
 
-// standaloneVideo is the episode that holds a series' clips with no recording
+// standaloneEpisode is the episode that holds a series' clips with no recording
 // behind them — audio the browser sliced, and everything published before
 // uploads existed at all.
 //
@@ -78,7 +84,7 @@ func (s *Store) ListVideos(ctx context.Context, playlistID uuid.UUID) ([]Video, 
 // file: nothing queues cutting or transcription for it — both are queued at
 // upload, which never happened — and DeleteUnusedSources takes it away again
 // once the last clip leaves.
-func standaloneVideo(ctx context.Context, tx pgx.Tx, playlistID uuid.UUID) (uuid.UUID, error) {
+func standaloneEpisode(ctx context.Context, tx pgx.Tx, playlistID uuid.UUID) (uuid.UUID, error) {
 	var id uuid.UUID
 	err := tx.QueryRow(ctx,
 		`select id from clip_sources where playlist_id = $1 and key = '' limit 1`, playlistID).Scan(&id)
@@ -91,31 +97,31 @@ func standaloneVideo(ctx context.Context, tx pgx.Tx, playlistID uuid.UUID) (uuid
 	err = tx.QueryRow(ctx, `
 		insert into clip_sources (playlist_id, name, title, key, content_type, has_video, published)
 		values ($1, '', $2, '', '', false, true)
-		returning id`, playlistID, StandaloneVideoTitle).Scan(&id)
+		returning id`, playlistID, StandaloneEpisodeTitle).Scan(&id)
 	return id, err
 }
 
-// StandaloneVideoTitle names that episode. Exported because the migration that
+// StandaloneEpisodeTitle names that episode. Exported because the migration that
 // created the first ones had to write the same words.
-const StandaloneVideoTitle = "Standalone clips"
+const StandaloneEpisodeTitle = "Standalone clips"
 
-func (s *Store) VideoByID(ctx context.Context, id uuid.UUID) (Video, error) {
-	return scanVideo(s.pool.QueryRow(ctx,
-		`select `+videoColumns+` from clip_sources s where s.id = $1`, id))
+func (s *Store) EpisodeByID(ctx context.Context, id uuid.UUID) (Episode, error) {
+	return scanEpisode(s.pool.QueryRow(ctx,
+		`select `+episodeColumns+` from clip_sources s where s.id = $1`, id))
 }
 
-// VideoPatch is what the studio can change about an episode. Moving it to
+// EpisodePatch is what the studio can change about an episode. Moving it to
 // another series moves its clips with it: a clip is in the episode it was cut
 // from, and an episode is in one series.
-type VideoPatch struct {
+type EpisodePatch struct {
 	Title      *string    `json:"title"`
 	PlaylistID *uuid.UUID `json:"playlistId"`
 	Position   *int       `json:"position"`
 	Published  *bool      `json:"published"`
 }
 
-func (s *Store) UpdateVideo(ctx context.Context, id uuid.UUID, p VideoPatch) (Video, error) {
-	var out Video
+func (s *Store) UpdateEpisode(ctx context.Context, id uuid.UUID, p EpisodePatch) (Episode, error) {
+	var out Episode
 	err := s.inTx(ctx, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, `
 			update clip_sources set
@@ -137,8 +143,8 @@ func (s *Store) UpdateVideo(ctx context.Context, id uuid.UUID, p VideoPatch) (Vi
 			}
 		}
 		var err error
-		out, err = scanVideo(tx.QueryRow(ctx,
-			`select `+videoColumns+` from clip_sources s where s.id = $1`, id))
+		out, err = scanEpisode(tx.QueryRow(ctx,
+			`select `+episodeColumns+` from clip_sources s where s.id = $1`, id))
 		return err
 	})
 	return out, err

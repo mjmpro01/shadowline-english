@@ -22,7 +22,7 @@ type playlistJSON struct {
 	Clips       int    `json:"clips"`
 }
 
-type videoJSON struct {
+type episodeJSON struct {
 	ID         string  `json:"id"`
 	PlaylistID *string `json:"playlistId"`
 	Title      string  `json:"title"`
@@ -32,19 +32,19 @@ type videoJSON struct {
 }
 
 type playlistPageJSON struct {
-	Playlist playlistJSON `json:"playlist"`
-	Videos   []videoJSON  `json:"videos"`
+	Playlist playlistJSON  `json:"playlist"`
+	Episodes []episodeJSON `json:"episodes"`
 }
 
-type videoPageJSON struct {
-	Video    videoJSON     `json:"video"`
+type episodePageJSON struct {
+	Episode  episodeJSON   `json:"episode"`
 	Playlist *playlistJSON `json:"playlist"`
 	Clips    []clipJSON    `json:"clips"`
 }
 
 type searchJSON struct {
 	Playlists []playlistJSON `json:"playlists"`
-	Videos    []videoJSON    `json:"videos"`
+	Episodes  []episodeJSON  `json:"episodes"`
 	Clips     []clipJSON     `json:"clips"`
 }
 
@@ -139,22 +139,22 @@ func TestAnUploadBecomesAnEpisodeOfTheSeries(t *testing.T) {
 
 	learner := h.login("learner@example.com")
 	page := expect[playlistPageJSON](t, learner.do("GET", "/api/playlists/friends", "", nil), http.StatusOK)
-	if len(page.Videos) != 1 {
-		t.Fatalf("the series has %d episodes, want 1", len(page.Videos))
+	if len(page.Episodes) != 1 {
+		t.Fatalf("the series has %d episodes, want 1", len(page.Episodes))
 	}
-	if page.Videos[0].Title != "s01e01.mp4" {
-		t.Fatalf("the episode is called %q, want the name of the file it was cut from", page.Videos[0].Title)
+	if page.Episodes[0].Title != "s01e01.mp4" {
+		t.Fatalf("the episode is called %q, want the name of the file it was cut from", page.Episodes[0].Title)
 	}
-	if page.Videos[0].Clips != 1 || page.Videos[0].Seconds != 2 {
-		t.Fatalf("episode counts came back as %+v", page.Videos[0])
+	if page.Episodes[0].Clips != 1 || page.Episodes[0].Seconds != 2 {
+		t.Fatalf("episode counts came back as %+v", page.Episodes[0])
 	}
 
-	video := expect[videoPageJSON](t, learner.do("GET", "/api/videos/"+page.Videos[0].ID, "", nil), http.StatusOK)
-	if len(video.Clips) != 1 || video.Clips[0].Title != "Line one" {
-		t.Fatalf("the episode holds %+v", video.Clips)
+	episode := expect[episodePageJSON](t, learner.do("GET", "/api/episodes/"+page.Episodes[0].ID, "", nil), http.StatusOK)
+	if len(episode.Clips) != 1 || episode.Clips[0].Title != "Line one" {
+		t.Fatalf("the episode holds %+v", episode.Clips)
 	}
-	if video.Playlist == nil || video.Playlist.Title != "Friends" {
-		t.Fatalf("the episode does not say which series it is in: %+v", video.Playlist)
+	if episode.Playlist == nil || episode.Playlist.Title != "Friends" {
+		t.Fatalf("the episode does not say which series it is in: %+v", episode.Playlist)
 	}
 }
 
@@ -167,7 +167,7 @@ func TestAnUploadWithNoClipsIsNotAnEpisode(t *testing.T) {
 	publishClips(t, admin, inPlaylist("Line one", "Friends"))
 
 	page := expect[playlistPageJSON](t, admin.do("GET", "/api/playlists/friends", "", nil), http.StatusOK)
-	for _, v := range page.Videos {
+	for _, v := range page.Episodes {
 		if v.Title == "unfinished.mp4" {
 			t.Fatal("an upload nobody published from is being offered as an episode")
 		}
@@ -182,12 +182,12 @@ func TestClipsWithNoUploadStillLandInAnEpisode(t *testing.T) {
 	publishClips(t, admin, inPlaylist("Line one", "Friends"))
 
 	page := expect[playlistPageJSON](t, admin.do("GET", "/api/playlists/friends", "", nil), http.StatusOK)
-	if len(page.Videos) != 1 {
-		t.Fatalf("a clip with no upload gave the series %d episodes, want 1", len(page.Videos))
+	if len(page.Episodes) != 1 {
+		t.Fatalf("a clip with no upload gave the series %d episodes, want 1", len(page.Episodes))
 	}
-	video := expect[videoPageJSON](t, admin.do("GET", "/api/videos/"+page.Videos[0].ID, "", nil), http.StatusOK)
-	if len(video.Clips) != 1 {
-		t.Fatalf("the episode holds %d clips, want 1", len(video.Clips))
+	episode := expect[episodePageJSON](t, admin.do("GET", "/api/episodes/"+page.Episodes[0].ID, "", nil), http.StatusOK)
+	if len(episode.Clips) != 1 {
+		t.Fatalf("the episode holds %d clips, want 1", len(episode.Clips))
 	}
 }
 
@@ -297,7 +297,7 @@ func TestAnEpisodeCanBeMovedToAnotherSeries(t *testing.T) {
 			seinfeld = p.ID
 		}
 	}
-	got := expect[videoJSON](t, admin.json("PATCH", "/api/admin/videos/"+source.ID,
+	got := expect[episodeJSON](t, admin.json("PATCH", "/api/admin/episodes/"+source.ID,
 		map[string]any{"playlistId": seinfeld, "title": "Pilot"}), http.StatusOK)
 	if got.Title != "Pilot" || got.PlaylistID == nil || *got.PlaylistID != seinfeld {
 		t.Fatalf("the episode came back as %+v", got)
@@ -305,8 +305,8 @@ func TestAnEpisodeCanBeMovedToAnotherSeries(t *testing.T) {
 
 	// Its clips went with it: a clip is in the episode it was cut from.
 	page := expect[playlistPageJSON](t, admin.do("GET", "/api/playlists/friends", "", nil), http.StatusOK)
-	if len(page.Videos) != 0 {
-		t.Fatalf("the old series still lists %d episodes", len(page.Videos))
+	if len(page.Episodes) != 0 {
+		t.Fatalf("the old series still lists %d episodes", len(page.Episodes))
 	}
 	clips := expect[[]clipJSON](t, admin.do("GET", "/api/clips", "", nil), http.StatusOK)
 	for _, c := range clips {
@@ -324,7 +324,7 @@ func TestOnlyAnAdminCanRearrangeEpisodes(t *testing.T) {
 	clip["sourceId"] = source.ID
 	publishClips(t, admin, clip)
 
-	expectStatus(t, h.login("learner@example.com").json("PATCH", "/api/admin/videos/"+source.ID,
+	expectStatus(t, h.login("learner@example.com").json("PATCH", "/api/admin/episodes/"+source.ID,
 		map[string]any{"title": "Mine now"}), http.StatusForbidden)
 }
 
@@ -341,8 +341,8 @@ func TestSearchFindsAllThreeLevels(t *testing.T) {
 
 	learner := h.login("learner@example.com")
 	got := expect[searchJSON](t, learner.do("GET", "/api/library/search?q=pivot", "", nil), http.StatusOK)
-	if len(got.Videos) != 1 {
-		t.Fatalf("searching for a word in an episode's name found %d episodes", len(got.Videos))
+	if len(got.Episodes) != 1 {
+		t.Fatalf("searching for a word in an episode's name found %d episodes", len(got.Episodes))
 	}
 	if len(got.Clips) != 1 {
 		t.Fatalf("searching for a spoken word found %d clips", len(got.Clips))
@@ -378,7 +378,7 @@ func TestSearchIgnoresAQueryTooShortToMeanAnything(t *testing.T) {
 
 	for _, q := range []string{"", "f"} {
 		got := expect[searchJSON](t, admin.do("GET", "/api/library/search?q="+q, "", nil), http.StatusOK)
-		if len(got.Playlists)+len(got.Videos)+len(got.Clips) != 0 {
+		if len(got.Playlists)+len(got.Episodes)+len(got.Clips) != 0 {
 			t.Fatalf("%q answered with the library", q)
 		}
 	}

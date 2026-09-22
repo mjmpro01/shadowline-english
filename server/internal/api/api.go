@@ -75,7 +75,7 @@ func (s *Server) Routes() http.Handler {
 
 		r.Get("/playlists", s.handleListPlaylists)
 		r.Get("/playlists/{slug}", s.handleGetPlaylist)
-		r.Get("/videos/{id}", s.handleGetVideo)
+		r.Get("/episodes/{id}", s.handleGetEpisode)
 		r.Get("/library/search", s.handleSearch)
 
 		r.Get("/clips", s.handleListClips)
@@ -113,7 +113,7 @@ func (s *Server) Routes() http.Handler {
 			r.Put("/admin/clips/{id}/audio", s.handleUploadClipAudio)
 			r.Patch("/admin/clips/{id}", s.handleUpdateClip)
 			r.Patch("/admin/playlists/{id}", s.handleUpdatePlaylist)
-			r.Patch("/admin/videos/{id}", s.handleUpdateVideo)
+			r.Patch("/admin/episodes/{id}", s.handleUpdateEpisode)
 			r.Delete("/admin/clips/{id}", s.handleDeleteClip)
 		})
 	})

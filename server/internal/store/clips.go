@@ -42,8 +42,8 @@ type Clip struct {
 	VideoPending bool `json:"videoPending"`
 	// Where in its source this clip was cut from, which the cutter needs long
 	// after the browser that chose the boundaries has gone — and, since the
-	// library became a tree, which video the app goes back up to.
-	SourceID *uuid.UUID `json:"videoId"`
+	// library became a tree, which episode the app goes back up to.
+	SourceID *uuid.UUID `json:"episodeId"`
 	// The series this clip belongs to. Null only for a clip published before
 	// playlists were rows and never given a name.
 	PlaylistID *uuid.UUID `json:"playlistId"`
@@ -100,14 +100,14 @@ func (s *Store) ListClips(ctx context.Context) ([]Clip, error) {
 	return clips, rows.Err()
 }
 
-// ClipsByVideo is one episode's clips, in the order they were spoken.
+// ClipsByEpisode is one episode's clips, in the order they were spoken.
 //
 // By where they start in the recording rather than by when they were published:
 // an admin who goes back and cuts three more lines out of the middle of an
 // episode has published them last and they belong in the middle.
-func (s *Store) ClipsByVideo(ctx context.Context, videoID uuid.UUID) ([]Clip, error) {
+func (s *Store) ClipsByEpisode(ctx context.Context, episodeID uuid.UUID) ([]Clip, error) {
 	rows, err := s.pool.Query(ctx, `select `+clipColumns+`
-		from clips where source_id = $1 order by start_seconds, title`, videoID)
+		from clips where source_id = $1 order by start_seconds, title`, episodeID)
 	if err != nil {
 		return nil, err
 	}
@@ -179,13 +179,13 @@ func (s *Store) CreateClip(ctx context.Context, in NewClip, createdBy uuid.UUID)
 
 		// Every clip hangs off an episode, whether or not there was ever a
 		// recording to cut it out of.
-		videoID := in.SourceID
-		if videoID == nil && playlistID != nil {
-			id, err := standaloneVideo(ctx, tx, *playlistID)
+		episodeID := in.SourceID
+		if episodeID == nil && playlistID != nil {
+			id, err := standaloneEpisode(ctx, tx, *playlistID)
 			if err != nil {
 				return err
 			}
-			videoID = &id
+			episodeID = &id
 		}
 
 		clip, err = scanClip(tx.QueryRow(ctx, `
@@ -196,7 +196,7 @@ func (s *Store) CreateClip(ctx context.Context, in NewClip, createdBy uuid.UUID)
 			returning `+clipColumns,
 			in.Title, in.Source, in.Playlist, orEmpty(in.Categories), in.Featured, in.TimestampLabel,
 			in.DurationSeconds, in.Summary, captions, author,
-			videoID, playlistID, in.StartSeconds, in.EndSeconds))
+			episodeID, playlistID, in.StartSeconds, in.EndSeconds))
 		if err != nil {
 			return err
 		}
