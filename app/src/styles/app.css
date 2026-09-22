@@ -65,13 +65,25 @@
   z-index: 20;
   transition: width 0.18s ease;
 }
+/* Collapsed there is no forest, because there is no room for one: a strip of
+   green narrow enough to fit beside a 64px plank is not a view out of the
+   trees, it is a green edge with the planks and the keys half on it. The rail
+   is the trunk, and everything nailed to it sits on wood. */
 .sidebar[data-collapsed='true'] {
-  --menu-width: 120px;
+  --menu-width: 104px;
   --menu-pad: 20px;
-  --menu-strip: 18px;
-  --menu-rope-left: 16px;
-  --menu-rope-right: 74px;
-  --menu-trunk: 67%;
+  --menu-strip: 0px;
+  --menu-rope-left: 15px;
+  --menu-rope-right: 76px;
+  --menu-trunk: 100%;
+}
+.sidebar[data-collapsed='true'] .menu-trunk {
+  /* The panel's own corners, from the scene that clips it — the big sweep the
+     expanded trunk carries would curl a rail this narrow into a pill. */
+  border-radius: 0;
+}
+.sidebar[data-collapsed='true'] .menu-firefly {
+  display: none;
 }
 /* Below this the panel is taking more of the screen than it is worth, so it
    gives back the badge and some of the strip rather than the labels. */
@@ -424,8 +436,17 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Stacked rather than shoulder to shoulder: two 48px keys side by side need
+   more width than the rail has, and squeezing them is what used to push them
+   out onto the green. */
 .sidebar[data-collapsed='true'] .menu-actions {
+  flex-direction: column;
+  align-items: center;
   gap: 10px;
+}
+.sidebar[data-collapsed='true'] .menu-key {
+  flex: none;
+  width: 48px;
 }
 .sidebar[data-collapsed='true'] .menu-key {
   padding: 0;

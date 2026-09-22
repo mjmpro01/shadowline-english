@@ -35,7 +35,9 @@ The sidebar is the Shadowline adventure menu from Figma: a lit forest, a tree
 with a rope ladder nailed to it, and a plank per place you can go. Collapsed it
 becomes a rail of icons whose labels swing out on a wooden sign; the plank you
 are on is the one green thing in a brown menu, and says so without being
-pointed at. The phone's tab bar carries the same wood and drops the tree, which
+pointed at. There is no forest in the collapsed rail — a strip of green narrow
+enough to fit beside a 64px plank is not a view out of the trees — so the rail
+is all trunk and everything nailed to it sits on wood. The phone's tab bar carries the same wood and drops the tree, which
 it has no room for.
 
 It is drawn in CSS — the palette lives with the rest of the tokens, under
