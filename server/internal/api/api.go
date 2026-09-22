@@ -73,6 +73,11 @@ func (s *Server) Routes() http.Handler {
 	r.Route("/api", func(r chi.Router) {
 		r.Use(s.requireUser)
 
+		r.Get("/playlists", s.handleListPlaylists)
+		r.Get("/playlists/{slug}", s.handleGetPlaylist)
+		r.Get("/videos/{id}", s.handleGetVideo)
+		r.Get("/library/search", s.handleSearch)
+
 		r.Get("/clips", s.handleListClips)
 		r.Get("/clips/{id}", s.handleGetClip)
 		r.Get("/clips/{id}/audio", s.handleClipAudio)
@@ -107,6 +112,8 @@ func (s *Server) Routes() http.Handler {
 			r.Post("/admin/clips", s.handleCreateClips)
 			r.Put("/admin/clips/{id}/audio", s.handleUploadClipAudio)
 			r.Patch("/admin/clips/{id}", s.handleUpdateClip)
+			r.Patch("/admin/playlists/{id}", s.handleUpdatePlaylist)
+			r.Patch("/admin/videos/{id}", s.handleUpdateVideo)
 			r.Delete("/admin/clips/{id}", s.handleDeleteClip)
 		})
 	})
