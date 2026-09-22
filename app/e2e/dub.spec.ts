@@ -42,7 +42,7 @@ async function publishVideoClip(page: import('@playwright/test').Page) {
 
 async function recordAndOpenDubReview(page: import('@playwright/test').Page) {
   await page.goto('/library')
-  await page.getByLabel('Search clips').fill('Dub this line 1')
+  await page.getByLabel('Search the library').fill('Dub this line 1')
   await page.getByRole('button', { name: 'Practice', exact: true }).first().click()
   await page.waitForURL('**/practice')
 
@@ -99,7 +99,7 @@ test('a clip with no video says so rather than offering a dead button', async ({
 
   // A starter clip: no source recording, so no picture to dub onto.
   await page.goto('/library')
-  await page.getByLabel('Search clips').fill('One step at a time')
+  await page.getByLabel('Search the library').fill('One step at a time')
   await page.getByRole('button', { name: 'Practice', exact: true }).first().click()
   await page.waitForURL('**/practice')
   await page.getByRole('button', { name: 'Record', exact: true }).click()
@@ -126,7 +126,7 @@ test('a take can be saved as a video from the practice screen', async ({ page })
   await publishVideoClip(page)
 
   await page.goto('/library')
-  await page.getByLabel('Search clips').fill('Dub this line 1')
+  await page.getByLabel('Search the library').fill('Dub this line 1')
   await page.getByRole('button', { name: 'Practice', exact: true }).first().click()
   await page.waitForURL('**/practice')
 
@@ -158,7 +158,7 @@ test('the practice screen shows the clip in its own frame', async ({ page }) => 
   await publishVideoClip(page)
 
   await page.goto('/library')
-  await page.getByLabel('Search clips').fill('Dub this line 1')
+  await page.getByLabel('Search the library').fill('Dub this line 1')
   await page.getByRole('button', { name: 'Practice', exact: true }).first().click()
   await page.waitForURL('**/practice')
 
@@ -177,7 +177,7 @@ test('a clip with no video wears its own tint in the frame', async ({ page }) =>
   await asLearner(page)
 
   await page.goto('/library')
-  await page.getByLabel('Search clips').fill('One step at a time')
+  await page.getByLabel('Search the library').fill('One step at a time')
   await page.getByRole('button', { name: 'Practice', exact: true }).first().click()
   await page.waitForURL('**/practice')
 

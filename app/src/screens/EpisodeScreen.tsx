@@ -1,65 +1,80 @@
 import { useNavigate, useParams } from 'react-router-dom'
-import { useT } from '../i18n'
+import { useT, type Translate } from '../i18n'
 import { Icon } from '../components/Icon'
-import { LoadFailure, Loading } from '../components/LoadState'
-import { playlistClips, playlistProgress } from '../lib/clips'
+import { Loading } from '../components/LoadState'
+import { episodeProgress } from '../lib/clips'
+import { useRemote } from '../lib/remote'
 import { colorFor } from '../lib/score'
 import { clock } from '../lib/time'
+import { repository, type EpisodePage } from '../repository'
 import { useApp } from '../store/context'
 
 /**
- * One recording's clips, in the order they were spoken.
+ * One episode's clips, in the order they were spoken.
  *
- * The library is a grid, which is right for browsing and wrong for an episode:
- * two hundred cards from one film say nothing about where you are in it or
- * where you left off. A playlist is a sequence, so this is a list — numbered,
- * in source order, with the line on every row and the next unpractised clip one
- * button away.
+ * A grid is right for browsing and wrong for an episode: two hundred cards from
+ * one recording say nothing about the order the lines came in or where you left
+ * off. An episode is a sequence, so this is a list — numbered, in source order,
+ * with the line on every row and the next unpractised clip one button away.
  */
-export function PlaylistScreen() {
-  const { name } = useParams()
+export function EpisodeScreen() {
+  const { episodeId } = useParams()
   const navigate = useNavigate()
-  const { data, state, statsFor } = useApp()
-
-  const playlist = decodeURIComponent(name ?? '')
-  const clips = playlistClips(data.videos, playlist)
   const t = useT()
-  const progress = playlistProgress(clips, (id) => statsFor(id).attempts > 0)
+  const remote = useRemote(episodeId ?? '', (id) => repository.episode(id))
 
-  if (state === 'loading') return <Loading />
-  if (state === 'error') return <LoadFailure />
+  const back = remote.state === 'ready' && remote.value.playlist
+  return (
+    <div className="stack gap-4">
+      <button
+        type="button"
+        className="btn btn-ghost"
+        style={{ alignSelf: 'flex-start' }}
+        onClick={() => navigate(back ? `/library/s/${encodeURIComponent(back.slug)}` : '/library')}
+      >
+        <Icon name="chevron-left" />
+        {back ? back.title : t('series.back')}
+      </button>
+
+      {remote.state === 'loading' && <Loading />}
+      {remote.state === 'error' && (
+        <div className="card-meta">
+          {remote.status === 404 ? t('episode.notFound') : remote.message}
+        </div>
+      )}
+      {remote.state === 'ready' && <Body page={remote.value} t={t} />}
+    </div>
+  )
+}
+
+function Body({ page, t }: { page: EpisodePage; t: Translate }) {
+  const navigate = useNavigate()
+  const { statsFor } = useApp()
+  const { episode, clips } = page
+  const progress = episodeProgress(clips, (id) => statsFor(id).attempts > 0)
 
   if (clips.length === 0) {
     return (
-      <div className="stack gap-3">
-        <button type="button" className="btn btn-ghost" style={{ alignSelf: 'flex-start' }} onClick={() => navigate('/library')}>
-          <Icon name="chevron-left" />
-          Library
-        </button>
-        <h1 style={{ margin: 0 }}>{playlist}</h1>
-        <div className="card-meta">{t('playlist.noClips')}</div>
-      </div>
+      <>
+        <h1 style={{ margin: 0 }}>{episode.title}</h1>
+        <div className="card-meta">{t('episode.noClips')}</div>
+      </>
     )
   }
 
   const percent = Math.round((progress.practised / progress.total) * 100)
 
   return (
-    <div className="stack gap-4">
-      <button type="button" className="btn btn-ghost" style={{ alignSelf: 'flex-start' }} onClick={() => navigate('/library')}>
-        <Icon name="chevron-left" />
-        Library
-      </button>
-
+    <>
       <div className="stack" style={{ gap: 4 }}>
-        <h1 style={{ margin: 0 }}>{playlist}</h1>
+        <h1 style={{ margin: 0 }}>{episode.title}</h1>
         <div className="card-meta">
           {t('playlist.clipsAndPractised', progress.total, progress.practised)}
         </div>
       </div>
 
       <div className="stack gap-2">
-        <div className="progress-track" role="img" aria-label={`${percent}% practised`}>
+        <div className="progress-track" role="img" aria-label={t('playlist.percentPractised', percent)}>
           <div className="progress-fill" style={{ width: `${percent}%` }} />
         </div>
         {progress.next ? (
@@ -91,7 +106,7 @@ export function PlaylistScreen() {
                 type="button"
                 className="link-button playlist-thumb"
                 onClick={() => navigate(`/library/${clip.id}`)}
-                aria-label={`Open analysis for ${clip.title}`}
+                aria-label={t('library.openAnalysis', clip.title)}
               >
                 {clip.posterUrl ? (
                   <img src={clip.posterUrl} alt="" loading="lazy" />
@@ -135,6 +150,6 @@ export function PlaylistScreen() {
           )
         })}
       </div>
-    </div>
+    </>
   )
 }

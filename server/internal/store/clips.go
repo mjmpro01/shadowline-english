@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -40,8 +41,12 @@ type Clip struct {
 	// meanwhile — the same as HasVideo false, except it knows to keep asking.
 	VideoPending bool `json:"videoPending"`
 	// Where in its source this clip was cut from, which the cutter needs long
-	// after the browser that chose the boundaries has gone.
-	SourceID *uuid.UUID `json:"-"`
+	// after the browser that chose the boundaries has gone — and, since the
+	// library became a tree, which episode the app goes back up to.
+	SourceID *uuid.UUID `json:"episodeId"`
+	// The series this clip belongs to. Null only for a clip published before
+	// playlists were rows and never given a name.
+	PlaylistID *uuid.UUID `json:"playlistId"`
 	// StartSeconds is also how a playlist orders itself: clips published from
 	// one recording are an episode, and an episode has an order that created_at
 	// only happens to agree with.
@@ -55,7 +60,7 @@ type Clip struct {
 // id alone would mark every audio clip as pending forever.
 const clipColumns = `id, title, source, playlist, categories, featured, timestamp_label,
 	duration_seconds, summary, captions, audio_key, video_key, poster_key,
-	source_id, start_seconds, end_seconds, created_at,
+	source_id, playlist_id, start_seconds, end_seconds, created_at,
 	(video_key is null and exists (
 		select 1 from clip_sources s where s.id = clips.source_id and s.has_video
 	))`
@@ -65,7 +70,7 @@ func scanClip(row pgx.Row) (Clip, error) {
 	var captions []byte
 	err := row.Scan(&c.ID, &c.Title, &c.Source, &c.Playlist, &c.Categories, &c.Featured,
 		&c.TimestampLabel, &c.DurationSeconds, &c.Summary, &captions, &c.AudioKey, &c.VideoKey,
-		&c.PosterKey, &c.SourceID, &c.StartSeconds, &c.EndSeconds, &c.CreatedAt,
+		&c.PosterKey, &c.SourceID, &c.PlaylistID, &c.StartSeconds, &c.EndSeconds, &c.CreatedAt,
 		&c.VideoPending)
 	if err != nil {
 		return c, mapErr(err)
@@ -79,6 +84,30 @@ func scanClip(row pgx.Row) (Clip, error) {
 
 func (s *Store) ListClips(ctx context.Context) ([]Clip, error) {
 	rows, err := s.pool.Query(ctx, `select `+clipColumns+` from clips order by created_at, title`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	clips := []Clip{}
+	for rows.Next() {
+		c, err := scanClip(rows)
+		if err != nil {
+			return nil, err
+		}
+		clips = append(clips, c)
+	}
+	return clips, rows.Err()
+}
+
+// ClipsByEpisode is one episode's clips, in the order they were spoken.
+//
+// By where they start in the recording rather than by when they were published:
+// an admin who goes back and cuts three more lines out of the middle of an
+// episode has published them last and they belong in the middle.
+func (s *Store) ClipsByEpisode(ctx context.Context, episodeID uuid.UUID) ([]Clip, error) {
+	rows, err := s.pool.Query(ctx, `select `+clipColumns+`
+		from clips where source_id = $1 order by start_seconds, title`, episodeID)
 	if err != nil {
 		return nil, err
 	}
@@ -136,20 +165,54 @@ func (s *Store) CreateClip(ctx context.Context, in NewClip, createdBy uuid.UUID)
 	// picture with nothing scheduled to produce one.
 	var clip Clip
 	err = s.inTx(ctx, func(tx pgx.Tx) error {
+		// The studio still publishes a playlist by typing its name, so the row
+		// behind that name is found or started here rather than on a second
+		// screen an admin would have to visit first.
+		var playlistID *uuid.UUID
+		if strings.TrimSpace(in.Playlist) != "" {
+			p, err := playlistFor(ctx, tx, in.Playlist)
+			if err != nil {
+				return err
+			}
+			playlistID = &p.ID
+		}
+
+		// Every clip hangs off an episode, whether or not there was ever a
+		// recording to cut it out of.
+		episodeID := in.SourceID
+		if episodeID == nil && playlistID != nil {
+			id, err := standaloneEpisode(ctx, tx, *playlistID)
+			if err != nil {
+				return err
+			}
+			episodeID = &id
+		}
+
 		clip, err = scanClip(tx.QueryRow(ctx, `
 			insert into clips (title, source, playlist, categories, featured, timestamp_label,
 			                   duration_seconds, summary, captions, created_by,
-			                   source_id, start_seconds, end_seconds)
-			values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+			                   source_id, playlist_id, start_seconds, end_seconds)
+			values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 			returning `+clipColumns,
 			in.Title, in.Source, in.Playlist, orEmpty(in.Categories), in.Featured, in.TimestampLabel,
 			in.DurationSeconds, in.Summary, captions, author,
-			in.SourceID, in.StartSeconds, in.EndSeconds))
+			episodeID, playlistID, in.StartSeconds, in.EndSeconds))
 		if err != nil {
 			return err
 		}
 		if in.SourceID == nil {
 			return nil
+		}
+		// Publishing a clip out of an upload is what turns that upload into an
+		// episode the library shows. Until then it is a file an admin is still
+		// working on, and a half-cut recording on the shelf is worse than none.
+		if _, err := tx.Exec(ctx, `
+			update clip_sources set
+				playlist_id = coalesce(playlist_id, $2),
+				title       = case when title = '' then name else title end,
+				published   = true
+			where id = $1`, *in.SourceID, playlistID); err != nil {
+			return err
 		}
 		return s.EnqueueCut(ctx, tx, clip.ID)
 	})
@@ -180,17 +243,35 @@ func (s *Store) UpdateClip(ctx context.Context, id uuid.UUID, p ClipPatch) (Clip
 	if p.Categories != nil {
 		categories = orEmpty(*p.Categories)
 	}
-	return scanClip(s.pool.QueryRow(ctx, `
-		update clips set
-			title      = coalesce($2, title),
-			playlist   = coalesce($3, playlist),
-			categories = coalesce($4, categories),
-			featured   = coalesce($5, featured),
-			summary    = coalesce($6, summary),
-			captions   = coalesce($7, captions)
-		where id = $1
-		returning `+clipColumns,
-		id, p.Title, p.Playlist, categories, p.Featured, p.Summary, captions))
+	var clip Clip
+	err := s.inTx(ctx, func(tx pgx.Tx) error {
+		// Moving a clip to a playlist by typing its name has to move the row it
+		// points at too, or the library would list it under the old series and
+		// the filter under the new one.
+		var playlistID *uuid.UUID
+		if p.Playlist != nil && strings.TrimSpace(*p.Playlist) != "" {
+			found, err := playlistFor(ctx, tx, *p.Playlist)
+			if err != nil {
+				return err
+			}
+			playlistID = &found.ID
+		}
+		var err error
+		clip, err = scanClip(tx.QueryRow(ctx, `
+			update clips set
+				title       = coalesce($2, title),
+				playlist    = coalesce($3, playlist),
+				playlist_id = coalesce($8, playlist_id),
+				categories  = coalesce($4, categories),
+				featured    = coalesce($5, featured),
+				summary     = coalesce($6, summary),
+				captions    = coalesce($7, captions)
+			where id = $1
+			returning `+clipColumns,
+			id, p.Title, p.Playlist, categories, p.Featured, p.Summary, captions, playlistID))
+		return err
+	})
+	return clip, err
 }
 
 func (s *Store) SetClipVideoKey(ctx context.Context, id uuid.UUID, key string) error {

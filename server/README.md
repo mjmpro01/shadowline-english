@@ -263,18 +263,49 @@ prunes them. Dub Review lists a clip's takes and plays any of them against the
 picture, so going back to an old attempt — or to a dub exported weeks ago — is
 picking it off that row.
 
-## Playlists
+## The library is a tree
 
-A playlist is a column on the clip, not a table: the studio names a batch and
-every clip cut from that recording carries the name. The library turns those
-names into filter chips, and `library/playlist/:name` opens one as a sequence —
-numbered in source order, with how far through it you are and the first
-unpractised clip one button away.
+Three levels: a **series** (`playlists`), an **episode** (`clip_sources`), and
+the clips cut out of it.
 
-Source order comes from `start_seconds`, not `created_at`. A batch is inserted
-one row after another so the two agree today, and would stop agreeing the first
-time an admin goes back and publishes a line they cut later. The order of an
-episode is a fact about the recording.
+A playlist was a free-text column on every clip. That is enough to group a grid
+by and nothing else: a name repeated on two hundred rows has nowhere to carry a
+description, an order, or the fact that it is the one everybody is watching this
+week, and none of those belong to a clip anyway. So the series is a row.
+
+The episode is the upload — the file the cutter goes back to, in the schema
+since video and until now invisible to learners. It is called an episode rather
+than a video because a clip is already called a video everywhere a learner can
+see one (`Take.videoId` is a clip's id), and two things under one word in one
+library is a trap.
+
+Nothing changed for the studio. An admin still publishes by typing a playlist
+name; `playlistFor` finds that series or starts it, inside the same transaction
+that writes the clip, and the upload the clips came from is what becomes the
+episode. Clips published before uploads existed have no recording behind them,
+so each series holds one episode for those, with an empty `key` because there is
+no file.
+
+Source order inside an episode comes from `start_seconds`, not `created_at`. A
+batch is inserted one row after another so the two agree today, and would stop
+agreeing the first time an admin goes back and publishes a line they cut later.
+The order of an episode is a fact about the recording.
+
+### Hot
+
+`playlists.hot` is an admin's flag, not a measurement: which series to push is a
+decision about the library. The count of takes against it in the last seven days
+is read alongside it and shown next to the badge, so a badge nobody has earned
+is visible as such.
+
+### Search
+
+`GET /api/library/search?q=` looks at all three levels and answers each
+separately — a series and a six-second clip in one ranked list would mean
+different things in the same row. It is `ilike '%fragment%'` over the trigram
+indexes added with the playlists table, not full text: a learner types half a
+line they half remember, and `to_tsquery` is built for whole words. Anything
+under two characters answers with nothing rather than with most of the library.
 
 ## Choosing what gets published
 

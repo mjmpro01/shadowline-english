@@ -31,9 +31,13 @@ desktop and a bottom tab bar on phones.
 
 Clips are curated, not collected: learners practise what is in the library and
 cannot import or upload anything themselves. `/admin` holds the clip studio,
-where a recording is cut into lines — see below. The library is searchable by
-name, line, playlist and category, since a learner is as likely to remember a
-phrase from a clip as its title.
+where a recording is cut into lines — see below.
+
+The library is a tree: series (`/library`), episode (`/library/s/:slug`), and
+its clips (`/library/e/:id`). One search across all three runs on the server and
+matches names, spoken lines and tags, since a learner is as likely to remember a
+phrase from a clip as its title. A category cuts across series, so it has no
+branch of its own — tapping one is a search.
 
 ## Dashboard
 

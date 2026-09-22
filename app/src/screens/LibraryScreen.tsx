@@ -1,24 +1,46 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useT } from '../i18n'
-import { ClipFace } from '../components/ClipFace'
+import { useT, type Translate } from '../i18n'
+import { ClipCard } from '../components/ClipCard'
 import { Icon } from '../components/Icon'
-import { allCategories, allPlaylists, searchClips } from '../lib/clips'
-import { colorFor, sparkPoints } from '../lib/score'
+import { Loading } from '../components/LoadState'
+import type { Episode, Playlist, SearchResults } from '../data/types'
+import { searchIsWorthRunning } from '../lib/library'
+import { useDebounced, useRemote } from '../lib/remote'
+import { tintOf } from '../lib/score'
 import { clock } from '../lib/time'
+import { repository } from '../repository'
 import { useApp } from '../store/context'
+import { allCategories } from '../lib/clips'
 
+/**
+ * The library's front door: every series, and one search across all of them.
+ *
+ * It used to be every clip in one grid, filtered in the browser. That is the
+ * right shape for forty clips and the wrong one for a series — two hundred
+ * cards off one season say nothing about which episode they came from — and it
+ * needed the whole library in memory before it could draw the first card.
+ */
 export function LibraryScreen() {
-  const { data, statsFor } = useApp()
-  const navigate = useNavigate()
   const t = useT()
   const [query, setQuery] = useState('')
-  const [category, setCategory] = useState('')
-  const [playlist, setPlaylist] = useState('')
+  // A beat behind the typing: the request goes out when somebody stops, not on
+  // every keystroke.
+  const settled = useDebounced(query.trim(), 250)
+  const searching = searchIsWorthRunning(settled)
 
+  // The tags are read from the clips the app already holds, and each one is a
+  // search rather than a filter of its own: a category cuts across series, so
+  // it has no place in a tree, and the server matches tags already. This is the
+  // one thing on this screen still reading the whole library, and it comes out
+  // with that load when the load goes.
+  const { data } = useApp()
   const categories = allCategories(data.videos)
-  const playlists = allPlaylists(data.videos)
-  const results = searchClips(data.videos, { query, category, playlist })
+
+  const series = useRemote('', () => repository.listPlaylists())
+  const found = useRemote(searching ? settled : '', (q) =>
+    searchIsWorthRunning(q) ? repository.searchLibrary(q) : Promise.resolve(NOTHING),
+  )
 
   return (
     <div className="stack gap-6">
@@ -27,56 +49,21 @@ export function LibraryScreen() {
       <input
         type="search"
         className="input"
-        placeholder={t('library.search')}
+        placeholder={t('library.searchTree')}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         aria-label={t('library.searchLabel')}
       />
 
-      {playlists.length > 0 && (
-        <div className="row gap-2 wrap">
-          <button
-            type="button"
-            className={`btn ${playlist === '' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setPlaylist('')}
-          >
-            All playlists
-          </button>
-          {playlists.map((name) => (
-            <button
-              type="button"
-              key={name}
-              className={`btn ${playlist === name ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setPlaylist(playlist === name ? '' : name)}
-            >
-              {name}
-            </button>
-          ))}
-          {/* Filtering shows the clips; opening shows the episode. Two hundred
-              cards from one film say nothing about the order they were spoken
-              in or where you left off, and that is what a playlist is. */}
-          {playlist !== '' && (
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => navigate(`/library/playlist/${encodeURIComponent(playlist)}`)}
-            >
-              Open as playlist
-              <Icon name="chevron-right" />
-            </button>
-          )}
-        </div>
-      )}
-
-      {categories.length > 0 && (
+      {categories.length > 0 && query.trim() === '' && (
         <div className="row gap-2 wrap">
           {categories.map((name) => (
             <button
               type="button"
               key={name}
-              className={category === name ? 'tag tag-accent' : 'tag tag-neutral'}
+              className="tag tag-neutral"
               style={{ cursor: 'pointer', border: 'none' }}
-              onClick={() => setCategory(category === name ? '' : name)}
+              onClick={() => setQuery(name)}
             >
               {name}
             </button>
@@ -84,82 +71,164 @@ export function LibraryScreen() {
         </div>
       )}
 
-      {results.length === 0 && (
-        <div className="card-meta">{t('library.nothingMatches')}</div>
+      {/* Typing takes over the screen. Showing the series grid underneath a set
+          of results would leave two answers to one question on one page. */}
+      {query.trim() !== '' ? (
+        <Found query={query.trim()} settled={settled} remote={found} t={t} />
+      ) : (
+        <Series remote={series} t={t} />
+      )}
+    </div>
+  )
+}
+
+const NOTHING: SearchResults = { playlists: [], episodes: [], clips: [] }
+
+function Series({ remote, t }: { remote: ReturnType<typeof useRemote<Playlist[]>>; t: Translate }) {
+  if (remote.state === 'loading') return <Loading />
+  if (remote.state === 'error') return <div className="card-meta">{remote.message}</div>
+  if (remote.value.length === 0) return <div className="card-meta">{t('library.noSeries')}</div>
+
+  return (
+    <div className="grid-series">
+      {remote.value.map((playlist) => (
+        <SeriesCard key={playlist.id} playlist={playlist} t={t} />
+      ))}
+    </div>
+  )
+}
+
+function SeriesCard({ playlist, t }: { playlist: Playlist; t: Translate }) {
+  const navigate = useNavigate()
+  return (
+    <button
+      type="button"
+      className="link-button card elev-sm series-card"
+      aria-label={t('library.openSeries', playlist.title)}
+      onClick={() => navigate(`/library/s/${encodeURIComponent(playlist.slug)}`)}
+    >
+      {/* A still from the first clip that has one. When none does — a series cut
+          from audio, or one whose cuts are still queued — the cover carries the
+          series' own name on a tint it keeps, the same way a clip with no still
+          carries its line. A grid of identical grey rectangles is nothing to
+          aim at. */}
+      <span
+        className="series-cover"
+        style={playlist.coverUrl ? undefined : { background: tintOf(playlist.id) }}
+      >
+        {playlist.coverUrl ? (
+          <img src={playlist.coverUrl} alt="" loading="lazy" />
+        ) : (
+          <span className="series-face">{playlist.title}</span>
+        )}
+        {/* The badge says an admin picked this one; the line under the title
+            says what that is worth this week. A claim and its evidence, rather
+            than a claim dressed as one. */}
+        {playlist.hot && (
+          <span className="tag tag-accent series-hot" title={t('library.hotTitle')}>
+            <Icon name="flame" size={12} />
+            {t('library.hot')}
+          </span>
+        )}
+      </span>
+      <span className="stack" style={{ gap: 2, padding: 'var(--space-3)' }}>
+        {/* Never the same thing twice: a series with no cover has its name set
+            large across the face above, and printing it again here would be one
+            name and two sizes of it. */}
+        {playlist.coverUrl !== '' && <span className="card-title clamp-2">{playlist.title}</span>}
+        <span className="card-meta">{t('library.seriesCounts', playlist.episodes, playlist.clips)}</span>
+        {playlist.recentTakes > 0 && (
+          <span className="card-meta">{t('library.takesThisWeek', playlist.recentTakes)}</span>
+        )}
+      </span>
+    </button>
+  )
+}
+
+function Found({
+  query,
+  settled,
+  remote,
+  t,
+}: {
+  query: string
+  settled: string
+  remote: ReturnType<typeof useRemote<SearchResults>>
+  t: Translate
+}) {
+  if (!searchIsWorthRunning(query)) {
+    return <div className="card-meta">{t('library.searchTooShort')}</div>
+  }
+  // The answer on screen is for the query that has settled, not the one being
+  // typed. Saying "nothing matches" for a word somebody is halfway through is
+  // wrong for a moment and reads as wrong for longer.
+  if (remote.state === 'loading' || settled !== query) {
+    return <Loading label={t('library.searching')} />
+  }
+  if (remote.state === 'error') return <div className="card-meta">{remote.message}</div>
+
+  const { playlists, episodes, clips } = remote.value
+  if (playlists.length + episodes.length + clips.length === 0) {
+    return <div className="card-meta">{t('library.searchNothing', query)}</div>
+  }
+
+  return (
+    <div className="stack gap-6">
+      {playlists.length > 0 && (
+        <section className="stack gap-3">
+          <h2 className="section-title">{t('library.foundSeries')}</h2>
+          <div className="grid-series">
+            {playlists.map((playlist) => (
+              <SeriesCard key={playlist.id} playlist={playlist} t={t} />
+            ))}
+          </div>
+        </section>
       )}
 
-      <div className="grid-cards">
-        {results.map((video) => {
-          const stats = statsFor(video.id)
-          const color = stats.lastScore === null ? 'var(--color-neutral-500)' : colorFor(stats.lastScore)
-          return (
-            <div className="card elev-sm" key={video.id} style={{ padding: 'var(--space-2)' }}>
-              <button
-                type="button"
-                className="link-button thumb"
-                onClick={() => navigate(`/library/${video.id}`)}
-                aria-label={`Open analysis for ${video.title}`}
-              >
-                {/* The still when the cutter has made one; the icon otherwise,
-                    which is every clip cut from audio and every one whose cut
-                    is still queued. */}
-                <ClipFace
-                  id={video.id}
-                  posterUrl={video.posterUrl}
-                  line={video.captions[0]?.text ?? ''}
-                />
-                <span className="tag tag-neutral thumb-tag">{clock(video.durationSeconds)}</span>
-              </button>
+      {episodes.length > 0 && (
+        <section className="stack gap-3">
+          <h2 className="section-title">{t('library.foundEpisodes')}</h2>
+          <div className="stack gap-2">
+            {episodes.map((episode) => (
+              <EpisodeHit key={episode.id} episode={episode} t={t} />
+            ))}
+          </div>
+        </section>
+      )}
 
-              <button
-                type="button"
-                className="link-button stack"
-                style={{ gap: 2 }}
-                onClick={() => navigate(`/library/${video.id}`)}
-                // Without this the button's name is the whole card read aloud:
-                // title, playlist, score and take count run together.
-                aria-label={video.title}
-              >
-                <span className="card-title clamp-2" style={{ fontSize: 15, marginTop: 'var(--space-2)' }}>
-                  {video.title}
-                </span>
-                {/* Never the same thing twice. A clip with no still shows its
-                    line on the tile above, so this carries the playlist; one
-                    with a still has nowhere else to put the line, so it comes
-                    back here. Names are numbers now — "Clip 3" says nothing —
-                    which is why one of the two always has to be the line. */}
-                <span className="card-meta clamp-2">
-                  {(video.posterUrl ? video.captions[0]?.text : video.playlist) ||
-                    video.playlist ||
-                    video.source}
-                </span>
-                <span className="row between gap-2" style={{ marginTop: 2 }}>
-                  <span className="score-big" style={{ color }}>
-                    {stats.lastScore ?? '—'}
-                  </span>
-                  <svg width="56" height="20" viewBox="0 0 56 20" aria-hidden="true">
-                    <polyline points={sparkPoints(stats.sparkline)} fill="none" stroke={color} strokeWidth="2" />
-                  </svg>
-                </span>
-                <span className="card-meta">{t('library.takes', stats.attempts)}</span>
-              </button>
-
-              <button
-                type="button"
-                className="btn btn-primary btn-block"
-                // Pinned to the bottom of the card rather than to whatever the
-                // text above happens to end at, so a row of cards has a row of
-                // buttons instead of a ragged edge wherever a title wraps.
-                style={{ marginTop: 'auto' }}
-                onClick={() => navigate(`/library/${video.id}/practice`)}
-              >
-                <Icon name="mic" size={14} />
-                {t('library.practice')}
-              </button>
-            </div>
-          )
-        })}
-      </div>
+      {clips.length > 0 && (
+        <section className="stack gap-3">
+          <h2 className="section-title">{t('library.foundClips')}</h2>
+          <div className="grid-cards">
+            {clips.map((clip) => (
+              <ClipCard key={clip.id} clip={clip} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
+  )
+}
+
+function EpisodeHit({ episode, t }: { episode: Episode; t: Translate }) {
+  const navigate = useNavigate()
+  return (
+    <button
+      type="button"
+      className="link-button card elev-sm playlist-row episode-row"
+      aria-label={t('series.openEpisode', episode.title)}
+      onClick={() => navigate(`/library/e/${episode.id}`)}
+    >
+      <span className="playlist-thumb">
+        {episode.posterUrl ? <img src={episode.posterUrl} alt="" loading="lazy" /> : <Icon name="play" size={16} />}
+      </span>
+      <span className="stack" style={{ gap: 2, minWidth: 0 }}>
+        <span className="card-title clamp-2" style={{ fontSize: 14 }}>
+          {episode.title}
+        </span>
+        <span className="card-meta mono">{t('series.episodeCounts', episode.clips, clock(episode.seconds))}</span>
+      </span>
+      <Icon name="chevron-right" />
+    </button>
   )
 }

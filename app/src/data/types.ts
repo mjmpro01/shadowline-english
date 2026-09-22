@@ -64,11 +64,69 @@ export interface Transcript {
   words: TranscriptWord[]
 }
 
+/**
+ * A series: Friends, a lecture course, a channel. The top level of the library,
+ * holding episodes, which hold clips.
+ *
+ * It was a name typed on every clip until the library became a tree. The counts
+ * and the cover are read from the server rather than worked out here: the app
+ * no longer holds every clip in the library, which is the point of the tree.
+ */
+export interface Playlist {
+  id: string
+  slug: string
+  title: string
+  description: string
+  /** An admin's choice of what to push. `recentTakes` is the measurement
+   *  beside it, so a badge nobody has earned reads as the claim it is. */
+  hot: boolean
+  /** Takes recorded against this series in the last seven days. */
+  recentTakes: number
+  position: number
+  episodes: number
+  clips: number
+  /** The still of the first clip in the series that has one; empty until the
+   *  cutter has produced one, and for a series cut from audio. */
+  coverUrl: string
+  createdAt: string
+}
+
+/**
+ * One episode: the recording an admin uploaded, and the clips cut out of it.
+ *
+ * "Episode" rather than "video" because a clip is already called a video
+ * everywhere a learner can see one — `Take.videoId` is a clip's id — and two
+ * things under one word in one library is a trap.
+ */
+export interface Episode {
+  id: string
+  playlistId: string | null
+  title: string
+  position: number
+  published: boolean
+  clips: number
+  /** The practising in this episode — the clips added up — not the length of
+   *  the recording they were cut from. */
+  seconds: number
+  posterUrl: string
+  createdAt: string
+}
+
+/** What one search across the library found, kept apart by level: a series and
+ *  a six-second clip in one ranked list would mean different things in the
+ *  same row. */
+export interface SearchResults {
+  playlists: Playlist[]
+  episodes: Episode[]
+  clips: Video[]
+}
+
 export interface Video {
   id: string
   title: string
   source: string
-  /** The batch this clip was cut from — a lesson, an episode, an interview. */
+  /** The series this clip is in, by name. The name also lives on the playlist
+   *  row now; this copy is what the studio's filter and the dashboard read. */
   playlist: string
   /** Free-form tags the library can be filtered by. */
   categories: string[]
@@ -89,9 +147,13 @@ export interface Video {
   /** A still from the clip, for the card. Empty for a clip cut from audio, and
    *  for one whose cut has not finished — both fall back to the play icon. */
   posterUrl: string
-  /** Where in its source recording this clip begins, which is the order a
-   *  playlist reads in. Zero for the starter clips, which came from nowhere. */
+  /** Where in its source recording this clip begins, which is the order an
+   *  episode reads in. Zero for the starter clips, which came from nowhere. */
   startSeconds: number
+  /** The episode this clip was cut from, and the series that is in. Null only
+   *  for a clip published with no playlist name at all. */
+  episodeId: string | null
+  playlistId: string | null
   createdAt: string
 }
 

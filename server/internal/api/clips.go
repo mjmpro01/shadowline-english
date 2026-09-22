@@ -60,12 +60,20 @@ func (s *Server) handleListClips(w http.ResponseWriter, r *http.Request) {
 // icon it showed before posters existed, which is a worse card and not a
 // broken screen.
 func (s *Server) posterURL(ctx context.Context, clip store.Clip) string {
-	if clip.PosterKey == nil {
+	return s.signPoster(ctx, clip.PosterKey, "clip", clip.ID.String())
+}
+
+// signPoster is the same for a clip's own still, for the one standing in for
+// its episode, and for the one standing in for its series — the picture is the
+// same object either way, and only what to say in the log when signing fails
+// differs.
+func (s *Server) signPoster(ctx context.Context, key *string, kind, id string) string {
+	if key == nil {
 		return ""
 	}
-	url, err := s.Storage.SignedGetURL(ctx, storage.Clips, *clip.PosterKey, audioURLTTL)
+	url, err := s.Storage.SignedGetURL(ctx, storage.Clips, *key, audioURLTTL)
 	if err != nil {
-		s.Log.Warn("could not sign a clip poster", "clip", clip.ID, "error", err)
+		s.Log.Warn("could not sign a poster", "kind", kind, "id", id, "error", err)
 		return ""
 	}
 	return url

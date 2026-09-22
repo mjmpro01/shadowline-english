@@ -124,7 +124,11 @@ func (s *Store) DeleteUnusedSources(ctx context.Context) ([]string, error) {
 		if err := rows.Scan(&key); err != nil {
 			return nil, err
 		}
-		keys = append(keys, key)
+		// A video holding clips published before uploads existed has no file
+		// behind it, so there is nothing for the caller to delete.
+		if key != "" {
+			keys = append(keys, key)
+		}
 	}
 	return keys, rows.Err()
 }

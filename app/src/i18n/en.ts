@@ -75,21 +75,46 @@ export const en = {
 
   // --- library --------------------------------------------------------------
   'library.title': 'Library',
-  'library.search': 'Search clips, lines, playlists',
-  'library.allPlaylists': 'All playlists',
   'library.practice': 'Practice',
   'library.takes': (n: number) => `${n} ${n === 1 ? 'take' : 'takes'}`,
   'library.openAnalysis': (title: string) => `Open analysis for ${title}`,
-  'library.open': (title: string) => `Open ${title}`,
-  'library.empty': 'Nothing here yet. An admin publishes clips from the studio.',
-  'library.noMatch': 'No clips match that.',
+
+  // A series holds episodes; an episode holds the clips cut out of it. "Episode"
+  // rather than "video" because a clip is already called a video everywhere a
+  // learner can see one.
+  'library.searchLabel': 'Search the library',
+  'library.searchTree': 'Search series, episodes and lines',
+  'library.noSeries': 'No series yet. An admin publishes clips from the studio.',
+  'library.hot': 'Hot',
+  'library.hotTitle': 'Picked by the Shadowline team',
+  'library.takesThisWeek': (n: number) =>
+    `${n} ${n === 1 ? 'take' : 'takes'} this week`,
+  'library.seriesCounts': (episodes: number, clips: number) =>
+    `${episodes} ${episodes === 1 ? 'episode' : 'episodes'} · ${clips} ${clips === 1 ? 'clip' : 'clips'}`,
+  'library.openSeries': (title: string) => `Open ${title}`,
+  'library.foundSeries': 'Series',
+  'library.foundEpisodes': 'Episodes',
+  'library.foundClips': 'Clips',
+  'library.searchTooShort': 'Type two letters or more.',
+  'library.searchNothing': (query: string) => `Nothing in the library matches “${query}”.`,
+  'library.searching': 'Searching…',
+
+  // --- a series --------------------------------------------------------------
+  'series.back': 'Library',
+  'series.noEpisodes': 'Nothing published in this series yet.',
+  'series.episodeCounts': (clips: number, seconds: string) => `${clips} clips · ${seconds}`,
+  'series.notFound': 'That series is not in the library — it may have been renamed.',
+  'series.openEpisode': (title: string) => `Open ${title}`,
+
+  // --- an episode ------------------------------------------------------------
+  'episode.notFound': 'That episode is not in the library — it may have been removed.',
+  'episode.noClips': 'No clips in this episode yet.',
 
   // --- playlist -------------------------------------------------------------
   'playlist.clipsAndPractised': (clips: number, practised: number) =>
     `${clips} ${clips === 1 ? 'clip' : 'clips'} · ${practised} practised`,
+  'playlist.percentPractised': (percent: number) => `${percent}% practised`,
   'playlist.practiceNext': (title: string) => `Practice next — ${title}`,
-  'playlist.done': 'Every clip in this playlist has been practised.',
-  'playlist.empty': 'Nothing published under this name yet.',
 
   // --- practice -------------------------------------------------------------
   'practice.lineOf': (current: number, total: number) => `Line ${current} of ${total}`,
@@ -240,6 +265,15 @@ export const en = {
   'studio.title': 'Clip studio',
   'studio.subtitle':
     'Cut a recording into single lines for the library. Learners practise these; they cannot add their own.',
+  'studio.tabSeries': (n: number) => `Series (${n})`,
+  'studio.hotOn': 'Hot',
+  'studio.hotOff': 'Mark hot',
+  'studio.episodes': (n: number) => `${n} ${n === 1 ? 'episode' : 'episodes'}`,
+  'studio.seriesName': 'Series name',
+  'studio.seriesAbout': 'About this series',
+  'studio.episodeName': 'Episode name',
+  'studio.order': 'Order',
+  'studio.inSeries': 'In series',
   'studio.tabCut': 'Cut a recording',
   'studio.tabClips': (n: number) => `Clips (${n})`,
   'studio.upload': 'Upload audio or video',
@@ -283,9 +317,6 @@ export const en = {
   'dash.learner': 'Learner',
   'dash.avgScore': 'Avg score',
   'dash.takes': 'Takes',
-  'library.searchLabel': 'Search clips',
-  'library.nothingMatches': 'Nothing matches that — try another word, or clear the filters.',
-  'playlist.noClips': 'No clips in this playlist — it may have been renamed or emptied.',
   'playlist.allPractised': 'Every clip here has been practised at least once.',
   'vocab.learned': 'Learned',
   'vocab.noWords': 'No words here yet — tap a word while practising to add it.',
@@ -300,6 +331,7 @@ export const en = {
     'This clip has no original audio, so there is nothing to score your delivery against.',
   'dub.withoutSound': (title: string) => `${title}, without its sound`,
 
+  'analysis.backToEpisode': 'Episode',
   'analysis.noTakes': 'No takes recorded yet — practice this clip to see your pitch analysis.',
   'analysis.chartLabel': 'Pitch contour chart',
   'analysis.playOriginal': "Play the clip's original",

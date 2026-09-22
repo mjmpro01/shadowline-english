@@ -2,8 +2,11 @@ import { api } from '../lib/api'
 import type {
   CaptionLine,
   Dub,
+  Episode,
   Gloss,
+  Playlist,
   Profile,
+  SearchResults,
   Take,
   Transcript,
   Video,
@@ -23,6 +26,21 @@ import type {
 export interface Repository {
   me(): Promise<Profile | null>
   logout(): Promise<void>
+
+  /** The library's top level: every series, with its counts and its badge. */
+  listPlaylists(): Promise<Playlist[]>
+  /** One series and its episodes, together: there is no moment worth rendering
+   *  where the screen has the heading and not the list. */
+  playlist(slug: string): Promise<PlaylistPage>
+  /** One episode, its clips, and the series it is in — the last so the screen
+   *  can offer the way back up by name without a second round trip. */
+  episode(id: string): Promise<EpisodePage>
+  /** One search across all three levels. */
+  searchLibrary(query: string): Promise<SearchResults>
+  /** Renames a series, describes it, or marks it hot. Admin only. */
+  updatePlaylist(id: string, patch: PlaylistPatch): Promise<Playlist>
+  /** Renames an episode, moves it to another series, or reorders it. */
+  updateEpisode(id: string, patch: EpisodePatch): Promise<Episode>
 
   listClips(): Promise<Video[]>
   clipAudioURL(clipId: string): Promise<string | null>
@@ -63,6 +81,33 @@ export interface Repository {
   uploadAvatar(avatar: Blob): Promise<Profile>
 
   leaderboard(): Promise<LeaderboardRow[]>
+}
+
+export interface PlaylistPage {
+  playlist: Playlist
+  episodes: Episode[]
+}
+
+export interface EpisodePage {
+  episode: Episode
+  /** Null for an episode an admin has moved out of every series; the screen
+   *  drops the breadcrumb rather than inventing one. */
+  playlist: Playlist | null
+  clips: Video[]
+}
+
+export interface PlaylistPatch {
+  title?: string
+  description?: string
+  hot?: boolean
+  position?: number
+}
+
+export interface EpisodePatch {
+  title?: string
+  playlistId?: string
+  position?: number
+  published?: boolean
 }
 
 export interface NewClipInput {
@@ -125,6 +170,30 @@ class ApiRepository implements Repository {
 
   logout() {
     return api.send<void>('POST', '/auth/logout', {})
+  }
+
+  listPlaylists() {
+    return api.get<Playlist[]>('/api/playlists')
+  }
+
+  playlist(slug: string) {
+    return api.get<PlaylistPage>(`/api/playlists/${encodeURIComponent(slug)}`)
+  }
+
+  episode(id: string) {
+    return api.get<EpisodePage>(`/api/episodes/${id}`)
+  }
+
+  searchLibrary(query: string) {
+    return api.get<SearchResults>(`/api/library/search?q=${encodeURIComponent(query)}`)
+  }
+
+  updatePlaylist(id: string, patch: PlaylistPatch) {
+    return api.send<Playlist>('PATCH', `/api/admin/playlists/${id}`, patch)
+  }
+
+  updateEpisode(id: string, patch: EpisodePatch) {
+    return api.send<Episode>('PATCH', `/api/admin/episodes/${id}`, patch)
   }
 
   listClips() {

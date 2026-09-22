@@ -34,13 +34,14 @@ describe('locales', () => {
         typeof english === 'string' &&
         english === (vi as Record<string, unknown>)[key] &&
         // The ones that are the same in both on purpose, each for its own
-        // reason: a brand name is not translated, "Email" and "Playlist" are
-        // the Vietnamese words too, and an example address is an example
-        // address. Everything else has to differ, which is what stops a locale
-        // file being half-finished without anybody noticing.
+        // reason: a brand name is not translated, "Email", "Playlist" and
+        // "Series" are the Vietnamese words too, and an example address is an
+        // example address. Everything else has to differ, which is what stops a
+        // locale file being half-finished without anybody noticing.
         ![
           'profile.email',
           'studio.playlist',
+          'library.foundSeries',
           'login.brand',
           'login.brandAccent',
           'login.emailLabel',

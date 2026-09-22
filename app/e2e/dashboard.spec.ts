@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
  */
 async function practisePublished(page: import('@playwright/test').Page): Promise<void> {
   await page.goto('/library')
-  await page.getByLabel('Search clips').fill('Shadow this line 1')
+  await page.getByLabel('Search the library').fill('Shadow this line 1')
   await page.getByRole('button', { name: 'Practice', exact: true }).first().click()
   await page.waitForURL('**/practice')
 }

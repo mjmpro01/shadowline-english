@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { practiseFirstClip } from './library'
 import { API_URL } from './environment'
 import { LESSON } from './fixtures'
 import { asAdmin, resetServer, startFresh } from './session'
@@ -18,8 +19,7 @@ test('learners cannot add clips of their own', async ({ page }) => {
   await expect(page.getByPlaceholder(/Paste a YouTube/)).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'Clip studio' })).toHaveCount(0)
 
-  await page.getByRole('button', { name: 'Practice', exact: true }).first().click()
-  await page.waitForURL('**/practice')
+  await practiseFirstClip(page)
   await expect(page.getByRole('button', { name: /source audio/ })).toHaveCount(0)
 })
 
@@ -74,7 +74,7 @@ test('cuts a recording into lines and publishes them to the library', async ({ p
   await expect(page.getByText('4 clips are now in the library.')).toBeVisible({ timeout: 15_000 })
 
   await page.goto('/library')
-  await page.getByLabel('Search clips').fill('Shadow this line 1')
+  await page.getByLabel('Search the library').fill('Shadow this line 1')
   await expect(page.getByText('Shadow this line 1')).toBeVisible()
 
   // A published clip carries its own audio, so takes against it are scored —
@@ -168,9 +168,9 @@ test('clips get a name, a playlist and categories, and stay editable after publi
   await first.getByLabel('Categories').press('Enter')
 
   await page.goto('/library')
-  await page.getByLabel('Search clips').fill('Greeting')
+  await page.getByLabel('Search the library').fill('Greeting')
   await expect(page.getByText('Greeting the interviewer')).toBeVisible()
-  await page.getByLabel('Search clips').fill('')
+  await page.getByLabel('Search the library').fill('')
   await expect(page.getByRole('button', { name: 'greeting', exact: true })).toBeVisible()
 })
 
@@ -186,6 +186,6 @@ test('deleting a clip removes it from the library', async ({ page }) => {
   await expect(page.locator('.card', { hasText: 'Name' })).toHaveCount(0)
 
   await page.goto('/library')
-  await page.getByLabel('Search clips').fill('Shadow this line 1')
-  await expect(page.getByText(/Nothing matches that/)).toBeVisible()
+  await page.getByLabel('Search the library').fill('Shadow this line 1')
+  await expect(page.getByText(/Nothing in the library matches/)).toBeVisible()
 })
