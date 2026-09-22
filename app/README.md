@@ -29,6 +29,26 @@ Login → Dashboard → Library → Practice → Analysis → Dub Review, plus V
 with its flashcards, Progress and Profile. Navigation is a collapsible sidebar on
 desktop and a bottom tab bar on phones.
 
+## The adventure menu
+
+The sidebar is the Shadowline adventure menu from Figma: a lit forest, a tree
+with a rope ladder nailed to it, and a plank per place you can go. Collapsed it
+becomes a rail of icons whose labels swing out on a wooden sign; the plank you
+are on is the one green thing in a brown menu, and says so without being
+pointed at. The phone's tab bar carries the same wood and drops the tree, which
+it has no room for.
+
+It is drawn in CSS — the palette lives with the rest of the tokens, under
+`--menu-*` — with one piece outstanding: **the forest illustration behind the
+tree.** This machine's network could not reach Figma's asset host, so
+`.menu-forest` layers the illustration over a gradient that stands in for it.
+Export the design's `Enchanted forest` layer as a PNG to
+`public/menu/forest.png` and it appears; nothing else needs changing.
+
+The design carries a sixth plank, `Arena`, for a feature that does not exist.
+It is not in the menu: the green plank and its badge are that plank's selected
+state, applied to whichever place you are actually in.
+
 Clips are curated, not collected: learners practise what is in the library and
 cannot import or upload anything themselves. `/admin` holds the clip studio,
 where a recording is cut into lines — see below.
