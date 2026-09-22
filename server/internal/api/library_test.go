@@ -11,6 +11,9 @@ import (
 // publishes — an admin types a playlist name, and no second screen has to be
 // visited before a learner can find the series.
 
+// The names below are the app's contract, not an implementation detail: a
+// renamed field does not fail to compile anywhere, it renders as "undefined" on
+// screen. They are asserted rather than assumed for that reason.
 type playlistJSON struct {
 	ID          string `json:"id"`
 	Slug        string `json:"slug"`
@@ -18,7 +21,7 @@ type playlistJSON struct {
 	Description string `json:"description"`
 	Hot         bool   `json:"hot"`
 	RecentTakes int    `json:"recentTakes"`
-	Videos      int    `json:"videos"`
+	Episodes    int    `json:"episodes"`
 	Clips       int    `json:"clips"`
 }
 
@@ -148,6 +151,9 @@ func TestAnUploadBecomesAnEpisodeOfTheSeries(t *testing.T) {
 	if page.Episodes[0].Clips != 1 || page.Episodes[0].Seconds != 2 {
 		t.Fatalf("episode counts came back as %+v", page.Episodes[0])
 	}
+	if page.Playlist.Episodes != 1 || page.Playlist.Clips != 1 {
+		t.Fatalf("the series counts came back as %+v", page.Playlist)
+	}
 
 	episode := expect[episodePageJSON](t, learner.do("GET", "/api/episodes/"+page.Episodes[0].ID, "", nil), http.StatusOK)
 	if len(episode.Clips) != 1 || episode.Clips[0].Title != "Line one" {
@@ -188,6 +194,79 @@ func TestClipsWithNoUploadStillLandInAnEpisode(t *testing.T) {
 	episode := expect[episodePageJSON](t, admin.do("GET", "/api/episodes/"+page.Episodes[0].ID, "", nil), http.StatusOK)
 	if len(episode.Clips) != 1 {
 		t.Fatalf("the episode holds %d clips, want 1", len(episode.Clips))
+	}
+}
+
+// An episode reads in the order the lines were spoken, not the order they were
+// published: an admin can go back and cut a line they skipped in the middle,
+// and it belongs in the middle.
+func TestAnEpisodeReadsInTheOrderItWasSpoken(t *testing.T) {
+	h := newHarness(t)
+	admin := h.login("admin@example.com")
+	source := uploadSource(t, admin, "s01e01.mp4")
+
+	at := func(title string, start float64) map[string]any {
+		clip := inPlaylist(title, "Friends")
+		clip["sourceId"] = source.ID
+		clip["startSeconds"] = start
+		clip["endSeconds"] = start + 3
+		return clip
+	}
+	publishClips(t, admin, at("Third", 12), at("First", 2))
+	publishClips(t, admin, at("Second", 7))
+
+	page := expect[playlistPageJSON](t, admin.do("GET", "/api/playlists/friends", "", nil), http.StatusOK)
+	episode := expect[episodePageJSON](t,
+		admin.do("GET", "/api/episodes/"+page.Episodes[0].ID, "", nil), http.StatusOK)
+
+	var order []string
+	for _, c := range episode.Clips {
+		order = append(order, c.Title)
+	}
+	if len(order) != 3 || order[0] != "First" || order[1] != "Second" || order[2] != "Third" {
+		t.Fatalf("the episode reads %v", order)
+	}
+}
+
+// Clips cut from no recording all start at zero, so the title is what keeps
+// their order from changing between two requests.
+func TestClipsWithNoStartTimeAreStillInAStableOrder(t *testing.T) {
+	h := newHarness(t)
+	admin := h.login("admin@example.com")
+	publishClips(t, admin, inPlaylist("Beta", "Friends"), inPlaylist("Alpha", "Friends"))
+
+	page := expect[playlistPageJSON](t, admin.do("GET", "/api/playlists/friends", "", nil), http.StatusOK)
+	episode := expect[episodePageJSON](t,
+		admin.do("GET", "/api/episodes/"+page.Episodes[0].ID, "", nil), http.StatusOK)
+	if len(episode.Clips) != 2 || episode.Clips[0].Title != "Alpha" {
+		t.Fatalf("the episode reads %+v", episode.Clips)
+	}
+}
+
+// A clip says which episode and which series it is in, so the screen showing
+// one can offer the way back up.
+func TestAClipNamesTheEpisodeAndSeriesItIsIn(t *testing.T) {
+	h := newHarness(t)
+	admin := h.login("admin@example.com")
+	source := uploadSource(t, admin, "s01e01.mp4")
+	clip := inPlaylist("Line one", "Friends")
+	clip["sourceId"] = source.ID
+	publishClips(t, admin, clip)
+
+	type placed struct {
+		EpisodeID  *string `json:"episodeId"`
+		PlaylistID *string `json:"playlistId"`
+	}
+	listed := expect[[]placed](t, h.login("learner@example.com").
+		do("GET", "/api/clips", "", nil), http.StatusOK)
+	if len(listed) != 1 {
+		t.Fatalf("listed %d clips, want 1", len(listed))
+	}
+	if listed[0].EpisodeID == nil || *listed[0].EpisodeID != source.ID {
+		t.Fatalf("the clip points at episode %v, want %s", listed[0].EpisodeID, source.ID)
+	}
+	if listed[0].PlaylistID == nil {
+		t.Fatal("the clip does not say which series it is in")
 	}
 }
 

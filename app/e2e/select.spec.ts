@@ -46,7 +46,10 @@ test('unselecting a clip keeps it out of the library', async ({ page }) => {
   await publishButton(page).click()
   await expect(page.getByText('2 clips are now in the library.')).toBeVisible({ timeout: 30_000 })
 
+  // Searched rather than browsed: the library opens on series now, and what
+  // this test is about is which four lines exist at all.
   await page.goto('/library')
+  await page.getByLabel('Search the library').fill('Shadow this line')
   await expect(page.getByText('Shadow this line 1')).toBeVisible()
   await expect(page.getByText('Shadow this line 3')).toBeVisible()
   // The ones left behind were left behind.

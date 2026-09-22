@@ -1165,3 +1165,99 @@
     transition: none;
   }
 }
+
+/* — the library tree: series, episodes — */
+
+/* Wider cards than the clip grid. A series card carries a title, two counts and
+   a badge; the 190px clip tile wraps all three onto their own lines. */
+.grid-series {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: var(--space-4);
+}
+.series-card {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  transition:
+    transform 90ms ease-out,
+    box-shadow 90ms ease-out;
+}
+/* A card is a thing to pick up, so it lifts under the cursor the way the solid
+   buttons do — the same travel, so the whole board moves by one rule. */
+.series-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 calc(var(--game-lift) + 2px) 0 var(--game-edge);
+}
+.series-card:active {
+  transform: translateY(1px);
+  box-shadow: 0 calc(var(--game-lift) - 2px) 0 var(--game-edge);
+}
+/* 16:9, unlike the 9:16 clip tile: a clip is one line held upright for a phone,
+   a series is a poster. */
+.series-cover {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  background: var(--color-accent-100);
+  color: var(--color-accent-500);
+  border-bottom: 2px solid var(--game-edge);
+}
+.series-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.series-hot {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 0 var(--game-edge);
+}
+/* An episode row has no index and no score of its own — an episode is not
+   scored, its clips are — so it is the clip row's grid without those columns. */
+.episode-row {
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  width: 100%;
+}
+@media (max-width: 620px) {
+  .episode-row {
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+  }
+  /* The clip row drops its score and button to a second line at this width;
+     an episode row has neither, so it must not inherit that rule. */
+  .episode-row > svg {
+    grid-column: auto;
+  }
+}
+/* A heading over a section of search results: a label, not a title. h2 at 32px
+   would outweigh the results underneath it. */
+.section-title {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin: 0;
+}
+
+/* The face of a series with no cover: its own name, set large, on a tint it
+   keeps — the same idea as a clip's face, and for the same reason. */
+.series-face {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 22px;
+  line-height: 1.2;
+  color: var(--color-text);
+  padding: var(--space-3);
+  text-align: center;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}

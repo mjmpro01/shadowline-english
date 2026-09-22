@@ -83,7 +83,7 @@ update clip_sources s set
 -- no file: nothing enqueues cutting or transcription for these — both are
 -- queued at upload, which never happened — and DeleteUnusedSources takes the
 -- row away again once the last clip leaves it. The title is repeated from
--- store.StandaloneVideoTitle, which is where new ones get it.
+-- store.StandaloneEpisodeTitle, which is where new ones get it.
 insert into clip_sources (playlist_id, name, title, key, content_type, has_video, published)
 select p.id, '', 'Standalone clips', '', '', false, true
 from playlists p

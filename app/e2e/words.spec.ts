@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { practiseFirstClip } from './library'
 import { startFresh } from './session'
 
 /**
@@ -28,9 +29,7 @@ const popupOf = (page: import('@playwright/test').Page) =>
 
 test.beforeEach(async ({ page }) => {
   await startFresh(page)
-  await page.goto('/library')
-  await page.getByRole('button', { name: 'Practice', exact: true }).first().click()
-  await page.waitForURL('**/practice')
+  await practiseFirstClip(page)
 })
 
 test('a tapped word comes back with a real pronunciation', async ({ page }) => {

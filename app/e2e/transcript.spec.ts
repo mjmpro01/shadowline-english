@@ -110,6 +110,6 @@ test('the published clips carry the transcribed line', async ({ page }) => {
   await expect(page.getByText(/clips are now in the library/)).toBeVisible({ timeout: 60_000 })
 
   await page.goto('/library')
-  await page.getByLabel('Search clips').fill('One step')
+  await page.getByLabel('Search the library').fill('One step')
   await expect(page.getByText('One step').first()).toBeVisible()
 })

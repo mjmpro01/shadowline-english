@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
+import { BackToLibrary } from '../components/BackToLibrary'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useT } from '../i18n'
 import { ClipPlayer } from '../components/ClipPlayer'
@@ -48,10 +49,7 @@ export function AnalysisScreen() {
   if (!take) {
     return (
       <div className="stack gap-4">
-        <button type="button" className="btn btn-ghost" style={{ alignSelf: 'flex-start' }} onClick={() => navigate('/library')}>
-          <Icon name="chevron-left" />
-          Library
-        </button>
+        <BackToLibrary clip={video} />
         <h2 style={{ marginBottom: 4 }}>{video.title}</h2>
         <div className="card elev-sm">
           <div className="card-body">{t('analysis.noTakes')}</div>
@@ -65,10 +63,7 @@ export function AnalysisScreen() {
 
   return (
     <div className="stack gap-6" style={{ maxWidth: 720 }}>
-      <button type="button" className="btn btn-ghost" style={{ alignSelf: 'flex-start' }} onClick={() => navigate('/library')}>
-        <Icon name="chevron-left" />
-        Library
-      </button>
+      <BackToLibrary clip={video} />
 
       <div>
         <h2 style={{ marginBottom: 4 }}>{video.title}</h2>

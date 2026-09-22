@@ -79,21 +79,42 @@ export const vi: Messages = {
 
   // --- library --------------------------------------------------------------
   'library.title': 'Thư viện',
-  'library.search': 'Tìm clip, câu thoại, playlist',
-  'library.allPlaylists': 'Tất cả playlist',
   'library.practice': 'Luyện',
   'library.takes': (n: number) => `${n} bản ghi`,
   'library.openAnalysis': (title: string) => `Mở phân tích cho ${title}`,
-  'library.open': (title: string) => `Mở ${title}`,
-  'library.empty': 'Chưa có gì ở đây. Quản trị viên đăng clip từ xưởng cắt.',
-  'library.noMatch': 'Không có clip nào khớp.',
+
+  'library.searchLabel': 'Tìm trong thư viện',
+  'library.searchTree': 'Tìm series, tập, câu thoại',
+  'library.noSeries': 'Chưa có series nào. Quản trị viên đăng clip từ xưởng cắt.',
+  'library.hot': 'Nổi bật',
+  'library.hotTitle': 'Do đội Shadowline chọn',
+  'library.takesThisWeek': (n: number) => `${n} bản ghi tuần này`,
+  'library.seriesCounts': (episodes: number, clips: number) =>
+    `${episodes} tập · ${clips} clip`,
+  'library.openSeries': (title: string) => `Mở ${title}`,
+  'library.foundSeries': 'Series',
+  'library.foundEpisodes': 'Tập',
+  'library.foundClips': 'Clip',
+  'library.searchTooShort': 'Gõ từ hai chữ cái trở lên.',
+  'library.searchNothing': (query: string) => `Không có gì trong thư viện khớp với “${query}”.`,
+  'library.searching': 'Đang tìm…',
+
+  // --- a series --------------------------------------------------------------
+  'series.back': 'Thư viện',
+  'series.noEpisodes': 'Series này chưa có gì được đăng.',
+  'series.episodeCounts': (clips: number, seconds: string) => `${clips} clip · ${seconds}`,
+  'series.notFound': 'Series này không có trong thư viện — có thể nó đã được đổi tên.',
+  'series.openEpisode': (title: string) => `Mở ${title}`,
+
+  // --- an episode ------------------------------------------------------------
+  'episode.notFound': 'Tập này không có trong thư viện — có thể nó đã bị xoá.',
+  'episode.noClips': 'Tập này chưa có clip nào.',
 
   // --- playlist -------------------------------------------------------------
   'playlist.clipsAndPractised': (clips: number, practised: number) =>
     `${clips} clip · đã luyện ${practised}`,
+  'playlist.percentPractised': (percent: number) => `đã luyện ${percent}%`,
   'playlist.practiceNext': (title: string) => `Luyện tiếp — ${title}`,
-  'playlist.done': 'Bạn đã luyện hết clip trong playlist này.',
-  'playlist.empty': 'Chưa có gì được đăng dưới tên này.',
 
   // --- practice -------------------------------------------------------------
   'practice.lineOf': (current: number, total: number) => `Câu ${current} / ${total}`,
@@ -244,6 +265,15 @@ export const vi: Messages = {
   'studio.title': 'Xưởng cắt clip',
   'studio.subtitle':
     'Cắt một bản ghi thành từng câu cho thư viện. Người học luyện những clip này; họ không tự thêm được.',
+  'studio.tabSeries': (n: number) => `Series (${n})`,
+  'studio.hotOn': 'Đang nổi bật',
+  'studio.hotOff': 'Đánh dấu nổi bật',
+  'studio.episodes': (n: number) => `${n} tập`,
+  'studio.seriesName': 'Tên series',
+  'studio.seriesAbout': 'Giới thiệu series',
+  'studio.episodeName': 'Tên tập',
+  'studio.order': 'Thứ tự',
+  'studio.inSeries': 'Thuộc series',
   'studio.tabCut': 'Cắt một bản ghi',
   'studio.tabClips': (n: number) => `Clip (${n})`,
   'studio.upload': 'Tải lên audio hoặc video',
@@ -287,9 +317,6 @@ export const vi: Messages = {
   'dash.learner': 'Người học',
   'dash.avgScore': 'Điểm TB',
   'dash.takes': 'Bản ghi',
-  'library.searchLabel': 'Tìm clip',
-  'library.nothingMatches': 'Không có gì khớp — thử từ khác, hoặc xoá bộ lọc.',
-  'playlist.noClips': 'Playlist này không có clip nào — có thể nó đã bị đổi tên hoặc dọn sạch.',
   'playlist.allPractised': 'Mọi clip ở đây đều đã được luyện ít nhất một lần.',
   'vocab.learned': 'Đã học',
   'vocab.noWords': 'Chưa có từ nào — chạm vào một từ khi đang luyện để thêm.',
@@ -304,6 +331,7 @@ export const vi: Messages = {
     'Clip này không có âm thanh gốc, nên không có gì để chấm cách bạn đọc.',
   'dub.withoutSound': (title: string) => `${title}, không có tiếng`,
 
+  'analysis.backToEpisode': 'Tập',
   'analysis.noTakes': 'Chưa có bản ghi nào — luyện clip này để xem phân tích cao độ.',
   'analysis.chartLabel': 'Biểu đồ đường cao độ',
   'analysis.playOriginal': 'Phát bản gốc của clip',

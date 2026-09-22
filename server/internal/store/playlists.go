@@ -30,7 +30,7 @@ type Playlist struct {
 	Hot         bool `json:"hot"`
 	RecentTakes int  `json:"recentTakes"`
 	Position    int  `json:"position"`
-	Videos      int  `json:"videos"`
+	Episodes    int  `json:"episodes"`
 	Clips       int  `json:"clips"`
 	// CoverKey is the still of the first clip that has one; the API signs it
 	// into CoverURL. A playlist has no picture of its own to upload — the
@@ -58,7 +58,7 @@ const playlistColumns = `p.id, p.slug, p.title, p.description, p.hot, p.position
 func scanPlaylist(row pgx.Row) (Playlist, error) {
 	var p Playlist
 	err := row.Scan(&p.ID, &p.Slug, &p.Title, &p.Description, &p.Hot, &p.Position,
-		&p.Videos, &p.Clips, &p.RecentTakes, &p.CoverKey, &p.CreatedAt)
+		&p.Episodes, &p.Clips, &p.RecentTakes, &p.CoverKey, &p.CreatedAt)
 	return p, mapErr(err)
 }
 

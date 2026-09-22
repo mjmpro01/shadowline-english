@@ -13,7 +13,12 @@ test.beforeEach(async ({ page }) => {
 async function recordOnce(page: import('@playwright/test').Page, label: 'Record' | 'Re-record') {
   await page.getByRole('button', { name: label, exact: true }).click()
   await page.waitForTimeout(RECORD_MS)
-  await page.getByRole('button', { name: 'Stop' }).click()
+  // The recorder stops itself at the clip's own length, and the shortest clip
+  // in the lesson is shorter than RECORD_MS — so by now Stop may be gone and
+  // the take already recorded. Clicking a button that is not there is how this
+  // used to fail, on a clip whose length nobody had noticed.
+  const stop = page.getByRole('button', { name: 'Stop' })
+  if (await stop.isVisible()) await stop.click()
 }
 
 /**
@@ -25,7 +30,7 @@ async function recordOnce(page: import('@playwright/test').Page, label: 'Record'
  */
 async function practise(page: import('@playwright/test').Page, title: string) {
   await page.goto('/library')
-  await page.getByLabel('Search clips').fill(title)
+  await page.getByLabel('Search the library').fill(title)
   await page.getByRole('button', { name: 'Practice', exact: true }).first().click()
   await page.waitForURL('**/practice')
 }
@@ -151,25 +156,27 @@ test('recording stops itself at the clip limit', async ({ page }) => {
   await expect(page.getByText('Take recorded')).toBeVisible({ timeout: 20_000 })
 })
 
-test('learners can search the library and filter it by category', async ({ page }) => {
+test('learners can search the library, and a category is a search', async ({ page }) => {
   await publishLesson(page)
   await asLearner(page)
   await page.goto('/library')
 
-  await page.getByLabel('Search clips').fill('line 3')
+  await page.getByLabel('Search the library').fill('line 3')
   await expect(page.locator('.grid-cards .card')).toHaveCount(1)
   await expect(page.getByText('Shadow this line 3')).toBeVisible()
 
-  await page.getByLabel('Search clips').fill('nothing like this')
-  await expect(page.getByText(/Nothing matches that/)).toBeVisible()
+  await page.getByLabel('Search the library').fill('nothing like this')
+  await expect(page.getByText(/Nothing in the library matches/)).toBeVisible()
 
-  await page.getByLabel('Search clips').fill('')
-  await page.getByRole('button', { name: 'Lesson one', exact: true }).click()
-  // The four published clips share a playlist; the seeded ones do not.
-  await expect(page.locator('.grid-cards .card')).toHaveCount(4)
-
+  // A category cuts across series, so it has no place in the tree — tapping one
+  // searches for it instead. "interview" is on the published lesson and on two
+  // of the starter clips, in another series, and both come back: that crossing
+  // is the whole reason a tag is a search rather than a branch.
+  await page.getByLabel('Search the library').fill('')
   await page.getByRole('button', { name: 'interview', exact: true }).click()
-  await expect(page.locator('.grid-cards .card')).toHaveCount(4)
+  await expect(page.getByText('Shadow this line 1')).toBeVisible()
+  await expect(page.getByText("Actually, I think it's brilliant").first()).toBeVisible()
+  await expect(page.locator('.grid-cards .card')).toHaveCount(6)
 })
 
 

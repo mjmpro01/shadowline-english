@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useT } from '../i18n'
 import { Icon } from '../components/Icon'
 import { SegmentedControl } from '../components/SegmentedControl'
+import { StudioSeries } from './StudioSeries'
 import { ThumbnailStrip } from '../components/ThumbnailStrip'
 import { WaveformEditor } from '../components/WaveformEditor'
 import { MAX_CLIP_SECONDS, type Transcript } from '../data/types'
@@ -66,12 +67,14 @@ function lengthLabel(seconds: number): string {
   return (Math.floor(seconds * 10) / 10).toFixed(1)
 }
 
-type Tab = 'cut' | 'clips'
+type Tab = 'cut' | 'clips' | 'series'
 
 export function AdminScreen() {
   const t = useT()
   const { data, addClips, updateClip, deleteClip } = useApp()
   const [tab, setTab] = useState<Tab>('cut')
+  // Shown on the tab itself, so the count is right before the tab is opened.
+  const [seriesCount, setSeriesCount] = useState(0)
   const [manageQuery, setManageQuery] = useState('')
   const fileInput = useRef<HTMLInputElement>(null)
   const player = useRef<HTMLAudioElement>(null)
@@ -455,8 +458,11 @@ export function AdminScreen() {
         options={[
           { value: 'cut', label: t('studio.tabCut') },
           { value: 'clips', label: `Clips (${data.videos.length})` },
+          { value: 'series', label: t('studio.tabSeries', seriesCount) },
         ]}
       />
+
+      {tab === 'series' && <StudioSeries onCount={setSeriesCount} />}
 
       {tab === 'clips' && (
         <div className="stack gap-3">

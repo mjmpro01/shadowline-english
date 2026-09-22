@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test'
+import { practiseFirstClip } from './library'
 
 /**
  * Collects a few words by tapping them while practising.
@@ -8,12 +9,9 @@ import { expect, type Page } from '@playwright/test'
  * practice tests have to earn their deck the way a learner does.
  */
 export async function collectSomeWords(page: Page, count = 4): Promise<string[]> {
-  await page.goto('/library')
-  await page.getByRole('button', { name: 'Practice', exact: true }).first().click()
-  await page.waitForURL('**/practice')
+  await practiseFirstClip(page)
 
   const words = page.locator('.caption-word')
-  await expect(words.first()).toBeVisible()
 
   const collected: string[] = []
   for (let i = 0; collected.length < count && i < (await words.count()); i++) {

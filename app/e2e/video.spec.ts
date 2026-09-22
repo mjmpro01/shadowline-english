@@ -132,7 +132,7 @@ test('a clip published from video reaches the learner with its picture', async (
     .toBeGreaterThan(0)
 
   await page.goto('/library')
-  await page.getByLabel('Search clips').fill('Watch this line 1')
+  await page.getByLabel('Search the library').fill('Watch this line 1')
   await page.getByRole('button', { name: 'Practice', exact: true }).first().click()
   await page.waitForURL('**/practice')
 
@@ -164,7 +164,7 @@ test('the library and dashboard show a still from the clip', async ({ page }) =>
   await publishFromVideo(page)
 
   await page.goto('/library')
-  await page.getByLabel('Search clips').fill('Watch this line 1')
+  await page.getByLabel('Search the library').fill('Watch this line 1')
   const poster = page.locator('.thumb-poster').first()
   await expect(poster).toBeVisible({ timeout: 20_000 })
 
@@ -180,7 +180,7 @@ test('dub review runs the picture under the voice, muted', async ({ page }) => {
   await publishFromVideo(page)
 
   await page.goto('/library')
-  await page.getByLabel('Search clips').fill('Watch this line 1')
+  await page.getByLabel('Search the library').fill('Watch this line 1')
   await page.getByRole('button', { name: 'Practice', exact: true }).first().click()
   await page.waitForURL('**/practice')
 
