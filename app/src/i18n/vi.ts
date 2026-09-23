@@ -382,6 +382,21 @@ export const vi: Messages = {
   'profile.changeAvatar': 'Đổi ảnh đại diện',
 
   // --- shared ---------------------------------------------------------------
+  'common.cancel': 'Huỷ',
+  'common.delete': 'Xoá',
+  'take.delete': 'Xoá bản ghi này',
+  'take.deleteTitle': 'Xoá bản ghi này?',
+  'take.deleteBody': (n: number) =>
+    `Bản ghi và điểm của nó mất hẳn. Bạn có ${n} bản ghi cho clip này.`,
+  'studio.deleteEpisode': 'Xoá tập',
+  'studio.deleteEpisodeTitle': 'Xoá tập này?',
+  'studio.deleteEpisodeBody': (title: string, clips: number) =>
+    `“${title}”, ${clips} clip trong đó và bản ghi gốc đều mất hẳn, cùng mọi bản thu mà người học đã ghi cho chúng.`,
+  'studio.deleteSeries': 'Xoá series',
+  'studio.deleteSeriesTitle': 'Xoá series này?',
+  'studio.deleteSeriesBody': (title: string) =>
+    `“${title}” đang rỗng, nên chỉ mất cái tên.`,
+  'studio.deleteSeriesBlocked': 'Xoá các tập trước đã — series còn clip thì không bị xoá nhầm.',
   'common.loading': 'Đang tải…',
   'common.cantReach': 'Không kết nối được Shadowline',
   'common.somethingWrong': 'Đã có lỗi xảy ra.',

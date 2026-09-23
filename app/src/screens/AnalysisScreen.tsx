@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
+import { ConfirmDelete } from '../components/ConfirmDelete'
 import { CaptionLine } from '../components/CaptionLine'
 import { heardCount, heardIn } from '../lib/words'
 import { BackToLibrary } from '../components/BackToLibrary'
@@ -19,8 +20,9 @@ export function AnalysisScreen() {
   const { videoId } = useParams()
   const navigate = useNavigate()
   const t = useT()
-  const { data, state, statsFor } = useApp()
+  const { data, state, statsFor, deleteTake } = useApp()
   const [selected, setSelected] = useState<{ videoId: string; takeId: string } | null>(null)
+  const [confirming, setConfirming] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
   const sourceRef = useRef<HTMLMediaElement | null>(null)
   // Stable, so the element is not detached and reattached every render.
@@ -76,20 +78,44 @@ export function AnalysisScreen() {
         </div>
       </div>
 
-      <div className="seg" style={{ alignSelf: 'flex-start', maxWidth: '100%', overflowX: 'auto' }}>
-        {/* `option`, not `t`, so the translate function is not shadowed. */}
-        {stats.takes.map((option, i) => (
-          <label className="seg-opt mono" key={option.id}>
-            <input
-              type="radio"
-              name="take"
-              checked={option.id === take.id}
-              onChange={() => setSelected({ videoId: video.id, takeId: option.id })}
-            />
-            {t('analysis.take', i + 1)}
-          </label>
-        ))}
+      <div className="row between wrap gap-2">
+        <div className="seg" style={{ maxWidth: '100%', overflowX: 'auto' }}>
+          {/* `option`, not `t`, so the translate function is not shadowed. */}
+          {stats.takes.map((option, i) => (
+            <label className="seg-opt mono" key={option.id}>
+              <input
+                type="radio"
+                name="take"
+                checked={option.id === take.id}
+                onChange={() => setSelected({ videoId: video.id, takeId: option.id })}
+              />
+              {t('analysis.take', i + 1)}
+            </label>
+          ))}
+        </div>
+        {/* A bad take sits in the history, on the chart, and in the average
+            the leaderboard reads. The server has always allowed this; nothing
+            in the app offered it. */}
+        <button type="button" className="btn btn-danger" onClick={() => setConfirming(true)}>
+          {t('take.delete')}
+        </button>
       </div>
+
+      {confirming && (
+        <ConfirmDelete
+          title={t('take.deleteTitle')}
+          body={t('take.deleteBody', stats.takes.length)}
+          onCancel={() => setConfirming(false)}
+          onConfirm={() => {
+            setConfirming(false)
+            // Off the selection first: the take about to go is the one the
+            // screen is drawing, and it should fall back to the newest rather
+            // than to a row that no longer exists.
+            setSelected(null)
+            void deleteTake(take.id)
+          }}
+        />
+      )}
 
       {/* The line, with the words the transcriber did not hear marked.
           This used to be the clip's *title*, underlined in colours derived

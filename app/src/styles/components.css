@@ -95,6 +95,16 @@ img {
 .btn svg {
   display: block;
 }
+/* The one button that takes something away for good. Outlined rather than
+   filled: it should be findable and never the thing your eye lands on first. */
+.btn-danger {
+  background: transparent;
+  color: var(--score-attention);
+  border: 2px solid var(--score-attention);
+}
+.btn-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--score-attention) 16%, transparent);
+}
 .btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;

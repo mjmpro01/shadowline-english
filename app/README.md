@@ -96,6 +96,47 @@ With nothing due, the screen says so and says when the next word comes round,
 and still offers to practise anyway. The schedule is advice about what is worth
 reviewing, not a lock on the door.
 
+## Installing it
+
+`public/manifest.webmanifest` and `public/sw.js` make the app installable: a
+home-screen icon and a window with no browser chrome, which is most of what
+"an app" means to somebody practising on the way to work.
+
+It is **not** an offline app, and the worker does not pretend to be one. The
+clips, the takes and the scores all live on the server, and no amount of
+caching makes a recording scoreable on a train. The worker is network-first
+for everything it touches and never caches `/api/`, `/auth/` or `/files/` —
+a cache-first worker is how an app ships an update nobody receives, and those
+three carry a session, a signature and an expiry.
+
+There are no practice reminders. A reminder that fires when the app is closed
+needs web push — a push service, VAPID keys, subscriptions stored per device
+and a server that sends them — which is its own piece of work and not
+something a manifest buys.
+
+The icons are rendered from the menu's own brand sign; `public/icons/` holds
+them at 192, 512 and 512 maskable.
+
+## Taking things away
+
+Every delete removes objects as well as rows, and none of it can be put back,
+so each goes through a dialog that says what is about to go rather than asking
+"are you sure?" about a noun.
+
+A learner can throw away a take. It sits in their history, on the chart and in
+the average the leaderboard reads, and the server has always allowed this —
+nothing in the app offered it.
+
+An admin can delete an episode, which takes its clips, the recording they were
+cut from, and every take recorded against them. An episode is the unit they
+publish: two hundred clips off the wrong file is one mistake, and undoing it
+clip by clip is not an undo.
+
+A series is the opposite. The server refuses to delete one that still has
+clips in it, and the studio's button is disabled with the reason on it rather
+than hidden — the mistake a series delete recovers from is a name typed wrong,
+and what a cascade would take with it is a whole season of somebody's practice.
+
 ## Clip studio
 
 Upload a recording and it is cut at the pauses between sentences rather than on

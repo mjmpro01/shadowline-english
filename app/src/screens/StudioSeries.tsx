@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useT } from '../i18n'
+import { ConfirmDelete } from '../components/ConfirmDelete'
 import { Icon } from '../components/Icon'
 import { Loading } from '../components/LoadState'
 import { SavedField } from '../components/SavedField'
@@ -7,6 +8,7 @@ import type { Episode, Playlist } from '../data/types'
 import { ApiError } from '../lib/api'
 import { clock } from '../lib/time'
 import { repository } from '../repository'
+import { useApp } from '../store/context'
 
 /**
  * The studio's third tab: the shelf rather than what is on it.
@@ -20,6 +22,7 @@ export function StudioSeries({ onCount }: { onCount: (n: number) => void }) {
   const [series, setSeries] = useState<Playlist[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<Playlist | null>(null)
 
   const reload = useCallback(async () => {
     try {
@@ -46,6 +49,18 @@ export function StudioSeries({ onCount }: { onCount: (n: number) => void }) {
 
   return (
     <div className="stack gap-3">
+      {deleting && (
+        <ConfirmDelete
+          title={t('studio.deleteSeriesTitle')}
+          body={t('studio.deleteSeriesBody', deleting.title)}
+          onCancel={() => setDeleting(null)}
+          onConfirm={() => {
+            const id = deleting.id
+            setDeleting(null)
+            void repository.deletePlaylist(id).then(reload)
+          }}
+        />
+      )}
       {series.map((playlist) => (
         <div className="card elev-sm stack gap-2" key={playlist.id}>
           <div className="row between wrap gap-2">
@@ -75,6 +90,17 @@ export function StudioSeries({ onCount }: { onCount: (n: number) => void }) {
               >
                 {t('studio.episodes', playlist.episodes)}
                 <Icon name={open === playlist.id ? 'chevron-left' : 'chevron-right'} />
+              </button>
+              {/* Disabled rather than hidden while the series has clips in it:
+                  a button that is not there teaches nobody why. */}
+              <button
+                type="button"
+                className="btn btn-danger"
+                disabled={playlist.clips > 0}
+                title={playlist.clips > 0 ? t('studio.deleteSeriesBlocked') : undefined}
+                onClick={() => setDeleting(playlist)}
+              >
+                {t('studio.deleteSeries')}
               </button>
             </div>
           </div>
@@ -125,7 +151,12 @@ function Episodes({
   onChange: () => Promise<void>
 }) {
   const t = useT()
+  // Deleting an episode takes its clips with it, and the clips the rest of the
+  // app holds are the ones loaded at sign-in. Without this the studio's Clips
+  // tab would keep offering rows that no longer exist.
+  const { forgetEpisode } = useApp()
   const [episodes, setEpisodes] = useState<Episode[] | null>(null)
+  const [dropping, setDropping] = useState<Episode | null>(null)
 
   const reload = useCallback(async () => {
     const page = await repository.playlist(playlist.slug)
@@ -150,6 +181,21 @@ function Episodes({
 
   return (
     <div className="stack gap-2" style={{ marginTop: 'var(--space-2)' }}>
+      {dropping && (
+        <ConfirmDelete
+          title={t('studio.deleteEpisodeTitle')}
+          body={t('studio.deleteEpisodeBody', dropping.title, dropping.clips)}
+          onCancel={() => setDropping(null)}
+          onConfirm={() => {
+            const id = dropping.id
+            setDropping(null)
+            void repository.deleteEpisode(id).then(() => {
+              forgetEpisode(id)
+              return after()
+            })
+          }}
+        />
+      )}
       {episodes.map((episode) => (
         <div className="card stack gap-2" key={episode.id}>
           <span className="card-meta mono">
@@ -174,6 +220,9 @@ function Episodes({
                 void repository.updateEpisode(episode.id, { position }).then(after)
               }}
             />
+            <button type="button" className="btn btn-danger" onClick={() => setDropping(episode)}>
+              {t('studio.deleteEpisode')}
+            </button>
             <label className="stack" style={{ gap: 4, flex: '1 1 180px' }}>
               <span className="card-meta">{t('studio.inSeries')}</span>
               <select

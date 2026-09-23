@@ -220,3 +220,53 @@ func numbered(base string) []string {
 	_, _ = rand.Read(buf[:])
 	return append(out, base+"-"+hex.EncodeToString(buf[:]))
 }
+
+// ErrNotEmpty is a series that still has something in it.
+var ErrNotEmpty = errors.New("not empty")
+
+// DeletePlaylist removes a series, and only an empty one.
+//
+// Not a cascade, unlike DeleteEpisode. A series is a shelf: the mistake it
+// recovers from is a name typed wrong, not a batch published wrong, and the
+// thing it would take with it is a whole season of somebody's practice. An
+// admin who does mean that deletes the episodes first, which makes them look
+// at what they are deleting on the way.
+//
+// Empty means no clip points at it, which covers both the episodes and the
+// loose clips an episode was invented to hold.
+// Returns the recordings of the empty episodes it took with it, so the caller
+// can drop the objects.
+func (s *Store) DeletePlaylist(ctx context.Context, id uuid.UUID) ([]string, error) {
+	var keys []string
+	err := s.inTx(ctx, func(tx pgx.Tx) error {
+		var used bool
+		if err := tx.QueryRow(ctx,
+			`select exists (select 1 from clips where playlist_id = $1)`, id).Scan(&used); err != nil {
+			return err
+		}
+		if used {
+			return ErrNotEmpty
+		}
+		// The empty episodes it may still hold go with it: an episode with no
+		// clips left is one whose clips have already been deleted, and it is
+		// being deleted because the series is.
+		var err error
+		keys, err = keysFrom(ctx, tx,
+			`select key from clip_sources where playlist_id = $1 and key <> ''`, id)
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `delete from clip_sources where playlist_id = $1`, id); err != nil {
+			return err
+		}
+		tag, err := tx.Exec(ctx, `delete from playlists where id = $1`, id)
+		if err != nil {
+			return err
+		}
+		if tag.RowsAffected() == 0 {
+			return ErrNotFound
+		}
+		return nil
+	})
+	return keys, err
+}

@@ -382,6 +382,21 @@ export const en = {
   'profile.changeAvatar': 'Change avatar',
 
   // --- shared ---------------------------------------------------------------
+  'common.cancel': 'Cancel',
+  'common.delete': 'Delete',
+  'take.delete': 'Delete this take',
+  'take.deleteTitle': 'Delete this take?',
+  'take.deleteBody': (n: number) =>
+    `The recording and its score go for good. You have ${n} ${n === 1 ? 'take' : 'takes'} on this clip.`,
+  'studio.deleteEpisode': 'Delete episode',
+  'studio.deleteEpisodeTitle': 'Delete this episode?',
+  'studio.deleteEpisodeBody': (title: string, clips: number) =>
+    `“${title}”, its ${clips} ${clips === 1 ? 'clip' : 'clips'} and the recording they were cut from all go for good, along with every take anybody has recorded against them.`,
+  'studio.deleteSeries': 'Delete series',
+  'studio.deleteSeriesTitle': 'Delete this series?',
+  'studio.deleteSeriesBody': (title: string) =>
+    `“${title}” is empty, so only the name goes.`,
+  'studio.deleteSeriesBlocked': 'Delete its episodes first — a series with clips in it is not deleted by accident.',
   'common.loading': 'Loading…',
   'common.cantReach': 'Can’t reach Shadowline',
   'common.somethingWrong': 'Something went wrong.',

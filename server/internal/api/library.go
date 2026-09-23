@@ -2,10 +2,12 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/shadowline/server/internal/storage"
 	"github.com/shadowline/server/internal/store"
 )
 
@@ -166,4 +168,55 @@ func (s *Server) handleUpdateEpisode(w http.ResponseWriter, r *http.Request) {
 	}
 	episode.PosterURL = s.signPoster(r.Context(), episode.PosterKey, "episode", episode.ID.String())
 	writeJSON(w, http.StatusOK, episode)
+}
+
+// handleDeleteEpisode removes an episode, its clips and the recording they were
+// cut from — the objects as well as the rows.
+func (s *Server) handleDeleteEpisode(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	clipKeys, takeKeys, err := s.Store.DeleteEpisode(r.Context(), id)
+	if err != nil {
+		s.failErr(w, err, "delete episode")
+		return
+	}
+	s.dropObjects(r.Context(), storage.Clips, clipKeys)
+	s.dropObjects(r.Context(), storage.Takes, takeKeys)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleDeletePlaylist removes an empty series, and says so when it is not one.
+//
+// 409 rather than deleting what is in it: a series is a shelf, and the mistake
+// this recovers from is a name typed wrong. An admin who means to delete a
+// season deletes its episodes, which makes them look at what they are deleting
+// on the way.
+func (s *Server) handleDeletePlaylist(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	keys, err := s.Store.DeletePlaylist(r.Context(), id)
+	if errors.Is(err, store.ErrNotEmpty) {
+		fail(w, http.StatusConflict, "this series still has clips in it — delete its episodes first")
+		return
+	}
+	if err != nil {
+		s.failErr(w, err, "delete playlist")
+		return
+	}
+	s.dropObjects(r.Context(), storage.Clips, keys)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// dropObjects removes what a deleted row owned. A failure is a leak to clean
+// up later, not a reason to fail a request whose row is already gone.
+func (s *Server) dropObjects(ctx context.Context, bucket storage.Bucket, keys []string) {
+	for _, key := range keys {
+		if err := s.Storage.Delete(ctx, bucket, key); err != nil {
+			s.Log.Warn("orphaned object", "bucket", bucket, "key", key, "error", err)
+		}
+	}
 }
