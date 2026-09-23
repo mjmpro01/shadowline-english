@@ -54,7 +54,11 @@ export interface Store {
   addClips: (clips: NewClip[], sourceId?: string | null) => Promise<void>
   updateClip: (id: string, edit: ClipEdit) => Promise<void>
   deleteClip: (id: string) => Promise<void>
+  /** Forgets the clips an episode the studio deleted took with it. */
+  forgetEpisode: (episodeId: string) => void
   addTake: (videoId: string, audio: Blob) => Promise<Take>
+  /** Throws a recording away. Nothing else keeps a copy of it. */
+  deleteTake: (id: string) => Promise<void>
   toggleVocabWord: (
     raw: string,
     videoId: string | null,

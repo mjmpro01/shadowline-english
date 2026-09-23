@@ -1,4 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
+import { CaptionLine } from '../components/CaptionLine'
+import { heardCount, heardIn } from '../lib/words'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useT } from '../i18n'
 import { ClipPlayer } from '../components/ClipPlayer'
@@ -106,11 +108,10 @@ export function PracticeScreen() {
   // no lookup.
   const gloss = useGloss(popup?.word ?? null, popup?.context ?? '')
 
-  const words =
-    line?.text.split(' ').map((raw) => ({
-      raw,
-      added: data.vocab.some((v) => v.word === normalizeWord(raw)),
-    })) ?? []
+  // Which words of this line the transcriber heard in the take just recorded.
+  // Undefined until there is a scored take, and for a deployment with no model.
+  const checked = take?.analysis?.words
+  const heard = heardIn(checked, video?.captions ?? [], lineIndex)
 
   // The clip list arrives from the server, so "not found yet" and "not found"
   // are different answers. Redirecting on the first would throw anyone opening
@@ -189,19 +190,26 @@ export function PracticeScreen() {
 
           <div style={{ fontSize: 16, fontStyle: 'italic', textAlign: 'center' }}>
             “
-            {words.map((word, i) => (
-              <button
-                type="button"
-                className="caption-word"
-                data-added={word.added}
-                key={`${word.raw}-${i}`}
-                onClick={() => void tapWord(word.raw)}
-              >
-                {word.raw}
-              </button>
-            ))}
+            <CaptionLine
+              text={line.text}
+              heard={heard}
+              isAdded={(word) => data.vocab.some((v) => v.word === normalizeWord(word))}
+              onTap={(word) => void tapWord(word)}
+            />
             ”
           </div>
+          {/* What the transcriber made of the take, when there is one. Two
+              counts rather than a percentage: "7 of 9" is a thing to go and
+              fix, and "78%" is a grade. */}
+          {checked && (
+            <div
+              className="card-meta"
+              style={{ fontSize: 12, textAlign: 'center' }}
+              data-testid="words-heard"
+            >
+              {t('practice.wordsHeard', heardCount(checked).heard, heardCount(checked).total)}
+            </div>
+          )}
           <div style={{ fontSize: 11, textAlign: 'center', opacity: 0.5 }}>
             {t('practice.tapWord')}
           </div>

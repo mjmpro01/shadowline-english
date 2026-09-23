@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { dueDeck, daysUntil, nextDue } from '../lib/flashcards'
 import { useNavigate } from 'react-router-dom'
 import { useT } from '../i18n'
 import type { MessageKey } from '../i18n/en'
@@ -36,20 +37,51 @@ export function VocabularyScreen() {
 
   const words = data.vocab.filter((word) => filter === 'All' || word.status === filter)
 
+  // What the schedule has to say today. The deck is what is due; everything
+  // else has a date on it, and the screen says which rather than offering a
+  // button that leads to an empty session.
+  // One clock for the whole screen: the count in the button, the sentence
+  // under it and the date on every card should all agree about what "today"
+  // is, even if the render happens to straddle midnight.
+  const now = new Date()
+  const due = dueDeck(data.vocab, now)
+  const next = nextDue(data.vocab, now)
+
   return (
     <div className="stack gap-6">
       <div className="row between wrap gap-2">
         <h1 style={{ margin: 0 }}>{t('vocab.title')}</h1>
-        <button
-          type="button"
-          className="btn btn-primary"
-          disabled={data.vocab.length === 0}
-          onClick={() => navigate('/vocabulary/practice')}
-        >
-          <Icon name="brain" size={15} />
-          {t('vocab.memoryPractice')}
-        </button>
+        {due.length > 0 ? (
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => navigate('/vocabulary/practice')}
+          >
+            <Icon name="brain" size={15} />
+            {t('vocab.due', due.length)}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={data.vocab.length === 0}
+            onClick={() => navigate('/vocabulary/practice?all=1')}
+          >
+            <Icon name="brain" size={15} />
+            {t('vocab.practiseAnyway')}
+          </button>
+        )}
       </div>
+
+      {/* Saying nothing is due is the schedule working, not the app being
+          empty — so it says when the next word comes round, and leaves the
+          door open for anybody who wants to practise anyway. */}
+      {data.vocab.length > 0 && due.length === 0 && (
+        <div className="card-meta">
+          {t('vocab.nothingDue')}
+          {next && ` ${t('vocab.nextDue', daysUntil(next))}`}
+        </div>
+      )}
 
       <div className="row gap-2 wrap">
         {FILTERS.map((option) => (
@@ -78,8 +110,17 @@ export function VocabularyScreen() {
                 <div className="card-title">{word.word}</div>
                 <span className={STATUS_TAG[word.status]}>{t(STATUS_LABEL[word.status])}</span>
               </div>
-              <div className="mono" style={{ fontSize: 13, opacity: 0.6 }}>
-                {word.ipa}
+              <div className="row between gap-2">
+                <span className="mono" style={{ fontSize: 13, opacity: 0.6 }}>
+                  {word.ipa}
+                </span>
+                {/* When this card comes round again. A learner who marks a
+                    word known should be able to see that the app heard them. */}
+                <span className="card-meta" style={{ fontSize: 11 }}>
+                  {Date.parse(word.dueAt) <= now.getTime()
+                    ? t('vocab.dueNow')
+                    : t('vocab.dueIn', daysUntil(new Date(word.dueAt), now))}
+                </span>
               </div>
               <div className="card-body" style={{ opacity: word.meaning ? 1 : 0.6 }}>
                 {meaningOrWait(word.meaning)}

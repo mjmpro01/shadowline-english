@@ -99,6 +99,50 @@ const PATHS: Record<string, React.ReactNode> = {
       <rect x="3" y="16" width="7" height="5" rx="1" />
     </>
   ),
+  // The adventure menu's own set, which the Figma design draws with Lucide:
+  // a house that adds, an open book, a speech square, a plotted line, a round
+  // user, and the doubled chevrons on the collapse key.
+  'house-plus': (
+    <>
+      <path d="M3 10.6 12 3l9 7.6" />
+      <path d="M5.2 9.6V19a2 2 0 0 0 2 2h5" />
+      <path d="M18.8 9.6v3.4" />
+      <path d="M9.6 21v-5.2a1 1 0 0 1 1-1h2.8a1 1 0 0 1 1 1V17" />
+      <path d="M15.5 18.5h6" />
+      <path d="M18.5 15.5v6" />
+    </>
+  ),
+  'book-open': (
+    <>
+      <path d="M12 7v14" />
+      <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" />
+    </>
+  ),
+  'message-square': <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
+  'chart-line': (
+    <>
+      <path d="M3 3v16a2 2 0 0 0 2 2h16" />
+      <path d="m19 9-5 5-4-4-3 3" />
+    </>
+  ),
+  'user-round': (
+    <>
+      <circle cx="12" cy="8" r="5" />
+      <path d="M20 21a8 8 0 0 0-16 0" />
+    </>
+  ),
+  'chevrons-left': (
+    <>
+      <path d="m11 17-5-5 5-5" />
+      <path d="m18 17-5-5 5-5" />
+    </>
+  ),
+  'chevrons-right': (
+    <>
+      <path d="m6 17 5-5-5-5" />
+      <path d="m13 17 5-5-5-5" />
+    </>
+  ),
   scissors: (
     <>
       <circle cx="6" cy="6" r="3" />

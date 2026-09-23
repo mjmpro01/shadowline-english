@@ -17,3 +17,16 @@ createRoot(document.getElementById('root')!).render(
     </I18nProvider>
   </StrictMode>,
 )
+
+// The service worker is what makes the app installable, and it only gets in
+// the way in development: Vite serves modules the worker would happily cache
+// and then hand back after a hot reload. `sw.js` says what it does and, more
+// to the point, what it does not.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err: unknown) => {
+      // Not being installable is not a reason for anything to look broken.
+      console.warn('could not register the service worker', err)
+    })
+  })
+}

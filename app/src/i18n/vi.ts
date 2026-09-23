@@ -24,6 +24,10 @@ export const vi: Messages = {
   'nav.progress': 'Tiến độ',
   'nav.studio': 'Xưởng cắt clip',
   'nav.profile': 'Hồ sơ',
+  'nav.tagline': 'HÀNH TRÌNH RỪNG',
+  'nav.quest': 'HÀNH TRÌNH',
+  'nav.here': 'Ở ĐÂY',
+  'nav.collapseShort': 'Thu gọn',
   'nav.collapse': 'Thu gọn menu',
   'nav.expand': 'Mở rộng menu',
   'nav.logout': 'Đăng xuất',
@@ -132,6 +136,10 @@ export const vi: Messages = {
   'practice.saveDub': 'Lưu bản lồng tiếng',
   'practice.resetMic': 'Đặt lại micro',
   'practice.exit': 'Thoát',
+  'practice.wordsHeard': (heard: number, total: number) =>
+    heard === total
+      ? `Nghe được đủ các từ.`
+      : `Nghe được ${heard}/${total} từ — những từ được đánh dấu chưa rõ.`,
   'practice.tapWord': 'Chạm vào một từ để lưu vào Từ vựng — chạm lần nữa để bỏ',
   'practice.recording': 'Đang ghi — đọc to câu này',
   'practice.secondsLeft': (seconds: string) => `còn ${seconds}s`,
@@ -168,6 +176,10 @@ export const vi: Messages = {
   'metric.Variation': 'Độ biến thiên',
 
   // --- analysis -------------------------------------------------------------
+  'analysis.wordsHeard': (heard: number, total: number) =>
+    heard === total ? `Đủ các từ đều rõ.` : `Có ${heard}/${total} từ nghe rõ.`,
+  'analysis.wordsHint': 'Từ được đánh dấu là từ chúng tôi không nghe rõ, không phải từ bạn đọc sai.',
+  'analysis.wordsUnchecked': 'Bản ghi này chưa được kiểm tra từ ngữ.',
   'analysis.pitchContour': 'Đường cao độ',
   'analysis.measured': 'đã đo',
   'analysis.original': 'Bản gốc',
@@ -200,6 +212,13 @@ export const vi: Messages = {
 
   // --- vocabulary -----------------------------------------------------------
   'vocab.title': 'Từ vựng',
+  'vocab.due': (n: number) => `${n} từ đến hạn ôn`,
+  'vocab.nothingDue': 'Hôm nay không có từ nào đến hạn.',
+  'vocab.nextDue': (days: number) =>
+    days <= 1 ? 'Từ tiếp theo đến hạn vào ngày mai.' : `Từ tiếp theo đến hạn sau ${days} ngày.`,
+  'vocab.practiseAnyway': 'Vẫn muốn ôn',
+  'vocab.dueNow': 'Đến hạn',
+  'vocab.dueIn': (days: number) => (days <= 1 ? 'Hạn ngày mai' : `Hạn sau ${days} ngày`),
   'vocab.memoryPractice': 'Luyện ghi nhớ',
   'vocab.all': 'Tất cả',
   'vocab.new': 'Mới',
@@ -220,6 +239,8 @@ export const vi: Messages = {
   'cards.trySentence': (word: string) => `Thử đặt một câu của riêng bạn với "${word}".`,
   'cards.summary': (reviewed: number, known: number) =>
     `Đã ôn ${reviewed} từ — ${known} từ đánh dấu đã thuộc`,
+  'cards.again': 'Ôn lại lượt nữa',
+  'cards.scheduled': 'Mỗi từ đã được hẹn ngày gặp lại — nhớ càng chắc thì càng lâu sau mới hỏi.',
   'cards.done': 'Về Từ vựng',
 
   // --- progress -------------------------------------------------------------
@@ -361,6 +382,21 @@ export const vi: Messages = {
   'profile.changeAvatar': 'Đổi ảnh đại diện',
 
   // --- shared ---------------------------------------------------------------
+  'common.cancel': 'Huỷ',
+  'common.delete': 'Xoá',
+  'take.delete': 'Xoá bản ghi này',
+  'take.deleteTitle': 'Xoá bản ghi này?',
+  'take.deleteBody': (n: number) =>
+    `Bản ghi và điểm của nó mất hẳn. Bạn có ${n} bản ghi cho clip này.`,
+  'studio.deleteEpisode': 'Xoá tập',
+  'studio.deleteEpisodeTitle': 'Xoá tập này?',
+  'studio.deleteEpisodeBody': (title: string, clips: number) =>
+    `“${title}”, ${clips} clip trong đó và bản ghi gốc đều mất hẳn, cùng mọi bản thu mà người học đã ghi cho chúng.`,
+  'studio.deleteSeries': 'Xoá series',
+  'studio.deleteSeriesTitle': 'Xoá series này?',
+  'studio.deleteSeriesBody': (title: string) =>
+    `“${title}” đang rỗng, nên chỉ mất cái tên.`,
+  'studio.deleteSeriesBlocked': 'Xoá các tập trước đã — series còn clip thì không bị xoá nhầm.',
   'common.loading': 'Đang tải…',
   'common.cantReach': 'Không kết nối được Shadowline',
   'common.somethingWrong': 'Đã có lỗi xảy ra.',

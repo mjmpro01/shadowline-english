@@ -66,6 +66,21 @@ class WhisperTranscriber:
         log.info("loading whisper model %s (%s)", self.model_name, self.compute_type)
         return WhisperModel(self.model_name, device="cpu", compute_type=self.compute_type)
 
+    def ready(self) -> bool:
+        """Load the model now, rather than when somebody is waiting for it.
+
+        Loading takes seconds, and on a machine with no model and no network it
+        takes about ten of them and then fails. Paying that at startup puts it
+        where nobody is watching; paying it on the first job puts it in front of
+        a learner who is being told their pitch is being measured.
+        """
+        try:
+            self._model
+            return True
+        except Exception as err:  # noqa: BLE001 — any failure means "not here"
+            log.warning("no transcription model available: %s", err)
+            return False
+
     def transcribe(self, path: Path) -> Transcription:
         try:
             segments, info = self._model.transcribe(

@@ -72,6 +72,31 @@
   --color-accent-800: #fbe6ae;
   --color-accent-900: #fdf3d9;
 
+  /* --- the adventure menu ------------------------------------------------
+     From the Shadowline adventure menu in Figma. Kept as its own set rather
+     than folded into the accent ramp: the menu is a place — a lit forest with
+     a rope ladder nailed to a tree — and the rest of the app is a workbench.
+     Mixing the two ramps would leave neither reading as itself. */
+  --menu-forest: #173b35;
+  --menu-bark-dark: #3a2418;
+  --menu-bark-mid: #684126;
+  --menu-bark-light: #9a6840;
+  --menu-plank: #d99a4a;
+  --menu-plank-edge: #8b5128;
+  /* Where you are. The one green thing in a brown menu, so it needs no second
+     signal to be found. */
+  --menu-here: #62c6a3;
+  --menu-here-edge: #b5f2d8;
+  --menu-cream: #fff4d6;
+  --menu-rope: #e6c27a;
+  --menu-ink: #2b2119;
+
+  /* The menu is the one place that keeps the design's soft drop rather than
+     the board's hard offset: a plank hanging off a rope casts a real shadow,
+     and a sticker on a board does not. */
+  --menu-drop: 0 7px 9px rgba(27, 18, 10, 0.4);
+  --menu-glow: 0 0 18px 3px rgba(116, 231, 190, 0.47);
+
   /* Score encoding — colour only ever carries meaning here. */
   --score-good: #a8c17e;
   --score-medium: #c9bfae;

@@ -20,6 +20,10 @@ export const en = {
   'nav.progress': 'Progress',
   'nav.studio': 'Clip studio',
   'nav.profile': 'Profile',
+  'nav.tagline': 'FOREST QUEST',
+  'nav.quest': 'QUEST',
+  'nav.here': 'HERE',
+  'nav.collapseShort': 'Collapse',
   'nav.collapse': 'Collapse the menu',
   'nav.expand': 'Expand the menu',
   'nav.logout': 'Log out',
@@ -132,6 +136,10 @@ export const en = {
   'practice.saveDub': 'Save dub',
   'practice.resetMic': 'Reset mic',
   'practice.exit': 'Exit',
+  'practice.wordsHeard': (heard: number, total: number) =>
+    heard === total
+      ? `We heard every word.`
+      : `We heard ${heard} of ${total} words — the marked ones did not come through.`,
   'practice.tapWord': 'Tap a word to add it to Vocabulary — tap again to undo',
   'practice.recording': 'Recording — read the line aloud',
   'practice.secondsLeft': (seconds: string) => `${seconds}s left`,
@@ -168,6 +176,10 @@ export const en = {
   'metric.Variation': 'Variation',
 
   // --- analysis -------------------------------------------------------------
+  'analysis.wordsHeard': (heard: number, total: number) =>
+    heard === total ? `Every word came through.` : `${heard} of ${total} words came through.`,
+  'analysis.wordsHint': 'A marked word is one we did not hear, not one you said wrongly.',
+  'analysis.wordsUnchecked': 'The words in this take were not checked.',
   'analysis.pitchContour': 'Pitch contour',
   'analysis.measured': 'measured',
   'analysis.original': 'Original',
@@ -200,6 +212,13 @@ export const en = {
 
   // --- vocabulary -----------------------------------------------------------
   'vocab.title': 'Vocabulary',
+  'vocab.due': (n: number) => `${n} ${n === 1 ? 'word' : 'words'} to review`,
+  'vocab.nothingDue': 'Nothing to review today.',
+  'vocab.nextDue': (days: number) =>
+    days <= 1 ? 'The next word is due tomorrow.' : `The next word is due in ${days} days.`,
+  'vocab.practiseAnyway': 'Practise anyway',
+  'vocab.dueNow': 'Due',
+  'vocab.dueIn': (days: number) => (days <= 1 ? 'Due tomorrow' : `Due in ${days} days`),
   'vocab.memoryPractice': 'Memory practice',
   'vocab.all': 'All',
   'vocab.new': 'New',
@@ -220,6 +239,8 @@ export const en = {
   'cards.trySentence': (word: string) => `Try using "${word}" in a sentence of your own.`,
   'cards.summary': (reviewed: number, known: number) =>
     `Reviewed ${reviewed} ${reviewed === 1 ? 'word' : 'words'} — ${known} marked known`,
+  'cards.again': 'Go round again',
+  'cards.scheduled': 'Each word is booked in for another day — the better you knew it, the further off.',
   'cards.done': 'Back to Vocabulary',
 
   // --- progress -------------------------------------------------------------
@@ -361,6 +382,21 @@ export const en = {
   'profile.changeAvatar': 'Change avatar',
 
   // --- shared ---------------------------------------------------------------
+  'common.cancel': 'Cancel',
+  'common.delete': 'Delete',
+  'take.delete': 'Delete this take',
+  'take.deleteTitle': 'Delete this take?',
+  'take.deleteBody': (n: number) =>
+    `The recording and its score go for good. You have ${n} ${n === 1 ? 'take' : 'takes'} on this clip.`,
+  'studio.deleteEpisode': 'Delete episode',
+  'studio.deleteEpisodeTitle': 'Delete this episode?',
+  'studio.deleteEpisodeBody': (title: string, clips: number) =>
+    `“${title}”, its ${clips} ${clips === 1 ? 'clip' : 'clips'} and the recording they were cut from all go for good, along with every take anybody has recorded against them.`,
+  'studio.deleteSeries': 'Delete series',
+  'studio.deleteSeriesTitle': 'Delete this series?',
+  'studio.deleteSeriesBody': (title: string) =>
+    `“${title}” is empty, so only the name goes.`,
+  'studio.deleteSeriesBlocked': 'Delete its episodes first — a series with clips in it is not deleted by accident.',
   'common.loading': 'Loading…',
   'common.cantReach': 'Can’t reach Shadowline',
   'common.somethingWrong': 'Something went wrong.',

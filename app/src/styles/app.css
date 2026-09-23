@@ -25,75 +25,441 @@
   padding: var(--space-8) var(--space-4) 60px;
 }
 
-/* — sidebar (desktop) — */
+/* — the adventure menu (desktop sidebar) —
+   A lit forest, a tree with a rope ladder nailed to it, and a plank per place
+   you can go. From the Shadowline adventure menu in Figma; every colour, radius
+   and angle below is that file's, with the panel narrowed from the 430px
+   artboard to something a desktop app can give up to navigation.
+
+   The one thing missing is the forest illustration itself, which this machine
+   could not reach. `.menu-forest` layers it over a gradient that stands in for
+   it, so the menu is finished either way and better the moment the file lands
+   at public/menu/forest.png. */
 .sidebar {
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-  padding: var(--space-6) var(--space-3);
+  --menu-width: 348px;
+  --menu-pad: 22px;
+  /* The forest showing past the right end of the planks. The ladder is nailed
+     to the near side of the tree and the wood does not reach the edge of the
+     panel — without this strip there is no forest, only a brown column. */
+  --menu-strip: 56px;
+  --menu-rope-left: 39px;
+  --menu-rope-right: 247px;
+  --menu-trunk: 69%;
+
   position: sticky;
   top: 12px;
   height: calc(100vh - 24px);
   margin: 12px 0 12px 12px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-divider);
-  border-radius: var(--radius-lg);
-  transition: width 0.15s ease;
-  overflow: hidden;
-  width: 200px;
-}
-.sidebar[data-collapsed='true'] {
-  width: 64px;
-}
-.sidebar-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-.sidebar-links {
+  flex-shrink: 0;
+  width: var(--menu-width);
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-4);
+  padding: 27px var(--menu-pad) 24px;
+  border-radius: var(--radius-lg);
+  background: var(--menu-forest);
+  /* Not `overflow: hidden`, though the artwork has to be clipped to the panel's
+     corners: the collapsed rail's labels swing out past the right edge, and a
+     panel that clips its own artwork would clip those too. The scene below
+     carries the clip instead. */
+  z-index: 20;
+  transition: width 0.18s ease;
 }
-.sidebar-foot {
-  margin-top: auto;
+/* Collapsed there is no forest, because there is no room for one: a strip of
+   green narrow enough to fit beside a 64px plank is not a view out of the
+   trees, it is a green edge with the planks and the keys half on it. The rail
+   is the trunk, and everything nailed to it sits on wood. */
+.sidebar[data-collapsed='true'] {
+  --menu-width: 104px;
+  --menu-pad: 20px;
+  --menu-strip: 0px;
+  --menu-rope-left: 15px;
+  --menu-rope-right: 76px;
+  --menu-trunk: 100%;
+}
+.sidebar[data-collapsed='true'] .menu-trunk {
+  /* The panel's own corners, from the scene that clips it — the big sweep the
+     expanded trunk carries would curl a rail this narrow into a pill. */
+  border-radius: 0;
+}
+.sidebar[data-collapsed='true'] .menu-firefly {
+  display: none;
+}
+/* Below this the panel is taking more of the screen than it is worth, so it
+   gives back the badge and some of the strip rather than the labels. */
+@media (max-width: 1100px) {
+  .sidebar:not([data-collapsed='true']) {
+    --menu-width: 292px;
+    --menu-strip: 40px;
+    --menu-rope-right: 207px;
+  }
+  .sidebar:not([data-collapsed='true']) .menu-plank[aria-current='page'] .menu-badge {
+    display: none;
+  }
+}
+
+/* Everything behind the links: nothing here is clickable and nothing here is
+   read aloud. */
+.menu-scene {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  pointer-events: none;
+}
+.menu-forest {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 60% at 80% 12%, rgba(116, 231, 190, 0.22), transparent 60%),
+    radial-gradient(90% 45% at 95% 78%, rgba(34, 108, 92, 0.5), transparent 70%),
+    linear-gradient(180deg, #123029 0%, #173b35 45%, #10261f 100%),
+    url('/menu/forest.png') right center / cover no-repeat;
+}
+/* The trunk the ladder is nailed to. Its right edge is the only curve in the
+   menu that is not a corner, which is what stops the panel reading as a panel. */
+.menu-trunk {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--menu-trunk);
+  background: linear-gradient(90deg, #3a2418 0%, #684126 55%, #9a6840 100%);
+  border-top-right-radius: 110px;
+  border-bottom-right-radius: 88px;
+}
+/* One faint growth ring, so the trunk is a trunk rather than a brown column. */
+.menu-rings {
+  position: absolute;
+  left: -14%;
+  top: 10%;
+  width: 96%;
+  height: 80%;
+  border: 2px solid rgba(58, 36, 24, 0.4);
+  border-radius: 50%;
+}
+.menu-rope {
+  position: absolute;
+  top: 104px;
+  bottom: 88px;
+  width: 8px;
+  border-radius: 999px;
+  background: var(--menu-rope);
+  border: 2px solid var(--menu-bark-dark);
+}
+.menu-rope-left {
+  left: var(--menu-rope-left);
+  rotate: 2deg;
+}
+.menu-rope-right {
+  left: var(--menu-rope-right);
+  rotate: -2deg;
+}
+.menu-firefly {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff3bd;
+  box-shadow: 0 0 12px 4px rgba(255, 224, 130, 0.65);
+  animation: firefly 5.5s ease-in-out infinite;
+}
+.menu-firefly-high {
+  right: 16px;
+  top: 154px;
+  width: 8px;
+  height: 8px;
+}
+.menu-firefly-low {
+  right: 28px;
+  top: 62%;
+  width: 6px;
+  height: 6px;
+  animation-delay: -2.6s;
+}
+@keyframes firefly {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translate(0, 0);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-6px, -10px);
+  }
+}
+/* A firefly that blinks forever is a distraction next to text somebody is
+   reading, and for some people it is worse than that. */
+@media (prefers-reduced-motion: reduce) {
+  .menu-firefly {
+    animation: none;
+    opacity: 0.8;
+  }
+}
+
+/* The sign nailed above the ladder. */
+.menu-sign {
+  position: relative;
+  margin-right: var(--menu-strip);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 92px;
+  border: 4px solid var(--menu-plank-edge);
+  border-radius: 24px;
+  background: var(--menu-cream);
+  box-shadow: var(--menu-drop);
+  overflow: hidden;
+}
+.menu-sign-title {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 26px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--menu-forest);
+}
+.menu-sign-tagline {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--menu-bark-mid);
+  white-space: nowrap;
+}
+.sidebar[data-collapsed='true'] .menu-sign {
+  height: 72px;
+  border-radius: 22px;
+}
+.sidebar[data-collapsed='true'] .menu-sign-title {
+  font-size: 28px;
+}
+.sidebar[data-collapsed='true'] .menu-sign-tagline {
+  font-size: 8px;
+}
+
+/* The planks. */
+.menu-planks {
+  position: relative;
+  margin-right: var(--menu-strip);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(13px, 3.2vh, 40px);
+}
+.menu-planks li {
+  display: flex;
+}
+.menu-plank {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
-  gap: 4px;
-}
-.nav-link {
-  color: var(--color-text);
-  background: transparent;
-  border: none;
-  font: inherit;
-  font-weight: 600;
-  text-align: left;
-  cursor: pointer;
+  gap: 13px;
+  height: 61px;
+  padding: 0 18px;
   text-decoration: none;
-  padding: 10px 14px;
-  border-radius: var(--radius-md);
+  color: var(--menu-ink);
+  background: var(--menu-plank);
+  border: 3px solid var(--menu-plank-edge);
+  /* Four different corners, as drawn: a plank sawn by hand is not a rectangle
+     with one radius. */
+  border-radius: 13px 19px 11px 18px;
+  box-shadow: var(--menu-drop);
+  rotate: var(--tilt);
+  overflow: hidden;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 17px;
+  transition:
+    translate 90ms ease-out,
+    rotate 120ms ease-out;
+}
+/* Straightens as you reach for it — the one plank you are touching is the one
+   hanging level. */
+.menu-plank:hover {
+  rotate: 0deg;
+  translate: 0 -1px;
+}
+.menu-plank:active {
+  translate: 0 2px;
+}
+.menu-plank svg {
+  flex-shrink: 0;
+}
+.menu-plank-label {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 8px;
+}
+.menu-plank-text {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The nail it hangs from. */
+.menu-nail {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 30%, #fff1c9, #8b5128 70%);
+  box-shadow: inset 0 -1px 1px rgba(27, 18, 10, 0.5);
+}
+/* Where you are: the one green thing in a brown menu. */
+.menu-plank[aria-current='page'] {
+  background: var(--menu-here);
+  border-color: var(--menu-here-edge);
+  box-shadow: var(--menu-glow), var(--menu-drop);
+}
+.menu-plank[aria-current='page'] .menu-nail {
+  background: radial-gradient(circle at 32% 30%, #fffdf0, #2f7f66 70%);
+}
+.menu-badge {
+  display: none;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--menu-cream);
+  color: var(--menu-forest);
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   white-space: nowrap;
 }
-.nav-link:hover {
-  background: color-mix(in srgb, var(--color-text) 7%, transparent);
-}
-.nav-link[aria-current='page'] {
-  color: var(--color-bg);
-  background: var(--color-accent);
-}
-.nav-link[aria-current='page']:hover {
-  background: var(--color-accent-600);
-}
-.nav-link svg {
-  flex-shrink: 0;
+.menu-plank[aria-current='page'] .menu-badge {
+  display: block;
 }
 
-/* — tab bar (mobile) — */
+/* Collapsed: the plank keeps its nail and its icon, and the label becomes a
+   sign that swings out when you point at it. */
+.sidebar[data-collapsed='true'] .menu-plank {
+  position: relative;
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+  overflow: visible;
+}
+.sidebar[data-collapsed='true'] .menu-nail {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  width: 8px;
+  height: 8px;
+}
+.sidebar[data-collapsed='true'] .menu-plank-label {
+  position: absolute;
+  left: calc(100% + 15px);
+  top: 50%;
+  translate: 0 -50%;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 13px;
+  border: 2px solid var(--menu-plank-edge);
+  border-radius: 12px;
+  background: var(--menu-cream);
+  color: var(--menu-forest);
+  box-shadow: var(--menu-drop);
+  font-size: 17px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 110ms ease-out;
+  z-index: 2;
+}
+.sidebar[data-collapsed='true'] .menu-plank:hover .menu-plank-label,
+.sidebar[data-collapsed='true'] .menu-plank:focus-visible .menu-plank-label {
+  opacity: 1;
+}
+/* The one you are on says so without being pointed at, which is the only label
+   the collapsed rail shows by itself. */
+.sidebar[data-collapsed='true'] .menu-plank[aria-current='page'] .menu-plank-label {
+  opacity: 1;
+}
+.sidebar[data-collapsed='true'] .menu-badge {
+  margin-left: 0;
+  padding: 3px 7px;
+  font-size: 9px;
+  background: var(--menu-here);
+  color: var(--menu-forest);
+}
+.sidebar[data-collapsed='true'] .menu-plank[aria-current='page'] .menu-plank-label {
+  padding-right: 8px;
+}
+
+/* The two keys at the foot of the tree. */
+.menu-actions {
+  position: relative;
+  margin-top: auto;
+  display: flex;
+  gap: 12px;
+}
+.menu-key {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 10px;
+  border: 2px solid var(--menu-rope);
+  border-radius: 16px;
+  background: var(--menu-bark-dark);
+  color: var(--menu-cream);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    translate 90ms ease-out,
+    background 120ms ease-out;
+}
+.menu-key:hover {
+  translate: 0 -1px;
+  background: #4a2f1e;
+}
+.menu-key:active {
+  translate: 0 2px;
+}
+.menu-key svg {
+  flex-shrink: 0;
+}
+.menu-key-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Stacked rather than shoulder to shoulder: two 48px keys side by side need
+   more width than the rail has, and squeezing them is what used to push them
+   out onto the green. */
+.sidebar[data-collapsed='true'] .menu-actions {
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.sidebar[data-collapsed='true'] .menu-key {
+  flex: none;
+  width: 48px;
+}
+.sidebar[data-collapsed='true'] .menu-key {
+  padding: 0;
+  border-radius: 14px;
+}
+.sidebar[data-collapsed='true'] .menu-key-label {
+  display: none;
+}
+
+/* — tab bar (mobile) —
+   The same menu, lying down. A phone has no room for a tree, so the forest and
+   the ropes are left out and the wood is not: a learner who has seen the
+   sidebar should not think they have opened a different app. */
 .tabbar {
   display: none;
   position: fixed;
@@ -101,27 +467,35 @@
   right: 0;
   bottom: 0;
   z-index: 30;
-  background: var(--color-surface);
-  border-top: 1px solid var(--color-divider);
-  padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+  gap: 6px;
+  background: linear-gradient(180deg, #4a2f1e, var(--menu-bark-dark));
+  border-top: 2px solid var(--menu-plank-edge);
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
 }
 .tabbar-link {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 6px 2px;
+  gap: 3px;
+  padding: 7px 2px;
+  border: 2px solid var(--menu-plank-edge);
+  border-radius: 12px;
+  background: var(--menu-plank);
+  color: var(--menu-ink);
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
   font-size: 10px;
-  font-weight: 600;
   text-decoration: none;
-  color: color-mix(in srgb, var(--color-text) 60%, transparent);
-  background: none;
-  border: none;
   cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
 }
 .tabbar-link[aria-current='page'] {
-  color: var(--color-accent);
+  background: var(--menu-here);
+  border-color: var(--menu-here-edge);
+  color: var(--menu-forest);
 }
 
 @media (max-width: 760px) {
@@ -388,6 +762,24 @@
 }
 .caption-word[data-added='true'] {
   border-bottom: 2px solid var(--score-good);
+}
+/* A word the transcriber did not hear. Marked rather than coloured over: the
+   dashed underline already belongs to "tap me", and a word that did not come
+   through is a different claim from a word that is in your vocabulary. The
+   word itself keeps its colour — this is evidence, not a red pen. */
+.caption-word[data-unheard='true'] {
+  border-bottom: 2px dotted var(--score-attention);
+  background: color-mix(in srgb, var(--score-attention) 16%, transparent);
+  border-radius: 4px;
+}
+/* The same line where there is nothing to tap: the Analysis screen shows it to
+   be read, not to collect words from. */
+.caption-word-flat {
+  cursor: default;
+  border-bottom-color: transparent;
+}
+.caption-word-flat[data-unheard='true'] {
+  border-bottom-color: var(--score-attention);
 }
 .wave-frame {
   border: 2px solid var(--color-divider);

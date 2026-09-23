@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useT } from '../i18n'
 import { Icon } from '../components/Icon'
 import { EXAMPLES } from '../data/seed'
-import { buildDeck, summarise } from '../lib/flashcards'
+import { dueDeck, summarise, wholeDeck } from '../lib/flashcards'
 import { meaningOrWait } from '../lib/text'
 import { useApp } from '../store/context'
 
@@ -11,13 +11,21 @@ export function FlashcardsScreen() {
   const { data, reviewWord } = useApp()
   const navigate = useNavigate()
   const t = useT()
+  // `?all` is the learner asking for more than the schedule offers. In the URL
+  // rather than in state so the screen has one source for which deck it is.
+  const [params] = useSearchParams()
+  const all = params.has('all')
 
-  // Fixed when the session starts: answering a card must not reshuffle the rest.
-  const [deck] = useState(() => buildDeck(data.vocab))
+  // Fixed when the session starts: answering a card must not reshuffle the
+  // rest, and a card whose schedule just moved must not vanish mid-session.
+  const [deck, setDeck] = useState(() => (all ? wholeDeck(data.vocab) : dueDeck(data.vocab)))
   const [index, setIndex] = useState(0)
   const [revealed, setRevealed] = useState(false)
   const [saidAloud, setSaidAloud] = useState(false)
   const [results, setResults] = useState<Record<string, 'known' | 'learning'>>({})
+  // A card can come back once in a session and no more. Twice would be a loop
+  // for anybody having a bad day with one word.
+  const [requeued, setRequeued] = useState<Set<string>>(() => new Set())
 
   if (!deck.length) return <Navigate to="/vocabulary" replace />
 
@@ -28,6 +36,12 @@ export function FlashcardsScreen() {
   const answer = (status: 'known' | 'learning') => {
     void reviewWord(card.id, status)
     setResults((prev) => ({ ...prev, [card.id]: status }))
+    // A word you have just forgotten is worth seeing again before you leave,
+    // which is the one thing a fixed deck cannot do by itself.
+    if (status === 'learning' && !requeued.has(card.id)) {
+      setRequeued((prev) => new Set(prev).add(card.id))
+      setDeck((prev) => [...prev, card])
+    }
     setIndex((i) => i + 1)
     setRevealed(false)
     setSaidAloud(false)
@@ -45,10 +59,10 @@ export function FlashcardsScreen() {
       <div className="row between" style={{ width: '100%' }}>
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/vocabulary')}>
           <Icon name="chevron-left" />
-          Vocabulary
+          {t('vocab.title')}
         </button>
         <span className="tag tag-neutral mono">
-          {done ? `${deck.length} of ${deck.length}` : `${index + 1} of ${deck.length}`}
+          {t('cards.progress', done ? deck.length : index + 1, deck.length)}
         </span>
       </div>
 
@@ -57,14 +71,13 @@ export function FlashcardsScreen() {
           <span style={{ color: 'var(--score-good)' }}>
             <Icon name="check-circle" size={36} />
           </span>
-          <div className="card-title">
-            Reviewed {progress.reviewed} {progress.reviewed === 1 ? 'word' : 'words'} — {progress.known} marked known
-          </div>
+          <div className="card-title">{t('cards.summary', progress.reviewed, progress.known)}</div>
+          <div className="card-meta">{t('cards.scheduled')}</div>
           <button type="button" className="btn btn-primary btn-block" onClick={restart}>
-            Practice again
+            {t('cards.again')}
           </button>
           <button type="button" className="btn btn-secondary btn-block" onClick={() => navigate('/vocabulary')}>
-            Back to Vocabulary
+            {t('cards.done')}
           </button>
         </div>
       ) : (
@@ -88,7 +101,7 @@ export function FlashcardsScreen() {
                 </div>
                 <div className="divider" style={{ width: '100%' }} />
                 <div style={{ fontSize: 14, fontStyle: 'italic' }}>
-                  “{EXAMPLES[card.word] ?? `Try using "${card.word}" in a sentence of your own.`}”
+                  “{EXAMPLES[card.word] ?? t('cards.trySentence', card.word)}”
                 </div>
                 <button
                   type="button"
@@ -101,7 +114,7 @@ export function FlashcardsScreen() {
               </>
             ) : (
               <button type="button" className="btn btn-secondary" onClick={() => setRevealed(true)}>
-                Reveal meaning
+                {t('cards.reveal')}
               </button>
             )}
           </div>
@@ -109,10 +122,10 @@ export function FlashcardsScreen() {
           {revealed && (
             <div className="row gap-2" style={{ width: '100%' }}>
               <button type="button" className="btn btn-secondary btn-block" onClick={() => answer('learning')}>
-                Still learning
+                {t('cards.stillLearning')}
               </button>
               <button type="button" className="btn btn-primary btn-block" onClick={() => answer('known')}>
-                Got it
+                {t('cards.gotIt')}
               </button>
             </div>
           )}

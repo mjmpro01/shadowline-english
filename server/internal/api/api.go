@@ -114,6 +114,8 @@ func (s *Server) Routes() http.Handler {
 			r.Patch("/admin/clips/{id}", s.handleUpdateClip)
 			r.Patch("/admin/playlists/{id}", s.handleUpdatePlaylist)
 			r.Patch("/admin/episodes/{id}", s.handleUpdateEpisode)
+			r.Delete("/admin/playlists/{id}", s.handleDeletePlaylist)
+			r.Delete("/admin/episodes/{id}", s.handleDeleteEpisode)
 			r.Delete("/admin/clips/{id}", s.handleDeleteClip)
 		})
 	})

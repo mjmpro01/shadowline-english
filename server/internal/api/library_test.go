@@ -476,3 +476,99 @@ func TestSearchTreatsAWildcardAsALetter(t *testing.T) {
 		t.Fatalf("a wildcard matched %d clips", len(got.Clips))
 	}
 }
+
+// --- deleting ---------------------------------------------------------------
+
+func TestDeletingAnEpisodeTakesItsClipsWithIt(t *testing.T) {
+	// An episode is the unit an admin publishes: two hundred clips off the
+	// wrong file is one mistake, and undoing it clip by clip is not an undo.
+	h := newHarness(t)
+	admin := h.login("admin@example.com")
+	source := uploadSource(t, admin, "s01e01.mp4")
+
+	for _, title := range []string{"Line one", "Line two"} {
+		clip := inPlaylist(title, "Friends")
+		clip["sourceId"] = source.ID
+		publishClips(t, admin, clip)
+	}
+	publishClips(t, admin, inPlaylist("Kept", "Seinfeld"))
+
+	expectStatus(t, admin.do("DELETE", "/api/admin/episodes/"+source.ID, "", nil), http.StatusNoContent)
+
+	left := expect[[]clipJSON](t, admin.do("GET", "/api/clips", "", nil), http.StatusOK)
+	if len(left) != 1 || left[0].Title != "Kept" {
+		t.Fatalf("the library holds %+v", left)
+	}
+	// The series is still there, and now empty.
+	page := expect[playlistPageJSON](t, admin.do("GET", "/api/playlists/friends", "", nil), http.StatusOK)
+	if len(page.Episodes) != 0 {
+		t.Fatalf("the series still lists %d episodes", len(page.Episodes))
+	}
+}
+
+// The rows going is the easy half. The recording an admin uploaded is the
+// largest thing in the system, and a delete that leaves it behind is a bill.
+func TestDeletingAnEpisodeTakesTheRecordingWithIt(t *testing.T) {
+	h := newHarness(t)
+	admin := h.login("admin@example.com")
+	source := uploadSource(t, admin, "s01e01.mp4")
+	clip := inPlaylist("Line one", "Friends")
+	clip["sourceId"] = source.ID
+	published := publishClips(t, admin, clip)[0]
+	withAudio(t, admin, published.ID)
+
+	if before := countObjects(t, h); before < 2 {
+		t.Fatalf("the store holds %d objects, so this proves nothing", before)
+	}
+	expectStatus(t, admin.do("DELETE", "/api/admin/episodes/"+source.ID, "", nil), http.StatusNoContent)
+
+	if after := countObjects(t, h); after != 0 {
+		t.Fatalf("%d objects outlived the episode", after)
+	}
+}
+
+func TestASeriesWithClipsInItIsNotDeleted(t *testing.T) {
+	// The mistake this recovers from is a name typed wrong, not a season
+	// published wrong — and what it would take with it is somebody's practice.
+	h := newHarness(t)
+	admin := h.login("admin@example.com")
+	publishClips(t, admin, inPlaylist("Line one", "Friends"))
+	id := playlists(t, admin)[0].ID
+
+	expectStatus(t, admin.do("DELETE", "/api/admin/playlists/"+id, "", nil), http.StatusConflict)
+
+	if len(playlists(t, admin)) != 1 {
+		t.Fatal("the series was deleted anyway")
+	}
+}
+
+func TestAnEmptySeriesIsDeleted(t *testing.T) {
+	h := newHarness(t)
+	admin := h.login("admin@example.com")
+	source := uploadSource(t, admin, "s01e01.mp4")
+	clip := inPlaylist("Line one", "Friends")
+	clip["sourceId"] = source.ID
+	publishClips(t, admin, clip)
+	id := playlists(t, admin)[0].ID
+
+	expectStatus(t, admin.do("DELETE", "/api/admin/episodes/"+source.ID, "", nil), http.StatusNoContent)
+	expectStatus(t, admin.do("DELETE", "/api/admin/playlists/"+id, "", nil), http.StatusNoContent)
+
+	if len(playlists(t, admin)) != 0 {
+		t.Fatal("the empty series is still in the library")
+	}
+}
+
+func TestOnlyAnAdminDeletesASeriesOrAnEpisode(t *testing.T) {
+	h := newHarness(t)
+	admin := h.login("admin@example.com")
+	source := uploadSource(t, admin, "s01e01.mp4")
+	clip := inPlaylist("Line one", "Friends")
+	clip["sourceId"] = source.ID
+	publishClips(t, admin, clip)
+	id := playlists(t, admin)[0].ID
+
+	learner := h.login("learner@example.com")
+	expectStatus(t, learner.do("DELETE", "/api/admin/playlists/"+id, "", nil), http.StatusForbidden)
+	expectStatus(t, learner.do("DELETE", "/api/admin/episodes/"+source.ID, "", nil), http.StatusForbidden)
+}

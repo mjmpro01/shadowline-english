@@ -149,3 +149,74 @@ func (s *Store) UpdateEpisode(ctx context.Context, id uuid.UUID, p EpisodePatch)
 	})
 	return out, err
 }
+
+// DeleteEpisode removes an episode, every clip cut from it, and the recording
+// itself, reporting every object that belonged to them.
+//
+// Cascading rather than refusing, because an episode is the unit an admin
+// publishes: two hundred clips off the wrong file is one mistake, and undoing
+// it clip by clip is not an undo. A series is the opposite — see
+// DeletePlaylist.
+//
+// The keys come back rather than being deleted here, because this package
+// talks to Postgres and to nothing else.
+func (s *Store) DeleteEpisode(ctx context.Context, id uuid.UUID) (clipKeys, takeKeys []string, err error) {
+	err = s.inTx(ctx, func(tx pgx.Tx) error {
+		takeKeys, err = keysFrom(ctx, tx, `
+			select t.audio_key from takes t
+			join clips c on c.id = t.clip_id
+			where c.source_id = $1 and t.audio_key is not null`, id)
+		if err != nil {
+			return err
+		}
+		// Three columns per clip, and a clip can have all three.
+		clipKeys, err = keysFrom(ctx, tx, `
+			select unnest(array_remove(array[audio_key, video_key, poster_key], null))
+			from clips where source_id = $1`, id)
+		if err != nil {
+			return err
+		}
+		// The recording the clips were cut from. Empty for the episode that
+		// holds clips published before uploads existed — there is no file.
+		source, err := keysFrom(ctx, tx,
+			`select key from clip_sources where id = $1 and key <> ''`, id)
+		if err != nil {
+			return err
+		}
+		clipKeys = append(clipKeys, source...)
+
+		// The clips first: the source row's foreign key sets them adrift
+		// rather than taking them with it, which would leave a library full of
+		// clips belonging to no episode.
+		if _, err := tx.Exec(ctx, `delete from clips where source_id = $1`, id); err != nil {
+			return err
+		}
+		tag, err := tx.Exec(ctx, `delete from clip_sources where id = $1`, id)
+		if err != nil {
+			return err
+		}
+		if tag.RowsAffected() == 0 {
+			return ErrNotFound
+		}
+		return nil
+	})
+	return clipKeys, takeKeys, err
+}
+
+func keysFrom(ctx context.Context, tx pgx.Tx, sql string, args ...any) ([]string, error) {
+	rows, err := tx.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	keys := []string{}
+	for rows.Next() {
+		var key string
+		if err := rows.Scan(&key); err != nil {
+			return nil, err
+		}
+		keys = append(keys, key)
+	}
+	return keys, rows.Err()
+}

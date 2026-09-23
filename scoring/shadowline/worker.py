@@ -14,16 +14,20 @@ import logging
 import os
 import signal
 import sys
+import tempfile
 import time
+from pathlib import Path
 
 import psycopg
 
+from . import words as wordcheck
 from .analysis import build as build_analysis
 from .audio import DecodeError, decode_to_mono
 from .compare import compare_contours
 from .pitch import ANALYSIS_RATE, track_pitch
 from .queue import Job, Queue
 from .storage import ObjectMissing, Storage, from_env as storage_from_env
+from .transcribe import Transcriber, WhisperTranscriber
 from . import telemetry
 
 log = logging.getLogger("shadowline.worker")
@@ -41,7 +45,11 @@ class Unscoreable(Exception):
     """The take cannot be scored, and retrying will not change that."""
 
 
-def score_job(job: Job, blobs: Storage) -> tuple[int, dict[str, int], dict]:
+def score_job(
+    job: Job,
+    blobs: Storage,
+    checker: WordCheck | None = None,
+) -> tuple[int, dict[str, int], dict]:
     try:
         clip_audio = blobs.get("clips", job.clip_audio_key)
         take_audio = blobs.get("takes", job.take_audio_key)
@@ -60,10 +68,82 @@ def score_job(job: Job, blobs: Storage) -> tuple[int, dict[str, int], dict]:
         # measure, and inventing a score for it would be worse than saying so.
         raise Unscoreable("no speech found in the recording")
 
-    return comparison.score, comparison.scores, build_analysis(comparison, user)
+    analysis = build_analysis(comparison, user)
+    score = comparison.score
+
+    # Everything above this line is prosody, and prosody is a measure of how
+    # well you said something. Whether you said it at all is a separate
+    # question, and until now nobody asked it: a hummed line scored like a
+    # spoken one.
+    spoken = checker.heard(job, take_audio) if checker else None
+    matched = wordcheck.check(job.line, spoken) if spoken is not None else None
+    if matched is not None:
+        analysis["words"] = matched.as_json()
+        score = wordcheck.gate(score, matched.accuracy)
+
+    return score, comparison.scores, analysis
 
 
-def run_once(queue: Queue, blobs: Storage) -> bool:
+class WordCheck:
+    """The transcriber, and the memory of it not being there.
+
+    A failure here never costs the take its score: this is the half a learner
+    is not waiting for, and a transcriber that is missing or simply wrong about
+    one recording should cost them the word check and nothing else.
+
+    What it must not do is keep paying for that. Loading a model that is not on
+    disk takes about ten seconds and then fails, and a worker without one would
+    spend those ten seconds on every take for as long as it runs — a queue of
+    learners waiting on a check that was never going to happen. So two failures
+    before the model has ever produced anything are taken as "there is no
+    model here", and it stops asking. Once it has worked once it never gives
+    up again, because then a failure is about the recording.
+    """
+
+    # Failures before a first success that mean the model, not the recording.
+    GIVE_UP_AFTER = 2
+
+    def __init__(self, transcriber: Transcriber | None, workdir: Path | None) -> None:
+        self.transcriber = transcriber
+        self.workdir = workdir
+        self.worked = False
+        self.failures = 0
+
+    @property
+    def available(self) -> bool:
+        return (
+            self.transcriber is not None
+            and self.workdir is not None
+            and (self.worked or self.failures < self.GIVE_UP_AFTER)
+        )
+
+    def heard(self, job: Job, take_audio: bytes) -> list[str] | None:
+        """What the transcriber made of the take, or None to skip the check."""
+        if not self.available or not job.line:
+            return None
+
+        assert self.transcriber is not None and self.workdir is not None
+        path = self.workdir / f"take-{job.take_id}"
+        try:
+            path.write_bytes(take_audio)
+            words = [word.text for word in self.transcriber.transcribe(path).words]
+        except Exception as err:  # noqa: BLE001 — see the docstring
+            self.failures += 1
+            log.warning("take %s: the word check failed: %s", job.take_id, err)
+            if not self.worked and self.failures >= self.GIVE_UP_AFTER:
+                log.error(
+                    "no usable transcription model — takes will be scored on "
+                    "prosody alone until this worker is restarted"
+                )
+            return None
+        finally:
+            path.unlink(missing_ok=True)
+
+        self.worked = True
+        return words
+
+
+def run_once(queue: Queue, blobs: Storage, checker: WordCheck | None = None) -> bool:
     """Scores one job. Returns False when the queue was empty."""
     job = queue.claim()
     if job is None:
@@ -75,7 +155,7 @@ def run_once(queue: Queue, blobs: Storage) -> bool:
         {"job.type": "score", "take_id": str(job.take_id)},
     ) as traced:
         try:
-            score, scores, analysis = score_job(job, blobs)
+            score, scores, analysis = score_job(job, blobs, checker)
         except Unscoreable as err:
             traced["status"] = "rejected"
             log.warning("take %s cannot be scored: %s", job.take_id, err)
@@ -105,6 +185,22 @@ def main() -> int:
         return 1
 
     blobs = storage_from_env()
+    # The same Whisper the cutter uses, loaded here rather than on the first
+    # take: a learner watching "measuring your pitch…" should not be waiting on
+    # a model load, and on a machine without one that wait is ten seconds and a
+    # failure. It costs this worker a few hundred megabytes, which is the price
+    # of the headline score meaning what it says; set WORD_CHECK=0 on a
+    # deployment that would rather not pay it.
+    transcriber: Transcriber | None = None
+    if os.environ.get("WORD_CHECK") != "0":
+        whisper = WhisperTranscriber()
+        if whisper.ready():
+            transcriber = whisper
+        else:
+            log.error(
+                "no usable transcription model — takes will be scored on prosody "
+                "alone, and a hummed line will score like a spoken one"
+            )
     running = True
 
     def stop(*_: object) -> None:
@@ -115,30 +211,32 @@ def main() -> int:
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
 
-    log.info("worker ready")
-    backoff = 1.0
-    while running:
-        try:
-            # autocommit so each transaction below is exactly the one it
-            # declares; the claim must commit before the audio is fetched, or
-            # the row stays locked for the length of the scoring.
-            with psycopg.connect(dsn, autocommit=True) as conn:
-                queue = Queue(conn)
-                backoff = 1.0
-                while running:
-                    if not run_once(queue, blobs):
-                        time.sleep(IDLE_SLEEP)
+    with tempfile.TemporaryDirectory(prefix="shadowline-worker-") as tmp:
+        checker = WordCheck(transcriber, Path(tmp))
+        log.info("worker ready")
+        backoff = 1.0
+        while running:
+            try:
+                # autocommit so each transaction below is exactly the one it
+                # declares; the claim must commit before the audio is fetched,
+                # or the row stays locked for the length of the scoring.
+                with psycopg.connect(dsn, autocommit=True) as conn:
+                    queue = Queue(conn)
+                    backoff = 1.0
+                    while running:
+                        if not run_once(queue, blobs, checker):
+                            time.sleep(IDLE_SLEEP)
         # Every database error, not just a dropped connection. A restart, a lost
         # connection, or a schema that is not there yet should all be waited
         # out: dying here stops scoring until something restarts the worker, and
         # every take recorded meanwhile sits pending. Starting beside a server
         # that is still migrating is the ordinary way to meet the last of those.
-        except psycopg.Error as err:
-            if not running:
-                break
-            log.warning("database not ready (%s) — retrying in %.0fs", err, backoff)
-            time.sleep(backoff)
-            backoff = min(backoff * 2, MAX_BACKOFF)
+            except psycopg.Error as err:
+                if not running:
+                    break
+                log.warning("database not ready (%s) — retrying in %.0fs", err, backoff)
+                time.sleep(backoff)
+                backoff = min(backoff * 2, MAX_BACKOFF)
     return 0
 
 

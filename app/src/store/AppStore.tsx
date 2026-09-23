@@ -172,6 +172,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }))
   }, [])
 
+  /** Throws a recording away.
+   *
+   * A bad take is a thing a learner should be able to be rid of: it sits in
+   * their history, on the chart, and in the average the leaderboard reads.
+   * The server has always allowed this and nothing in the app offered it. */
+  const deleteTake = useCallback(async (id: string) => {
+    await repository.deleteTake(id)
+    setData((prev) => ({ ...prev, takes: prev.takes.filter((t) => t.id !== id) }))
+  }, [])
+
+  /** Forgets the clips an episode took with it, without reloading the world.
+   *
+   * The studio deletes an episode through the API, which is where the rows
+   * go; this is the copy the rest of the app is holding. Not `reload()`,
+   * which sets the loading state and blanks every screen that guards on it —
+   * a delete should not look like a page load. */
+  const forgetEpisode = useCallback((episodeId: string) => {
+    setData((prev) => {
+      const gone = new Set(
+        prev.videos.filter((video) => video.episodeId === episodeId).map((video) => video.id),
+      )
+      return {
+        ...prev,
+        videos: prev.videos.filter((video) => !gone.has(video.id)),
+        takes: prev.takes.filter((take) => !gone.has(take.videoId)),
+      }
+    })
+  }, [])
+
   /** Removes the clip and the practice history that only made sense with it. */
   const deleteClip = useCallback(async (id: string) => {
     await repository.deleteClip(id)
@@ -300,7 +329,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addClips,
       updateClip,
       deleteClip,
+      forgetEpisode,
       addTake,
+      deleteTake,
       toggleVocabWord,
       setVocabStatus,
       reviewWord,
@@ -317,7 +348,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addClips,
       updateClip,
       deleteClip,
+      forgetEpisode,
       addTake,
+      deleteTake,
       toggleVocabWord,
       setVocabStatus,
       reviewWord,

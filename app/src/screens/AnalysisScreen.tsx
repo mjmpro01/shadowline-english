@@ -1,4 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
+import { ConfirmDelete } from '../components/ConfirmDelete'
+import { CaptionLine } from '../components/CaptionLine'
+import { heardCount, heardIn } from '../lib/words'
 import { BackToLibrary } from '../components/BackToLibrary'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useT } from '../i18n'
@@ -9,7 +12,7 @@ import { NoSuchClip } from '../components/NoSuchClip'
 import { METRIC_NAMES, type Take } from '../data/types'
 import { chartFromAnalysis } from '../lib/chart'
 import { summariseTake } from '../lib/summary'
-import { colorFor, wordScore } from '../lib/score'
+import { colorFor } from '../lib/score'
 import { urlOf, useClipAudio, useClipVideo, useTakeAudio } from '../lib/useAudioUrl'
 import { useApp } from '../store/context'
 
@@ -17,8 +20,9 @@ export function AnalysisScreen() {
   const { videoId } = useParams()
   const navigate = useNavigate()
   const t = useT()
-  const { data, state, statsFor } = useApp()
+  const { data, state, statsFor, deleteTake } = useApp()
   const [selected, setSelected] = useState<{ videoId: string; takeId: string } | null>(null)
+  const [confirming, setConfirming] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
   const sourceRef = useRef<HTMLMediaElement | null>(null)
   // Stable, so the element is not detached and reattached every render.
@@ -31,6 +35,8 @@ export function AnalysisScreen() {
   const chosen =
     selected && selected.videoId === videoId ? stats.takes.find((one) => one.id === selected.takeId) : undefined
   const take = chosen ?? stats.takes[stats.takes.length - 1]
+  // Which of the line's words the transcriber heard in this take.
+  const checked = take?.analysis?.words
 
   // Every chart drawn here is a measurement. A take that has not been scored
   // has no contour, and the screen says so rather than drawing a plausible one.
@@ -72,34 +78,70 @@ export function AnalysisScreen() {
         </div>
       </div>
 
-      <div className="seg" style={{ alignSelf: 'flex-start', maxWidth: '100%', overflowX: 'auto' }}>
-        {/* `option`, not `t`, so the translate function is not shadowed. */}
-        {stats.takes.map((option, i) => (
-          <label className="seg-opt mono" key={option.id}>
-            <input
-              type="radio"
-              name="take"
-              checked={option.id === take.id}
-              onChange={() => setSelected({ videoId: video.id, takeId: option.id })}
-            />
-            {t('analysis.take', i + 1)}
-          </label>
-        ))}
+      <div className="row between wrap gap-2">
+        <div className="seg" style={{ maxWidth: '100%', overflowX: 'auto' }}>
+          {/* `option`, not `t`, so the translate function is not shadowed. */}
+          {stats.takes.map((option, i) => (
+            <label className="seg-opt mono" key={option.id}>
+              <input
+                type="radio"
+                name="take"
+                checked={option.id === take.id}
+                onChange={() => setSelected({ videoId: video.id, takeId: option.id })}
+              />
+              {t('analysis.take', i + 1)}
+            </label>
+          ))}
+        </div>
+        {/* A bad take sits in the history, on the chart, and in the average
+            the leaderboard reads. The server has always allowed this; nothing
+            in the app offered it. */}
+        <button type="button" className="btn btn-danger" onClick={() => setConfirming(true)}>
+          {t('take.delete')}
+        </button>
       </div>
 
-      <div style={{ fontSize: 19, lineHeight: 2.1 }}>
-        {video.title.split(' ').map((word, i) => (
-          <span
-            key={`${word}-${i}`}
-            style={{
-              borderBottom: `3px solid ${colorFor(wordScore(word, take.score ?? 60))}`,
-              padding: '2px 3px',
-              marginRight: 2,
-            }}
-          >
-            {word}
-          </span>
-        ))}
+      {confirming && (
+        <ConfirmDelete
+          title={t('take.deleteTitle')}
+          body={t('take.deleteBody', stats.takes.length)}
+          onCancel={() => setConfirming(false)}
+          onConfirm={() => {
+            setConfirming(false)
+            // Off the selection first: the take about to go is the one the
+            // screen is drawing, and it should fall back to the newest rather
+            // than to a row that no longer exists.
+            setSelected(null)
+            void deleteTake(take.id)
+          }}
+        />
+      )}
+
+      {/* The line, with the words the transcriber did not hear marked.
+          This used to be the clip's *title*, underlined in colours derived
+          from a hash of each word — a per-word measurement that had never been
+          measured. There is a real one now, so it says that instead, and says
+          nothing at all when there is nothing to say. */}
+      <div className="stack gap-2">
+        <div style={{ fontSize: 19, lineHeight: 2.1, fontStyle: 'italic' }}>
+          “
+          {video.captions.map((caption, i) => (
+            <CaptionLine
+              key={`${caption.text}-${i}`}
+              text={caption.text}
+              heard={heardIn(checked, video.captions, i)}
+            />
+          ))}
+          ”
+        </div>
+        {checked ? (
+          <div className="card-meta" data-testid="words-heard">
+            {t('analysis.wordsHeard', heardCount(checked).heard, heardCount(checked).total)}
+            {heardCount(checked).heard < heardCount(checked).total && ` · ${t('analysis.wordsHint')}`}
+          </div>
+        ) : (
+          <div className="card-meta">{t('analysis.wordsUnchecked')}</div>
+        )}
       </div>
 
       <div className="card elev-sm">

@@ -29,6 +29,28 @@ Login → Dashboard → Library → Practice → Analysis → Dub Review, plus V
 with its flashcards, Progress and Profile. Navigation is a collapsible sidebar on
 desktop and a bottom tab bar on phones.
 
+## The adventure menu
+
+The sidebar is the Shadowline adventure menu from Figma: a lit forest, a tree
+with a rope ladder nailed to it, and a plank per place you can go. Collapsed it
+becomes a rail of icons whose labels swing out on a wooden sign; the plank you
+are on is the one green thing in a brown menu, and says so without being
+pointed at. There is no forest in the collapsed rail — a strip of green narrow
+enough to fit beside a 64px plank is not a view out of the trees — so the rail
+is all trunk and everything nailed to it sits on wood. The phone's tab bar carries the same wood and drops the tree, which
+it has no room for.
+
+It is drawn in CSS — the palette lives with the rest of the tokens, under
+`--menu-*` — with one piece outstanding: **the forest illustration behind the
+tree.** This machine's network could not reach Figma's asset host, so
+`.menu-forest` layers the illustration over a gradient that stands in for it.
+Export the design's `Enchanted forest` layer as a PNG to
+`public/menu/forest.png` and it appears; nothing else needs changing.
+
+The design carries a sixth plank, `Arena`, for a feature that does not exist.
+It is not in the menu: the green plank and its badge are that plank's selected
+state, applied to whichever place you are actually in.
+
 Clips are curated, not collected: learners practise what is in the library and
 cannot import or upload anything themselves. `/admin` holds the clip studio,
 where a recording is cut into lines — see below.
@@ -53,10 +75,71 @@ single learner shows one row. Below it sit the clips an admin has featured.
 ## Memory practice
 
 The Vocabulary screen opens a flashcard session over the words you have
-collected by tapping them while practising. Words you have not learnt come
-first, and within a status the ones you have not seen for longest lead, so a
-second session is not the same cards in the same order. Known words stay in the
-deck rather than being dropped — they are what you are trying not to forget.
+collected by tapping them while practising. The deck is **what is due**, not
+everything you have ever collected: a card answered today is booked in for
+another day, and how far off depends on whether you recalled it.
+
+The ladder is a day, three, a week, a fortnight, a month, two, four. Recalling
+a word moves it one step up; forgetting it puts it back at the front, not one
+step down — a word that has gone is gone, and walking it back through a month
+would ask about it next in a fortnight. Ticking "known" in the list is not a
+recall, because nothing was tested; it retires the card to the top of the
+ladder, which is what "stop asking me" means. The arithmetic and the reasons
+are in `server/internal/store/schedule.go`, which is where the schedule is
+kept — a deck built from a device with a wrong clock would be the wrong deck.
+
+A word you have just forgotten comes back once more before the session ends.
+Once, not until you get it: twice would be a loop for anybody having a bad day
+with one word.
+
+With nothing due, the screen says so and says when the next word comes round,
+and still offers to practise anyway. The schedule is advice about what is worth
+reviewing, not a lock on the door.
+
+## Installing it
+
+`public/manifest.webmanifest` and `public/sw.js` make the app installable: a
+home-screen icon and a window with no browser chrome, which is most of what
+"an app" means to somebody practising on the way to work.
+
+It is **not** an offline app, and the worker does not pretend to be one. The
+clips, the takes and the scores all live on the server, and no amount of
+caching makes a recording scoreable on a train. The worker is network-first
+for everything it touches and never caches `/api/`, `/auth/` or `/files/` —
+a cache-first worker is how an app ships an update nobody receives, and those
+three carry a session, a signature and an expiry.
+
+There are no practice reminders. A reminder that fires when the app is closed
+needs web push — a push service, VAPID keys, subscriptions stored per device
+and a server that sends them — which is its own piece of work and not
+something a manifest buys.
+
+The icons are the crest the login screen already wears, cropped and resized by
+`scripts/icons.mjs` — which is committed rather than run once and forgotten,
+because a set of PNGs nobody can rebuild is a set nobody dares change. Run
+`node scripts/icons.mjs` after changing `public/login/crest.png` and the tab,
+the home screen and the install prompt all follow. The browser tab gets the
+helmet alone: a whole knight at 32 pixels is a smudge.
+
+## Taking things away
+
+Every delete removes objects as well as rows, and none of it can be put back,
+so each goes through a dialog that says what is about to go rather than asking
+"are you sure?" about a noun.
+
+A learner can throw away a take. It sits in their history, on the chart and in
+the average the leaderboard reads, and the server has always allowed this —
+nothing in the app offered it.
+
+An admin can delete an episode, which takes its clips, the recording they were
+cut from, and every take recorded against them. An episode is the unit they
+publish: two hundred clips off the wrong file is one mistake, and undoing it
+clip by clip is not an undo.
+
+A series is the opposite. The server refuses to delete one that still has
+clips in it, and the studio's button is disabled with the reason on it rather
+than hidden — the mistake a series delete recovers from is a name typed wrong,
+and what a cascade would take with it is a whole season of somebody's practice.
 
 ## Clip studio
 

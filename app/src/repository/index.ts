@@ -41,6 +41,10 @@ export interface Repository {
   updatePlaylist(id: string, patch: PlaylistPatch): Promise<Playlist>
   /** Renames an episode, moves it to another series, or reorders it. */
   updateEpisode(id: string, patch: EpisodePatch): Promise<Episode>
+  /** Removes an episode, its clips and the recording they were cut from. */
+  deleteEpisode(id: string): Promise<void>
+  /** Removes a series. The server refuses one that still has clips in it. */
+  deletePlaylist(id: string): Promise<void>
 
   listClips(): Promise<Video[]>
   clipAudioURL(clipId: string): Promise<string | null>
@@ -55,11 +59,11 @@ export interface Repository {
   updateClip(clipId: string, patch: ClipPatch): Promise<Video>
   deleteClip(clipId: string): Promise<void>
 
-  // DELETE /api/takes/{id} exists on the server and is covered by its tests;
-  // nothing in the app offers it yet, so it is not plumbed through here.
   listTakes(): Promise<Take[]>
   createTake(clipId: string, audio: Blob): Promise<Take>
   getTake(takeId: string): Promise<Take>
+  /** Throws away a recording and its audio. */
+  deleteTake(takeId: string): Promise<void>
   takeAudioURL(takeId: string): Promise<string | null>
   /** Asks for the take to be muxed onto its clip, and reads how that is going. */
   requestDub(takeId: string): Promise<Dub>
@@ -196,6 +200,14 @@ class ApiRepository implements Repository {
     return api.send<Episode>('PATCH', `/api/admin/episodes/${id}`, patch)
   }
 
+  deleteEpisode(id: string) {
+    return api.del(`/api/admin/episodes/${id}`)
+  }
+
+  deletePlaylist(id: string) {
+    return api.del(`/api/admin/playlists/${id}`)
+  }
+
   listClips() {
     return api.get<Video[]>('/api/clips')
   }
@@ -249,6 +261,10 @@ class ApiRepository implements Repository {
 
   getTake(takeId: string) {
     return api.get<Take>(`/api/takes/${takeId}`)
+  }
+
+  deleteTake(takeId: string) {
+    return api.del(`/api/takes/${takeId}`)
   }
 
   async takeAudioURL(takeId: string) {

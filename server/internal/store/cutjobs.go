@@ -30,14 +30,17 @@ import (
 //
 // `on conflict do nothing` makes a re-publish idempotent rather than a
 // duplicate-key error.
-func (s *Store) EnqueueCut(ctx context.Context, tx pgx.Tx, clipID uuid.UUID) error {
-	_, err := tx.Exec(ctx, `
+// Reports whether a job was actually written. It is not for every clip with a
+// source — an audio upload has one too — and the caller needs to know, because
+// the existence of the job is what makes the clip say its picture is coming.
+func (s *Store) EnqueueCut(ctx context.Context, tx pgx.Tx, clipID uuid.UUID) (bool, error) {
+	tag, err := tx.Exec(ctx, `
 		insert into cut_jobs (clip_id)
 		select c.id from clips c
 		join clip_sources s on s.id = c.source_id
 		where c.id = $1 and s.has_video
 		on conflict (clip_id) do nothing`, clipID)
-	return err
+	return tag.RowsAffected() > 0, err
 }
 
 // CutQueueDepth is what to watch when video stops appearing: if this climbs,
