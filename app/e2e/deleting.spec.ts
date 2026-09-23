@@ -119,8 +119,20 @@ test('the app can be installed to a phone', async ({ page }) => {
   expect(manifest?.body.start_url).toBe('/dashboard')
   expect((manifest?.body.icons as { src: string }[]).length).toBeGreaterThanOrEqual(2)
 
-  for (const icon of manifest?.body.icons as { src: string }[]) {
-    const res = await page.request.get(icon.src)
-    expect(res.status(), icon.src).toBe(200)
+  // Content type, not just status: the dev server answers an unknown path with
+  // index.html and a 200, so a missing icon would pass a status check while
+  // being an HTML page.
+  const icons = (manifest?.body.icons as { src: string }[]).map((icon) => icon.src)
+  const links = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLLinkElement>('link[rel=icon], link[rel=apple-touch-icon]')].map(
+      (link) => new URL(link.href).pathname,
+    ),
+  )
+  expect(links.length).toBeGreaterThanOrEqual(2)
+
+  for (const src of [...icons, ...links]) {
+    const res = await page.request.get(src)
+    expect(res.status(), src).toBe(200)
+    expect(res.headers()['content-type'], src).toContain('image/')
   }
 })

@@ -114,8 +114,12 @@ needs web push — a push service, VAPID keys, subscriptions stored per device
 and a server that sends them — which is its own piece of work and not
 something a manifest buys.
 
-The icons are rendered from the menu's own brand sign; `public/icons/` holds
-them at 192, 512 and 512 maskable.
+The icons are the crest the login screen already wears, cropped and resized by
+`scripts/icons.mjs` — which is committed rather than run once and forgotten,
+because a set of PNGs nobody can rebuild is a set nobody dares change. Run
+`node scripts/icons.mjs` after changing `public/login/crest.png` and the tab,
+the home screen and the install prompt all follow. The browser tab gets the
+helmet alone: a whole knight at 32 pixels is a smudge.
 
 ## Taking things away
 
