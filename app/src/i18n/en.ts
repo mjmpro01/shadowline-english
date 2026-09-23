@@ -136,6 +136,10 @@ export const en = {
   'practice.saveDub': 'Save dub',
   'practice.resetMic': 'Reset mic',
   'practice.exit': 'Exit',
+  'practice.wordsHeard': (heard: number, total: number) =>
+    heard === total
+      ? `We heard every word.`
+      : `We heard ${heard} of ${total} words — the marked ones did not come through.`,
   'practice.tapWord': 'Tap a word to add it to Vocabulary — tap again to undo',
   'practice.recording': 'Recording — read the line aloud',
   'practice.secondsLeft': (seconds: string) => `${seconds}s left`,
@@ -172,6 +176,10 @@ export const en = {
   'metric.Variation': 'Variation',
 
   // --- analysis -------------------------------------------------------------
+  'analysis.wordsHeard': (heard: number, total: number) =>
+    heard === total ? `Every word came through.` : `${heard} of ${total} words came through.`,
+  'analysis.wordsHint': 'A marked word is one we did not hear, not one you said wrongly.',
+  'analysis.wordsUnchecked': 'The words in this take were not checked.',
   'analysis.pitchContour': 'Pitch contour',
   'analysis.measured': 'measured',
   'analysis.original': 'Original',

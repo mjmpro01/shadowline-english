@@ -22,6 +22,43 @@ The scoring tests run without a database; the worker tests create one of their
 own and apply the Go server's migration file directly, rather than keeping a
 copy of the schema that would drift.
 
+## Did they say it?
+
+The four metrics are prosody: where the pitch goes, where the stress lands, how
+much the voice moves. None of them looks at what was actually said, which meant
+a learner could hum the melody of a line and score ninety on it.
+
+So the take is transcribed with the same Whisper the cutter uses, matched
+against the clip's own caption, and the result goes back two ways: the headline
+score is scaled by how much of the line came through, and `analysis.words`
+carries the line word by word with a flag for each. "You dropped 'about'" is
+something to act on; "82%" is not.
+
+`shadowline/words.py` is the matching, and it is written around one fact: a
+transcriber is not a phonetician. A word marked unheard is a word Whisper did
+not hear, which is evidence and not a verdict — the screens say it that way,
+and every judgement call in that file goes towards letting a word through. An
+empty transcript is not a score of zero, because an empty transcript is a quiet
+room at least as often as it is silence.
+
+The floor is `words.FLOOR`: saying none of the line keeps 40% of the prosody
+score rather than none of it. The four metrics did measure something real, and
+a transcriber that heard the wrong words is sometimes a transcriber that was
+wrong.
+
+**This changed what the headline number means.** A take scored before this
+existed and one scored after are not on the same scale, and a history that
+spans the change has a step in it. The old number was wrong — it said a hum was
+a good delivery — and there is no way to restate the old takes, because their
+recordings were never transcribed.
+
+The model is loaded lazily and at most twice: two failures before it has ever
+produced anything are taken as "there is no model on this machine", and the
+worker stops asking rather than spending ten seconds per take on a check that
+was never going to happen. `WORD_CHECK=0` turns it off outright, for a
+deployment that would rather not carry a few hundred megabytes of model per
+scoring replica.
+
 ## Parity with the browser
 
 This worker replaces `app/src/lib/dsp/`, which scored takes in the browser. The
@@ -94,6 +131,7 @@ and not Kafka.
 ```
 shadowline/pitch.py     YIN pitch tracking, ported from the browser
 shadowline/compare.py   DTW and the four metrics
+shadowline/words.py     did they say the line, not just the tune
 shadowline/audio.py     ffmpeg: whatever the browser recorded -> mono 8kHz
 shadowline/queue.py     claim / complete / fail, against the Postgres table
 shadowline/storage.py   reading audio from S3/MinIO or from a directory

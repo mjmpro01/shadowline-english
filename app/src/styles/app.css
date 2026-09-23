@@ -763,6 +763,24 @@
 .caption-word[data-added='true'] {
   border-bottom: 2px solid var(--score-good);
 }
+/* A word the transcriber did not hear. Marked rather than coloured over: the
+   dashed underline already belongs to "tap me", and a word that did not come
+   through is a different claim from a word that is in your vocabulary. The
+   word itself keeps its colour — this is evidence, not a red pen. */
+.caption-word[data-unheard='true'] {
+  border-bottom: 2px dotted var(--score-attention);
+  background: color-mix(in srgb, var(--score-attention) 16%, transparent);
+  border-radius: 4px;
+}
+/* The same line where there is nothing to tap: the Analysis screen shows it to
+   be read, not to collect words from. */
+.caption-word-flat {
+  cursor: default;
+  border-bottom-color: transparent;
+}
+.caption-word-flat[data-unheard='true'] {
+  border-bottom-color: var(--score-attention);
+}
 .wave-frame {
   border: 2px solid var(--color-divider);
   border-radius: var(--radius-md);

@@ -1,4 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
+import { CaptionLine } from '../components/CaptionLine'
+import { heardCount, heardIn } from '../lib/words'
 import { BackToLibrary } from '../components/BackToLibrary'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useT } from '../i18n'
@@ -9,7 +11,7 @@ import { NoSuchClip } from '../components/NoSuchClip'
 import { METRIC_NAMES, type Take } from '../data/types'
 import { chartFromAnalysis } from '../lib/chart'
 import { summariseTake } from '../lib/summary'
-import { colorFor, wordScore } from '../lib/score'
+import { colorFor } from '../lib/score'
 import { urlOf, useClipAudio, useClipVideo, useTakeAudio } from '../lib/useAudioUrl'
 import { useApp } from '../store/context'
 
@@ -31,6 +33,8 @@ export function AnalysisScreen() {
   const chosen =
     selected && selected.videoId === videoId ? stats.takes.find((one) => one.id === selected.takeId) : undefined
   const take = chosen ?? stats.takes[stats.takes.length - 1]
+  // Which of the line's words the transcriber heard in this take.
+  const checked = take?.analysis?.words
 
   // Every chart drawn here is a measurement. A take that has not been scored
   // has no contour, and the screen says so rather than drawing a plausible one.
@@ -87,19 +91,31 @@ export function AnalysisScreen() {
         ))}
       </div>
 
-      <div style={{ fontSize: 19, lineHeight: 2.1 }}>
-        {video.title.split(' ').map((word, i) => (
-          <span
-            key={`${word}-${i}`}
-            style={{
-              borderBottom: `3px solid ${colorFor(wordScore(word, take.score ?? 60))}`,
-              padding: '2px 3px',
-              marginRight: 2,
-            }}
-          >
-            {word}
-          </span>
-        ))}
+      {/* The line, with the words the transcriber did not hear marked.
+          This used to be the clip's *title*, underlined in colours derived
+          from a hash of each word — a per-word measurement that had never been
+          measured. There is a real one now, so it says that instead, and says
+          nothing at all when there is nothing to say. */}
+      <div className="stack gap-2">
+        <div style={{ fontSize: 19, lineHeight: 2.1, fontStyle: 'italic' }}>
+          “
+          {video.captions.map((caption, i) => (
+            <CaptionLine
+              key={`${caption.text}-${i}`}
+              text={caption.text}
+              heard={heardIn(checked, video.captions, i)}
+            />
+          ))}
+          ”
+        </div>
+        {checked ? (
+          <div className="card-meta" data-testid="words-heard">
+            {t('analysis.wordsHeard', heardCount(checked).heard, heardCount(checked).total)}
+            {heardCount(checked).heard < heardCount(checked).total && ` · ${t('analysis.wordsHint')}`}
+          </div>
+        ) : (
+          <div className="card-meta">{t('analysis.wordsUnchecked')}</div>
+        )}
       </div>
 
       <div className="card elev-sm">

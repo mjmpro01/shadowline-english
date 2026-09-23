@@ -13,10 +13,6 @@ export function hashStr(str: string): number {
   return h
 }
 
-export function clamp(v: number, a: number, b: number): number {
-  return Math.max(a, Math.min(b, v))
-}
-
 export interface PitchChart {
   refPoints: string
   bandPath: string
@@ -39,11 +35,6 @@ export function sparkPoints(scores: number[]): string {
 }
 
 /** Per-word underline colours on the transcript, seeded off the word itself. */
-export function wordScore(word: string, takeScore: number): number {
-  const clean = word.replace(/[^a-zA-Z']/g, '')
-  return clamp(takeScore + (hashStr(clean) % 40) - 20, 8, 99)
-}
-
 
 /** How a score reads, as a message key rather than a sentence: this is a pure
  *  function of the number and knows nothing about who is reading it. */

@@ -31,6 +31,25 @@ class Job:
     clip_id: str
     take_audio_key: str
     clip_audio_key: str
+    # The line the clip asks for, joined from its captions. What the take is
+    # matched against — the words on screen, not the words in the clip's own
+    # audio, because the caption is what the learner was told to say.
+    line: str
+
+
+def _line_of(captions: object) -> str:
+    """The clip's captions as one line.
+
+    A clip is one line to shadow, so this is almost always a single caption;
+    joining covers the few that were cut with more than one.
+    """
+    if not isinstance(captions, list):
+        return ""
+    return " ".join(
+        str(caption.get("text", "")).strip()
+        for caption in captions
+        if isinstance(caption, dict)
+    ).strip()
 
 
 class Queue:
@@ -64,7 +83,8 @@ class Queue:
                   and t.id = scoring_jobs.take_id
                   and c.id = t.clip_id
                 returning scoring_jobs.id, scoring_jobs.take_id, scoring_jobs.attempts,
-                          t.clip_id, t.audio_key as take_audio_key, c.audio_key as clip_audio_key
+                          t.clip_id, t.audio_key as take_audio_key, c.audio_key as clip_audio_key,
+                          c.captions
                 """,
                 (row["id"],),
             )
@@ -81,6 +101,7 @@ class Queue:
                 clip_id=str(claimed["clip_id"]),
                 take_audio_key=claimed["take_audio_key"],
                 clip_audio_key=claimed["clip_audio_key"],
+                line=_line_of(claimed["captions"]),
             )
 
     def complete(self, job: Job, score: int, scores: dict[str, int], analysis: dict) -> None:

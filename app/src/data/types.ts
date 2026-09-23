@@ -225,10 +225,32 @@ export interface ContourPoint {
   d?: number
 }
 
+/**
+ * Whether the learner said the words, not just the tune.
+ *
+ * Everything else a take is scored on is prosody — where the pitch goes, where
+ * the stress lands — and none of it looks at what was actually said. This is
+ * the transcriber's account of that, and it is evidence rather than a verdict:
+ * a word marked unheard is a word Whisper did not hear, which is why the
+ * screens say "we did not hear" and never "you said it wrong".
+ */
+export interface WordCheck {
+  /** The line word by word, as the caption writes it, in caption order. */
+  line: { text: string; heard: boolean }[]
+  /** What the transcriber made of the recording, normalised. */
+  heard: string[]
+  /** How much of the line came back, 0 to 1. */
+  accuracy: number
+}
+
 export interface TakeAnalysis {
   user: ContourPoint[]
   reference: ContourPoint[] | null
   duration: number
   /** Mean semitone distance after alignment; null when nothing to compare to. */
   meanDeviation: number | null
+  /** Absent when there was nothing to check: a clip with no line, a recording
+   *  the transcriber made nothing of, or a deployment with no model. Absent is
+   *  not zero, and the screens say nothing rather than accusing anybody. */
+  words?: WordCheck
 }

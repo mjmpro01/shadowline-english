@@ -136,6 +136,10 @@ export const vi: Messages = {
   'practice.saveDub': 'Lưu bản lồng tiếng',
   'practice.resetMic': 'Đặt lại micro',
   'practice.exit': 'Thoát',
+  'practice.wordsHeard': (heard: number, total: number) =>
+    heard === total
+      ? `Nghe được đủ các từ.`
+      : `Nghe được ${heard}/${total} từ — những từ được đánh dấu chưa rõ.`,
   'practice.tapWord': 'Chạm vào một từ để lưu vào Từ vựng — chạm lần nữa để bỏ',
   'practice.recording': 'Đang ghi — đọc to câu này',
   'practice.secondsLeft': (seconds: string) => `còn ${seconds}s`,
@@ -172,6 +176,10 @@ export const vi: Messages = {
   'metric.Variation': 'Độ biến thiên',
 
   // --- analysis -------------------------------------------------------------
+  'analysis.wordsHeard': (heard: number, total: number) =>
+    heard === total ? `Đủ các từ đều rõ.` : `Có ${heard}/${total} từ nghe rõ.`,
+  'analysis.wordsHint': 'Từ được đánh dấu là từ chúng tôi không nghe rõ, không phải từ bạn đọc sai.',
+  'analysis.wordsUnchecked': 'Bản ghi này chưa được kiểm tra từ ngữ.',
   'analysis.pitchContour': 'Đường cao độ',
   'analysis.measured': 'đã đo',
   'analysis.original': 'Bản gốc',
