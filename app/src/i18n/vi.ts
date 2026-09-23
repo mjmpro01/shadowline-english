@@ -338,6 +338,13 @@ export const vi: Messages = {
     'Đang chép lời — các câu sẽ tự điền khi xong. Bạn cứ cắt tiếp trong lúc đó.',
   'studio.published': 'Đã đăng',
   'studio.publishedBody': (n: number) => `${n} clip đã vào thư viện.`,
+  'studio.publishedSilent': (n: number) =>
+    `${n} clip trong số đó lên mà chưa có tiếng. Bài thu vào những clip này vẫn được giữ và đo, nhưng không chấm điểm — publish lại lô này để đưa tiếng lên.`,
+  'studio.publishFailed': 'Publish đã dừng',
+  'studio.publishFailedKept':
+    'Bản cắt vẫn còn nguyên như lúc bạn để lại. Không có gì bị bỏ đi — xem lỗi rồi thử lại.',
+  'studio.savingClips': (done: number, total: number) => `Đang lưu clip… ${done}/${total}`,
+  'studio.savingAudio': (done: number, total: number) => `Đang gửi tiếng… ${done}/${total}`,
   'studio.cuttingVideo':
     'Video của chúng đang được cắt ở nền — người học luyện phần audio trước được, hình sẽ hiện khi cắt xong từng clip.',
   'studio.noClips': 'Chưa có clip nào — cắt một bản ghi trước đã.',

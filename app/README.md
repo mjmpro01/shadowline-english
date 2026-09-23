@@ -164,6 +164,48 @@ per character against an API.
 The studio is open to the addresses in the server's `ADMIN_EMAILS` and to nobody
 else. `RequireAdmin` only hides the screen; every admin endpoint checks again.
 
+## Publishing a long recording
+
+Publishing is two things: the clip rows, then their audio. The studio says which
+it is on and how far through — "Sending audio… 180 of 412" — because it used to
+say "Saving…" for all of it, and a batch that had stopped looked exactly like a
+batch that was working.
+
+Three rules behind it:
+
+- The rows go up **200 at a time**. The server refuses a JSON body over a
+  megabyte, which a batch of about two thousand clips reaches; a fifty-minute
+  recording proposes enough cuts to get there, and from the studio that read as
+  publishing simply not working.
+- The audio goes up **four at a time**. It was every clip at once: the browser
+  runs six requests to a host anyway, so the rest sat in a queue nothing could
+  see, and one rejection abandoned the others with the clips already published.
+- A clip whose audio never arrives is **counted and reported**, not thrown. The
+  clip is worth having — a take against it is kept and measured, only not scored
+  — and saying nothing is how an admin finds out from a learner.
+
+And publishing now has a catch. It did not: any failure left `busy` set, which
+leaves "Saving…" on screen and the Publish button disabled for good, with no way
+back but a reload. That is most of what "publishing does not work" was.
+
+What is still expensive is the audio itself. Each clip goes up as 16-bit WAV at
+the recording's own sample rate — 563 kB for six seconds at 48 kHz — so a batch
+of 400 clips is **220 MB** after the film has already been uploaded once. The
+server has the recording and the cutter already re-cuts the picture from it;
+cutting the audio there too would remove that upload entirely. Not done yet.
+
+## The cut survives leaving the studio
+
+The recording being cut lives in `src/lib/studioDraft.ts`, not in the screen.
+Leaving the studio unmounts it, and everything used to go with it: the decoded
+file, the proposed cuts, every line typed into them, the upload already on the
+server and the transcript being waited for. Opening the library for ten seconds
+to check a name meant starting a fifty-minute recording again.
+
+Nothing is persisted, and deliberately: the decoded samples are hundreds of
+megabytes and the object URL belongs to the document, so neither could survive a
+reload. This carries the work across a screen, not across a session.
+
 ## Clip length
 
 A clip is one line to shadow, capped at `MAX_CLIP_SECONDS` (6) in

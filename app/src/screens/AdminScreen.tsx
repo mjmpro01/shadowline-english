@@ -8,13 +8,15 @@ import { StudioSeries } from './StudioSeries'
 import { ThumbnailStrip } from '../components/ThumbnailStrip'
 import { WaveformEditor } from '../components/WaveformEditor'
 import { MAX_CLIP_SECONDS, type Transcript } from '../data/types'
+import type { PublishProgress } from '../store/context'
 import { looksLikeVideo } from '../lib/media'
-import { decodeFile, peaks as computePeaks, type Column } from '../lib/audio/decode'
+import { decodeFile, peaks as computePeaks } from '../lib/audio/decode'
 import { proposeSegments, type Segment } from '../lib/audio/segment'
 import { clipName, parseCategories } from '../lib/clips'
 import { sliceToWav } from '../lib/audio/wav'
 import { ipaOf, lineOf, wordsBetween } from '../lib/transcript'
 import { extractFrames } from '../lib/video/frames'
+import { readDraft, saveDraft, type StudioLine, type StudioLoaded } from '../lib/studioDraft'
 import { repository } from '../repository'
 import { useApp } from '../store/context'
 
@@ -28,36 +30,18 @@ const FILMSTRIP_SLOTS = 28
  *  a long recording, so asking more often only adds requests. */
 const TRANSCRIPT_POLL_MS = 3000
 
-interface Line {
-  title: string
-  text: string
-  ipa: string
-  categories: string
-  /**
-   * Whether this clip goes to the library when the batch is published.
-   *
-   * Distinct from `selected`, which is the one clip the timeline is focused on.
-   * Every proposal starts included, because a short recording is usually
-   * published whole; a fifty-minute one proposes hundreds of cuts and most of
-   * them are not dialogue worth shadowing, which is what the bulk controls are
-   * for.
-   */
-  include: boolean
-}
+/**
+ * `include` is whether this clip goes to the library when the batch is
+ * published — distinct from `selected`, which is the one clip the timeline is
+ * focused on. Every proposal starts included, because a short recording is
+ * usually published whole; a fifty-minute one proposes hundreds of cuts and
+ * most of them are not dialogue worth shadowing, which is what the bulk
+ * controls are for.
+ */
+type Line = StudioLine
+type Loaded = StudioLoaded
 
 const EMPTY_LINE: Omit<Line, 'categories'> = { title: '', text: '', ipa: '', include: true }
-
-interface Loaded {
-  name: string
-  samples: Float32Array
-  sampleRate: number
-  duration: number
-  peaks: Column[]
-  /** The original file, for the picture. The decoded samples carry only sound. */
-  url: string
-  file: File
-  isVideo: boolean
-}
 
 function clock(seconds: number): string {
   return `${Math.floor(seconds / 60)}:${Math.floor(seconds % 60).toString().padStart(2, '0')}.${Math.floor((seconds % 1) * 10)}`
@@ -86,26 +70,74 @@ export function AdminScreen() {
    *  otherwise leave two loops moving the same playhead. */
   const playing = useRef(0)
 
-  const [loaded, setLoaded] = useState<Loaded | null>(null)
-  const [segments, setSegments] = useState<Segment[]>([])
-  const [lines, setLines] = useState<Line[]>([])
-  const [playlist, setPlaylist] = useState('')
-  const [batchCategories, setBatchCategories] = useState('')
-  const [selected, setSelected] = useState<number | null>(null)
+  // What the studio was in the middle of when it was last left. Read once: from
+  // here on this screen's own state is the truth, and the effect below writes it
+  // back out.
+  const left = useRef(readDraft()).current
+
+  const [loaded, setLoaded] = useState<Loaded | null>(left?.loaded ?? null)
+  const [segments, setSegments] = useState<Segment[]>(left?.segments ?? [])
+  const [lines, setLines] = useState<Line[]>(left?.lines ?? [])
+  const [playlist, setPlaylist] = useState(left?.playlist ?? '')
+  const [batchCategories, setBatchCategories] = useState(left?.batchCategories ?? '')
+  const [selected, setSelected] = useState<number | null>(left?.selected ?? null)
   const [playhead, setPlayhead] = useState<number | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  /** How far publishing has got, so a long batch is visibly moving. */
+  const [progress, setProgress] = useState<PublishProgress | null>(null)
+  /** What went wrong publishing. Publishing used to have no catch at all: a
+   *  failure left "Saving…" on screen for good and said nothing. */
+  const [failure, setFailure] = useState<string | null>(null)
   const [saved, setSaved] = useState<number | null>(null)
+  /** Clips in the last batch whose audio never made it up. */
+  const [savedSilent, setSavedSilent] = useState(0)
   /** Whether the batch just published is having its video cut. */
   const [savedVideo, setSavedVideo] = useState(false)
-  const [frames, setFrames] = useState<(string | null)[]>([])
+  const [frames, setFrames] = useState<(string | null)[]>(left?.frames ?? [])
   /** The upload on the server, which the transcript and the cut both hang off.
    *  Null while it is still going up, or if it failed. */
-  const [sourceId, setSourceId] = useState<string | null>(null)
+  const [sourceId, setSourceId] = useState<string | null>(left?.sourceId ?? null)
   /** In-flight upload promise so Publish can wait for the id the cutter needs
    *  instead of racing a large file and saving audio-only by accident. */
-  const sourceUpload = useRef<Promise<string | null>>(Promise.resolve(null))
-  const [sourceUploading, setSourceUploading] = useState(false)
-  const [transcript, setTranscript] = useState<Transcript | null>(null)
+  const sourceUpload = useRef<Promise<string | null>>(left?.upload ?? Promise.resolve(null))
+  const [sourceUploading, setSourceUploading] = useState(left?.sourceUploading ?? false)
+  const [transcript, setTranscript] = useState<Transcript | null>(left?.transcript ?? null)
+  /** The recording whose filmstrip has already been walked. */
+  const walked = useRef<string | null>(left?.walked ?? null)
+
+  // Back out to the draft on every change, so leaving this screen and coming
+  // back finds the cut where it was rather than an empty studio.
+  useEffect(() => {
+    saveDraft(
+      loaded
+        ? {
+            loaded,
+            segments,
+            lines,
+            playlist,
+            batchCategories,
+            selected,
+            frames,
+            sourceId,
+            sourceUploading,
+            transcript,
+            upload: sourceUpload.current,
+            walked: walked.current,
+          }
+        : null,
+    )
+  }, [
+    loaded,
+    segments,
+    lines,
+    playlist,
+    batchCategories,
+    selected,
+    frames,
+    sourceId,
+    sourceUploading,
+    transcript,
+  ])
 
   const open = async (file: File | undefined) => {
     if (!file) return
@@ -313,9 +345,14 @@ export function AdminScreen() {
   // the same strip and the frames arrive interleaved from both files.
   useEffect(() => {
     if (!loaded?.isVideo) return
+    // Already walked, and the frames came back with the draft: seeking through
+    // the whole file again for pictures that are on screen would be minutes of
+    // work to arrive at what is already there.
+    if (walked.current === loaded.url) return
     const controller = new AbortController()
+    const url = loaded.url
     void extractFrames({
-      url: loaded.url,
+      url,
       duration: loaded.duration,
       count: FILMSTRIP_SLOTS,
       onFrame: ({ index, src }) =>
@@ -325,6 +362,10 @@ export function AdminScreen() {
           return next
         }),
       signal: controller.signal,
+    }).then(() => {
+      // Only a walk that finished counts. An abandoned one leaves gaps, and
+      // coming back should fill them rather than keep them.
+      if (!controller.signal.aborted) walked.current = url
     })
     return () => controller.abort()
   }, [loaded])
@@ -383,27 +424,44 @@ export function AdminScreen() {
     if (chosen.length === 0) return
 
     setBusy(t('studio.saving'))
-    // Wait out an in-flight upload: sourceId state can still be null while the
-    // promise is about to resolve, and publishing without it skips the cut.
-    const uploadedId = sourceId ?? (await sourceUpload.current)
-    await addClips(
-      chosen.map(({ segment, line }) => ({
-        title: line.title.trim(),
-        line: line.text.trim(),
-        ipa: line.ipa.trim(),
-        source: loaded.name,
-        playlist: playlist.trim() || loaded.name,
-        categories: parseCategories(line.categories),
-        start: segment.start,
-        end: segment.end,
-        audio: sliceToWav(loaded.samples, loaded.sampleRate, segment.start, segment.end),
-      })),
-      // Already on the server since the file was opened, so publishing sends
-      // an id rather than the recording all over again.
-      uploadedId,
-    )
+    setFailure(null)
+    setProgress({ stage: 'clips', done: 0, total: chosen.length })
+
+    let result
+    try {
+      // Wait out an in-flight upload: sourceId state can still be null while the
+      // promise is about to resolve, and publishing without it skips the cut.
+      const uploadedId = sourceId ?? (await sourceUpload.current)
+      result = await addClips(
+        chosen.map(({ segment, line }) => ({
+          title: line.title.trim(),
+          line: line.text.trim(),
+          ipa: line.ipa.trim(),
+          source: loaded.name,
+          playlist: playlist.trim() || loaded.name,
+          categories: parseCategories(line.categories),
+          start: segment.start,
+          end: segment.end,
+          audio: sliceToWav(loaded.samples, loaded.sampleRate, segment.start, segment.end),
+        })),
+        // Already on the server since the file was opened, so publishing sends
+        // an id rather than the recording all over again.
+        uploadedId,
+        setProgress,
+      )
+    } catch (error) {
+      // The cut stays exactly as it was. Whatever went wrong, the admin's hour
+      // of work on the boundaries and the lines is not what should pay for it.
+      setBusy(null)
+      setProgress(null)
+      setFailure(error instanceof Error ? error.message : String(error))
+      return
+    }
+
     setBusy(null)
-    setSaved(chosen.length)
+    setProgress(null)
+    setSaved(result.published)
+    setSavedSilent(result.withoutAudio)
     setSavedVideo(loaded.isVideo)
     setLoaded((previous) => {
       if (previous) URL.revokeObjectURL(previous.url)
@@ -494,7 +552,15 @@ export function AdminScreen() {
         <button type="button" className="btn btn-secondary" disabled title={t('studio.youtubeSoon')}>
           {t('studio.youtube')}
         </button>
-        {busy && <span style={{ fontSize: 13, opacity: 0.7 }}>{busy}</span>}
+        {busy && (
+          <span style={{ fontSize: 13, opacity: 0.7 }}>
+            {progress
+              ? progress.stage === 'clips'
+                ? t('studio.savingClips', progress.done, progress.total)
+                : t('studio.savingAudio', progress.done, progress.total)
+              : busy}
+          </span>
+        )}
       </div>
       )}
 
@@ -526,10 +592,23 @@ export function AdminScreen() {
         </div>
       )}
 
+      {failure !== null && (
+        <div className="card elev-sm stack gap-2" style={{ maxWidth: 640 }}>
+          <div className="card-kicker">{t('studio.publishFailed')}</div>
+          <div style={{ fontSize: 14 }}>{failure}</div>
+          {/* Said out loud, because the obvious fear on seeing this is that the
+              hour of cutting went with it. */}
+          <div className="card-meta">{t('studio.publishFailedKept')}</div>
+        </div>
+      )}
+
       {saved !== null && (
         <div className="card elev-sm">
           <div className="card-kicker">{t('studio.published')}</div>
-          <div style={{ fontSize: 14 }}>{saved} clips are now in the library.</div>
+          <div style={{ fontSize: 14 }}>{t('studio.publishedBody', saved)}</div>
+          {savedSilent > 0 && (
+            <div className="card-meta">{t('studio.publishedSilent', savedSilent)}</div>
+          )}
           {savedVideo && (
             <div className="card-meta">
               Their video is being cut in the background — learners can practise the audio meanwhile,

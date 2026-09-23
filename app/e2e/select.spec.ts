@@ -111,3 +111,52 @@ test('splitting a clip keeps both halves in the batch', async ({ page }) => {
 
   await expect(page.getByText('3 of 5 clips selected to publish')).toBeVisible()
 })
+
+/**
+ * Leaving the studio and coming back.
+ *
+ * The cut lived in the screen's own state, so opening the library for ten
+ * seconds threw away the decoded file, the proposed cuts, every line typed into
+ * them and the upload already on the server. On a fifty-minute recording that
+ * is an hour of work gone for a glance at something else.
+ */
+test('the cut survives leaving the studio and coming back', async ({ page }) => {
+  await nameTheLines(page)
+  await page.getByLabel('Playlist').fill('Kept across screens')
+  await page.getByLabel('Publish clip 2').uncheck()
+
+  // Through the menu, the way an admin leaves: a reload is a different question
+  // — the decoded samples are hundreds of megabytes and the object URL belongs
+  // to the document, so neither could survive one. This carries the work across
+  // a screen, not across a session.
+  await page.locator('.menu-plank').filter({ hasText: 'Library' }).click()
+  await expect(page.getByLabel('Search the library')).toBeVisible()
+  await page.locator('.menu-plank').filter({ hasText: 'Clip studio' }).click()
+
+  // The same recording, the same cuts, the same words, the same choice.
+  await expect(page.locator('.waveform-segment')).toHaveCount(4)
+  await expect(page.getByLabel('Playlist')).toHaveValue('Kept across screens')
+  await expect(page.locator('input[id^="line-"]').first()).toHaveValue('Shadow this line 1')
+  await expect(page.getByLabel('Publish clip 2')).not.toBeChecked()
+  await expect(publishButton(page)).toHaveText(/Publish 3 clips/)
+})
+
+test('a publish that fails says so and keeps the cut', async ({ page }) => {
+  await nameTheLines(page)
+
+  // The server refuses the batch. What is being checked is the studio's answer
+  // to that, which used to be "Saving…" on screen for good and no other word.
+  await page.route('**/api/admin/clips', (route) =>
+    route.request().method() === 'POST'
+      ? route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"nope"}' })
+      : route.continue(),
+  )
+
+  await publishButton(page).click()
+  await expect(page.getByText('Publishing stopped')).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText(/The cut is still here/)).toBeVisible()
+
+  // And the work is still on screen, ready to try again.
+  await expect(page.locator('.waveform-segment')).toHaveCount(4)
+  await expect(publishButton(page)).toBeEnabled()
+})

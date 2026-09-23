@@ -15,6 +15,34 @@ export interface NewClip {
   audio: Blob
 }
 
+/**
+ * How far publishing has got, for the screen to say so.
+ *
+ * Publishing a long recording is hundreds of requests and hundreds of megabytes
+ * of audio. It used to be one unlabelled "Saving…" for all of it, which is
+ * indistinguishable from a studio that has hung.
+ */
+export interface PublishProgress {
+  /** 'clips' while the rows are being written, 'audio' while their sound goes up. */
+  stage: 'clips' | 'audio'
+  done: number
+  total: number
+}
+
+export interface PublishResult {
+  /** Clips that reached the library. */
+  published: number
+  /**
+   * Clips that are in the library with no sound of their own.
+   *
+   * Not a thrown error: the clips exist and are worth having, and a take
+   * recorded against one is kept and measured, only not scored. Saying nothing
+   * would be worse — this is what the studio reports so the admin can put the
+   * audio back rather than discovering it from a learner.
+   */
+  withoutAudio: number
+}
+
 /** The parts of a published clip an admin can still change. */
 export type ClipEdit = Partial<Pick<Video, 'title' | 'playlist' | 'categories' | 'featured'>> & {
   line?: string
@@ -51,7 +79,11 @@ export interface Store {
   /** Publishes a batch. `sourceId` is the recording the studio already
    *  uploaded: pass it and the server cuts each clip's video out of it in the
    *  background. */
-  addClips: (clips: NewClip[], sourceId?: string | null) => Promise<void>
+  addClips: (
+    clips: NewClip[],
+    sourceId?: string | null,
+    onProgress?: (at: PublishProgress) => void,
+  ) => Promise<PublishResult>
   updateClip: (id: string, edit: ClipEdit) => Promise<void>
   deleteClip: (id: string) => Promise<void>
   /** Forgets the clips an episode the studio deleted took with it. */

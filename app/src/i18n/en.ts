@@ -338,6 +338,13 @@ export const en = {
     'Transcribing — the lines fill themselves in when it finishes. Keep cutting meanwhile.',
   'studio.published': 'Published',
   'studio.publishedBody': (n: number) => `${n} clips are now in the library.`,
+  'studio.publishedSilent': (n: number) =>
+    `${n} of them went up without their audio. A take against one of those is kept and measured, but not scored — publish the batch again to put the sound back.`,
+  'studio.publishFailed': 'Publishing stopped',
+  'studio.publishFailedKept':
+    'The cut is still here, exactly as you left it. Nothing has been thrown away — try again when you know what went wrong.',
+  'studio.savingClips': (done: number, total: number) => `Saving clips… ${done} of ${total}`,
+  'studio.savingAudio': (done: number, total: number) => `Sending audio… ${done} of ${total}`,
   'studio.cuttingVideo':
     'Their video is being cut in the background — learners can practise the audio meanwhile, and the picture appears when each cut is done.',
   'studio.noClips': 'No clips yet — cut a recording first.',

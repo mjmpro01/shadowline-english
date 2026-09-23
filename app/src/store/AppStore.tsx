@@ -5,7 +5,16 @@ import { clipName } from '../lib/clips'
 import { normalizeWord } from '../lib/text'
 import { clock } from '../lib/time'
 import { repository, type LeaderboardRow } from '../repository'
-import { AppContext, type ClipEdit, type LoadState, type NewClip, type Store, type VideoStats } from './context'
+import {
+  AppContext,
+  type ClipEdit,
+  type LoadState,
+  type NewClip,
+  type PublishProgress,
+  type PublishResult,
+  type Store,
+  type VideoStats,
+} from './context'
 
 const EMPTY: AppData = { videos: [], takes: [], vocab: [], profile: null }
 
@@ -25,6 +34,16 @@ const CUT_POLL_MS = 3_000
 /** How many clips to ask for at once. Mirrors store.MaxClipIDs on the server,
  *  which is what actually enforces it. */
 const CLIP_BATCH = 200
+
+/** Clips per create request. The server refuses a body over a megabyte, which
+ *  a batch of about two thousand clips reaches; two hundred leaves room and
+ *  gives the studio something to count. */
+const CREATE_BATCH = 200
+
+/** Audio uploads in flight at once. The browser runs six requests to a host, so
+ *  more than this only builds a queue nobody can see; fewer makes a long batch
+ *  slower than it has to be. */
+const AUDIO_AT_ONCE = 4
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AppData>(EMPTY)
@@ -131,53 +150,88 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLeaderboard([])
   }, [])
 
-  const addClips = useCallback(async (clips: NewClip[], sourceId?: string | null) => {
-    // A clip is one line: nothing longer is sent, whatever the studio's UI
-    // allowed while the cuts were being adjusted. The server checks too.
-    const withinLimit = clips.filter((c) => c.end - c.start <= MAX_CLIP_SECONDS + 0.01)
-    if (withinLimit.length === 0) return
+  const addClips = useCallback(
+    async (
+      clips: NewClip[],
+      sourceId?: string | null,
+      onProgress?: (at: PublishProgress) => void,
+    ): Promise<PublishResult> => {
+      // A clip is one line: nothing longer is sent, whatever the studio's UI
+      // allowed while the cuts were being adjusted. The server checks too.
+      const withinLimit = clips.filter((c) => c.end - c.start <= MAX_CLIP_SECONDS + 0.01)
+      if (withinLimit.length === 0) return { published: 0, withoutAudio: 0 }
 
-    // The recording was uploaded once when the studio opened it, so publishing
-    // sends its id rather than the file. A batch with no id — the upload failed
-    // — still publishes: the clips are worth having with their audio, and
-    // losing the admin's work over a picture would be the wrong trade.
+      // The recording was uploaded once when the studio opened it, so publishing
+      // sends its id rather than the file. A batch with no id — the upload failed
+      // — still publishes: the clips are worth having with their audio, and
+      // losing the admin's work over a picture would be the wrong trade.
 
-    // Unnamed clips are numbered across the batch being published, continuing
-    // from whatever the playlist already holds. Not named after their line any
-    // more: transcription fills a line into every clip, and a library of whole
-    // sentences for titles is a library you cannot scan.
-    const playlist = withinLimit[0]?.playlist ?? ''
-    // Asked of the server: it is a fact about the playlist, and the app does
-    // not hold the playlist. It used to count a library it had been sent, and
-    // two admins publishing to the same playlist at once both counted the same
-    // thing and both started from it.
-    const firstNumber = await repository.nextClipNumber(playlist)
+      // Unnamed clips are numbered across the batch being published, continuing
+      // from whatever the playlist already holds. Not named after their line any
+      // more: transcription fills a line into every clip, and a library of whole
+      // sentences for titles is a library you cannot scan.
+      const playlist = withinLimit[0]?.playlist ?? ''
+      // Asked of the server: it is a fact about the playlist, and the app does
+      // not hold the playlist. It used to count a library it had been sent, and
+      // two admins publishing to the same playlist at once both counted the same
+      // thing and both started from it.
+      const firstNumber = await repository.nextClipNumber(playlist)
 
-    const created = await repository.createClips(
-      withinLimit.map((clip, index) => ({
-        title: clip.title || clipName(firstNumber + index),
-        source: clip.source,
-        playlist: clip.playlist,
-        categories: clip.categories,
-        timestamp: `${clock(clip.start)}–${clock(clip.end)}`,
-        durationSeconds: clip.end - clip.start,
-        summary: 'No takes recorded yet — practice this clip to see your pitch analysis.',
-        captions: [{ text: clip.line, ipa: clip.ipa }],
-        sourceId: sourceId ?? undefined,
-        startSeconds: clip.start,
-        endSeconds: clip.end,
-      })),
-    )
+      // In lots rather than all at once. A fifty-minute recording proposes
+      // hundreds of cuts, and the whole batch in one request is a body the
+      // server refuses past a megabyte — which reads, from the studio, as
+      // publishing simply not working.
+      const created: Video[] = []
+      for (let from = 0; from < withinLimit.length; from += CREATE_BATCH) {
+        const lot = withinLimit.slice(from, from + CREATE_BATCH)
+        created.push(
+          ...(await repository.createClips(
+            lot.map((clip, index) => ({
+              title: clip.title || clipName(firstNumber + from + index),
+              source: clip.source,
+              playlist: clip.playlist,
+              categories: clip.categories,
+              timestamp: `${clock(clip.start)}–${clock(clip.end)}`,
+              durationSeconds: clip.end - clip.start,
+              summary: 'No takes recorded yet — practice this clip to see your pitch analysis.',
+              captions: [{ text: clip.line, ipa: clip.ipa }],
+              sourceId: sourceId ?? undefined,
+              startSeconds: clip.start,
+              endSeconds: clip.end,
+            })),
+          )),
+        )
+        onProgress?.({ stage: 'clips', done: created.length, total: withinLimit.length })
+      }
 
-    // Audio goes up per clip, after the ids exist. A clip whose upload fails
-    // stays in the library without source audio, which the app already handles:
-    // takes against it are measured but not scored.
-    await Promise.all(
-      created.map((clip, index) => repository.uploadClipAudio(clip.id, withinLimit[index].audio)),
-    )
+      // Audio goes up per clip, after the ids exist, a few at a time.
+      //
+      // It was every clip at once. The browser only runs six requests to a host
+      // anyway, so the rest sat in a queue nothing could see, and one rejection
+      // abandoned the others with the clips already published — which is how a
+      // batch ends up half in the library with no word about it. A clip whose
+      // audio never arrives is counted and reported instead: the app already
+      // copes with one, a take against it is kept and measured but not scored.
+      let done = 0
+      let withoutAudio = 0
+      const queue = created.map((clip, index) => ({ clip, audio: withinLimit[index].audio }))
+      const workers = Array.from({ length: Math.min(AUDIO_AT_ONCE, queue.length) }, async () => {
+        for (let next = queue.shift(); next; next = queue.shift()) {
+          try {
+            await repository.uploadClipAudio(next.clip.id, next.audio)
+          } catch {
+            withoutAudio++
+          }
+          onProgress?.({ stage: 'audio', done: ++done, total: created.length })
+        }
+      })
+      await Promise.all(workers)
 
-    setData((prev) => ({ ...prev, videos: [...created, ...prev.videos] }))
-  }, [])
+      setData((prev) => ({ ...prev, videos: [...created, ...prev.videos] }))
+      return { published: created.length, withoutAudio }
+    },
+    [],
+  )
 
   const updateClip = useCallback(async (id: string, edit: ClipEdit) => {
     const current = dataRef.current.videos.find((v) => v.id === id)
