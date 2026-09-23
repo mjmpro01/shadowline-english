@@ -185,11 +185,22 @@ def main() -> int:
         return 1
 
     blobs = storage_from_env()
-    # The same Whisper the cutter uses, loaded once per process and only when
-    # the first take needs it. It costs this worker a few hundred megabytes,
-    # which is the price of the headline score meaning what it says; set
-    # WORD_CHECK=0 on a deployment that would rather not pay it.
-    transcriber = None if os.environ.get("WORD_CHECK") == "0" else WhisperTranscriber()
+    # The same Whisper the cutter uses, loaded here rather than on the first
+    # take: a learner watching "measuring your pitch…" should not be waiting on
+    # a model load, and on a machine without one that wait is ten seconds and a
+    # failure. It costs this worker a few hundred megabytes, which is the price
+    # of the headline score meaning what it says; set WORD_CHECK=0 on a
+    # deployment that would rather not pay it.
+    transcriber: Transcriber | None = None
+    if os.environ.get("WORD_CHECK") != "0":
+        whisper = WhisperTranscriber()
+        if whisper.ready():
+            transcriber = whisper
+        else:
+            log.error(
+                "no usable transcription model — takes will be scored on prosody "
+                "alone, and a hummed line will score like a spoken one"
+            )
     running = True
 
     def stop(*_: object) -> None:

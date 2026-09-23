@@ -212,6 +212,13 @@ export const vi: Messages = {
 
   // --- vocabulary -----------------------------------------------------------
   'vocab.title': 'Từ vựng',
+  'vocab.due': (n: number) => `${n} từ đến hạn ôn`,
+  'vocab.nothingDue': 'Hôm nay không có từ nào đến hạn.',
+  'vocab.nextDue': (days: number) =>
+    days <= 1 ? 'Từ tiếp theo đến hạn vào ngày mai.' : `Từ tiếp theo đến hạn sau ${days} ngày.`,
+  'vocab.practiseAnyway': 'Vẫn muốn ôn',
+  'vocab.dueNow': 'Đến hạn',
+  'vocab.dueIn': (days: number) => (days <= 1 ? 'Hạn ngày mai' : `Hạn sau ${days} ngày`),
   'vocab.memoryPractice': 'Luyện ghi nhớ',
   'vocab.all': 'Tất cả',
   'vocab.new': 'Mới',
@@ -232,6 +239,8 @@ export const vi: Messages = {
   'cards.trySentence': (word: string) => `Thử đặt một câu của riêng bạn với "${word}".`,
   'cards.summary': (reviewed: number, known: number) =>
     `Đã ôn ${reviewed} từ — ${known} từ đánh dấu đã thuộc`,
+  'cards.again': 'Ôn lại lượt nữa',
+  'cards.scheduled': 'Mỗi từ đã được hẹn ngày gặp lại — nhớ càng chắc thì càng lâu sau mới hỏi.',
   'cards.done': 'Về Từ vựng',
 
   // --- progress -------------------------------------------------------------

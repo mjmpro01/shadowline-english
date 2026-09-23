@@ -169,3 +169,12 @@ class TestWordsBetween:
     def test_a_gap_with_no_speech_in_it_is_an_empty_line(self):
         assert words_between(SPOKEN, 2.0, 3.0) == []
         assert line_of([]) == ""
+
+
+def test_a_model_that_is_not_there_says_so_rather_than_raising():
+    """The scoring worker asks this at startup and carries on either way: a
+    machine with no model still scores takes, on prosody alone."""
+    from shadowline.transcribe import WhisperTranscriber
+
+    whisper = WhisperTranscriber(model="no-such-model-anywhere")
+    assert whisper.ready() is False

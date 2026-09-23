@@ -212,6 +212,13 @@ export const en = {
 
   // --- vocabulary -----------------------------------------------------------
   'vocab.title': 'Vocabulary',
+  'vocab.due': (n: number) => `${n} ${n === 1 ? 'word' : 'words'} to review`,
+  'vocab.nothingDue': 'Nothing to review today.',
+  'vocab.nextDue': (days: number) =>
+    days <= 1 ? 'The next word is due tomorrow.' : `The next word is due in ${days} days.`,
+  'vocab.practiseAnyway': 'Practise anyway',
+  'vocab.dueNow': 'Due',
+  'vocab.dueIn': (days: number) => (days <= 1 ? 'Due tomorrow' : `Due in ${days} days`),
   'vocab.memoryPractice': 'Memory practice',
   'vocab.all': 'All',
   'vocab.new': 'New',
@@ -232,6 +239,8 @@ export const en = {
   'cards.trySentence': (word: string) => `Try using "${word}" in a sentence of your own.`,
   'cards.summary': (reviewed: number, known: number) =>
     `Reviewed ${reviewed} ${reviewed === 1 ? 'word' : 'words'} — ${known} marked known`,
+  'cards.again': 'Go round again',
+  'cards.scheduled': 'Each word is booked in for another day — the better you knew it, the further off.',
   'cards.done': 'Back to Vocabulary',
 
   // --- progress -------------------------------------------------------------

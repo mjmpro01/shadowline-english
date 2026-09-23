@@ -191,6 +191,12 @@ export interface VocabWord {
   videoId: string | null
   /** Last time this came up in memory practice; null until it has. */
   reviewedAt: string | null
+  /** How far ahead this card is currently scheduled. Zero for a word nobody
+   *  has recalled yet, and for one just forgotten. */
+  intervalDays: number
+  /** When it is next worth asking about. The server sets it — a deck built
+   *  from a device with a wrong clock would be the wrong deck. */
+  dueAt: string
 }
 
 export interface NeedPracticeItem {

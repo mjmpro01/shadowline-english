@@ -75,10 +75,26 @@ single learner shows one row. Below it sit the clips an admin has featured.
 ## Memory practice
 
 The Vocabulary screen opens a flashcard session over the words you have
-collected by tapping them while practising. Words you have not learnt come
-first, and within a status the ones you have not seen for longest lead, so a
-second session is not the same cards in the same order. Known words stay in the
-deck rather than being dropped — they are what you are trying not to forget.
+collected by tapping them while practising. The deck is **what is due**, not
+everything you have ever collected: a card answered today is booked in for
+another day, and how far off depends on whether you recalled it.
+
+The ladder is a day, three, a week, a fortnight, a month, two, four. Recalling
+a word moves it one step up; forgetting it puts it back at the front, not one
+step down — a word that has gone is gone, and walking it back through a month
+would ask about it next in a fortnight. Ticking "known" in the list is not a
+recall, because nothing was tested; it retires the card to the top of the
+ladder, which is what "stop asking me" means. The arithmetic and the reasons
+are in `server/internal/store/schedule.go`, which is where the schedule is
+kept — a deck built from a device with a wrong clock would be the wrong deck.
+
+A word you have just forgotten comes back once more before the session ends.
+Once, not until you get it: twice would be a loop for anybody having a bad day
+with one word.
+
+With nothing due, the screen says so and says when the next word comes round,
+and still offers to practise anyway. The schedule is advice about what is worth
+reviewing, not a lock on the door.
 
 ## Clip studio
 

@@ -16,6 +16,11 @@ type VocabWord struct {
 	Status     string     `json:"status"`
 	ClipID     *uuid.UUID `json:"videoId"`
 	ReviewedAt *time.Time `json:"reviewedAt"`
+	// How far ahead this card is currently scheduled, and when it is next
+	// worth asking about. The schedule is the server's: a deck built from a
+	// device with a wrong clock would be the wrong deck.
+	IntervalDays int       `json:"intervalDays"`
+	DueAt        time.Time `json:"dueAt"`
 }
 
 // A learner's card reads its pronunciation and meaning from the shared gloss
@@ -29,11 +34,12 @@ type VocabWord struct {
 const vocabColumns = `id, word,
 	coalesce(nullif((select g.ipa from glosses g where g.word = vocab_words.word), ''), vocab_words.ipa),
 	coalesce(nullif((select g.meaning from glosses g where g.word = vocab_words.word), ''), vocab_words.meaning),
-	status, clip_id, reviewed_at`
+	status, clip_id, reviewed_at, interval_days, due_at`
 
 func scanVocab(row pgx.Row) (VocabWord, error) {
 	var v VocabWord
-	err := row.Scan(&v.ID, &v.Word, &v.IPA, &v.Meaning, &v.Status, &v.ClipID, &v.ReviewedAt)
+	err := row.Scan(&v.ID, &v.Word, &v.IPA, &v.Meaning, &v.Status, &v.ClipID, &v.ReviewedAt,
+		&v.IntervalDays, &v.DueAt)
 	return v, mapErr(err)
 }
 
@@ -85,14 +91,53 @@ type VocabPatch struct {
 	Reviewed bool `json:"reviewed"`
 }
 
+// UpdateVocabWord records an answer and moves the card's schedule with it.
+//
+// Four cases, and the difference between the top two and the bottom two is
+// whether anything was actually tested:
+//
+//   - recalled in practice: one step up the ladder.
+//   - forgotten in practice: back to the front.
+//   - marked known in the list: retired, which is an instruction about the
+//     deck rather than a recall — nothing was tested, so it does not climb.
+//   - marked anything else in the list: due again now.
+//
+// The schedule is computed here rather than in SQL because the ladder is a
+// list with a test beside it, and a CASE expression seven steps long is a
+// thing nobody would read again.
 func (s *Store) UpdateVocabWord(ctx context.Context, userID, id uuid.UUID, p VocabPatch) (VocabWord, error) {
+	var current int
+	var status string
+	err := s.pool.QueryRow(ctx,
+		`select interval_days, status from vocab_words where id = $1 and user_id = $2`, id, userID).
+		Scan(&current, &status)
+	if err != nil {
+		return VocabWord{}, mapErr(err)
+	}
+	if p.Status != nil {
+		status = *p.Status
+	}
+
+	now := time.Now()
+	next := Forgotten(now)
+	switch {
+	case p.Reviewed && status == "known":
+		next = Recalled(current, now)
+	case p.Reviewed:
+		next = Forgotten(now)
+	case status == "known":
+		next = Retired(now)
+	}
+
 	return scanVocab(s.pool.QueryRow(ctx, `
 		update vocab_words set
-			status      = coalesce($3, status),
-			reviewed_at = case when $4 then now() else reviewed_at end
+			status        = coalesce($3, status),
+			reviewed_at   = case when $4 then now() else reviewed_at end,
+			interval_days = $5,
+			due_at        = $6
 		where id = $1 and user_id = $2
 		returning `+vocabColumns,
-		id, userID, p.Status, p.Reviewed))
+		id, userID, p.Status, p.Reviewed, next.IntervalDays, next.DueAt))
 }
 
 func (s *Store) DeleteVocabWord(ctx context.Context, userID, id uuid.UUID) error {
