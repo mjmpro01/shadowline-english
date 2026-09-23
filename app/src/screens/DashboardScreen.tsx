@@ -1,4 +1,6 @@
 import { useNavigate } from 'react-router-dom'
+import { useRemote } from '../lib/remote'
+import { repository } from '../repository'
 import { useT } from '../i18n'
 import { ClipFace } from '../components/ClipFace'
 import { Icon } from '../components/Icon'
@@ -18,7 +20,11 @@ export function DashboardScreen() {
   const rows = leaderboard.map((row, index) => ({ ...row, rank: index + 1 }))
   const podium = rows.slice(0, 3)
   const rest = rows.slice(3)
-  const featured = data.videos.filter((video) => video.featured)
+  // An admin picks these, so there are a handful of them and they have an
+  // endpoint of their own. The app used to filter them out of every clip in
+  // the library, which is why it was being sent every clip.
+  const remote = useRemote('', () => repository.featuredClips())
+  const featured = remote.state === 'ready' ? remote.value : []
 
   /* The HUD. Four numbers a learner checks before deciding whether to practise,
      so each carries its own glyph: at a glance the row reads as a row of

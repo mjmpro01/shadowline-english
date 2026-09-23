@@ -180,9 +180,13 @@ test('deleting a clip removes it from the library', async ({ page }) => {
   await page.goto('/admin')
   await page.getByText('Clips (', { exact: false }).click()
 
+  // The search runs on the server now — the studio pages through the library
+  // rather than filtering a copy of it.
   await page.getByLabel('Find a clip').fill('Shadow this line 1')
   await expect(page.locator('.card', { hasText: 'Name' })).toHaveCount(1)
   await page.getByRole('button', { name: 'Delete clip' }).first().click()
+  await expect(page.getByText(/its audio and every take/)).toBeVisible()
+  await page.getByRole('button', { name: 'Delete', exact: true }).click()
   await expect(page.locator('.card', { hasText: 'Name' })).toHaveCount(0)
 
   await page.goto('/library')

@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useRemote } from '../lib/remote'
+import { repository } from '../repository'
 import { useNavigate } from 'react-router-dom'
 import { AvatarSlot } from '../components/AvatarSlot'
 import { Dialog } from '../components/Dialog'
@@ -15,6 +17,9 @@ export function ProfileScreen() {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(profile?.name ?? '')
   const [avatar, setAvatar] = useState<Blob | null>(null)
+  // Above the early return: a hook after it runs on some renders and not
+  // others, which is the one thing React cannot cope with.
+  const summary = useRemote('', () => repository.librarySummary())
 
   if (!profile) return null
 
@@ -37,7 +42,12 @@ export function ProfileScreen() {
   }
 
   const stats = [
-    { label: t('profile.clipsInLibrary'), value: data.videos.length },
+    {
+      label: t('profile.clipsInLibrary'),
+      // From the library's own summary: counting a list the app had been sent
+      // is what that list was costing 7.4MB for.
+      value: summary.state === 'ready' ? summary.value.clips : '—',
+    },
     { label: t('profile.totalTakes'), value: data.takes.length },
     { label: t('profile.wordsTracked'), value: data.vocab.length },
   ]

@@ -78,7 +78,11 @@ func (s *Server) Routes() http.Handler {
 		r.Get("/episodes/{id}", s.handleGetEpisode)
 		r.Get("/library/search", s.handleSearch)
 
+		r.Get("/library/summary", s.handleLibrarySummary)
+
 		r.Get("/clips", s.handleListClips)
+		r.Get("/clips/featured", s.handleFeaturedClips)
+		r.Get("/clips/next-up", s.handleNextUp)
 		r.Get("/clips/{id}", s.handleGetClip)
 		r.Get("/clips/{id}/audio", s.handleClipAudio)
 		r.Get("/clips/{id}/video", s.handleClipVideo)
@@ -107,6 +111,8 @@ func (s *Server) Routes() http.Handler {
 
 		r.Group(func(r chi.Router) {
 			r.Use(s.requireAdmin)
+			r.Get("/admin/clips", s.handleStudioClips)
+			r.Get("/admin/clips/next-number", s.handleNextClipNumber)
 			r.Post("/admin/sources", s.handleUploadSource)
 			r.Get("/admin/sources/{id}/transcript", s.handleSourceTranscript)
 			r.Post("/admin/clips", s.handleCreateClips)

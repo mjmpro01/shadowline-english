@@ -1,4 +1,4 @@
-import { api } from '../lib/api'
+import { api, ApiError } from '../lib/api'
 import type {
   CaptionLine,
   Dub,
@@ -46,7 +46,26 @@ export interface Repository {
   /** Removes a series. The server refuses one that still has clips in it. */
   deletePlaylist(id: string): Promise<void>
 
-  listClips(): Promise<Video[]>
+  /** The clips a screen already knows it wants. There is no endpoint for the
+   *  whole library any more: it was 7.4MB at sign-in, most of it signed poster
+   *  URLs for clips nobody was going to open. */
+  clipsByIds(ids: string[]): Promise<Video[]>
+  /** One clip, or null when it is not there any more. */
+  clip(id: string): Promise<Video | null>
+  /** What the dashboard offers; an admin picks these. */
+  featuredClips(): Promise<Video[]>
+  /** What to practise next — a clip never tried, or the one that went worst.
+   *  A question about the whole library, so the server answers it. */
+  nextUp(): Promise<Video | null>
+  /** The counts and the tags the app used to work out by counting a library
+   *  it had been sent. */
+  librarySummary(): Promise<LibrarySummary>
+  /** The studio's clip manager, which is the one screen whose job is the whole
+   *  library — and it still pages through it. */
+  studioClips(query: string, limit: number, offset: number): Promise<StudioClips>
+  /** What the next unnamed clip in a playlist should be called. A fact about
+   *  the playlist, which the app no longer holds. */
+  nextClipNumber(playlist: string): Promise<number>
   clipAudioURL(clipId: string): Promise<string | null>
   /** Null until the cutter has produced one, and for ever on an audio clip. */
   clipVideoURL(clipId: string): Promise<string | null>
@@ -85,6 +104,17 @@ export interface Repository {
   uploadAvatar(avatar: Blob): Promise<Profile>
 
   leaderboard(): Promise<LeaderboardRow[]>
+}
+
+export interface LibrarySummary {
+  clips: number
+  series: number
+  categories: string[]
+}
+
+export interface StudioClips {
+  clips: Video[]
+  total: number
 }
 
 export interface PlaylistPage {
@@ -208,8 +238,45 @@ class ApiRepository implements Repository {
     return api.del(`/api/admin/playlists/${id}`)
   }
 
-  listClips() {
-    return api.get<Video[]>('/api/clips')
+  clipsByIds(ids: string[]) {
+    if (ids.length === 0) return Promise.resolve([])
+    return api.get<Video[]>(`/api/clips?ids=${ids.join(',')}`)
+  }
+
+  async clip(id: string) {
+    try {
+      return await api.get<Video>(`/api/clips/${id}`)
+    } catch (err) {
+      // Gone is an answer, not a failure: a clip an admin deleted while
+      // somebody had it open.
+      if (err instanceof ApiError && err.status === 404) return null
+      throw err
+    }
+  }
+
+  featuredClips() {
+    return api.get<Video[]>('/api/clips/featured')
+  }
+
+  async nextUp() {
+    const { clip } = await api.get<{ clip: Video | null }>('/api/clips/next-up')
+    return clip
+  }
+
+  librarySummary() {
+    return api.get<LibrarySummary>('/api/library/summary')
+  }
+
+  studioClips(query: string, limit: number, offset: number) {
+    const params = new URLSearchParams({ q: query, limit: String(limit), offset: String(offset) })
+    return api.get<StudioClips>(`/api/admin/clips?${params.toString()}`)
+  }
+
+  async nextClipNumber(playlist: string) {
+    const { next } = await api.get<{ next: number }>(
+      `/api/admin/clips/next-number?playlist=${encodeURIComponent(playlist)}`,
+    )
+    return next
   }
 
   async clipAudioURL(clipId: string) {

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRemote } from '../lib/remote'
 import { useT } from '../i18n'
 import { Icon } from '../components/Icon'
 import { SegmentedControl } from '../components/SegmentedControl'
+import { StudioClips } from './StudioClips'
 import { StudioSeries } from './StudioSeries'
 import { ThumbnailStrip } from '../components/ThumbnailStrip'
 import { WaveformEditor } from '../components/WaveformEditor'
@@ -9,12 +11,11 @@ import { MAX_CLIP_SECONDS, type Transcript } from '../data/types'
 import { looksLikeVideo } from '../lib/media'
 import { decodeFile, peaks as computePeaks, type Column } from '../lib/audio/decode'
 import { proposeSegments, type Segment } from '../lib/audio/segment'
-import { clipName, formatCategories, nextClipNumber, parseCategories, searchClips } from '../lib/clips'
+import { clipName, parseCategories } from '../lib/clips'
 import { sliceToWav } from '../lib/audio/wav'
 import { ipaOf, lineOf, wordsBetween } from '../lib/transcript'
 import { extractFrames } from '../lib/video/frames'
 import { repository } from '../repository'
-import { SavedField } from '../components/SavedField'
 import { useApp } from '../store/context'
 
 const WAVEFORM_COLUMNS = 900
@@ -71,11 +72,13 @@ type Tab = 'cut' | 'clips' | 'series'
 
 export function AdminScreen() {
   const t = useT()
-  const { data, addClips, updateClip, deleteClip } = useApp()
+  const { addClips } = useApp()
   const [tab, setTab] = useState<Tab>('cut')
-  // Shown on the tab itself, so the count is right before the tab is opened.
+  // Shown on the tabs themselves, so the counts are right before a tab is
+  // opened. Each tab reports its own; the app no longer holds a library to
+  // count.
   const [seriesCount, setSeriesCount] = useState(0)
-  const [manageQuery, setManageQuery] = useState('')
+  const [clipCount, setClipCount] = useState(0)
   const fileInput = useRef<HTMLInputElement>(null)
   const player = useRef<HTMLAudioElement>(null)
   const video = useRef<HTMLVideoElement>(null)
@@ -416,15 +419,22 @@ export function AdminScreen() {
     setTranscript(null)
   }
 
+  // Where the numbering starts, asked of the server: it is a fact about the
+  // playlist, and the app no longer holds the playlist. Falls back to 1 while
+  // the answer is in flight, which is what an empty playlist would say anyway.
+  const numberFrom = useRemote(playlist.trim() || loaded?.name || '', (name) =>
+    repository.nextClipNumber(name),
+  )
+  const firstNumber = numberFrom.state === 'ready' ? numberFrom.value : 1
+
   const included = lines.filter((line) => line.include).length
 
   // The name each unnamed clip will carry, worked out the way publishing works
   // it out: numbered across the selected clips only, continuing from what the
   // playlist already holds. Shown as the placeholder so the studio is not
   // promising one thing and saving another.
-  const publishPlaylist = playlist.trim() || loaded?.name || ''
   const clipNumbers: number[] = []
-  let nextNumber = nextClipNumber(data.videos, publishPlaylist)
+  let nextNumber = firstNumber
   for (const [index, line] of lines.entries()) {
     clipNumbers[index] = line.include ? nextNumber++ : 0
   }
@@ -457,75 +467,14 @@ export function AdminScreen() {
         onChange={setTab}
         options={[
           { value: 'cut', label: t('studio.tabCut') },
-          { value: 'clips', label: `Clips (${data.videos.length})` },
+          { value: 'clips', label: t('studio.tabClipsCount', clipCount) },
           { value: 'series', label: t('studio.tabSeries', seriesCount) },
         ]}
       />
 
       {tab === 'series' && <StudioSeries onCount={setSeriesCount} />}
 
-      {tab === 'clips' && (
-        <div className="stack gap-3">
-          <input
-            className="input"
-            placeholder="Find a clip by name, line, playlist or category"
-            value={manageQuery}
-            onChange={(e) => setManageQuery(e.target.value)}
-            aria-label="Find a clip"
-          />
-          {searchClips(data.videos, { query: manageQuery }).map((video) => (
-            <div className="card elev-sm stack gap-2" key={video.id}>
-              <div className="row between wrap gap-2">
-                <span className="card-meta mono">
-                  {video.source} · {video.timestamp} · {clock(video.durationSeconds)}
-                </span>
-                <div className="row gap-2">
-                  <button
-                    type="button"
-                    className={`btn ${video.featured ? 'btn-primary' : 'btn-secondary'}`}
-                    onClick={() => void updateClip(video.id, { featured: !video.featured })}
-                  >
-                    {video.featured ? t('studio.featured') : t('studio.feature')}
-                  </button>
-                  <button type="button" className="btn btn-ghost" onClick={() => void deleteClip(video.id)}>
-                    Delete clip
-                  </button>
-                </div>
-              </div>
-              <div className="row gap-3 wrap">
-                <SavedField
-                  id={`name-${video.id}`}
-                  label="Name"
-                  value={video.title}
-                  style={{ flex: '1 1 220px' }}
-                  onSave={(title) => void updateClip(video.id, { title })}
-                />
-                <SavedField
-                  id={`playlist-${video.id}`}
-                  label="Playlist"
-                  value={video.playlist}
-                  style={{ flex: '1 1 160px' }}
-                  onSave={(playlist) => void updateClip(video.id, { playlist })}
-                />
-                <SavedField
-                  id={`cats-${video.id}`}
-                  label="Categories"
-                  value={formatCategories(video.categories)}
-                  style={{ flex: '1 1 160px' }}
-                  onSave={(raw) => void updateClip(video.id, { categories: parseCategories(raw) })}
-                />
-              </div>
-              <SavedField
-                id={`text-${video.id}`}
-                label="Line"
-                value={video.captions[0]?.text ?? ''}
-                onSave={(line) => void updateClip(video.id, { line })}
-              />
-            </div>
-          ))}
-          {data.videos.length === 0 && <div className="card-meta">{t('studio.noClips')}</div>}
-        </div>
-      )}
+      {tab === 'clips' && <StudioClips onCount={setClipCount} />}
 
       {tab === 'cut' && (
       <div className="row gap-3 wrap">

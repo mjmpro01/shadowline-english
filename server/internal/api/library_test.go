@@ -251,14 +251,14 @@ func TestAClipNamesTheEpisodeAndSeriesItIsIn(t *testing.T) {
 	source := uploadSource(t, admin, "s01e01.mp4")
 	clip := inPlaylist("Line one", "Friends")
 	clip["sourceId"] = source.ID
-	publishClips(t, admin, clip)
+	published := publishClips(t, admin, clip)[0]
 
 	type placed struct {
 		EpisodeID  *string `json:"episodeId"`
 		PlaylistID *string `json:"playlistId"`
 	}
 	listed := expect[[]placed](t, h.login("learner@example.com").
-		do("GET", "/api/clips", "", nil), http.StatusOK)
+		do("GET", "/api/clips?ids="+published.ID, "", nil), http.StatusOK)
 	if len(listed) != 1 {
 		t.Fatalf("listed %d clips, want 1", len(listed))
 	}
@@ -353,7 +353,7 @@ func TestRenamingASeriesRenamesItOnItsClips(t *testing.T) {
 	expect[playlistJSON](t, admin.json("PATCH", "/api/admin/playlists/"+id,
 		map[string]any{"title": "Friends"}), http.StatusOK)
 
-	clips := expect[[]clipJSON](t, admin.do("GET", "/api/clips", "", nil), http.StatusOK)
+	clips := everyClip(t, admin)
 	if clips[0].Playlist != "Friends" {
 		t.Fatalf("the clip still says %q", clips[0].Playlist)
 	}
@@ -387,7 +387,7 @@ func TestAnEpisodeCanBeMovedToAnotherSeries(t *testing.T) {
 	if len(page.Episodes) != 0 {
 		t.Fatalf("the old series still lists %d episodes", len(page.Episodes))
 	}
-	clips := expect[[]clipJSON](t, admin.do("GET", "/api/clips", "", nil), http.StatusOK)
+	clips := everyClip(t, admin)
 	for _, c := range clips {
 		if c.Title == "Line one" && c.Playlist != "Seinfeld" {
 			t.Fatalf("the clip stayed in %q", c.Playlist)
@@ -495,7 +495,7 @@ func TestDeletingAnEpisodeTakesItsClipsWithIt(t *testing.T) {
 
 	expectStatus(t, admin.do("DELETE", "/api/admin/episodes/"+source.ID, "", nil), http.StatusNoContent)
 
-	left := expect[[]clipJSON](t, admin.do("GET", "/api/clips", "", nil), http.StatusOK)
+	left := everyClip(t, admin)
 	if len(left) != 1 || left[0].Title != "Kept" {
 		t.Fatalf("the library holds %+v", left)
 	}

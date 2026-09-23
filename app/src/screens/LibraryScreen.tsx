@@ -10,8 +10,6 @@ import { useDebounced, useRemote } from '../lib/remote'
 import { tintOf } from '../lib/score'
 import { clock } from '../lib/time'
 import { repository } from '../repository'
-import { useApp } from '../store/context'
-import { allCategories } from '../lib/clips'
 
 /**
  * The library's front door: every series, and one search across all of them.
@@ -29,13 +27,12 @@ export function LibraryScreen() {
   const settled = useDebounced(query.trim(), 250)
   const searching = searchIsWorthRunning(settled)
 
-  // The tags are read from the clips the app already holds, and each one is a
-  // search rather than a filter of its own: a category cuts across series, so
-  // it has no place in a tree, and the server matches tags already. This is the
-  // one thing on this screen still reading the whole library, and it comes out
-  // with that load when the load goes.
-  const { data } = useApp()
-  const categories = allCategories(data.videos)
+  // Each tag is a search rather than a filter of its own: a category cuts
+  // across series, so it has no place in a tree, and the server matches tags
+  // already. The list comes from the library's summary — this used to read
+  // every clip in the library, which is why the app was being sent them.
+  const summary = useRemote('', () => repository.librarySummary())
+  const categories = summary.state === 'ready' ? summary.value.categories : []
 
   const series = useRemote('', () => repository.listPlaylists())
   const found = useRemote(searching ? settled : '', (q) =>

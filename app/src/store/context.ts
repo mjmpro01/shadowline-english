@@ -56,6 +56,11 @@ export interface Store {
   deleteClip: (id: string) => Promise<void>
   /** Forgets the clips an episode the studio deleted took with it. */
   forgetEpisode: (episodeId: string) => void
+  /** Fetches clips the app does not hold yet. `data.videos` is a cache of the
+   *  clips screens have asked for, not the library. */
+  ensureClips: (ids: string[]) => Promise<void>
+  /** Whether a clip is known not to exist, as opposed to not fetched yet. */
+  clipMissing: (id: string) => boolean
   addTake: (videoId: string, audio: Blob) => Promise<Take>
   /** Throws a recording away. Nothing else keeps a copy of it. */
   deleteTake: (id: string) => Promise<void>

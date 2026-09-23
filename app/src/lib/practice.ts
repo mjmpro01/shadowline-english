@@ -1,11 +1,12 @@
-import { METRIC_NAMES, type MetricName, type Take, type Video } from '../data/types'
+import { METRIC_NAMES, type MetricName, type Take } from '../data/types'
 
 export interface PracticeSuggestion {
-  id: string
-  title: string
+  /** The clip. Its name is not here: this is worked out from takes alone, and
+   *  the screen fetches the three clips it ends up naming. The app does not
+   *  hold the library any more. */
+  videoId: string
   /** The measurements behind the suggestion, for the screen to word. */
   detail: { score: number; metric?: MetricName; value?: number }
-  videoId: string
 }
 
 /**
@@ -19,7 +20,7 @@ export interface PracticeSuggestion {
  * already managed 88 on a line, it is not the one to practise next, whatever
  * today's attempt looked like.
  */
-export function needsPractice(takes: Take[], videos: Video[], limit = 3): PracticeSuggestion[] {
+export function needsPractice(takes: Take[], limit = 3): PracticeSuggestion[] {
   const best = new Map<string, Take>()
   for (const take of takes) {
     if (take.score === null) continue
@@ -30,25 +31,19 @@ export function needsPractice(takes: Take[], videos: Video[], limit = 3): Practi
   return [...best.values()]
     .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
     .slice(0, limit)
-    .flatMap((take) => {
-      const video = videos.find((v) => v.id === take.videoId)
-      if (!video) return []
+    .map((take) => {
       const weakest = weakestMetric(take)
       // Only scored takes reach here — the loop above skips the rest — but the
       // Map loses that for the compiler, and the same `?? 0` is already what
       // the sort above uses.
       const score = take.score ?? 0
-      return [
-        {
-          id: take.videoId,
-          title: video.title,
-          // The sentence is built where the language is known. This carries the
-          // parts, not the words: a suggestion assembled here would be English
-          // wherever it was shown.
-          detail: weakest ? { score, metric: weakest.name, value: weakest.value } : { score },
-          videoId: take.videoId,
-        },
-      ]
+      return {
+        videoId: take.videoId,
+        // The sentence is built where the language is known. This carries the
+        // parts, not the words: a suggestion assembled here would be English
+        // wherever it was shown.
+        detail: weakest ? { score, metric: weakest.name, value: weakest.value } : { score },
+      }
     })
 }
 
@@ -93,29 +88,4 @@ export function weakestOverall(takes: Take[]): MetricName | null {
     }
   }
   return weakest
-}
-
-/**
- * The clip to offer next: one never practised, or failing that the one with
- * the lowest best score. Null when the library is empty.
- *
- * This used to be `videos.find(v => v.id === 'v5')`, a prototype id no real
- * library has, so it always fell through to whichever clip happened to be
- * first — offered under a sentence claiming it had been chosen.
- */
-export function nextUp(takes: Take[], videos: Video[]): Video | null {
-  if (!videos.length) return null
-
-  const practised = new Set(takes.map((take) => take.videoId))
-  const fresh = videos.find((video) => !practised.has(video.id))
-  if (fresh) return fresh
-
-  const best = new Map<string, number>()
-  for (const take of takes) {
-    if (take.score === null) continue
-    best.set(take.videoId, Math.max(best.get(take.videoId) ?? 0, take.score))
-  }
-  return (
-    [...videos].sort((a, b) => (best.get(a.id) ?? 0) - (best.get(b.id) ?? 0))[0] ?? videos[0]
-  )
 }
