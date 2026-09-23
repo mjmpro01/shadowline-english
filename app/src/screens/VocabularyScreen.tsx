@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { dueDeck, daysUntil, nextDue } from '../lib/flashcards'
 import { useNavigate } from 'react-router-dom'
 import { useT } from '../i18n'
@@ -30,12 +30,19 @@ const STATUS_LABEL: Record<VocabStatus, MessageKey> = {
 }
 
 export function VocabularyScreen() {
-  const { data, setVocabStatus } = useApp()
+  const { data, setVocabStatus, ensureClips } = useApp()
   const navigate = useNavigate()
   const t = useT()
   const [filter, setFilter] = useState<'All' | VocabStatus>('All')
 
   const words = data.vocab.filter((word) => filter === 'All' || word.status === filter)
+
+  // Each card can name the clip its word was tapped in, so the clips the shown
+  // cards point at are fetched — the handful of them, not the library.
+  const clipIds = [...new Set(words.map((word) => word.videoId).filter((id) => id !== null))].join(',')
+  useEffect(() => {
+    if (clipIds) void ensureClips(clipIds.split(','))
+  }, [clipIds, ensureClips])
 
   // What the schedule has to say today. The deck is what is due; everything
   // else has a date on it, and the screen says which rather than offering a

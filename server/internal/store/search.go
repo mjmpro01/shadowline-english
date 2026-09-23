@@ -38,9 +38,7 @@ func (s *Store) Search(ctx context.Context, query string) (Results, error) {
 	if len(query) < MinSearch {
 		return out, nil
 	}
-	// Escape what LIKE treats as a wildcard, so searching for a literal
-	// underscore or percent finds one rather than everything.
-	like := "%" + strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(query) + "%"
+	like := "%" + escapeLike(query) + "%"
 
 	rows, err := s.pool.Query(ctx, `select `+playlistColumns+`
 		from playlists p
@@ -110,4 +108,10 @@ func (s *Store) Search(ctx context.Context, query string) (Results, error) {
 		out.Clips = append(out.Clips, c)
 	}
 	return out, rows.Err()
+}
+
+// escapeLike neutralises what LIKE treats as a wildcard, so searching for a
+// literal underscore or percent finds one rather than everything.
+func escapeLike(text string) string {
+	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(text)
 }

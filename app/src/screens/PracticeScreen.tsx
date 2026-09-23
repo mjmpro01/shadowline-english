@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
+import { useClip } from '../lib/useClip'
 import { CaptionLine } from '../components/CaptionLine'
 import { heardCount, heardIn } from '../lib/words'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -68,7 +69,7 @@ export function PracticeScreen() {
   // abandoned take's score on screen underneath the new recording's waveform.
   const attempt = useRef(0)
 
-  const video = data.videos.find((v) => v.id === videoId)
+  const { clip: video, loading: clipLoading } = useClip(videoId)
   // Match the clip's own length so a one-second line does not wait out six.
   // Floor at half a second so a zero/missing duration still stops itself.
   const recordLimit = Math.min(
@@ -116,7 +117,9 @@ export function PracticeScreen() {
   // The clip list arrives from the server, so "not found yet" and "not found"
   // are different answers. Redirecting on the first would throw anyone opening
   // a link to a clip straight back to the library.
-  if (state === 'loading') return <Loading />
+  // The clip arrives on its own now rather than with everything else, so
+  // waiting for it is a state of this screen and not of the whole app.
+  if (state === 'loading' || clipLoading) return <Loading />
   if (state === 'error') return <LoadFailure />
   if (!video || !line) return <NoSuchClip />
 

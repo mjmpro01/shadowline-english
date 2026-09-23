@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useRemote } from '../lib/remote'
+import { repository } from '../repository'
 import { useNavigate } from 'react-router-dom'
 import { useT } from '../i18n'
 import { ClipFace } from '../components/ClipFace'
 import { Icon } from '../components/Icon'
-import { needsPractice, nextUp, weakestOverall } from '../lib/practice'
+import { needsPractice, weakestOverall } from '../lib/practice'
 import { METRIC_NAMES, type MetricName } from '../data/types'
 import { colorFor } from '../lib/score'
 import { useApp } from '../store/context'
@@ -18,14 +20,27 @@ const PAD_T = 20
 const PAD_B = 24
 
 export function ProgressScreen() {
-  const { data } = useApp()
+  const { data, ensureClips } = useApp()
   const navigate = useNavigate()
   const t = useT()
   const [filter, setFilter] = useState<Filter>('All')
 
   // The clips you scored lowest, rather than three hand-written rows pointing
-  // at clip ids a real library would not have.
-  const suggestions = needsPractice(data.takes, data.videos)
+  // at clip ids a real library would not have. Worked out from takes alone;
+  // the three clips it names are then fetched, because the app no longer holds
+  // the library to look a name up in.
+  const suggestions = needsPractice(data.takes)
+  const suggestedIds = suggestions.map((item) => item.videoId).join(',')
+  useEffect(() => {
+    if (suggestedIds) void ensureClips(suggestedIds.split(','))
+  }, [suggestedIds, ensureClips])
+  const titleOf = (videoId: string) =>
+    data.videos.find((video) => video.id === videoId)?.title ?? ''
+
+  // What to practise next is a question about the whole library, so the server
+  // answers it.
+  const upNext = useRemote('', () => repository.nextUp())
+  const suggested = upNext.state === 'ready' ? upNext.value : null
 
   const series = useMemo(() => {
     const byDay = new Map<string, number[]>()
@@ -57,7 +72,6 @@ export function ProgressScreen() {
      through to whichever clip happened to be first, and offered it under a
      sentence claiming a stress score had been measured and found wanting. With
      no takes recorded at all, there was no such score to have. */
-  const suggested = nextUp(data.takes, data.videos)
   const weakest = weakestOverall(data.takes)
   const practised = new Set(data.takes.map((take) => take.videoId))
 
@@ -153,10 +167,10 @@ export function ProgressScreen() {
           <div className="card-meta">{t('progress.needPracticeEmpty')}</div>
         )}
         {suggestions.map((item) => (
-          <div className="card elev-sm row between gap-3" key={item.id}>
+          <div className="card elev-sm row between gap-3" key={item.videoId}>
             <div>
               <div className="card-title" style={{ fontSize: 15 }}>
-                {item.title}
+                {titleOf(item.videoId)}
               </div>
               <div className="card-meta">
                 {item.detail.metric

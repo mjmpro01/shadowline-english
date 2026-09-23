@@ -27,17 +27,23 @@ async function publishVideoClip(page: import('@playwright/test').Page) {
   await page.getByRole('button', { name: /Publish \d+ clips/ }).click()
   await expect(page.getByText(/clips are now in the library/)).toBeVisible({ timeout: 60_000 })
 
-  await asLearner(page)
-  // The cutter has to land before there is a picture to dub onto.
+  // The cutter has to land before there is a picture to dub onto. Polled as the
+  // admin, through the studio's clip manager: there is no endpoint that hands
+  // out the whole library any more, and the studio is the one screen whose job
+  // it is.
   await expect
     .poll(
       async () => {
-        const clips = await (await page.request.get(`${API_URL}/api/clips`)).json()
-        return clips.filter((clip: { hasVideo: boolean }) => clip.hasVideo).length
+        const listing = await (
+          await page.request.get(`${API_URL}/api/admin/clips?limit=200`)
+        ).json()
+        return (listing.clips as { hasVideo: boolean }[]).filter((clip) => clip.hasVideo).length
       },
       { timeout: 90_000, intervals: [1000] },
     )
     .toBeGreaterThan(0)
+
+  await asLearner(page)
 }
 
 async function recordAndOpenDubReview(page: import('@playwright/test').Page) {

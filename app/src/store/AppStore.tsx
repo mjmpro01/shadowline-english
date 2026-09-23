@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { MAX_CLIP_SECONDS, type AppData, type Take, type VocabStatus } from '../data/types'
+import { MAX_CLIP_SECONDS, type AppData, type Take, type Video, type VocabStatus } from '../data/types'
 import { ApiError } from '../lib/api'
-import { clipName, nextClipNumber } from '../lib/clips'
+import { clipName } from '../lib/clips'
 import { normalizeWord } from '../lib/text'
 import { clock } from '../lib/time'
 import { repository, type LeaderboardRow } from '../repository'
@@ -22,6 +22,10 @@ const POLL_TIMEOUT_MS = 60_000
  *  and hasVideo flip when the cutter finishes, without a full-page reload. */
 const CUT_POLL_MS = 3_000
 
+/** How many clips to ask for at once. Mirrors store.MaxClipIDs on the server,
+ *  which is what actually enforces it. */
+const CLIP_BATCH = 200
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AppData>(EMPTY)
   const [leaderboard, setLeaderboard] = useState<LeaderboardRow[]>([])
@@ -29,10 +33,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   // Polling reads the latest records without re-creating every callback.
   const dataRef = useRef<AppData>(EMPTY)
+  // Ids a fetch is already out for, so two screens mounting at once do not
+  // both ask for the same clip. A ref because it should re-render nothing.
+  const pendingRef = useRef<Set<string>>(new Set())
+  const missingRef = useRef<ReadonlySet<string>>(new Set())
+  // Ids the server answered for with nothing. State rather than a ref: a
+  // screen waiting on a clip that turns out not to exist has to be told, and
+  // nothing else about the app changes when that happens.
+  const [missing, setMissing] = useState<ReadonlySet<string>>(() => new Set())
 
   useEffect(() => {
     dataRef.current = data
   }, [data])
+
+  useEffect(() => {
+    missingRef.current = missing
+  }, [missing])
 
   // No setState before the first await: the initial state is already 'loading',
   // and setting it synchronously from the effect below starts a second render
@@ -47,13 +63,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setState('ready')
         return
       }
-      const [videos, takes, vocab, board] = await Promise.all([
-        repository.listClips(),
+      // No clips here. The library is not something the app holds any more —
+      // it was 7.4MB at sign-in against forty series, most of it signed poster
+      // URLs for clips nobody was going to open. `videos` below is a cache of
+      // the clips screens have actually asked for, and it starts empty.
+      const [takes, vocab, board] = await Promise.all([
         repository.listTakes(),
         repository.listVocab(),
         repository.leaderboard(),
       ])
-      setData({ videos, takes, vocab, profile })
+      setData({ videos: [], takes, vocab, profile })
       setLeaderboard(board)
       setState('ready')
     } catch (err) {
@@ -70,19 +89,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     void load()
   }, [load])
 
-  // While any clip is waiting on the cutter, refresh the library so posters and
-  // hasVideo flip without a manual reload — the same moment Practice's player
-  // picks up the signed URL from its own poll.
-  const cutsPending = data.videos.some((video) => video.videoPending)
+  // While a clip on screen is waiting on the cutter, refresh it so its poster
+  // and hasVideo flip without a manual reload — the same moment Practice's
+  // player picks up the signed URL from its own poll. Only the clips being
+  // waited on, not the library: the library is no longer the app's to refresh.
+  const pendingIds = data.videos.filter((video) => video.videoPending).map((video) => video.id)
+  const cutsPending = pendingIds.length > 0
+  const pendingKey = pendingIds.join(',')
   useEffect(() => {
     if (!cutsPending || state !== 'ready') return
     let active = true
     const tick = async () => {
       try {
-        const videos = await repository.listClips()
-        if (active) setData((prev) => ({ ...prev, videos }))
+        const fresh = await repository.clipsByIds(pendingKey.split(','))
+        if (!active) return
+        const byId = new Map(fresh.map((clip) => [clip.id, clip]))
+        setData((prev) => ({
+          ...prev,
+          videos: prev.videos.map((video) => byId.get(video.id) ?? video),
+        }))
       } catch {
-        // Keep the current list; the next tick retries.
+        // Keep what is on screen; the next tick retries.
       }
     }
     const timer = setInterval(() => void tick(), CUT_POLL_MS)
@@ -90,7 +117,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       active = false
       clearInterval(timer)
     }
-  }, [cutsPending, state])
+  }, [cutsPending, pendingKey, state])
 
   const reload = useCallback(() => {
     setState('loading')
@@ -120,7 +147,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // more: transcription fills a line into every clip, and a library of whole
     // sentences for titles is a library you cannot scan.
     const playlist = withinLimit[0]?.playlist ?? ''
-    const firstNumber = nextClipNumber(dataRef.current.videos, playlist)
+    // Asked of the server: it is a fact about the playlist, and the app does
+    // not hold the playlist. It used to count a library it had been sent, and
+    // two admins publishing to the same playlist at once both counted the same
+    // thing and both started from it.
+    const firstNumber = await repository.nextClipNumber(playlist)
 
     const created = await repository.createClips(
       withinLimit.map((clip, index) => ({
@@ -171,6 +202,52 @@ export function AppProvider({ children }: { children: ReactNode }) {
       videos: prev.videos.map((v) => (v.id === id ? updated : v)),
     }))
   }, [])
+
+  /** Fetches clips the app does not hold yet, and remembers which ids turned
+   *  out not to exist.
+   *
+   * `data.videos` is a cache now rather than the library. Without the second
+   * half a screen could not tell "not fetched yet" from "deleted", and would
+   * sit on a spinner for a clip that is never coming. */
+  const ensureClips = useCallback(async (ids: string[]) => {
+    const wanted = ids.filter(
+      (id) =>
+        id &&
+        !dataRef.current.videos.some((video) => video.id === id) &&
+        !missingRef.current.has(id) &&
+        !pendingRef.current.has(id),
+    )
+    if (wanted.length === 0) return
+
+    // Claim them before the request so two screens mounting at once do not
+    // both ask for the same clip.
+    for (const id of wanted) pendingRef.current.add(id)
+    try {
+      // In batches, because the server caps a lookup — a learner with three
+      // hundred words in their vocabulary would otherwise be refused rather
+      // than served, which is the opposite of what the cap is for.
+      const fetched: Video[] = []
+      for (let i = 0; i < wanted.length; i += CLIP_BATCH) {
+        fetched.push(...(await repository.clipsByIds(wanted.slice(i, i + CLIP_BATCH))))
+      }
+      const found = new Set(fetched.map((clip) => clip.id))
+      const gone = wanted.filter((id) => !found.has(id))
+      if (gone.length > 0) {
+        setMissing((prev) => new Set([...prev, ...gone]))
+      }
+      if (fetched.length > 0) {
+        setData((prev) => {
+          const known = new Set(prev.videos.map((video) => video.id))
+          return { ...prev, videos: [...prev.videos, ...fetched.filter((c) => !known.has(c.id))] }
+        })
+      }
+    } finally {
+      for (const id of wanted) pendingRef.current.delete(id)
+    }
+  }, [])
+
+  /** Whether this clip is known not to exist, as opposed to not fetched yet. */
+  const clipMissing = useCallback((id: string) => missing.has(id), [missing])
 
   /** Throws a recording away.
    *
@@ -330,6 +407,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateClip,
       deleteClip,
       forgetEpisode,
+      ensureClips,
+      clipMissing,
       addTake,
       deleteTake,
       toggleVocabWord,
@@ -349,6 +428,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateClip,
       deleteClip,
       forgetEpisode,
+      ensureClips,
+      clipMissing,
       addTake,
       deleteTake,
       toggleVocabWord,

@@ -307,6 +307,39 @@ indexes added with the playlists table, not full text: a learner types half a
 line they half remember, and `to_tsquery` is built for whole words. Anything
 under two characters answers with nothing rather than with most of the library.
 
+## Nothing hands out the whole library
+
+There is no endpoint that answers with every clip. `GET /api/clips` takes an
+`ids=` list — at most 200 — and answers with those; asked for nothing it answers
+400 rather than the library.
+
+It used to answer with all of it, and the app fetched it once at sign-in. On a
+library of 40 series, 480 episodes and 12,000 clips that is **8.5 MB**, before
+the learner has chosen anything to practise. Every screen then filtered that
+array in the browser: the dashboard for six cards, Practice for one clip.
+
+So each screen asks for what it shows:
+
+| Endpoint | Answers with |
+| --- | --- |
+| `GET /api/clips?ids=a,b,c` | Those clips, up to 200 at a time |
+| `GET /api/clips/featured` | What the dashboard offers |
+| `GET /api/clips/next-up` | One clip: never practised, else the weakest |
+| `GET /api/library/summary` | Counts and the category list, not the rows |
+| `GET /api/admin/clips?q=&limit=&offset=` | The studio's clip manager, paged and searched |
+
+Measured against that same seeded library: sign-in went from ~9.2 MB to 687 kB,
+of which 686 kB is the learner's own 2,400 takes — the clips are 8.5 MB to 0.
+The dashboard then fetches 28 kB of featured clips and a 718-byte next-up; the
+library screen fetches 16 kB of series.
+
+Two things moved to the server with it. "Next up" was worked out in the browser
+from the takes array and the clip array, and is now one query
+(`store.NextUp`); the studio's "Clip 14" numbering counted titles in the array,
+and is now `GET /api/admin/clips/next-number?playlist=` over
+`^[Cc]lip\s+(\d+)$`. Both had to move: neither can be worked out from a list
+the app no longer holds.
+
 ## Choosing what gets published
 
 The studio proposes a cut at every pause, which for a fifty-minute recording is

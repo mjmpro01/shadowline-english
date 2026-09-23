@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useClip } from '../lib/useClip'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useT } from '../i18n'
 import { ClipFace } from '../components/ClipFace'
@@ -16,7 +17,7 @@ export function DubScreen() {
   const { videoId } = useParams()
   const navigate = useNavigate()
   const t = useT()
-  const { data, state, statsFor } = useApp()
+  const { state, statsFor } = useApp()
   const audioRef = useRef<HTMLAudioElement>(null)
   /** The picture. Muted and along for the ride: the audio element is the clock,
    *  because which voice is playing is the whole point of this screen. */
@@ -32,7 +33,7 @@ export function DubScreen() {
   const [position, setPosition] = useState(0)
   const [duration, setDuration] = useState(0)
   const [playing, setPlaying] = useState(false)
-  const video = data.videos.find((v) => v.id === videoId)
+  const { clip: video, loading: clipLoading } = useClip(videoId)
   const stats = statsFor(videoId ?? '')
   const take = stats.takes.find((one) => one.id === takeId) ?? stats.takes[stats.takes.length - 1]
   /** Which take the export applies to. A take with no recording has nothing to
@@ -43,7 +44,9 @@ export function DubScreen() {
   const clipVideoUrl = urlOf(useClipVideo(video?.id ?? null, Boolean(video?.videoPending)))
   const dubState = useDub(takeIdForDub)
 
-  if (state === 'loading') return <Loading />
+  // The clip arrives on its own now rather than with everything else, so
+  // waiting for it is a state of this screen and not of the whole app.
+  if (state === 'loading' || clipLoading) return <Loading />
   if (state === 'error') return <LoadFailure />
   if (!video) return <NoSuchClip />
 

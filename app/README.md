@@ -236,6 +236,25 @@ Set `CHROMIUM_PATH` to reuse a browser already on the machine, and
 The tests share one server and reset it between each other through a route that
 exists only when `AUTH_FAKE=1` — see `../server/README.md`.
 
+## Clips are fetched, not held
+
+The store used to load every clip at sign-in and keep the array; screens
+filtered it. `data.videos` is still there but it is a **cache**, empty at
+sign-in and filled by `ensureClips(ids)`, which asks the server for the ids it
+does not already have, 200 per request, and remembers which ids came back
+missing so a screen waiting on one does not wait forever.
+
+`useClip(id)` is the hook a screen wants: it asks for the clip, returns it when
+it arrives, and says `loading` until then. Practice, Analysis and Dub all wait
+on it as well as on the store's own state.
+
+What a screen needs beyond that it asks for by name — `repository.featuredClips()`
+for the dashboard, `repository.nextUp()` for the practice suggestion,
+`repository.librarySummary()` for the counts on the profile,
+`repository.studioClips(q, limit, offset)` for the studio's clip manager. Adding
+a screen that wants "all the clips" means adding the query that answers it, not
+bringing the array back.
+
 ## Data
 
 `src/repository/index.ts` is the only module that knows the shape of the API;

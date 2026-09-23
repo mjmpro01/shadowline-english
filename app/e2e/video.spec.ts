@@ -116,20 +116,24 @@ test('a clip published from video reaches the learner with its picture', async (
   // why the clip they just published has none.
   await expect(page.getByText(/video is being cut in the background/)).toBeVisible()
 
-  await asLearner(page)
-
   // Wait on the cut itself rather than on the screen: the clip reports its own
   // video the moment the cutter records it, and polling the API says whether
-  // the chain worked without a reload loop clouding the answer.
+  // the chain worked without a reload loop clouding the answer. Polled as the
+  // admin, through the studio's clip manager: there is no endpoint that hands
+  // out the whole library any more.
   await expect
     .poll(
       async () => {
-        const clips = await (await page.request.get(`${API_URL}/api/clips`)).json()
-        return clips.filter((clip: { hasVideo: boolean }) => clip.hasVideo).length
+        const listing = await (
+          await page.request.get(`${API_URL}/api/admin/clips?limit=200`)
+        ).json()
+        return (listing.clips as { hasVideo: boolean }[]).filter((clip) => clip.hasVideo).length
       },
       { timeout: 90_000, intervals: [1000] },
     )
     .toBeGreaterThan(0)
+
+  await asLearner(page)
 
   await page.goto('/library')
   await page.getByLabel('Search the library').fill('Watch this line 1')
@@ -226,16 +230,22 @@ async function publishFromVideo(page: import('@playwright/test').Page) {
   await page.getByRole('button', { name: /Publish \d+ clips/ }).click()
   await expect(page.getByText(/clips are now in the library/)).toBeVisible({ timeout: 60_000 })
 
-  await asLearner(page)
+  // Polled as the admin, through the studio's clip manager: there is no
+  // endpoint that hands out the whole library any more, and the studio is the
+  // one screen whose job it is.
   await expect
     .poll(
       async () => {
-        const clips = await (await page.request.get(`${API_URL}/api/clips`)).json()
+        const page_ = await (
+          await page.request.get(`${API_URL}/api/admin/clips?limit=200`)
+        ).json()
         // By poster rather than by name: an unnamed clip is called "Clip N",
         // and the starter clips — the only others here — have no poster.
-        return clips.filter((clip: { posterUrl: string }) => clip.posterUrl).length
+        return (page_.clips as { posterUrl: string }[]).filter((clip) => clip.posterUrl).length
       },
       { timeout: 90_000, intervals: [1000] },
     )
     .toBeGreaterThan(0)
+
+  await asLearner(page)
 }

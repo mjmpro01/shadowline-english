@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -37,16 +38,141 @@ const sourceUploadTimeout = 30 * time.Minute
 // a clip without re-fetching, short enough that a leaked URL expires.
 const audioURLTTL = time.Hour
 
+// handleListClips answers for the clips a screen already knows it needs, and
+// refuses to answer for all of them.
+//
+// It used to be the whole library, fetched once at sign-in. Against forty
+// series that was 7.4MB and four hundred milliseconds — a fifth of it signed
+// poster URLs for clips nobody was going to open, each one an HMAC and each
+// one expiring in an hour. The refusal is the point: without it the habit
+// comes back the next time a screen wants a list.
 func (s *Server) handleListClips(w http.ResponseWriter, r *http.Request) {
-	clips, err := s.Store.ListClips(r.Context())
+	raw := strings.TrimSpace(r.URL.Query().Get("ids"))
+	if raw == "" {
+		fail(w, http.StatusBadRequest, "ask for clips by id, or use one of the library endpoints")
+		return
+	}
+	parts := strings.Split(raw, ",")
+	if len(parts) > store.MaxClipIDs {
+		fail(w, http.StatusBadRequest,
+			fmt.Sprintf("that is %d clips — ask for at most %d at a time", len(parts), store.MaxClipIDs))
+		return
+	}
+	ids := make([]uuid.UUID, 0, len(parts))
+	for _, part := range parts {
+		id, err := uuid.Parse(strings.TrimSpace(part))
+		if err != nil {
+			fail(w, http.StatusBadRequest, "that is not a clip id")
+			return
+		}
+		ids = append(ids, id)
+	}
+
+	clips, err := s.Store.ClipsByIDs(r.Context(), ids)
 	if err != nil {
 		s.failErr(w, err, "list clips")
 		return
 	}
-	for i := range clips {
-		clips[i].PosterURL = s.posterURL(r.Context(), clips[i])
-	}
+	s.signPosters(r.Context(), clips)
 	writeJSON(w, http.StatusOK, clips)
+}
+
+// handleFeaturedClips is what the dashboard offers. An admin picks these, so
+// there are a handful and no paging.
+func (s *Server) handleFeaturedClips(w http.ResponseWriter, r *http.Request) {
+	clips, err := s.Store.FeaturedClips(r.Context())
+	if err != nil {
+		s.failErr(w, err, "list featured clips")
+		return
+	}
+	s.signPosters(r.Context(), clips)
+	writeJSON(w, http.StatusOK, clips)
+}
+
+// handleNextUp is the clip to practise next: one this learner has never tried,
+// or failing that the one they have scored worst on.
+//
+// A question about the whole library, which is why it is here. The browser
+// worked it out, and being able to work it out is why the browser was being
+// sent the whole library.
+func (s *Server) handleNextUp(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	clip, err := s.Store.NextUp(r.Context(), u.ID)
+	if errors.Is(err, store.ErrNotFound) {
+		// An empty library is a real answer, not a failure.
+		writeJSON(w, http.StatusOK, map[string]any{"clip": nil})
+		return
+	}
+	if err != nil {
+		s.failErr(w, err, "next up")
+		return
+	}
+	clip.PosterURL = s.posterURL(r.Context(), clip)
+	writeJSON(w, http.StatusOK, map[string]any{"clip": clip})
+}
+
+// handleLibrarySummary is the counts and the tags the app used to work out by
+// counting the library it had been sent.
+func (s *Server) handleLibrarySummary(w http.ResponseWriter, r *http.Request) {
+	summary, err := s.Store.LibrarySummary(r.Context())
+	if err != nil {
+		s.failErr(w, err, "library summary")
+		return
+	}
+	writeJSON(w, http.StatusOK, summary)
+}
+
+// studioPage caps what the clip manager asks for at once. The studio is the
+// one screen whose job is the whole library, and it still pages through it.
+const studioPage = 50
+
+// handleNextClipNumber is what the studio shows as the placeholder for an
+// unnamed clip, before anything is published. It used to be worked out from
+// the library in the browser, which is one more thing the browser needed the
+// library for — and it was wrong the moment two admins published at once.
+func (s *Server) handleNextClipNumber(w http.ResponseWriter, r *http.Request) {
+	next, err := s.Store.NextClipNumber(r.Context(), r.URL.Query().Get("playlist"))
+	if err != nil {
+		s.failErr(w, err, "next clip number")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"next": next})
+}
+
+func (s *Server) handleStudioClips(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	limit := intParam(query.Get("limit"), studioPage, 1, 200)
+	offset := intParam(query.Get("offset"), 0, 0, 1<<20)
+
+	clips, total, err := s.Store.StudioClips(r.Context(), query.Get("q"), limit, offset)
+	if err != nil {
+		s.failErr(w, err, "list clips for the studio")
+		return
+	}
+	s.signPosters(r.Context(), clips)
+	writeJSON(w, http.StatusOK, map[string]any{"clips": clips, "total": total})
+}
+
+// intParam reads a bounded number from the query string, falling back to the
+// default for anything it cannot read. A page size is not worth a 400.
+func intParam(raw string, fallback, min, max int) int {
+	n, err := strconv.Atoi(raw)
+	if err != nil {
+		return fallback
+	}
+	if n < min {
+		return min
+	}
+	if n > max {
+		return max
+	}
+	return n
+}
+
+func (s *Server) signPosters(ctx context.Context, clips []store.Clip) {
+	for i := range clips {
+		clips[i].PosterURL = s.posterURL(ctx, clips[i])
+	}
 }
 
 // posterURL signs the clip's still, or returns "" for a clip that has none —

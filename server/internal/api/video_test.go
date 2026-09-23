@@ -88,7 +88,7 @@ func TestAClipStopsPromisingAPictureOnceTheCutHasGivenUp(t *testing.T) {
 		t.Fatalf("drop the cut job: %v", err)
 	}
 
-	listed := expect[[]clipJSON](t, admin.do("GET", "/api/clips", "", nil), http.StatusOK)
+	listed := everyClip(t, admin)
 	if listed[0].VideoPending {
 		t.Fatal("the clip is still promising a picture with nothing left to produce it")
 	}
@@ -109,8 +109,7 @@ func TestPublishingWithoutASourceQueuesNothing(t *testing.T) {
 	if depth := h.cutQueueDepth(t); depth != 0 {
 		t.Fatalf("cut queue holds %d jobs for an audio clip, want 0", depth)
 	}
-	listed := expect[[]clipJSON](t, admin.do("GET", "/api/clips", "", nil), http.StatusOK)
-	for _, clip := range listed {
+	for _, clip := range everyClip(t, admin) {
 		if clip.VideoPending {
 			t.Fatalf("an audio clip reported videoPending: %+v", clip)
 		}

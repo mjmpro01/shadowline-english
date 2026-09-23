@@ -321,6 +321,46 @@ func expect[T any](t *testing.T, resp *http.Response, want int) T {
 	return out
 }
 
+// everyClip is what the library holds, through the one screen whose job that
+// is.
+//
+// There is no longer an endpoint that hands out the whole library — that is
+// the change these tests are written against — so a test that wants to know
+// what got published asks the studio's clip manager, as an admin, and pages
+// through it the way the studio does.
+func everyClip(t *testing.T, admin *client) []clipJSON {
+	t.Helper()
+	var page struct {
+		Clips []clipJSON `json:"clips"`
+		Total int        `json:"total"`
+	}
+	all := []clipJSON{}
+	for offset := 0; ; offset += 200 {
+		page = expect[struct {
+			Clips []clipJSON `json:"clips"`
+			Total int        `json:"total"`
+		}](t, admin.do("GET", fmt.Sprintf("/api/admin/clips?limit=200&offset=%d", offset), "", nil),
+			http.StatusOK)
+		all = append(all, page.Clips...)
+		if len(all) >= page.Total || len(page.Clips) == 0 {
+			return all
+		}
+	}
+}
+
+// scoreTake writes a score the way the Python worker would. That worker does
+// not run in these tests, and some of what the server decides — which clip to
+// offer next, above all — is decided from scores.
+func (h *harness) scoreTake(t *testing.T, clipID string, score int) {
+	t.Helper()
+	_, err := h.pool.Exec(context.Background(), `
+		update takes set score = $2, status = 'scored'
+		where clip_id = $1`, clipID, score)
+	if err != nil {
+		t.Fatalf("score the take on clip %s: %v", clipID, err)
+	}
+}
+
 func expectStatus(t *testing.T, resp *http.Response, want int) {
 	t.Helper()
 	defer resp.Body.Close()

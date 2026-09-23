@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
+import { useClip } from '../lib/useClip'
 import { ConfirmDelete } from '../components/ConfirmDelete'
 import { CaptionLine } from '../components/CaptionLine'
 import { heardCount, heardIn } from '../lib/words'
@@ -20,7 +21,7 @@ export function AnalysisScreen() {
   const { videoId } = useParams()
   const navigate = useNavigate()
   const t = useT()
-  const { data, state, statsFor, deleteTake } = useApp()
+  const { state, statsFor, deleteTake } = useApp()
   const [selected, setSelected] = useState<{ videoId: string; takeId: string } | null>(null)
   const [confirming, setConfirming] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
@@ -30,7 +31,7 @@ export function AnalysisScreen() {
     sourceRef.current = element
   }, [])
 
-  const video = data.videos.find((v) => v.id === videoId)
+  const { clip: video, loading: clipLoading } = useClip(videoId)
   const stats = statsFor(videoId ?? '')
   const chosen =
     selected && selected.videoId === videoId ? stats.takes.find((one) => one.id === selected.takeId) : undefined
@@ -48,7 +49,9 @@ export function AnalysisScreen() {
   const sourceVideoUrl = urlOf(useClipVideo(video?.id ?? null, Boolean(video?.videoPending)))
   const playable = sourceVideoUrl ?? sourceUrl
 
-  if (state === 'loading') return <Loading />
+  // The clip arrives on its own now rather than with everything else, so
+  // waiting for it is a state of this screen and not of the whole app.
+  if (state === 'loading' || clipLoading) return <Loading />
   if (state === 'error') return <LoadFailure />
   if (!video) return <NoSuchClip />
 

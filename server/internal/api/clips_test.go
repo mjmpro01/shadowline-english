@@ -53,8 +53,10 @@ func TestPublishingClipsMakesThemVisibleToLearners(t *testing.T) {
 		t.Fatal("two clips were given the same id")
 	}
 
+	// The way a learner's app asks now: the clips it knows it wants, by id.
 	learner := h.login("learner@example.com")
-	listed := expect[[]clipJSON](t, learner.do("GET", "/api/clips", "", nil), http.StatusOK)
+	listed := expect[[]clipJSON](t, learner.do(
+		"GET", "/api/clips?ids="+created[0].ID+","+created[1].ID, "", nil), http.StatusOK)
 	if len(listed) != 2 {
 		t.Fatalf("learner sees %d clips, want 2", len(listed))
 	}
@@ -76,9 +78,7 @@ func TestTheServerRefusesAClipOverTheLimit(t *testing.T) {
 	long["durationSeconds"] = 12.0
 	expectStatus(t, admin.json("POST", "/api/admin/clips", map[string]any{"clips": []map[string]any{long}}), http.StatusBadRequest)
 
-	learner := h.login("learner@example.com")
-	listed := expect[[]clipJSON](t, learner.do("GET", "/api/clips", "", nil), http.StatusOK)
-	if len(listed) != 0 {
+	if listed := everyClip(t, admin); len(listed) != 0 {
 		t.Fatalf("the rejected clip was published anyway: %+v", listed)
 	}
 }
