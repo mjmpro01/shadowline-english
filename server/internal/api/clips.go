@@ -30,9 +30,13 @@ const maxAudioBytes = 8 << 20
 const maxSourceBytes = 2 << 30
 
 // sourceUploadTimeout replaces the server's write deadline for the one request
-// that streams hundreds of megabytes. The global two minutes is right for every
-// other route and would cut a large upload off mid-file.
-const sourceUploadTimeout = 30 * time.Minute
+// that streams hundreds of megabytes. The deadline every other route gets is
+// right for them and would cut a large upload off mid-file.
+//
+// The same number as the router's transfer timeout, and deliberately so: the
+// write deadline and the request context have to outlast each other, or the one
+// that expires first decides, and only one of them is documented anywhere.
+const sourceUploadTimeout = transferTimeout
 
 // audioURLTTL is how long a signed audio URL stays good. Long enough to practise
 // a clip without re-fetching, short enough that a leaked URL expires.

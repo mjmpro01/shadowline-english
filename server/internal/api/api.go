@@ -35,23 +35,46 @@ type Server struct {
 	Log   *slog.Logger
 }
 
+// requestTimeout is how long an ordinary request may take. A handler that has
+// not answered in a minute is stuck, not busy.
+const requestTimeout = 60 * time.Second
+
+// transferTimeout is for the two requests that move a whole file: a recording
+// going up, an object coming back down. How long those take is the size of the
+// file and the speed of the line — half an hour covers a two-gigabyte upload on
+// a slow connection, which is what maxSourceBytes lets an admin send.
+const transferTimeout = 30 * time.Minute
+
 func (s *Server) Routes() http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer)
-	r.Use(middleware.Timeout(60 * time.Second))
 	r.Use(s.cors)
 	r.Use(s.Sessions.Middleware)
 
-	r.Get("/healthz", s.handleHealth)
-	r.Handle("/metrics", telemetry.MetricsHandler())
+	// Not a deadline on the whole router any more. It was, and it cut off every
+	// upload that took longer than a minute: the handler raises the write
+	// deadline for a big file, but the request context is what actually decides,
+	// and that one expired on schedule with a 500 and "context deadline
+	// exceeded" in the log. A file going up, or an object coming back down, is
+	// slow because of its size and the line it is on. Neither is a stuck
+	// handler, which is the only thing this timeout is for.
+	quick := func(r chi.Router) { r.Use(middleware.Timeout(requestTimeout)) }
+	transfer := func(r chi.Router) { r.Use(middleware.Timeout(transferTimeout)) }
 
-	if s.Cfg.AuthFake {
-		// Test-only, and absent entirely from a normal deployment.
-		r.Post("/test/reset", s.handleTestReset)
-		r.Post("/test/transcript", s.handleTestTranscript)
-	}
+	r.Group(func(r chi.Router) {
+		quick(r)
+		r.Get("/healthz", s.handleHealth)
+		r.Handle("/metrics", telemetry.MetricsHandler())
+
+		if s.Cfg.AuthFake {
+			// Test-only, and absent entirely from a normal deployment.
+			r.Post("/test/reset", s.handleTestReset)
+			r.Post("/test/transcript", s.handleTestTranscript)
+		}
+	})
 
 	r.Route("/auth", func(r chi.Router) {
+		quick(r)
 		r.Get("/google/start", s.handleAuthStart)
 		r.Get("/google/callback", s.handleAuthCallback)
 		r.Get("/keycloak/start", s.handleKeycloakStart)
@@ -68,61 +91,77 @@ func (s *Server) Routes() http.Handler {
 	// the presigned URL and never touches this route.
 	// A wildcard, not `{key}`: object keys have slashes in them, and a single
 	// path segment never matched one.
-	r.Get("/files/{bucket}/*", s.handleFile)
+	r.Group(func(r chi.Router) {
+		transfer(r)
+		r.Get("/files/{bucket}/*", s.handleFile)
+	})
 
 	r.Route("/api", func(r chi.Router) {
 		r.Use(s.requireUser)
 
-		r.Get("/playlists", s.handleListPlaylists)
-		r.Get("/playlists/{slug}", s.handleGetPlaylist)
-		r.Get("/episodes/{id}", s.handleGetEpisode)
-		r.Get("/library/search", s.handleSearch)
-
-		r.Get("/library/summary", s.handleLibrarySummary)
-
-		r.Get("/clips", s.handleListClips)
-		r.Get("/clips/featured", s.handleFeaturedClips)
-		r.Get("/clips/next-up", s.handleNextUp)
-		r.Get("/clips/{id}", s.handleGetClip)
-		r.Get("/clips/{id}/audio", s.handleClipAudio)
-		r.Get("/clips/{id}/video", s.handleClipVideo)
-
-		r.Get("/takes", s.handleListTakes)
-		r.Post("/takes", s.handleCreateTake)
-		r.Get("/takes/{id}", s.handleGetTake)
-		r.Get("/takes/{id}/audio", s.handleTakeAudio)
-		r.Post("/takes/{id}/dub", s.handleRequestDub)
-		r.Get("/takes/{id}/dub", s.handleTakeDub)
-		r.Delete("/takes/{id}", s.handleDeleteTake)
-
-		r.Post("/words/{word}", s.handleLookupWord)
-		r.Get("/words/{word}", s.handleGetWord)
-
-		r.Get("/vocab", s.handleListVocab)
-		r.Post("/vocab", s.handleCreateVocab)
-		r.Patch("/vocab/{id}", s.handleUpdateVocab)
-		r.Delete("/vocab/{id}", s.handleDeleteVocab)
-
-		r.Get("/profile", s.handleGetProfile)
-		r.Patch("/profile", s.handleUpdateProfile)
-		r.Put("/profile/avatar", s.handleUploadAvatar)
-
-		r.Get("/leaderboard", s.handleLeaderboard)
+		// The one request that carries a whole recording, on the long deadline.
+		// Its own group, because a deadline set further down can only shorten
+		// the one above it: this route cannot sit under the minute and then ask
+		// for half an hour.
+		r.Group(func(r chi.Router) {
+			transfer(r)
+			r.Use(s.requireAdmin)
+			r.Post("/admin/sources", s.handleUploadSource)
+		})
 
 		r.Group(func(r chi.Router) {
-			r.Use(s.requireAdmin)
-			r.Get("/admin/clips", s.handleStudioClips)
-			r.Get("/admin/clips/next-number", s.handleNextClipNumber)
-			r.Post("/admin/sources", s.handleUploadSource)
-			r.Get("/admin/sources/{id}/transcript", s.handleSourceTranscript)
-			r.Post("/admin/clips", s.handleCreateClips)
-			r.Put("/admin/clips/{id}/audio", s.handleUploadClipAudio)
-			r.Patch("/admin/clips/{id}", s.handleUpdateClip)
-			r.Patch("/admin/playlists/{id}", s.handleUpdatePlaylist)
-			r.Patch("/admin/episodes/{id}", s.handleUpdateEpisode)
-			r.Delete("/admin/playlists/{id}", s.handleDeletePlaylist)
-			r.Delete("/admin/episodes/{id}", s.handleDeleteEpisode)
-			r.Delete("/admin/clips/{id}", s.handleDeleteClip)
+			quick(r)
+
+			r.Get("/playlists", s.handleListPlaylists)
+			r.Get("/playlists/{slug}", s.handleGetPlaylist)
+			r.Get("/episodes/{id}", s.handleGetEpisode)
+			r.Get("/library/search", s.handleSearch)
+
+			r.Get("/library/summary", s.handleLibrarySummary)
+
+			r.Get("/clips", s.handleListClips)
+			r.Get("/clips/featured", s.handleFeaturedClips)
+			r.Get("/clips/next-up", s.handleNextUp)
+			r.Get("/clips/{id}", s.handleGetClip)
+			r.Get("/clips/{id}/audio", s.handleClipAudio)
+			r.Get("/clips/{id}/video", s.handleClipVideo)
+
+			r.Get("/takes", s.handleListTakes)
+			r.Post("/takes", s.handleCreateTake)
+			r.Get("/takes/{id}", s.handleGetTake)
+			r.Get("/takes/{id}/audio", s.handleTakeAudio)
+			r.Post("/takes/{id}/dub", s.handleRequestDub)
+			r.Get("/takes/{id}/dub", s.handleTakeDub)
+			r.Delete("/takes/{id}", s.handleDeleteTake)
+
+			r.Post("/words/{word}", s.handleLookupWord)
+			r.Get("/words/{word}", s.handleGetWord)
+
+			r.Get("/vocab", s.handleListVocab)
+			r.Post("/vocab", s.handleCreateVocab)
+			r.Patch("/vocab/{id}", s.handleUpdateVocab)
+			r.Delete("/vocab/{id}", s.handleDeleteVocab)
+
+			r.Get("/profile", s.handleGetProfile)
+			r.Patch("/profile", s.handleUpdateProfile)
+			r.Put("/profile/avatar", s.handleUploadAvatar)
+
+			r.Get("/leaderboard", s.handleLeaderboard)
+
+			r.Group(func(r chi.Router) {
+				r.Use(s.requireAdmin)
+				r.Get("/admin/clips", s.handleStudioClips)
+				r.Get("/admin/clips/next-number", s.handleNextClipNumber)
+				r.Get("/admin/sources/{id}/transcript", s.handleSourceTranscript)
+				r.Post("/admin/clips", s.handleCreateClips)
+				r.Put("/admin/clips/{id}/audio", s.handleUploadClipAudio)
+				r.Patch("/admin/clips/{id}", s.handleUpdateClip)
+				r.Patch("/admin/playlists/{id}", s.handleUpdatePlaylist)
+				r.Patch("/admin/episodes/{id}", s.handleUpdateEpisode)
+				r.Delete("/admin/playlists/{id}", s.handleDeletePlaylist)
+				r.Delete("/admin/episodes/{id}", s.handleDeleteEpisode)
+				r.Delete("/admin/clips/{id}", s.handleDeleteClip)
+			})
 		})
 	})
 

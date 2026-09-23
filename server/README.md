@@ -564,6 +564,30 @@ a response it cannot type refuses to play it — reporting only "The element has
 supported sources", which names neither the element nor the reason. Both are
 covered by tests in `internal/api/clips_test.go`.
 
+## Two deadlines, not one
+
+Every route used to be under one sixty-second timeout, and that broke uploading
+a film. The upload handler raises the server's *write* deadline for a big file,
+which reads as though the case were covered, but the request context is what
+actually decides: at sixty seconds it was cancelled, storing the object failed
+with `context deadline exceeded`, and the admin got a 500 on a connection that
+was working perfectly. Reproduced by sending a 4 MB file over seventy seconds.
+
+So there are two:
+
+- `requestTimeout`, a minute, on everything. A handler that has not answered in
+  a minute is stuck, not busy.
+- `transferTimeout`, half an hour, on the two routes that move a whole file:
+  `POST /api/admin/sources` and `GET /files/*`. What makes those slow is the
+  size of the file and the speed of the line — half an hour covers the two
+  gigabytes `maxSourceBytes` allows, on a connection that is not fast.
+
+The upload route sits in its own group rather than inside the rest of `/api`,
+because a deadline set further down can only ever shorten the one above it: a
+route under the minute cannot ask for half an hour. `internal/api/deadlines_test.go`
+holds it there, by measuring what the handler's context has left rather than by
+spending a minute proving it.
+
 ## Layout
 
 ```
