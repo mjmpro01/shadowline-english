@@ -55,14 +55,19 @@ type Clip struct {
 	CreatedAt    time.Time `json:"createdAt"`
 }
 
-// video_pending is derived: a source with a picture and no cut yet. An audio
-// source also has a source_id (transcription wants the file), so checking the
-// id alone would mark every audio clip as pending forever.
+// video_pending is derived: no picture yet, and a cut still owed. The job row
+// is what "still owed" means — EnqueueCut writes one only for a source that
+// has a picture, and the cutter deletes it whether it succeeds or gives up.
+//
+// It used to ask the source whether it had a picture instead, which answers a
+// different question: a cut that failed its last attempt left the job gone and
+// the source unchanged, so the clip said "coming" for ever and the app polled
+// it every three seconds for as long as anybody had the library open.
 const clipColumns = `id, title, source, playlist, categories, featured, timestamp_label,
 	duration_seconds, summary, captions, audio_key, video_key, poster_key,
 	source_id, playlist_id, start_seconds, end_seconds, created_at,
 	(video_key is null and exists (
-		select 1 from clip_sources s where s.id = clips.source_id and s.has_video
+		select 1 from cut_jobs j where j.clip_id = clips.id
 	))`
 
 func scanClip(row pgx.Row) (Clip, error) {
@@ -214,7 +219,13 @@ func (s *Store) CreateClip(ctx context.Context, in NewClip, createdBy uuid.UUID)
 			where id = $1`, *in.SourceID, playlistID); err != nil {
 			return err
 		}
-		return s.EnqueueCut(ctx, tx, clip.ID)
+		// The clip was read back before this job existed, so the column that
+		// asks whether a cut is owed could not see it. Nobody should have to
+		// list the library again to learn that the picture they just asked for
+		// is coming.
+		queued, err := s.EnqueueCut(ctx, tx, clip.ID)
+		clip.VideoPending = queued
+		return err
 	})
 	return clip, err
 }

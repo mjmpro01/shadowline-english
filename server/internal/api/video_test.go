@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"strings"
 	"testing"
@@ -62,6 +63,37 @@ func TestPublishingFromASourceQueuesACut(t *testing.T) {
 	}
 	if depth := h.cutQueueDepth(t); depth != 1 {
 		t.Fatalf("cut queue holds %d jobs, want 1", depth)
+	}
+}
+
+// A cut that has spent every attempt leaves no job behind, and the clip has to
+// stop promising a picture that is never coming. It used to promise for ever,
+// and the app polled it every three seconds for as long as the library was open.
+func TestAClipStopsPromisingAPictureOnceTheCutHasGivenUp(t *testing.T) {
+	h := newHarness(t)
+	admin := h.login("admin@example.com")
+
+	source := uploadSource(t, admin, "lecture.mp4")
+	clip := aClip("Line one")
+	clip["sourceId"] = source.ID
+	published := publishClips(t, admin, clip)[0]
+	if !published.VideoPending {
+		t.Fatal("a freshly cut clip does not say its picture is coming")
+	}
+
+	// What the cutter does when it runs out of attempts: the job goes and the
+	// clip keeps its null video_key.
+	if _, err := h.pool.Exec(context.Background(),
+		`delete from cut_jobs where clip_id = $1`, published.ID); err != nil {
+		t.Fatalf("drop the cut job: %v", err)
+	}
+
+	listed := expect[[]clipJSON](t, admin.do("GET", "/api/clips", "", nil), http.StatusOK)
+	if listed[0].VideoPending {
+		t.Fatal("the clip is still promising a picture with nothing left to produce it")
+	}
+	if listed[0].HasVideo {
+		t.Fatal("the clip claims a picture it never got")
 	}
 }
 
