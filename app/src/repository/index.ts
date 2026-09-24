@@ -1,5 +1,6 @@
 import { api, ApiError } from '../lib/api'
 import type {
+  Banner,
   Dub,
   Episode,
   Gloss,
@@ -42,6 +43,8 @@ export interface Repository {
   clipsByIds(ids: string[]): Promise<Video[]>
   /** One clip, or null when it is not there any more. */
   clip(id: string): Promise<Video | null>
+  /** The announcements showing now on one screen, for this app language. */
+  banners(placement: 'dashboard' | 'library', locale: string): Promise<Banner[]>
   /** What the dashboard offers; an admin picks these. */
   featuredClips(): Promise<Video[]>
   /** What to practise next — a clip never tried, or the one that went worst.
@@ -172,6 +175,11 @@ class ApiRepository implements Repository {
 
   featuredClips() {
     return api.get<Video[]>('/api/clips/featured')
+  }
+
+  banners(placement: 'dashboard' | 'library', locale: string) {
+    const params = new URLSearchParams({ placement, locale })
+    return api.get<Banner[]>(`/api/banners?${params.toString()}`)
   }
 
   async nextUp() {

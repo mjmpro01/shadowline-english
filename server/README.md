@@ -182,6 +182,22 @@ then undo from the console) and an owner's (change `ADMIN_EMAILS`).
 it, so the person is signed out at once; signing in again ends at
 `/login?error=suspended`. Nothing is deleted, and restoring it is one click.
 
+## Banners
+
+Announcements an admin writes on the console's **Banners** page and a learner
+sees at the top of the dashboard or the library (`GET /api/banners?placement=…
+&locale=…`). One is shown while it is on and inside its window — both ends
+optional, judged by the database's clock so every instance agrees — and when it
+is for the learner's app language or for every language (`vi-VN` counts as
+`vi`). Lower `position` first.
+
+A banner is shown to everybody, so its link is checked on the way in: a path
+inside the app (`/library`, not `//host`) or an `https://` address, and nothing
+else — no `javascript:`, no `http:`. A picture is PNG, JPEG or WebP up to 3 MB,
+stored beside the avatars and signed per request; replacing or deleting one
+deletes the old object. A learner can close a banner, and that is remembered in
+their browser only.
+
 ## Clip video
 
 A clip published from a video keeps its picture. The browser cannot cut video

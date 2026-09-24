@@ -86,6 +86,8 @@ export const en = {
   'login.error.server': 'Something went wrong on our side. Try again in a moment.',
   'login.error.suspended': 'This account has been suspended. If you think that is a mistake, contact us.',
 
+  'banner.close': 'Close this announcement',
+
   // --- dashboard ------------------------------------------------------------
   'dash.title': 'Dashboard',
   'dash.subtitle': 'Clips worth practising, and how your scores are going',

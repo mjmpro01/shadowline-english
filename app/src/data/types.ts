@@ -188,6 +188,17 @@ export interface NeedPracticeItem {
   videoId: string
 }
 
+/** An announcement an admin put on a screen. `linkUrl` is a path in the app or
+ *  an https address — the server refuses anything else. */
+export interface Banner {
+  id: string
+  title: string
+  body: string
+  linkUrl: string
+  linkLabel: string
+  imageUrl: string
+}
+
 export interface Profile {
   id: string
   name: string

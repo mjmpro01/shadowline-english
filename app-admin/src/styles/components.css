@@ -367,6 +367,9 @@ button.linkish:hover {
 .dialog {
   text-align: left;
   width: min(440px, 100%);
+  /* Never taller than the window: a long form scrolls inside its body, and the
+     buttons that save or cancel it stay on screen. */
+  max-height: calc(100dvh - 32px);
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -406,4 +409,9 @@ button.linkish:hover {
   .btn-secondary:active:not(:disabled) {
     transform: none;
   }
+}
+
+.dialog-body {
+  min-height: 0;
+  overflow-y: auto;
 }

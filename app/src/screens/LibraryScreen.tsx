@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Banners } from '../components/Banners'
 import { useT, type Translate } from '../i18n'
 import { ClipCard } from '../components/ClipCard'
 import { Icon } from '../components/Icon'
@@ -42,6 +43,8 @@ export function LibraryScreen() {
   return (
     <div className="stack gap-6">
       <h1>{t('library.title')}</h1>
+
+      <Banners placement="library" />
 
       <input
         type="search"

@@ -109,6 +109,31 @@ export interface EpisodePatch {
   published?: boolean
 }
 
+/** An announcement on a learner's screen, as `server/internal/store/banners.go`
+ *  keeps it. */
+export interface Banner {
+  id: string
+  title: string
+  body: string
+  linkUrl: string
+  linkLabel: string
+  imageUrl: string
+  placement: BannerPlacement
+  /** The app language it is for, or '' for everybody. */
+  locale: string
+  startsAt: string | null
+  endsAt: string | null
+  enabled: boolean
+  position: number
+  createdAt: string
+  updatedAt: string
+}
+
+export type BannerPlacement = 'dashboard' | 'library'
+
+/** Everything the form writes; the same shape creates and replaces. */
+export type BannerInput = Omit<Banner, 'id' | 'imageUrl' | 'createdAt' | 'updatedAt'>
+
 /** One person, as the console's list shows them. */
 export interface Account {
   id: string
@@ -232,6 +257,31 @@ export const repository = {
 
   upload(id: string) {
     return api.get<{ upload: Upload; clips: Video[] }>(`/api/admin/uploads/${id}`)
+  },
+
+  banners() {
+    return api.get<Banner[]>('/api/admin/banners')
+  },
+
+  createBanner(input: BannerInput) {
+    return api.send<Banner>('POST', '/api/admin/banners', input)
+  },
+
+  updateBanner(id: string, input: BannerInput) {
+    return api.send<Banner>('PUT', `/api/admin/banners/${id}`, input)
+  },
+
+  deleteBanner(id: string) {
+    return api.del(`/api/admin/banners/${id}`)
+  },
+
+  /** Sets a banner's picture, replacing any it had. PNG, JPEG or WebP, 3 MB. */
+  bannerImage(id: string, image: File) {
+    return api.upload<Banner>('PUT', `/api/admin/banners/${id}/image`, image)
+  },
+
+  removeBannerImage(id: string) {
+    return api.del(`/api/admin/banners/${id}/image`)
   },
 
   /** Everybody who has signed in, newest first, a page at a time. */

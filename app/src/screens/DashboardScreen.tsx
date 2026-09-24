@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useRemote } from '../lib/remote'
 import { repository } from '../repository'
 import { useT } from '../i18n'
+import { Banners } from '../components/Banners'
 import { ClipFace } from '../components/ClipFace'
 import { Icon } from '../components/Icon'
 import { statsFor } from '../lib/leaderboard'
@@ -50,6 +51,8 @@ export function DashboardScreen() {
         <h1 style={{ marginBottom: 2 }}>{t('dash.title')}</h1>
         <div className="card-meta">{t('dash.subtitle')}</div>
       </div>
+
+      <Banners placement="dashboard" />
 
       <div className="grid-scores">
         {summary.map((stat) => (
