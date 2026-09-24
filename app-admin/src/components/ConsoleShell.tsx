@@ -19,6 +19,7 @@ interface Section {
 
 const SECTIONS: Section[] = [
   { to: '/cut', label: 'Cut a recording', icon: 'scissors' },
+  { to: '/uploads', label: 'Uploads', icon: 'upload' },
   { to: '/clips', label: 'Clips', icon: 'book-open' },
   { to: '/series', label: 'Series', icon: 'layers' },
 ]

@@ -355,6 +355,51 @@ energy-based cut found anyway.
 Length is checked against the selection, not the proposal: a clip being left
 behind is too long for nobody.
 
+## Uploading is two requests, and the history is a read model
+
+`POST /api/admin/uploads` writes the row; `PUT /api/admin/uploads/{id}/file`
+carries the bytes.
+
+It used to be one request that stored the file and inserted the row after it,
+which meant a transfer still running had no row at all. An admin whose
+two-hour film was on its way had nothing to look at, and one whose upload died
+halfway had nothing left behind saying so — not even a name. Writing the row
+first is the whole point: `upload_state` is `uploading`, `stored` or `failed`,
+and the failure carries its reason in `error`.
+
+Transcription is queued by the transaction that marks it `stored`, and not
+before: a job pointing at an empty key would burn its attempts and be dropped
+before the file it was waiting for had arrived.
+
+**Everything else about an upload's progress is read, not stored.** Whether the
+words are still coming, whether its clips still owe a picture, whether any of it
+was published — all of that is already written down, and a second copy kept in
+step by hand is a second copy to get wrong. `store.Uploads` reads it back:
+
+| Status | What the database says |
+| --- | --- |
+| `uploading` | `upload_state = 'uploading'` |
+| `upload-failed` | `upload_state = 'failed'`, with `error` |
+| `transcribing` | a `transcribe_jobs` row exists |
+| `transcribe-failed` | no job, no transcript, and the file did arrive |
+| `ready` | stored, words settled either way, nothing published |
+| `cutting` | published, and `cut_jobs` rows remain for its clips |
+| `cut-failed` | published, no jobs left, and clips that should have a picture have none |
+| `done` | published, and every picture the cutter was going to make is there |
+
+That reading leans on one thing the workers do: a job row exists **only while
+there is work left**. `CutQueue` and `TranscribeQueue` delete the row when they
+finish and when they give up, so "a row is here" means pending, and what
+distinguishes finished from abandoned is whether the result landed — a
+`transcripts` row, a clip's `video_key`.
+
+`Upload.status()` in Go is the one place that turns those counts into a word, and
+`?state=` filters on it. There is no status column to filter on, deliberately, so
+a filtered page reads the history in order and keeps what matches; an unfiltered
+one is an ordinary `limit`/`offset` page. `POST /api/admin/uploads/{id}/retry`
+puts back exactly what gave up and answers with how much, because "nothing to
+retry" is a real outcome.
+
 ## Transcripts and IPA
 
 The studio fills its own lines in. The recording is uploaded when the admin

@@ -57,6 +57,7 @@ so getting past `Gate` reaches nothing.
 | Path | What it is |
 | --- | --- |
 | `/admin/cut` | A recording in, a batch of clips out: waveform, filmstrip, the cut proposal, the lines |
+| `/admin/uploads` | Every recording sent, and how far each one got |
 | `/admin/clips` | The clip manager, paged and searched on the server |
 | `/admin/series` | Series and their episodes: names, order, the hot badge, deletions |
 
@@ -101,6 +102,33 @@ to check a name meant starting a fifty-minute recording again.
 Nothing is persisted, and deliberately: the decoded samples are hundreds of
 megabytes and the object URL belongs to the document, so neither could survive a
 reload. This carries the work across a screen, not across a session.
+
+## Upload history
+
+"Did my film upload?" used to be answered by looking for its clips in the library,
+which says nothing about a transfer that died, a transcript that never arrived, or
+clips whose picture the cutter gave up on.
+
+`/admin/uploads` is the answer. Each row carries a status — uploading, upload
+failed, transcribing, no transcript, ready to cut, cutting video, some cuts
+failed, done — searchable by name and filterable by that status. Expanding a row
+shows the counts the status is worked out from: clips published, transcription
+attempts, cuts still to do, cuts given up on, and **clips with no audio**, which
+is worth its own line because a take against one of those is kept and measured but
+never scored, and nothing else in the product says so.
+
+The page refreshes itself every four seconds while any row is still moving, and
+stops when they have all settled.
+
+Two things are deliberately not stored anywhere: the status, and the filter.
+`server/README.md` has the table of what each one is read from, and why reading it
+beats keeping a copy in step.
+
+Uploading is two requests here — `repository.createUpload` then
+`repository.sendUpload`. The row exists before a byte moves, which is what makes a
+transfer in flight visible at all. `sourceId` is only set on the screen once the
+file has landed: nothing is queued until then, so a transcript poll started
+earlier would find no job and no words and report that as a failure.
 
 ## What is shared with the learner app, and what is not
 

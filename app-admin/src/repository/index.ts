@@ -15,6 +15,56 @@ export interface StudioClips {
   total: number
 }
 
+/**
+ * An upload and how far it has got.
+ *
+ * Almost nothing here is a stored status. Whether the words are still coming,
+ * whether the clips still owe a picture, whether any of it was published are all
+ * read out of the job tables when the row is asked for — see
+ * `server/internal/store/uploads.go`. `uploadState` is the exception: it is the
+ * one thing only the transfer itself knows.
+ */
+export interface Upload {
+  id: string
+  name: string
+  title: string
+  hasVideo: boolean
+  bytes: number
+  seconds: number
+  uploadState: 'uploading' | 'stored' | 'failed'
+  error: string
+  published: boolean
+  clips: number
+  /** Clips in the library with no sound of their own: a take against one is kept
+   *  and measured, but not scored. */
+  clipsWithoutAudio: number
+  cutsLeft: number
+  cutsFailed: number
+  transcript: 'none' | 'pending' | 'ready' | 'failed'
+  transcribeAttempts: number
+  transcribeError: string
+  playlistId: string | null
+  playlistTitle: string
+  status: UploadStatus
+  createdAt: string
+}
+
+/** The statuses an upload passes through, in order. */
+export type UploadStatus =
+  | 'uploading'
+  | 'upload-failed'
+  | 'transcribing'
+  | 'transcribe-failed'
+  | 'ready'
+  | 'cutting'
+  | 'cut-failed'
+  | 'done'
+
+export interface UploadPage {
+  uploads: Upload[]
+  total: number
+}
+
 export interface PlaylistPage {
   playlist: Playlist
   episodes: Episode[]
@@ -100,19 +150,57 @@ export const repository = {
     return api.del(`/api/admin/clips/${clipId}`)
   },
 
-  /** Stores the recording a batch is cut from, once, and returns its id. */
-  async uploadSource(file: Blob, name: string) {
-    const { id } = await api.upload<{ id: string }>(
-      'POST',
-      `/api/admin/sources?name=${encodeURIComponent(name)}`,
-      file,
-    )
+  /**
+   * Announces a recording before sending it, and returns the id the clips will
+   * reference.
+   *
+   * Two calls rather than one, and this is the reason: the row exists from here
+   * on, so a transfer still running has something to show in the history and one
+   * that dies leaves a reason behind instead of nothing at all.
+   */
+  async createUpload(file: File, seconds: number) {
+    const { id } = await api.send<{ id: string }>('POST', '/api/admin/uploads', {
+      name: file.name,
+      contentType: file.type || 'application/octet-stream',
+      bytes: file.size,
+      seconds,
+    })
     return id
   },
 
-  /** The words Whisper found in a source, or word that they are still coming. */
+  /** Sends the recording itself. The server queues transcription once it lands. */
+  async sendUpload(id: string, file: File) {
+    await api.upload<{ ok: boolean }>('PUT', `/api/admin/uploads/${id}/file`, file)
+  },
+
+  /** The history: every recording sent, newest first, with how far each has got. */
+  uploads(query: string, state: string, limit: number, offset: number) {
+    const params = new URLSearchParams({
+      q: query,
+      state,
+      limit: String(limit),
+      offset: String(offset),
+    })
+    return api.get<UploadPage>(`/api/admin/uploads?${params.toString()}`)
+  },
+
+  upload(id: string) {
+    return api.get<{ upload: Upload; clips: Video[] }>(`/api/admin/uploads/${id}`)
+  },
+
+  /** Puts the work that gave up back on the queue. Answers with how much, so
+   *  "nothing to retry" can be said rather than implied. */
+  retryUpload(id: string) {
+    return api.send<{ transcribe: number; cuts: number }>(
+      'POST',
+      `/api/admin/uploads/${id}/retry`,
+      {},
+    )
+  },
+
+  /** The words Whisper found in a recording, or word that they are still coming. */
   sourceTranscript(sourceId: string) {
-    return api.get<Transcript>(`/api/admin/sources/${sourceId}/transcript`)
+    return api.get<Transcript>(`/api/admin/uploads/${sourceId}/transcript`)
   },
 
   listPlaylists() {

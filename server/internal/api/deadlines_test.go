@@ -83,8 +83,11 @@ func TestUploadingASourceGetsTheLongDeadline(t *testing.T) {
 	left := spyOn(h)
 	admin := h.login("admin@example.com")
 
-	expectStatus(t, admin.do("POST", "/api/admin/sources?name=episode.mp4", "video/mp4",
-		strings.NewReader("not really a film")), http.StatusCreated)
+	source := expect[struct{ ID string }](t, admin.json("POST", "/api/admin/uploads", map[string]any{
+		"name": "episode.mp4", "contentType": "video/mp4", "bytes": 17,
+	}), http.StatusCreated)
+	expectStatus(t, admin.do("PUT", "/api/admin/uploads/"+source.ID+"/file", "video/mp4",
+		strings.NewReader("not really a film")), http.StatusOK)
 
 	if d := waitForDeadline(t, left); d < 20*time.Minute {
 		t.Fatalf("an upload had %s left, which is the minute every other route gets, not the transfer deadline", d)

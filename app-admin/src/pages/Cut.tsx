@@ -171,11 +171,22 @@ export function Cut() {
       // it is what fills the lines in and that cannot start until the server
       // has the file. Publishing then only has to reference it.
       //
-      // The studio stays interactive while it uploads; Publish awaits the
-      // promise so a quick split-and-publish cannot race past the source id.
+      // Two calls: the row is written before a byte is sent, so a transfer still
+      // running shows in the upload history and one that dies leaves a reason
+      // behind rather than nothing at all.
+      //
+      // `sourceId` is set only once the file has landed, which is what the rest
+      // of this screen depends on. Nothing is queued until then — so a transcript
+      // poll started earlier would find no job and no words and report that as a
+      // failure — and a clip published against a recording that never arrived
+      // would queue a cut with nothing to cut.
+      //
+      // The studio stays interactive throughout; Publish awaits the promise so a
+      // quick split-and-publish cannot race past the id.
       const upload = repository
-        .uploadSource(file, file.name)
-        .then((id) => {
+        .createUpload(file, samples.length / sampleRate)
+        .then(async (id) => {
+          await repository.sendUpload(id, file)
           setSourceId(id)
           setSourceUploading(false)
           return id

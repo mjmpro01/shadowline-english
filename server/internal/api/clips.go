@@ -314,56 +314,6 @@ func looksLikeVideo(contentType, name string) bool {
 	return false
 }
 
-// handleUploadSource stores the recording a batch will be cut out of, and
-// answers with the id the clips then reference.
-//
-// The file is uploaded once for the whole batch rather than once per clip: the
-// studio may be publishing hundreds of lines out of one lecture, and sending
-// the lecture hundreds of times is the difference between this working and not.
-func (s *Server) handleUploadSource(w http.ResponseWriter, r *http.Request) {
-	u, _ := auth.UserFrom(r.Context())
-
-	// A big upload takes longer than any other request this server serves, so
-	// this one gets its own deadline rather than raising it for everything.
-	if err := http.NewResponseController(w).SetWriteDeadline(time.Now().Add(sourceUploadTimeout)); err != nil {
-		s.Log.Warn("could not extend the deadline for a source upload", "error", err)
-	}
-
-	name := r.URL.Query().Get("name")
-	contentType := r.Header.Get("Content-Type")
-	if contentType == "" {
-		contentType = "application/octet-stream"
-	}
-
-	body := http.MaxBytesReader(w, r.Body, maxSourceBytes)
-	defer body.Close()
-	key := "source/" + uuid.NewString() + extensionFor(contentType)
-	if err := s.Storage.Put(r.Context(), storage.Clips, key, body, -1, contentType); err != nil {
-		var tooBig *http.MaxBytesError
-		if errors.As(err, &tooBig) {
-			fail(w, http.StatusRequestEntityTooLarge, "that recording is too large to upload")
-			return
-		}
-		s.failErr(w, err, "store source")
-		return
-	}
-
-	// Whether cutting is even attempted. An audio file has no picture to cut,
-	// and its clips are queued for transcription alone.
-	hasVideo := looksLikeVideo(contentType, name)
-	source, err := s.Store.CreateSource(r.Context(), name, key, contentType, hasVideo, u.ID)
-	if err != nil {
-		// The object is already stored; without a row nothing will ever point
-		// at it, so take it back out rather than leaving it to pay rent.
-		if err := s.Storage.Delete(r.Context(), storage.Clips, key); err != nil {
-			s.Log.Warn("orphaned source object", "key", key, "error", err)
-		}
-		s.failErr(w, err, "record source")
-		return
-	}
-	writeJSON(w, http.StatusCreated, source)
-}
-
 // handleSourceTranscript answers with the words Whisper found in a source, or
 // says they are still coming. The studio polls this while the admin works.
 func (s *Server) handleSourceTranscript(w http.ResponseWriter, r *http.Request) {

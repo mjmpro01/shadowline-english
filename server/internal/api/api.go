@@ -106,7 +106,7 @@ func (s *Server) Routes() http.Handler {
 		r.Group(func(r chi.Router) {
 			transfer(r)
 			r.Use(s.requireAdmin)
-			r.Post("/admin/sources", s.handleUploadSource)
+			r.Put("/admin/uploads/{id}/file", s.handleUploadFile)
 		})
 
 		r.Group(func(r chi.Router) {
@@ -152,7 +152,11 @@ func (s *Server) Routes() http.Handler {
 				r.Use(s.requireAdmin)
 				r.Get("/admin/clips", s.handleStudioClips)
 				r.Get("/admin/clips/next-number", s.handleNextClipNumber)
-				r.Get("/admin/sources/{id}/transcript", s.handleSourceTranscript)
+				r.Get("/admin/uploads", s.handleListUploads)
+				r.Post("/admin/uploads", s.handleCreateUpload)
+				r.Get("/admin/uploads/{id}", s.handleGetUpload)
+				r.Post("/admin/uploads/{id}/retry", s.handleRetryUpload)
+				r.Get("/admin/uploads/{id}/transcript", s.handleSourceTranscript)
 				r.Post("/admin/clips", s.handleCreateClips)
 				r.Put("/admin/clips/{id}/audio", s.handleUploadClipAudio)
 				r.Patch("/admin/clips/{id}", s.handleUpdateClip)

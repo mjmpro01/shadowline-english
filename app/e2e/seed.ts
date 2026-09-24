@@ -34,12 +34,7 @@ export async function publishLesson(page: Page): Promise<void> {
   await asAdmin(page)
 
   // The recording, so the clips hang off an episode the way published ones do.
-  const source = await page.request.post(
-    `${API_URL}/api/admin/sources?name=${encodeURIComponent('lesson.wav')}`,
-    { headers: { 'Content-Type': 'audio/wav' }, data: readFileSync(LESSON) },
-  )
-  expect(source.ok(), `uploading the lesson: ${source.status()}`).toBe(true)
-  const { id: sourceId } = (await source.json()) as { id: string }
+  const sourceId = await send(page, LESSON, 'lesson.wav', 'audio/wav')
 
   const created = await page.request.post(`${API_URL}/api/admin/clips`, {
     data: {
@@ -120,12 +115,7 @@ export async function publishVideoLesson(
 ): Promise<void> {
   await asAdmin(page)
 
-  const source = await page.request.post(
-    `${API_URL}/api/admin/sources?name=${encodeURIComponent('studio-clip.webm')}`,
-    { headers: { 'Content-Type': 'video/webm' }, data: readFileSync(VIDEO_CLIP) },
-  )
-  expect(source.ok(), `uploading the film: ${source.status()}`).toBe(true)
-  const { id: sourceId } = (await source.json()) as { id: string }
+  const sourceId = await send(page, VIDEO_CLIP, 'studio-clip.webm', 'video/webm')
 
   // Two cuts inside the fixture's nine seconds, each well under the clip limit.
   const cuts = [
@@ -179,4 +169,27 @@ export async function feature(page: Page, title: string): Promise<void> {
     data: { featured: true },
   })
   expect(patched.ok(), `featuring ${title}: ${patched.status()}`).toBe(true)
+}
+
+/**
+ * Uploads a file the way the console does: announce it, then send it.
+ *
+ * Two calls rather than one because that is what the endpoint is — the row is
+ * written before a byte moves, so a transfer in flight shows in the upload
+ * history and one that dies leaves a reason behind.
+ */
+async function send(page: Page, path: string, name: string, contentType: string): Promise<string> {
+  const bytes = readFileSync(path)
+  const announced = await page.request.post(`${API_URL}/api/admin/uploads`, {
+    data: { name, contentType, bytes: bytes.length, seconds: 0 },
+  })
+  expect(announced.ok(), `announcing ${name}: ${announced.status()}`).toBe(true)
+  const { id } = (await announced.json()) as { id: string }
+
+  const sent = await page.request.put(`${API_URL}/api/admin/uploads/${id}/file`, {
+    headers: { 'Content-Type': contentType },
+    data: bytes,
+  })
+  expect(sent.ok(), `sending ${name}: ${sent.status()}`).toBe(true)
+  return id
 }

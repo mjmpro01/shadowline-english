@@ -163,6 +163,20 @@
   }
 }
 
+/* Two tags the upload history needs and the learner app has no use for: a row
+   that wants acting on, and one that is finished with. The shared sheet's tags
+   are all neutral or accent, which is right for a category and says nothing
+   about a state. */
+.tag-warn {
+  background: var(--color-accent-100);
+  color: var(--color-accent-700);
+}
+
+.tag-good {
+  background: var(--color-accent-2-900);
+  color: var(--color-accent-2-300);
+}
+
 /* — shared layout helpers, from the app they were written for — */
 .stack {
   display: flex;
