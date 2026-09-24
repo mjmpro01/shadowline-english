@@ -63,6 +63,8 @@ test('on a clip, the tutor is told which line it is', async ({ page }) => {
   expect(sent.body.model).toBe('e2e/fake-model')
   expect(sent.body.messages[0].role).toBe('system')
   expect(sent.body.messages[0].content).toContain('Line: "Shadow this line 2"')
+  // And which language the app is in, for a message that does not say.
+  expect(sent.body.messages[0].content).toContain('Language of the app: en.')
 })
 
 test('the conversation survives moving between screens', async ({ page }) => {

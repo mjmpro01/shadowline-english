@@ -4,8 +4,8 @@ import { API_URL, ApiError, api } from './api'
  * The tutor's side of the chat.
  *
  * The model sits behind the server — 9router, in this deployment — and the key
- * never reaches the browser. What goes up is the conversation and which clip is
- * on screen; the system prompt and the learner's real measurements on that clip
+ * never reaches the browser. What goes up is the conversation, which clip is
+ * on screen and which language the app is in; the system prompt and the learner's real measurements on that clip
  * are added on the server, where nobody can edit them out.
  */
 
@@ -25,6 +25,18 @@ export async function tutorEnabled(): Promise<boolean> {
   }
 }
 
+/** What the question is about, beyond its words. */
+export interface TutorContext {
+  /** The clip on screen, if any: the server tells the tutor the line and this
+   *  learner's scores on it. */
+  clipId: string | null
+  /** The app's language. The tutor answers in the language the question is
+   *  asked in; this is for a message that has none, like a bare English
+   *  sentence to correct — which a learner reading the app in Vietnamese wants
+   *  explained in Vietnamese. */
+  locale: string
+}
+
 /**
  * Asks, and hands each piece of the answer to `onDelta` as it arrives.
  *
@@ -36,7 +48,7 @@ export async function tutorEnabled(): Promise<boolean> {
  */
 export async function askTutor(
   messages: TutorTurn[],
-  clipId: string | null,
+  { clipId, locale }: TutorContext,
   onDelta: (text: string) => void,
   signal: AbortSignal,
 ): Promise<void> {
@@ -46,7 +58,7 @@ export async function askTutor(
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages, ...(clipId ? { clipId } : {}) }),
+      body: JSON.stringify({ messages, locale, ...(clipId ? { clipId } : {}) }),
       signal,
     })
   } catch (err) {

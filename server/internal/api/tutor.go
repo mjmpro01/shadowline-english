@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -30,6 +31,11 @@ const (
 	// other request gets: a model that is thinking is not a stuck handler.
 	streamTimeout = 3 * time.Minute
 )
+
+// languageTag is the shape of a BCP 47 tag the app might send — "vi", "en",
+// "pt-BR", "zh-Hant". It goes into the system prompt, so anything else is
+// refused rather than passed on: this field is not a place for sentences.
+var languageTag = regexp.MustCompile(`^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,2}$`)
 
 // handleTutorStatus says whether there is a tutor at all, so the app can leave
 // the chat out rather than offer one that answers every message with an error.
@@ -59,9 +65,17 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Messages []tutor.Message `json:"messages"`
 		ClipID   string          `json:"clipId"`
+		// The language the app is set to. The tutor answers in the language of
+		// the question; this is for a message that does not have one, like a
+		// bare English sentence to correct.
+		Locale string `json:"locale"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		fail(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if body.Locale != "" && !languageTag.MatchString(body.Locale) {
+		fail(w, http.StatusBadRequest, "locale is not a language tag")
 		return
 	}
 	history, err := conversation(body.Messages)
@@ -107,7 +121,7 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	messages := append([]tutor.Message{tutor.System(clip, practice)}, history...)
+	messages := append([]tutor.Message{tutor.System(body.Locale, clip, practice)}, history...)
 
 	control := http.NewResponseController(w)
 	if err := control.SetWriteDeadline(time.Now().Add(streamTimeout)); err != nil {

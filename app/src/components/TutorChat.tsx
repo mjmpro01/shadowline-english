@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
-import { useT } from '../i18n'
+import { useI18n } from '../i18n'
 import type { MessageKey } from '../i18n/en'
 import { ApiError } from '../lib/api'
 import { parseMarkdown, type Inline } from '../lib/markdown'
@@ -29,7 +29,7 @@ const IN_GENERAL: MessageKey[] = ['tutor.askLinking', 'tutor.askTh', 'tutor.askR
  * not a record anybody asked the server to keep.
  */
 export function TutorChat() {
-  const t = useT()
+  const { t, locale } = useI18n()
   const [enabled, setEnabled] = useState(false)
   const [open, setOpen] = useState(false)
   const [turns, setTurns] = useState<TutorTurn[]>([])
@@ -82,7 +82,7 @@ export function TutorChat() {
     try {
       await askTutor(
         asked,
-        clipId,
+        { clipId, locale },
         (delta) =>
           setTurns((current) => {
             const next = current.slice()

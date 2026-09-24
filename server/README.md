@@ -414,7 +414,9 @@ for. Set `TUTOR_API_KEY` and `TUTOR_MODEL` and it is on; leave the key blank and
 | `TUTOR_MODEL` | A 9router model id (`cc/claude-haiku-4-5-20251001`, below) or a combo name |
 
 **The key never leaves the server.** The browser sends the conversation — the
-learner's turns and the tutor's, nothing else — and which clip is on screen.
+learner's turns and the tutor's, nothing else — which clip is on screen, and
+the app's language as a tag (`vi`, `pt-BR`; anything else is a 400, because it
+goes into the prompt).
 The system prompt is added here, and a `system` message from the browser is
 refused with a 400 rather than dropped: a request carrying one is somebody
 trying something.
@@ -506,12 +508,28 @@ TUTOR_API_URL=https://…/v1 TUTOR_API_KEY=… TUTOR_MODEL=cc/claude-haiku-4-5-2
     python3 tools/tutor_scope_eval.py   # ROUNDS=3 for more
 ```
 
-21 questions — 12 it must answer, 9 it must decline, four of them attempts to
-talk it out of its instructions — graded by pattern: an in-scope answer fails if
-it opens by saying what the tutor does not do, a decline fails if it carries the
-answer. With the prompt as it is, runs came back 42/42, 42/42 and 62/63. It calls
-a paid model, so it is not part of `go test`; `prompt_test.go` holds that the
-scope rules are still in the prompt.
+28 questions — 12 it must answer, 9 it must decline (four of them attempts to
+talk it out of its instructions), 7 about language — graded by pattern: an
+in-scope answer fails if it opens by saying what the tutor does not do, a decline
+fails if it carries the answer, and any answer fails if it is in the wrong
+language. It calls a paid model, so it is not part of `go test`; `prompt_test.go`
+holds that the rules are still in the prompt.
+
+**It answers in the learner's language.** Learners do not all speak Vietnamese,
+so the language of the question decides: Spanish gets Spanish, Korean Korean,
+English English — a decline too — with the English being taught left in English.
+The app's language is sent along for the one message that has no language of its
+own: "She don't like coffee" on its own is explained in Vietnamese to a learner
+whose app is in Vietnamese, and in English to one whose app is in English.
+
+That line had to say what it was for. Given as a bare `App language: vi`, Haiku
+took it as an order and answered Spanish, Korean and English questions in
+Vietnamese — the eval went 43/56. Spelled out as "the language their screens are
+in, not the language to answer in", with that one exception named, and with the
+decline rule giving examples, it comes back 83/84 run after run. The one miss is
+the same each time: "Explain photosynthesis in English", from a learner whose app
+is in Vietnamese, is declined correctly but in Vietnamese — a message that asks
+for English is arguably telling you it is not the learner's first language.
 
 Conversations are not stored. The app keeps one for the tab, and a
 conversation about one evening's practice is not a record anybody asked the

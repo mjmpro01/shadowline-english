@@ -148,7 +148,7 @@ func TestClosingTheChatStopsTheRequest(t *testing.T) {
 
 func TestSystemCarriesTheRealMeasurements(t *testing.T) {
 	best := 71.4
-	msg := System(&Clip{Title: "Clip 3", Line: "I'll be there for you", IPA: "/aɪl bi ðɛr/"},
+	msg := System("", &Clip{Title: "Clip 3", Line: "I'll be there for you", IPA: "/aɪl bi ðɛr/"},
 		&Practice{
 			Takes:   2,
 			Best:    &best,
@@ -173,11 +173,11 @@ func TestSystemCarriesTheRealMeasurements(t *testing.T) {
 }
 
 func TestSystemSaysSoWhenThereIsNothingMeasured(t *testing.T) {
-	msg := System(&Clip{Title: "Clip 1", Line: "Hello"}, &Practice{})
+	msg := System("", &Clip{Title: "Clip 1", Line: "Hello"}, &Practice{})
 	if !strings.Contains(msg.Content, "no scored recording of this line yet") {
 		t.Fatal("with no takes the tutor should be told there are none, not left to guess")
 	}
-	general := System(nil, nil)
+	general := System("", nil, nil)
 	if strings.Contains(general.Content, "\n\nCurrent clip\n") {
 		t.Fatal("a general question carried a clip block")
 	}
