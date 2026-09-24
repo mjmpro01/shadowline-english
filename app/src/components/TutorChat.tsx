@@ -145,28 +145,38 @@ export function TutorChat() {
           }}
         >
           <header className="tutor-head">
-            <div>
+            <div className="tutor-heading">
               <div className="tutor-title">{t('tutor.name')}</div>
-              {/* Says what the tutor can see, so "this line" is never a guess. */}
-              <div className="tutor-context">
+              {/* Says what the tutor can see, so "this line" is never a guess.
+                  One line, cut short if it must: a long title in full is on
+                  the screen behind, and in the tooltip. */}
+              <div className="tutor-context" title={clip ? clip.title : undefined}>
                 {clip ? t('tutor.about', clip.title) : t('tutor.general')}
               </div>
             </div>
-            <div className="row gap-1">
-              {turns.length > 0 && (
-                <button type="button" className="btn btn-ghost" onClick={restart}>
-                  {t('tutor.restart')}
-                </button>
-              )}
+            {/* Icons, not words: "New chat" in Vietnamese took two lines and
+                pushed the header to three. The name is still there for a
+                screen reader, and as a tooltip. */}
+            {turns.length > 0 && (
               <button
                 type="button"
-                className="btn btn-ghost"
-                aria-label={t('tutor.close')}
-                onClick={() => setOpen(false)}
+                className="tutor-icon-btn"
+                aria-label={t('tutor.restart')}
+                title={t('tutor.restart')}
+                onClick={restart}
               >
-                ✕
+                <Icon name="square-pen" size={18} />
               </button>
-            </div>
+            )}
+            <button
+              type="button"
+              className="tutor-icon-btn"
+              aria-label={t('tutor.close')}
+              title={t('tutor.close')}
+              onClick={() => setOpen(false)}
+            >
+              <Icon name="x" size={18} />
+            </button>
           </header>
 
           <div className="tutor-log" ref={log} aria-live="polite">
