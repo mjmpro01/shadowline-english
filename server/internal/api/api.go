@@ -126,6 +126,9 @@ func (s *Server) Routes() http.Handler {
 
 			r.Get("/tutor", s.handleTutorStatus)
 			r.Get("/banners", s.handleLiveBanners)
+			r.Get("/account/export", s.handleExportAccount)
+			r.Post("/account/password", s.handleChangePassword)
+			r.Delete("/account", s.handleDeleteAccount)
 			r.Get("/playlists", s.handleListPlaylists)
 			r.Get("/playlists/{slug}", s.handleGetPlaylist)
 			r.Get("/episodes/{id}", s.handleGetEpisode)

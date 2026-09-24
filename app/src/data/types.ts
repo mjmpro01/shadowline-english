@@ -207,6 +207,8 @@ export interface Profile {
   avatarUrl: string | null
   /** Decided by the server from ADMIN_EMAILS. The app cannot set it. */
   isAdmin: boolean
+  /** Whether this server keeps passwords (Keycloak), so one can be changed. */
+  passwords?: boolean
 }
 
 export interface AppData {

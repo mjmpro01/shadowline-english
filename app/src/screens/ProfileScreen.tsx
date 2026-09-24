@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
+import { ApiError } from '../lib/api'
 import { useRemote } from '../lib/remote'
 import { repository } from '../repository'
 import { useNavigate } from 'react-router-dom'
@@ -17,6 +18,10 @@ export function ProfileScreen() {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(profile?.name ?? '')
   const [avatar, setAvatar] = useState<Blob | null>(null)
+  const [exporting, setExporting] = useState(false)
+  const [changing, setChanging] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [note, setNote] = useState<string | null>(null)
   // Above the early return: a hook after it runs on some renders and not
   // others, which is the one thing React cannot cope with.
   const summary = useRemote('', () => repository.librarySummary())
@@ -39,6 +44,26 @@ export function ProfileScreen() {
   const signOut = async () => {
     await logout()
     navigate('/login', { replace: true })
+  }
+
+  // The learner's own copy, saved as a file. Fetched rather than linked so a
+  // failure can be said on this screen instead of in a tab of raw JSON.
+  const exportData = async () => {
+    setExporting(true)
+    setNote(null)
+    try {
+      const file = await repository.exportAccount()
+      const url = URL.createObjectURL(file)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `shadowline-${new Date().toISOString().slice(0, 10)}.json`
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setNote(err instanceof ApiError ? err.message : t('profile.failed'))
+    } finally {
+      setExporting(false)
+    }
   }
 
   const stats = [
@@ -115,6 +140,36 @@ export function ProfileScreen() {
         </div>
       )}
 
+      <div className="card elev-sm stack gap-2" style={{ width: '100%', textAlign: 'left' }}>
+        <div className="card-kicker">{t('profile.yourData')}</div>
+        <span style={{ fontSize: 13, opacity: 0.75 }}>{t('profile.exportBody')}</span>
+        <div className="row gap-2 wrap">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={exporting}
+            onClick={() => void exportData()}
+          >
+            {exporting ? t('profile.exporting') : t('profile.export')}
+          </button>
+          {/* Only where the server keeps passwords: an account that signs in
+              with Google alone has none here to change. */}
+          {profile.passwords && (
+            <button type="button" className="btn btn-secondary" onClick={() => setChanging(true)}>
+              {t('profile.password')}
+            </button>
+          )}
+          <button type="button" className="btn btn-ghost" onClick={() => setDeleting(true)}>
+            {t('profile.delete')}
+          </button>
+        </div>
+        {note !== null && (
+          <div className="card-meta" role="status">
+            {note}
+          </div>
+        )}
+      </div>
+
       <div className="row gap-2" style={{ width: '100%' }}>
         <button type="button" className="btn btn-primary btn-block" onClick={openEdit}>
           {t('profile.edit')}
@@ -124,6 +179,28 @@ export function ProfileScreen() {
           {t('nav.logout')}
         </button>
       </div>
+
+      {changing && (
+        <PasswordDialog
+          onClose={() => setChanging(false)}
+          onChanged={() => {
+            setChanging(false)
+            setNote(t('profile.passwordChanged'))
+          }}
+        />
+      )}
+
+      {deleting && (
+        <DeleteAccountDialog
+          email={profile.email}
+          onClose={() => setDeleting(false)}
+          onDeleted={() => {
+            // The session is already gone on the server; this clears the
+            // app's copy of everything and goes to the door.
+            void logout().finally(() => navigate('/login', { replace: true }))
+          }}
+        />
+      )}
 
       {editing && (
         <Dialog
@@ -164,5 +241,160 @@ export function ProfileScreen() {
         </Dialog>
       )}
     </div>
+  )
+}
+
+function PasswordDialog({ onClose, onChanged }: { onClose: () => void; onChanged: () => void }) {
+  const { t } = useI18n()
+  const [current, setCurrent] = useState('')
+  const [next, setNext] = useState('')
+  const [again, setAgain] = useState('')
+  const [problem, setProblem] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (next.length < 8) return setProblem(t('profile.passwordShort'))
+    if (next !== again) return setProblem(t('profile.passwordMismatch'))
+    setSaving(true)
+    setProblem(null)
+    try {
+      await repository.changePassword(current, next)
+      onChanged()
+    } catch (err) {
+      setProblem(err instanceof ApiError ? err.message : t('profile.failed'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Dialog
+      title={t('profile.passwordTitle')}
+      onClose={onClose}
+      actions={
+        <>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>
+            {t('profile.cancel')}
+          </button>
+          <button type="submit" form="password-form" className="btn btn-primary" disabled={saving}>
+            {t('profile.save')}
+          </button>
+        </>
+      }
+    >
+      <form id="password-form" className="stack gap-2" style={{ textAlign: 'left' }} onSubmit={(e) => void submit(e)}>
+        <div className="field">
+          <label htmlFor="password-current">{t('profile.passwordCurrent')}</label>
+          <input
+            id="password-current"
+            className="input"
+            type="password"
+            autoComplete="current-password"
+            value={current}
+            onChange={(e) => setCurrent(e.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="password-next">{t('profile.passwordNext')}</label>
+          <input
+            id="password-next"
+            className="input"
+            type="password"
+            autoComplete="new-password"
+            value={next}
+            onChange={(e) => setNext(e.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="password-again">{t('profile.passwordAgain')}</label>
+          <input
+            id="password-again"
+            className="input"
+            type="password"
+            autoComplete="new-password"
+            value={again}
+            onChange={(e) => setAgain(e.target.value)}
+          />
+        </div>
+        {problem !== null && (
+          <div className="card-meta" role="alert">
+            {problem}
+          </div>
+        )}
+      </form>
+    </Dialog>
+  )
+}
+
+/**
+ * The last question before an account goes. The learner types their own
+ * address: this cannot be undone, and a stray tap is not consent to lose a
+ * year of recordings.
+ */
+function DeleteAccountDialog({
+  email,
+  onClose,
+  onDeleted,
+}: {
+  email: string
+  onClose: () => void
+  onDeleted: () => void
+}) {
+  const { t } = useI18n()
+  const [typed, setTyped] = useState('')
+  const [problem, setProblem] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const matches = typed.trim().toLowerCase() === email.toLowerCase()
+
+  const confirm = async () => {
+    setBusy(true)
+    setProblem(null)
+    try {
+      await repository.deleteAccount(typed.trim())
+      onDeleted()
+    } catch (err) {
+      setProblem(err instanceof ApiError ? err.message : t('profile.failed'))
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Dialog
+      title={t('profile.deleteTitle')}
+      onClose={onClose}
+      actions={
+        <>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>
+            {t('profile.cancel')}
+          </button>
+          <button
+            type="button"
+            className="btn btn-danger"
+            disabled={!matches || busy}
+            onClick={() => void confirm()}
+          >
+            {t('profile.deleteForever')}
+          </button>
+        </>
+      }
+    >
+      <p style={{ margin: 0, textAlign: 'left' }}>{t('profile.deleteBody')}</p>
+      <div className="field" style={{ textAlign: 'left' }}>
+        <label htmlFor="delete-confirm">{t('profile.deleteConfirm', email)}</label>
+        <input
+          id="delete-confirm"
+          className="input"
+          autoComplete="off"
+          value={typed}
+          onChange={(e) => setTyped(e.target.value)}
+        />
+      </div>
+      {problem !== null && (
+        <div className="card-meta" role="alert">
+          {problem}
+        </div>
+      )}
+    </Dialog>
   )
 }

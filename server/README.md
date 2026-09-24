@@ -182,6 +182,26 @@ then undo from the console) and an owner's (change `ADMIN_EMAILS`).
 it, so the person is signed out at once; signing in again ends at
 `/login?error=suspended`. Nothing is deleted, and restoring it is one click.
 
+## A learner's own account
+
+The Profile screen's **Your data** card:
+
+- **Download my data** — `GET /api/account/export`, one JSON file: the profile,
+  every take with the line it was of, its scores and links to the recording and
+  dub (signed for 24 hours — the file says so), the vocabulary, and when the
+  tutor was asked (its questions were never stored).
+- **Change password** — `POST /api/account/password`, only where Keycloak is set
+  up (the profile's `passwords` says so). The current password is checked with
+  the same grant that signs in, so a session left open on a shared computer is
+  not enough to lock the owner out; a Google-only account is told to set one
+  with "forgot password".
+- **Delete my account** — `DELETE /api/account` with the account's own address
+  typed to confirm. Rows go first in one transaction (takes, words, sessions,
+  questions all cascade from the user), then the avatar, every recording and
+  dub, and the Keycloak user; a failure after the rows are gone is logged, not
+  reported, since the account is deleted either way. Signing in again later
+  starts a new, empty account.
+
 ## Banners
 
 Announcements an admin writes on the console's **Banners** page and a learner
