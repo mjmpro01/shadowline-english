@@ -34,6 +34,21 @@ type Client struct {
 	HTTP    *http.Client
 }
 
+// defaultHTTP has no overall timeout: an answer streams for as long as it
+// streams, and the caller's context is what ends it. The transport still gives
+// up on an endpoint that never answers at all.
+//
+// A clone of the default transport, not a new one. A bare http.Transport{} has
+// no Proxy function, so it ignores HTTPS_PROXY and dials the router directly —
+// which on any network that only lets traffic out through a proxy means the
+// tutor never answers, while curl from the same machine works fine. That is
+// exactly how it was found.
+var defaultHTTP = func() *http.Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.ResponseHeaderTimeout = 30 * time.Second
+	return &http.Client{Transport: transport}
+}()
+
 // ErrUpstream is the model endpoint refusing or failing. The handler turns it
 // into one sentence for the learner; the detail is for the log.
 var ErrUpstream = errors.New("the tutor could not answer")
@@ -69,12 +84,7 @@ func (c *Client) Stream(ctx context.Context, messages []Message, onDelta func(st
 
 	httpClient := c.HTTP
 	if httpClient == nil {
-		// No overall timeout: an answer streams for as long as it streams, and
-		// the caller's context is what ends it. The transport still gives up on
-		// an endpoint that never answers at all.
-		httpClient = &http.Client{Transport: &http.Transport{
-			ResponseHeaderTimeout: 30 * time.Second,
-		}}
+		httpClient = defaultHTTP
 	}
 	res, err := httpClient.Do(req)
 	if err != nil {
@@ -87,13 +97,19 @@ func (c *Client) Stream(ctx context.Context, messages []Message, onDelta func(st
 		return fmt.Errorf("%w: %s: %s", ErrUpstream, res.Status, strings.TrimSpace(string(detail)))
 	}
 
+	filter := &thinkFilter{emit: onDelta}
+
 	// Some routers answer a streaming request with one ordinary JSON body when
 	// the provider behind them cannot stream. Both shapes are handled rather
 	// than assuming the one that was asked for.
+	read := readEvents
 	if !strings.HasPrefix(res.Header.Get("Content-Type"), "text/event-stream") {
-		return readWhole(res.Body, onDelta)
+		read = readWhole
 	}
-	return readEvents(res.Body, onDelta)
+	if err := read(res.Body, filter.write); err != nil {
+		return err
+	}
+	return filter.flush()
 }
 
 // readEvents walks an SSE body: `data: {json}` lines, a blank line between

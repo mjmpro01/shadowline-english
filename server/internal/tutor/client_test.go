@@ -209,3 +209,84 @@ func TestTheLimiterCountsAWindowPerLearner(t *testing.T) {
 		t.Fatal("still refused once the window had passed")
 	}
 }
+
+// A bare http.Transport{} ignores HTTPS_PROXY, which is how the tutor failed on a
+// network where everything leaves through a proxy while curl worked.
+func TestTheDefaultClientGoesThroughTheProxy(t *testing.T) {
+	transport, ok := defaultHTTP.Transport.(*http.Transport)
+	if !ok {
+		t.Fatalf("transport is %T", defaultHTTP.Transport)
+	}
+	if transport.Proxy == nil {
+		t.Fatal("no Proxy function: HTTPS_PROXY would be ignored")
+	}
+	if transport.ResponseHeaderTimeout == 0 {
+		t.Fatal("an endpoint that never answers would hold the request for ever")
+	}
+}
+
+func filtered(pieces ...string) string {
+	var out strings.Builder
+	f := &thinkFilter{emit: func(s string) error { out.WriteString(s); return nil }}
+	for _, p := range pieces {
+		_ = f.write(p)
+	}
+	_ = f.flush()
+	return out.String()
+}
+
+// What 9router's Claude Code route actually sent ahead of every answer.
+func TestAnEmptyThinkBlockIsDropped(t *testing.T) {
+	if got := filtered("<think></think>Đây là lỗi rất phổ biến."); got != "Đây là lỗi rất phổ biến." {
+		t.Fatalf("got %q", got)
+	}
+}
+
+func TestReasoningIsDroppedEvenWhenTheTagsArriveInPieces(t *testing.T) {
+	got := filtered("<thi", "nk>let me consider the /θ/ so", "und</th", "ink>\n\nPut your tongue ", "between your teeth.")
+	if got != "Put your tongue between your teeth." {
+		t.Fatalf("got %q", got)
+	}
+}
+
+func TestSomethingThatOnlyLooksLikeATagIsKept(t *testing.T) {
+	// "<" and "<th" are held back in case they start a tag, then handed over.
+	if got := filtered("Use a < b and <th", "ree> is not a tag"); got != "Use a < b and <three> is not a tag" {
+		t.Fatalf("got %q", got)
+	}
+	if got := filtered("ends with <thi"); got != "ends with <thi" {
+		t.Fatalf("a held-back tail was lost at the end: %q", got)
+	}
+}
+
+func TestTheStreamReachesTheLearnerAsItArrives(t *testing.T) {
+	release := make(chan struct{})
+	c := fakeRouter(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		fmt.Fprint(w, `data: {"choices":[{"delta":{"content":"first"}}]}`+"\n\n")
+		w.(http.Flusher).Flush()
+		<-release
+		fmt.Fprint(w, `data: {"choices":[{"delta":{"content":" second"}}]}`+"\n\ndata: [DONE]\n\n")
+	})
+	got := make(chan string, 2)
+	done := make(chan error, 1)
+	go func() {
+		done <- c.Stream(context.Background(), []Message{{Role: "user", Content: "hi"}}, func(d string) error {
+			got <- d
+			return nil
+		})
+	}()
+	// The first piece has to arrive while the router is still holding the second.
+	select {
+	case first := <-got:
+		if first != "first" {
+			t.Fatalf("first piece %q", first)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("nothing arrived until the whole answer had — the client is buffering")
+	}
+	close(release)
+	if err := <-done; err != nil {
+		t.Fatalf("stream: %v", err)
+	}
+}

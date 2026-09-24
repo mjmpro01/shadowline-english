@@ -286,3 +286,55 @@ func TestTheChatNeedsASignedInLearner(t *testing.T) {
 	withTutor(t, h, 10)
 	expectStatus(t, h.anonymous().json("POST", "/api/tutor/chat", question("hi")), http.StatusUnauthorized)
 }
+
+// Streaming is only worth anything if a piece reaches the learner while the
+// model is still writing the next one. Tried against the real 9router the whole
+// answer arrived at once — and calling the router directly showed the same, so
+// the buffering was in front of it. This holds that it is never here.
+func TestEachPieceReachesTheLearnerBeforeTheNextIsWritten(t *testing.T) {
+	h := newHarness(t)
+	release := make(chan struct{})
+	slow := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		fmt.Fprint(w, `data: {"choices":[{"delta":{"content":"first"}}]}`+"\n\n")
+		w.(http.Flusher).Flush()
+		<-release
+		fmt.Fprint(w, `data: {"choices":[{"delta":{"content":" second"}}]}`+"\n\ndata: [DONE]\n\n")
+	}))
+	t.Cleanup(slow.Close)
+	t.Cleanup(func() {
+		select {
+		case <-release:
+		default:
+			close(release)
+		}
+	})
+	h.srv.Tutor = &tutor.Client{BaseURL: slow.URL + "/v1", APIKey: "k", Model: "m"}
+	learner := h.login("learner@example.com")
+
+	res := learner.json("POST", "/api/tutor/chat", question("hi"))
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status %d", res.StatusCode)
+	}
+
+	first := make(chan string, 1)
+	go func() {
+		scanner := bufio.NewScanner(res.Body)
+		for scanner.Scan() {
+			if strings.HasPrefix(scanner.Text(), "data: ") {
+				first <- scanner.Text()
+				return
+			}
+		}
+	}()
+	select {
+	case line := <-first:
+		if !strings.Contains(line, `"first"`) {
+			t.Fatalf("first event %q", line)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("the first piece was held until the router finished — the server is buffering")
+	}
+	close(release)
+}

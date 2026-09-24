@@ -443,6 +443,21 @@ buffers proxied responses by default and would otherwise deliver the whole answe
 at once. The route has its own three-minute deadline, like the upload has its own
 half hour: a model that is thinking is not a stuck handler.
 
+**Tried against a real 9router**, and it found two things the fake did not.
+The client built its own `http.Transport{}`, which has no proxy function and so
+ignored `HTTPS_PROXY`: on a network where traffic only leaves through a proxy the
+tutor never answered while `curl` from the same machine worked. It clones the
+default transport now. And 9router's Claude Code route puts `<think></think>`
+ahead of every answer; `internal/tutor/think.go` drops those blocks as they
+stream, including when a tag arrives split across two pieces.
+
+One thing it found that is not this server's to fix: every piece of the answer
+arrived at once, at the end. Calling 9router directly showed exactly the same, so
+the buffering is in front of this server — 9router itself, or a reverse proxy in
+front of it. If yours is nginx, `proxy_buffering off;` on its `/v1/` location is
+the usual cause. `TestEachPieceReachesTheLearnerBeforeTheNextIsWritten` holds that
+nothing on this side of it waits.
+
 Conversations are not stored. The app keeps one for the tab, and a
 conversation about one evening's practice is not a record anybody asked the
 server to keep.
