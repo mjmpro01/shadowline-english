@@ -4,6 +4,7 @@ import { useT } from '../i18n'
 import type { MessageKey } from '../i18n/en'
 import { useApp } from '../store/context'
 import { Icon, type IconName } from './Icon'
+import { TutorChat } from './TutorChat'
 
 /** Labels are keys, not words: the tabs are defined once at module scope and
  *  the language is only known inside a component. */
@@ -20,8 +21,15 @@ const PROFILE: { to: string; label: MessageKey; icon: IconName } = {
   icon: 'user-round',
 }
 
-const STUDIO: { to: string; label: MessageKey; icon: IconName } = {
-  to: '/admin',
+/**
+ * The console, which is a different build served at /admin/ on this origin.
+ *
+ * `href` and not a route: the studio left this app. An admin is also somebody
+ * who practises, so the plank stays where it was — it is the only one that leads
+ * out of the app rather than around it.
+ */
+const CONSOLE: { to: string; label: MessageKey; icon: IconName } = {
+  to: '/admin/',
   label: 'nav.studio',
   icon: 'scissors',
 }
@@ -47,7 +55,7 @@ export function AppShell() {
     navigate('/login', { replace: true })
   }
 
-  const items = [...TABS, ...(isAdmin ? [STUDIO] : []), PROFILE]
+  const items = [...TABS, PROFILE]
 
   return (
     <div className="app">
@@ -86,6 +94,24 @@ export function AppShell() {
               </NavLink>
             </li>
           ))}
+          {isAdmin && (
+            <li
+              style={
+                { '--tilt': TILTS[items.length % TILTS.length] } as React.CSSProperties
+              }
+            >
+              {/* An anchor: the console is another build at this origin, and a
+                  router link would look for a route this app no longer has. */}
+              <a href={CONSOLE.to} className="menu-plank" title={t(CONSOLE.label)}>
+                <span className="menu-nail" />
+                <Icon name={CONSOLE.icon} size={26} />
+                <span className="menu-plank-label">
+                  <span className="menu-plank-text">{t(CONSOLE.label)}</span>
+                  <span className="menu-badge">{t('nav.here')}</span>
+                </span>
+              </a>
+            </li>
+          )}
         </ul>
 
         <div className="menu-actions">
@@ -108,6 +134,10 @@ export function AppShell() {
       <main className="app-content">
         <Outlet />
       </main>
+
+      {/* In the shell rather than on a screen, so the conversation survives
+          moving from a line to its analysis and back. */}
+      <TutorChat />
 
       <nav className="tabbar" aria-label="Main">
         {[...TABS, PROFILE].map((tab) => (

@@ -51,6 +51,13 @@ type Config struct {
 
 	// Where the browser app is served from, for CORS and post-login redirects.
 	AppOrigin string
+
+	// The tutor: any OpenAI-compatible chat endpoint — 9router, in the setup
+	// this was written for. Empty key means the feature is off, and the app
+	// hides the chat rather than offering one that cannot answer.
+	TutorAPIURL string
+	TutorAPIKey string
+	TutorModel  string
 }
 
 func Load() (Config, error) {
@@ -81,6 +88,9 @@ func Load() (Config, error) {
 		TakesBucket:          env("S3_TAKES_BUCKET", "takes"),
 		DiskRoot:             env("DISK_ROOT", ""),
 		AppOrigin:            env("APP_ORIGIN", "http://localhost:5173"),
+		TutorAPIURL:          strings.TrimRight(env("TUTOR_API_URL", "http://localhost:20128/v1"), "/"),
+		TutorAPIKey:          env("TUTOR_API_KEY", ""),
+		TutorModel:           env("TUTOR_MODEL", ""),
 	}
 	if c.KeycloakPublicURL == "" {
 		c.KeycloakPublicURL = c.KeycloakURL
@@ -116,10 +126,21 @@ func Load() (Config, error) {
 			return c, fmt.Errorf("AUTH_FAKE=1 signs in anyone as any address, and %s is served over https — unset AUTH_FAKE and configure Google OAuth", origin)
 		}
 	}
+	// A key with no model is a tutor that would fail on its first message; say so
+	// at startup rather than to the first learner who asks it something.
+	if c.TutorAPIKey != "" && c.TutorModel == "" {
+		return c, fmt.Errorf("TUTOR_MODEL is required when TUTOR_API_KEY is set (a 9router model id such as cc/claude-sonnet-4-5, or a combo name)")
+	}
 	if c.S3Endpoint == "" && c.DiskRoot == "" {
 		return c, fmt.Errorf("set S3_ENDPOINT for object storage, or DISK_ROOT to keep audio on local disk")
 	}
 	return c, nil
+}
+
+// TutorConfigured reports whether the chat tutor has somewhere to send
+// messages. Off by default: it spends money per message.
+func (c Config) TutorConfigured() bool {
+	return c.TutorAPIKey != ""
 }
 
 // KeycloakConfigured reports whether email/password login and Admin API sync

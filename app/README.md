@@ -141,35 +141,48 @@ clips in it, and the studio's button is disabled with the reason on it rather
 than hidden — the mistake a series delete recovers from is a name typed wrong,
 and what a cascade would take with it is a whole season of somebody's practice.
 
-## Clip studio
+## The tutor
 
-Upload a recording and it is cut at the pauses between sentences rather than on
-a fixed grid, because a clip cut mid-word is useless to shadow
-(`src/lib/audio/segment.ts`: an RMS envelope, a noise floor taken from the
-quietest tenth of the recording, and a split at the quietest moment of anything
-still over the limit). The proposal is a starting point — boundaries drag, clips
-merge and delete, and each one gets its line of text — and publishing stores each
-cut as its own clip with its own audio.
+A button in the corner opens a chat with an AI tutor. It lives in the shell,
+not on a screen, so the conversation survives moving from a line to its analysis
+and back. It is left out entirely when the server has no tutor configured —
+`GET /api/tutor` says which — rather than offering a chat that answers every
+message with an error.
 
-Each cut gets a name, and the batch gets a playlist and categories, which is what
-the library's search and filters run on. The studio's second tab lists everything
-already published so a clip can be renamed, re-tagged, moved to another playlist,
-featured on the dashboard or deleted — deleting a clip drops the practice history
-that only made sense alongside it, and the audio with it.
+On a clip's own screens it says **Looking at: <clip>** and sends that clip's id
+with the question. The server then tells the tutor what the line is and how this
+learner's takes of it measured, which is the difference between "your stress was
+44" and "stress is important". Elsewhere it says it is taking general questions.
 
-Those editors keep a draft and save when they lose focus. They used to call the
-store on every keystroke, which was free against localStorage and is a request
-per character against an API.
+Answers stream in, and **Stop** ends one — which also stops paying for it.
+Enter sends and Shift+Enter is a new line, except while an IME is still
+composing, because that is how Vietnamese is typed.
 
-The studio is open to the addresses in the server's `ADMIN_EMAILS` and to nobody
-else. `RequireAdmin` only hides the screen; every admin endpoint checks again.
+The tutor writes a little Markdown. `src/lib/markdown.ts` parses it into data
+and the panel renders that as elements; nothing the model writes is ever handed
+to the DOM as HTML, because a model's answer is text somebody else wrote.
+
+The browser tests run it against `e2e/fake-router.mjs`, a stand-in for 9router
+whose answer is built from what it was sent — so the screen shows whether the
+server passed the clip on, and the tests never call a real model.
+
+## The clip studio is a different app
+
+It was a screen here, behind an admin check. It is a console of its own now, in
+`../app-admin`, served under `/admin/` on this origin — see that README for why,
+and for what was measured before deciding.
+
+What is left in this app is one plank on the menu and one card on the Profile
+screen, both of them plain links out. Nothing here uploads a recording, proposes
+a cut, or writes to `/api/admin/*` any more, and `data.videos` is a cache of the
+clips screens have asked for rather than a library to manage.
 
 ## Clip length
 
 A clip is one line to shadow, capped at `MAX_CLIP_SECONDS` (6) in
 `src/data/types.ts`. Recording stops itself at the cap with a countdown on
-screen, the studio never proposes a longer cut, and the server refuses one
-regardless of what the studio's editing allowed.
+screen. The console holds its own copy of the same number, and the server refuses
+a longer clip regardless of what either of them allowed.
 
 ## Scoring
 
@@ -219,16 +232,29 @@ in English, which is the default, so they read as they always did.
 
 ## Tests
 
-`test/` checks the cut proposal, the library search, the flashcard deck, the
-streak arithmetic and the analysis chart against known inputs.
+`test/` checks the library search, the flashcard deck, the streak arithmetic and
+the analysis chart against known inputs.
 
 `e2e/` drives the real browser against the real stack: Playwright starts the Go
-API, the Python worker and the dev server, on a database of the run's own, with a
-WAV file fed in as the microphone. It covers record → score, the shared dub
-timeline, the studio's cut-and-publish flow, admin access from both sides, and
-two learners on one leaderboard. Sign-in goes through the whole OAuth route with
-only the provider faked (`AUTH_FAKE=1`), so the state parameter, the PKCE cookie
-and `ADMIN_EMAILS` are all exercised.
+API, the Python workers and **both** dev servers, on a database of the run's own,
+with a WAV file fed in as the microphone. There is one API to test either front
+end against, so there is one run with two projects:
+
+```bash
+npx playwright test                    # both
+npx playwright test --project=app      # the learner app
+npx playwright test --project=console  # ../app-admin, specs in e2e/console/
+```
+
+It covers record → score, the shared dub timeline, the console's cut-and-publish
+flow, who can reach the console from either side, and two learners on one
+leaderboard. Sign-in goes through the whole OAuth route with only the provider
+faked (`AUTH_FAKE=1`), so the state parameter, the PKCE cookie and `ADMIN_EMAILS`
+are all exercised.
+
+A test that needs a library rather than a studio gets one from `e2e/seed.ts`,
+through the API. Driving the console's screens to set up a learner test would
+couple the two apps for nothing — and would be slower.
 
 Set `CHROMIUM_PATH` to reuse a browser already on the machine, and
 `TEST_DATABASE_URL` to point at a Postgres the run may create a database in.

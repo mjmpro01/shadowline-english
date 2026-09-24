@@ -30,9 +30,13 @@ const maxAudioBytes = 8 << 20
 const maxSourceBytes = 2 << 30
 
 // sourceUploadTimeout replaces the server's write deadline for the one request
-// that streams hundreds of megabytes. The global two minutes is right for every
-// other route and would cut a large upload off mid-file.
-const sourceUploadTimeout = 30 * time.Minute
+// that streams hundreds of megabytes. The deadline every other route gets is
+// right for them and would cut a large upload off mid-file.
+//
+// The same number as the router's transfer timeout, and deliberately so: the
+// write deadline and the request context have to outlast each other, or the one
+// that expires first decides, and only one of them is documented anywhere.
+const sourceUploadTimeout = transferTimeout
 
 // audioURLTTL is how long a signed audio URL stays good. Long enough to practise
 // a clip without re-fetching, short enough that a leaked URL expires.
@@ -310,56 +314,6 @@ func looksLikeVideo(contentType, name string) bool {
 	return false
 }
 
-// handleUploadSource stores the recording a batch will be cut out of, and
-// answers with the id the clips then reference.
-//
-// The file is uploaded once for the whole batch rather than once per clip: the
-// studio may be publishing hundreds of lines out of one lecture, and sending
-// the lecture hundreds of times is the difference between this working and not.
-func (s *Server) handleUploadSource(w http.ResponseWriter, r *http.Request) {
-	u, _ := auth.UserFrom(r.Context())
-
-	// A big upload takes longer than any other request this server serves, so
-	// this one gets its own deadline rather than raising it for everything.
-	if err := http.NewResponseController(w).SetWriteDeadline(time.Now().Add(sourceUploadTimeout)); err != nil {
-		s.Log.Warn("could not extend the deadline for a source upload", "error", err)
-	}
-
-	name := r.URL.Query().Get("name")
-	contentType := r.Header.Get("Content-Type")
-	if contentType == "" {
-		contentType = "application/octet-stream"
-	}
-
-	body := http.MaxBytesReader(w, r.Body, maxSourceBytes)
-	defer body.Close()
-	key := "source/" + uuid.NewString() + extensionFor(contentType)
-	if err := s.Storage.Put(r.Context(), storage.Clips, key, body, -1, contentType); err != nil {
-		var tooBig *http.MaxBytesError
-		if errors.As(err, &tooBig) {
-			fail(w, http.StatusRequestEntityTooLarge, "that recording is too large to upload")
-			return
-		}
-		s.failErr(w, err, "store source")
-		return
-	}
-
-	// Whether cutting is even attempted. An audio file has no picture to cut,
-	// and its clips are queued for transcription alone.
-	hasVideo := looksLikeVideo(contentType, name)
-	source, err := s.Store.CreateSource(r.Context(), name, key, contentType, hasVideo, u.ID)
-	if err != nil {
-		// The object is already stored; without a row nothing will ever point
-		// at it, so take it back out rather than leaving it to pay rent.
-		if err := s.Storage.Delete(r.Context(), storage.Clips, key); err != nil {
-			s.Log.Warn("orphaned source object", "key", key, "error", err)
-		}
-		s.failErr(w, err, "record source")
-		return
-	}
-	writeJSON(w, http.StatusCreated, source)
-}
-
 // handleSourceTranscript answers with the words Whisper found in a source, or
 // says they are still coming. The studio polls this while the admin works.
 func (s *Server) handleSourceTranscript(w http.ResponseWriter, r *http.Request) {
@@ -413,8 +367,9 @@ func (s *Server) handleCreateClips(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, created)
 }
 
-// MaxClipSeconds mirrors MAX_CLIP_SECONDS in app/src/data/types.ts. A clip is one
-// line to shadow; the studio already refuses longer cuts, and so does this.
+// MaxClipSeconds mirrors MAX_CLIP_SECONDS in app/src/data/types.ts and in
+// app-admin/src/data/types.ts. A clip is one line to shadow; the console already
+// refuses longer cuts, and so does this.
 const MaxClipSeconds = 6
 
 func validateClip(in store.NewClip) error {
@@ -616,6 +571,24 @@ func (s *Server) handleFile(w http.ResponseWriter, r *http.Request) {
 	defer rc.Close()
 	w.Header().Set("Content-Type", contentTypeFor(key))
 	w.Header().Set("Cache-Control", "private, max-age=3600")
+
+	// Range requests, so a browser can seek.
+	//
+	// This used to be an io.Copy, which serves the bytes and advertises nothing.
+	// Chromium then treats the whole file as unseekable until it holds all of it,
+	// and a currentTime assigned before that is silently clamped to zero — which
+	// is what made switching voices in Dub Review start the line again instead of
+	// keeping its place, and what would make the slider useless on a slow line.
+	//
+	// Disk storage hands back an *os.File, so the seek is free. S3 does not come
+	// through here at all: the browser goes straight to the presigned URL, and
+	// S3 answers ranges itself.
+	if seeker, ok := rc.(io.ReadSeeker); ok {
+		// An empty name and no modtime: the Content-Type above is this project's
+		// own mapping, and ServeContent leaves a header that is already set.
+		http.ServeContent(w, r, "", time.Time{}, seeker)
+		return
+	}
 	if _, err := io.Copy(w, rc); err != nil {
 		s.Log.Warn("truncated file response", "key", key, "error", err)
 	}

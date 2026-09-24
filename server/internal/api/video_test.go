@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"net/http"
-	"strings"
 	"testing"
 )
 
@@ -29,11 +28,19 @@ func uploadSource(t *testing.T, c *client, name string) sourceJSON {
 	return uploadSourceAs(t, c, name, "video/mp4")
 }
 
+// Two requests, because that is what uploading is: the row first so a transfer
+// in flight has something to show, then the bytes.
 func uploadSourceAs(t *testing.T, c *client, name, contentType string) sourceJSON {
 	t.Helper()
-	return expect[sourceJSON](t,
-		c.do("POST", "/api/admin/sources?name="+name, contentType, bytes.NewReader([]byte("pretend recording"))),
-		http.StatusCreated)
+	body := []byte("pretend recording")
+	source := expect[sourceJSON](t, c.json("POST", "/api/admin/uploads", map[string]any{
+		"name":        name,
+		"contentType": contentType,
+		"bytes":       len(body),
+	}), http.StatusCreated)
+	expectStatus(t, c.do("PUT", "/api/admin/uploads/"+source.ID+"/file", contentType,
+		bytes.NewReader(body)), http.StatusOK)
+	return source
 }
 
 func TestPublishingFromASourceQueuesACut(t *testing.T) {
@@ -141,7 +148,7 @@ func TestOnlyAdminsCanUploadASource(t *testing.T) {
 	learner := h.login("learner@example.com")
 
 	expectStatus(t,
-		learner.do("POST", "/api/admin/sources?name=lecture.mp4", "video/mp4", strings.NewReader("x")),
+		learner.json("POST", "/api/admin/uploads", map[string]any{"name": "lecture.mp4", "contentType": "video/mp4"}),
 		http.StatusForbidden)
 }
 
@@ -209,7 +216,7 @@ func TestATranscriptIsPendingUntilTheWorkerHasRun(t *testing.T) {
 	source := uploadSource(t, admin, "lecture.mp4")
 
 	got := expect[transcriptJSON](t,
-		admin.do("GET", "/api/admin/sources/"+source.ID+"/transcript", "", nil), http.StatusOK)
+		admin.do("GET", "/api/admin/uploads/"+source.ID+"/transcript", "", nil), http.StatusOK)
 	if got.Status != "pending" {
 		t.Fatalf("a fresh source reported %q, want pending", got.Status)
 	}
@@ -226,7 +233,7 @@ func TestAStoredTranscriptIsServedWithItsWords(t *testing.T) {
 	h.storeTranscript(t, source.ID)
 
 	got := expect[transcriptJSON](t,
-		admin.do("GET", "/api/admin/sources/"+source.ID+"/transcript", "", nil), http.StatusOK)
+		admin.do("GET", "/api/admin/uploads/"+source.ID+"/transcript", "", nil), http.StatusOK)
 	if got.Status != "ready" {
 		t.Fatalf("a stored transcript reported %q, want ready", got.Status)
 	}
@@ -242,6 +249,6 @@ func TestOnlyAdminsCanReadATranscript(t *testing.T) {
 	source := uploadSource(t, h.login("admin@example.com"), "lecture.mp4")
 
 	expectStatus(t,
-		h.login("learner@example.com").do("GET", "/api/admin/sources/"+source.ID+"/transcript", "", nil),
+		h.login("learner@example.com").do("GET", "/api/admin/uploads/"+source.ID+"/transcript", "", nil),
 		http.StatusForbidden)
 }

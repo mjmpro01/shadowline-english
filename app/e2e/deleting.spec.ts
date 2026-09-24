@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
-import { asAdmin, asLearner, startFresh } from './session'
-import { publishLesson } from './studio'
+import { asLearner, startFresh } from './session'
+import { publishLesson } from './seed'
 
 /**
  * Taking things away.
@@ -57,47 +57,6 @@ test('cancelling keeps the recording', async ({ page }) => {
   await page.getByRole('button', { name: 'Delete this take' }).click()
   await page.getByRole('button', { name: 'Cancel' }).click()
   await expect(page.locator('.seg-opt')).toHaveCount(1)
-})
-
-test('an admin can undo a whole episode', async ({ page }) => {
-  await asAdmin(page)
-  await page.goto('/admin')
-  await page.getByText('Series (', { exact: false }).click()
-
-  const card = page.locator('.card').filter({ hasText: '/lesson-one' })
-  await card.getByRole('button', { name: /episode/ }).click()
-  await card.getByRole('button', { name: 'Delete episode' }).click()
-
-  // The dialog says what goes, counted, rather than asking "are you sure?".
-  await expect(page.getByText(/4 clips and the recording they were cut from/)).toBeVisible()
-  await page.getByRole('button', { name: 'Delete', exact: true }).click()
-
-  await asLearner(page)
-  await page.goto('/library')
-  await page.getByLabel('Search the library').fill('Shadow this line')
-  await expect(page.getByText(/Nothing in the library matches/)).toBeVisible()
-})
-
-test('a series with clips in it is not deleted by accident', async ({ page }) => {
-  await asAdmin(page)
-  await page.goto('/admin')
-  await page.getByText('Series (', { exact: false }).click()
-
-  const card = page.locator('.card').filter({ hasText: '/lesson-one' })
-  // Disabled rather than absent: a button that is not there teaches nobody why.
-  await expect(card.getByRole('button', { name: 'Delete series' })).toBeDisabled()
-
-  // Empty it, and the button opens.
-  await card.getByRole('button', { name: /episode/ }).click()
-  await card.getByRole('button', { name: 'Delete episode' }).click()
-  await page.getByRole('button', { name: 'Delete', exact: true }).click()
-
-  await expect(card.getByRole('button', { name: 'Delete series' })).toBeEnabled()
-  await card.getByRole('button', { name: 'Delete series' }).click()
-  await expect(page.getByText(/is empty, so only the name goes/)).toBeVisible()
-  await page.getByRole('button', { name: 'Delete', exact: true }).click()
-
-  await expect(page.locator('.card').filter({ hasText: '/lesson-one' })).toHaveCount(0)
 })
 
 test('the app can be installed to a phone', async ({ page }) => {

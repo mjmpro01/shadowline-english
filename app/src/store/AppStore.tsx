@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { MAX_CLIP_SECONDS, type AppData, type Take, type Video, type VocabStatus } from '../data/types'
+import type { AppData, Take, Video, VocabStatus } from '../data/types'
 import { ApiError } from '../lib/api'
-import { clipName } from '../lib/clips'
 import { normalizeWord } from '../lib/text'
-import { clock } from '../lib/time'
 import { repository, type LeaderboardRow } from '../repository'
-import { AppContext, type ClipEdit, type LoadState, type NewClip, type Store, type VideoStats } from './context'
+import { AppContext, type LoadState, type Store, type VideoStats } from './context'
 
 const EMPTY: AppData = { videos: [], takes: [], vocab: [], profile: null }
 
@@ -131,78 +129,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLeaderboard([])
   }, [])
 
-  const addClips = useCallback(async (clips: NewClip[], sourceId?: string | null) => {
-    // A clip is one line: nothing longer is sent, whatever the studio's UI
-    // allowed while the cuts were being adjusted. The server checks too.
-    const withinLimit = clips.filter((c) => c.end - c.start <= MAX_CLIP_SECONDS + 0.01)
-    if (withinLimit.length === 0) return
-
-    // The recording was uploaded once when the studio opened it, so publishing
-    // sends its id rather than the file. A batch with no id — the upload failed
-    // — still publishes: the clips are worth having with their audio, and
-    // losing the admin's work over a picture would be the wrong trade.
-
-    // Unnamed clips are numbered across the batch being published, continuing
-    // from whatever the playlist already holds. Not named after their line any
-    // more: transcription fills a line into every clip, and a library of whole
-    // sentences for titles is a library you cannot scan.
-    const playlist = withinLimit[0]?.playlist ?? ''
-    // Asked of the server: it is a fact about the playlist, and the app does
-    // not hold the playlist. It used to count a library it had been sent, and
-    // two admins publishing to the same playlist at once both counted the same
-    // thing and both started from it.
-    const firstNumber = await repository.nextClipNumber(playlist)
-
-    const created = await repository.createClips(
-      withinLimit.map((clip, index) => ({
-        title: clip.title || clipName(firstNumber + index),
-        source: clip.source,
-        playlist: clip.playlist,
-        categories: clip.categories,
-        timestamp: `${clock(clip.start)}–${clock(clip.end)}`,
-        durationSeconds: clip.end - clip.start,
-        summary: 'No takes recorded yet — practice this clip to see your pitch analysis.',
-        captions: [{ text: clip.line, ipa: clip.ipa }],
-        sourceId: sourceId ?? undefined,
-        startSeconds: clip.start,
-        endSeconds: clip.end,
-      })),
-    )
-
-    // Audio goes up per clip, after the ids exist. A clip whose upload fails
-    // stays in the library without source audio, which the app already handles:
-    // takes against it are measured but not scored.
-    await Promise.all(
-      created.map((clip, index) => repository.uploadClipAudio(clip.id, withinLimit[index].audio)),
-    )
-
-    setData((prev) => ({ ...prev, videos: [...created, ...prev.videos] }))
-  }, [])
-
-  const updateClip = useCallback(async (id: string, edit: ClipEdit) => {
-    const current = dataRef.current.videos.find((v) => v.id === id)
-    const [caption] = current?.captions ?? []
-    const captions =
-      edit.line === undefined && edit.ipa === undefined
-        ? undefined
-        : [
-            { text: edit.line ?? caption?.text ?? '', ipa: edit.ipa ?? caption?.ipa ?? '' },
-            ...(current?.captions.slice(1) ?? []),
-          ]
-
-    const updated = await repository.updateClip(id, {
-      title: edit.title,
-      playlist: edit.playlist,
-      categories: edit.categories,
-      featured: edit.featured,
-      captions,
-    })
-    setData((prev) => ({
-      ...prev,
-      videos: prev.videos.map((v) => (v.id === id ? updated : v)),
-    }))
-  }, [])
-
   /** Fetches clips the app does not hold yet, and remembers which ids turned
    *  out not to exist.
    *
@@ -257,35 +183,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const deleteTake = useCallback(async (id: string) => {
     await repository.deleteTake(id)
     setData((prev) => ({ ...prev, takes: prev.takes.filter((t) => t.id !== id) }))
-  }, [])
-
-  /** Forgets the clips an episode took with it, without reloading the world.
-   *
-   * The studio deletes an episode through the API, which is where the rows
-   * go; this is the copy the rest of the app is holding. Not `reload()`,
-   * which sets the loading state and blanks every screen that guards on it —
-   * a delete should not look like a page load. */
-  const forgetEpisode = useCallback((episodeId: string) => {
-    setData((prev) => {
-      const gone = new Set(
-        prev.videos.filter((video) => video.episodeId === episodeId).map((video) => video.id),
-      )
-      return {
-        ...prev,
-        videos: prev.videos.filter((video) => !gone.has(video.id)),
-        takes: prev.takes.filter((take) => !gone.has(take.videoId)),
-      }
-    })
-  }, [])
-
-  /** Removes the clip and the practice history that only made sense with it. */
-  const deleteClip = useCallback(async (id: string) => {
-    await repository.deleteClip(id)
-    setData((prev) => ({
-      ...prev,
-      videos: prev.videos.filter((v) => v.id !== id),
-      takes: prev.takes.filter((t) => t.videoId !== id),
-    }))
   }, [])
 
   /**
@@ -403,10 +300,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isAdmin: data.profile?.isAdmin ?? false,
       reload,
       logout,
-      addClips,
-      updateClip,
-      deleteClip,
-      forgetEpisode,
       ensureClips,
       clipMissing,
       addTake,
@@ -424,10 +317,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       error,
       reload,
       logout,
-      addClips,
-      updateClip,
-      deleteClip,
-      forgetEpisode,
       ensureClips,
       clipMissing,
       addTake,

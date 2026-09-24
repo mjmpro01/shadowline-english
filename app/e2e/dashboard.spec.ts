@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { asAdmin, asLearner, startFresh } from './session'
-import { publishLesson } from './studio'
+import { feature, publishLesson } from './seed'
 
 test.beforeEach(async ({ page }) => {
   await startFresh(page)
@@ -78,15 +78,11 @@ test('another learner appears on the board only once they have a score', async (
 test('featured clips come from the studio and lead straight into practice', async ({ page }) => {
   await publishLesson(page)
 
-  await page.goto('/admin')
-  await page.getByText('Clips (', { exact: false }).click()
-  // The starter clips are in this list too, and two of them ship featured —
-  // so the one to feature has to be found rather than taken off the top.
-  await page.getByLabel('Find a clip').fill('Shadow this line 1')
-  const row = page.locator('.card', { hasText: 'Name' }).first()
-  await row.getByRole('button', { name: 'Feature', exact: true }).click()
-  await expect(row.getByRole('button', { name: 'Featured', exact: true })).toBeVisible()
+  // Featured through the API: what this test is about is the dashboard, and the
+  // console's own button for it is covered where that button lives.
+  await feature(page, 'Shadow this line 1')
 
+  await asLearner(page)
   await page.goto('/dashboard')
   const featured = page.locator('.grid-cards .card').filter({ hasText: 'Shadow this line 1' })
   await expect(featured).toBeVisible()

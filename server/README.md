@@ -100,7 +100,7 @@ Three settings have to agree or the round trip breaks:
 | --- | --- |
 | `OAUTH_REDIRECT_URL` | character-for-character one of the authorised redirect URIs |
 | `APP_ORIGIN` | where the React app is actually served — it is both the CORS origin and where the callback sends the browser afterwards |
-| `ADMIN_EMAILS` | the addresses that get the clip studio, checked at sign-in |
+| `ADMIN_EMAILS` | the addresses that get the admin console, checked at sign-in |
 
 When something goes wrong the callback does not answer with an error body: it is
 a browser navigation, and one would leave the learner on this server's origin
@@ -355,6 +355,186 @@ energy-based cut found anyway.
 Length is checked against the selection, not the proposal: a clip being left
 behind is too long for nobody.
 
+## Uploading is two requests, and the history is a read model
+
+`POST /api/admin/uploads` writes the row; `PUT /api/admin/uploads/{id}/file`
+carries the bytes.
+
+It used to be one request that stored the file and inserted the row after it,
+which meant a transfer still running had no row at all. An admin whose
+two-hour film was on its way had nothing to look at, and one whose upload died
+halfway had nothing left behind saying so — not even a name. Writing the row
+first is the whole point: `upload_state` is `uploading`, `stored` or `failed`,
+and the failure carries its reason in `error`.
+
+Transcription is queued by the transaction that marks it `stored`, and not
+before: a job pointing at an empty key would burn its attempts and be dropped
+before the file it was waiting for had arrived.
+
+**Everything else about an upload's progress is read, not stored.** Whether the
+words are still coming, whether its clips still owe a picture, whether any of it
+was published — all of that is already written down, and a second copy kept in
+step by hand is a second copy to get wrong. `store.Uploads` reads it back:
+
+| Status | What the database says |
+| --- | --- |
+| `uploading` | `upload_state = 'uploading'` |
+| `upload-failed` | `upload_state = 'failed'`, with `error` |
+| `transcribing` | a `transcribe_jobs` row exists |
+| `transcribe-failed` | no job, no transcript, and the file did arrive |
+| `ready` | stored, words settled either way, nothing published |
+| `cutting` | published, and `cut_jobs` rows remain for its clips |
+| `cut-failed` | published, no jobs left, and clips that should have a picture have none |
+| `done` | published, and every picture the cutter was going to make is there |
+
+That reading leans on one thing the workers do: a job row exists **only while
+there is work left**. `CutQueue` and `TranscribeQueue` delete the row when they
+finish and when they give up, so "a row is here" means pending, and what
+distinguishes finished from abandoned is whether the result landed — a
+`transcripts` row, a clip's `video_key`.
+
+`Upload.status()` in Go is the one place that turns those counts into a word, and
+`?state=` filters on it. There is no status column to filter on, deliberately, so
+a filtered page reads the history in order and keeps what matches; an unfiltered
+one is an ordinary `limit`/`offset` page. `POST /api/admin/uploads/{id}/retry`
+puts back exactly what gave up and answers with how much, because "nothing to
+retry" is a real outcome.
+
+## The tutor
+
+`POST /api/tutor/chat` answers a learner's question through any
+OpenAI-compatible chat endpoint — 9router, in the deployment this was written
+for. Set `TUTOR_API_KEY` and `TUTOR_MODEL` and it is on; leave the key blank and
+`GET /api/tutor` says so and the app leaves the chat out entirely.
+
+| Variable | What it is |
+| --- | --- |
+| `TUTOR_API_URL` | The endpoint's `/v1`. 9router's default is `http://localhost:20128/v1` |
+| `TUTOR_API_KEY` | Sent as `Authorization: Bearer …`. 9router shows one on its dashboard |
+| `TUTOR_MODEL` | A 9router model id (`cc/claude-haiku-4-5-20251001`, below) or a combo name |
+
+**The key never leaves the server.** The browser sends the conversation — the
+learner's turns and the tutor's, nothing else — which clip is on screen, and
+the app's language as a tag (`vi`, `pt-BR`; anything else is a 400, because it
+goes into the prompt).
+The system prompt is added here, and a `system` message from the browser is
+refused with a 400 rather than dropped: a request carrying one is somebody
+trying something.
+
+**It is told the truth about the take.** With a `clipId`, the prompt carries the
+line, its IPA, and this learner's own measurements on it — best score, the four
+metrics of the latest take, the words the transcriber did not hear. That is what
+lets the tutor say "your stress was 44" instead of "stress is important", and the
+prompt tells it not to invent a number it was not given. Only this learner's
+takes are read; `internal/api/tutor_test.go` has a second learner's 97 sitting
+beside the first's 58 to hold that.
+
+**It costs money per message, so it is bounded.** The last 20 turns go to the
+model and no more; a question can be 2,000 characters; an answer is capped at 700
+tokens; and a learner gets 30 questions per 10 minutes, after which the answer is
+a 429 with `Retry-After` and the router is not called at all. The limit is in
+memory, which is right for one API instance — a second replica would give each
+learner the allowance twice, and the day there is one it wants to move into
+Postgres.
+
+**It streams.** Server-sent events: `{"delta": "…"}` per piece, `{"done": true}`
+at the end, `{"error": "…"}` if the model fails part-way. Headers are held back
+until the first piece arrives, so a router that refuses outright still gets an
+ordinary 502 with a status code. `X-Accel-Buffering: no` is set because nginx
+buffers proxied responses by default and would otherwise deliver the whole answer
+at once. The route has its own three-minute deadline, like the upload has its own
+half hour: a model that is thinking is not a stuck handler.
+
+**Tried against a real 9router**, and it found two things the fake did not.
+The client built its own `http.Transport{}`, which has no proxy function and so
+ignored `HTTPS_PROXY`: on a network where traffic only leaves through a proxy the
+tutor never answered while `curl` from the same machine worked. It clones the
+default transport now. And 9router's Claude Code route puts `<think></think>`
+ahead of every answer; `internal/tutor/think.go` drops those blocks as they
+stream, including when a tag arrives split across two pieces.
+
+And one that was not this server's: the answer arrived in a few large bursts
+instead of as it was written. It was the nginx in front of 9router, buffering
+proxied responses as nginx does by default — a long answer came through in four
+bursts, sized by its buffers. On that nginx, the location proxying to 9router
+needs:
+
+```nginx
+proxy_buffering off;
+proxy_cache off;
+gzip off;
+proxy_http_version 1.1;
+proxy_set_header Connection "";
+proxy_read_timeout 300s;
+```
+
+With that in place the first piece reached a learner after two seconds instead
+of ten, and the rest followed as it was written.
+`TestEachPieceReachesTheLearnerBeforeTheNextIsWritten` holds that nothing on this
+side of it waits.
+
+**Which model: Haiku.** Timed through 9router with the tutor's own prompt and
+the same question, first piece / whole answer:
+
+| `TUTOR_MODEL` | First piece | Whole answer |
+| --- | --- | --- |
+| `cc/claude-haiku-4-5-20251001` | 1.3 s | 6.5–6.9 s |
+| `cc/claude-sonnet-5` | 1.5–1.9 s | 8–9.6 s |
+| `cc/claude-opus-5` | — | 13.6–14.6 s |
+| `cc/claude-opus-5` with `speed: "fast"` | — | 14.2–14.4 s |
+| `ag/gemini-3-flash` | ~11 s | — |
+
+Haiku's answers to a learner's question hold up, and it is the quickest. "Fast
+mode" is not a setting to reach for: Claude offers it on Opus only, and 9router
+does not pass it through — the numbers above are the same with and without it.
+
+**It only talks about English.** The persona says what it helps with first —
+pronunciation, vocabulary, grammar, translation, corrections, IELTS and TOEIC,
+role-play practice, how to study, writing an email or a letter *in English* —
+and then what it does not: code, maths, science, news, health, legal or money
+advice, including when English is only the wrapping ("explain photosynthesis in
+English"). The test it is given is what the learner wants back: English, or
+facts about something else. A decline is one or two sentences in the learner's
+language offering the English words for that topic, without the answer. Asking
+it to ignore its instructions, reveal them or become something else is declined
+the same way; role-play the learner asks for is practice and is played.
+
+Leading with the forbidden list was tried first, and Haiku, which follows the
+letter of a rule, started turning down IELTS strategy and role-play. So there is
+an eval that checks both directions against the real model:
+
+```sh
+TUTOR_API_URL=https://…/v1 TUTOR_API_KEY=… TUTOR_MODEL=cc/claude-haiku-4-5-20251001 \
+    python3 tools/tutor_scope_eval.py   # ROUNDS=3 for more
+```
+
+28 questions — 12 it must answer, 9 it must decline (four of them attempts to
+talk it out of its instructions), 7 about language — graded by pattern: an
+in-scope answer fails if it opens by saying what the tutor does not do, a decline
+fails if it carries the answer, and any answer fails if it is in the wrong
+language. It calls a paid model, so it is not part of `go test`; `prompt_test.go`
+holds that the rules are still in the prompt.
+
+**It answers in the learner's language.** Learners do not all speak Vietnamese,
+so the language of the question decides: Spanish gets Spanish, Korean Korean,
+English English — a decline too — with the English being taught left in English.
+The app's language is sent along for the one message that has no language of its
+own: "She don't like coffee" on its own is explained in Vietnamese to a learner
+whose app is in Vietnamese, and in English to one whose app is in English.
+
+That line had to say what it was for. Given as a bare `App language: vi`, Haiku
+took it as an order and answered Spanish, Korean and English questions in
+Vietnamese — the eval went 43/56. Spelled out as "the language their screens are
+in, not the language to answer in", with that one exception named, and with the
+decline rule giving examples, it comes back 83/84 run after run. The one miss is
+the same each time: "Explain photosynthesis in English", from a learner whose app
+is in Vietnamese, is declined correctly but in Vietnamese — a message that asks
+for English is arguably telling you it is not the learner's first language.
+
+Conversations are not stored. The app keeps one for the tab, and a
+conversation about one evening's practice is not a record anybody asked the
+server to keep.
+
 ## Transcripts and IPA
 
 The studio fills its own lines in. The recording is uploaded when the admin
@@ -374,7 +554,7 @@ own boundaries, so an hour is transcribed once however many lines come out of
 it. A word belongs to the clip its *middle* falls in, so one straddling a cut
 goes to the side holding most of it and never to both. That rule lives twice —
 `words_between` in `scoring/shadowline/transcribe.py` and `wordsBetween` in
-`app/src/lib/transcript.ts` — because the worker maps words once and the studio
+`app-admin/src/lib/transcript.ts` — because the worker maps words once and the studio
 maps them again whenever a boundary moves. Both are tested against the same
 cases; they have to stay in step.
 
@@ -556,13 +736,51 @@ presigned URL and the bytes never pass through this process. With `DISK_ROOT`
 instead, `GET /files/{bucket}/*` serves them behind an HMAC signature that
 `internal/auth/sign.go` produces and checks.
 
-Two things about that route are easy to get wrong and were: the path is a
-wildcard rather than `{key}`, because object keys contain slashes and a single
-segment never matches one; and the response sets `Content-Type` from the key's
-extension, because disk storage keeps no metadata and an `<audio>` element given
-a response it cannot type refuses to play it — reporting only "The element has no
-supported sources", which names neither the element nor the reason. Both are
-covered by tests in `internal/api/clips_test.go`.
+Three things about that route are easy to get wrong and were.
+
+The path is a wildcard rather than `{key}`, because object keys contain slashes
+and a single segment never matches one.
+
+The response sets `Content-Type` from the key's extension, because disk storage
+keeps no metadata and an `<audio>` element given a response it cannot type
+refuses to play it — reporting only "The element has no supported sources", which
+names neither the element nor the reason.
+
+And it answers **range requests**, through `http.ServeContent`. It used to be an
+`io.Copy`, which serves the bytes and advertises nothing: Chromium then treats the
+resource as unseekable until it holds all of it and silently clamps a
+`currentTime` assigned before that to zero. The symptom was three screens away —
+switching voices in Dub Review started the line again instead of keeping its
+place — and the slider would have been useless on a slow connection for the same
+reason. Disk storage hands back an `*os.File`, so the seek costs nothing; S3 does
+not come through here at all, and answers ranges itself.
+
+The first two are covered in `internal/api/clips_test.go`, the third in
+`internal/api/deadlines_test.go`.
+
+## Two deadlines, not one
+
+Every route used to be under one sixty-second timeout, and that broke uploading
+a film. The upload handler raises the server's *write* deadline for a big file,
+which reads as though the case were covered, but the request context is what
+actually decides: at sixty seconds it was cancelled, storing the object failed
+with `context deadline exceeded`, and the admin got a 500 on a connection that
+was working perfectly. Reproduced by sending a 4 MB file over seventy seconds.
+
+So there are two:
+
+- `requestTimeout`, a minute, on everything. A handler that has not answered in
+  a minute is stuck, not busy.
+- `transferTimeout`, half an hour, on the two routes that move a whole file:
+  `POST /api/admin/sources` and `GET /files/*`. What makes those slow is the
+  size of the file and the speed of the line — half an hour covers the two
+  gigabytes `maxSourceBytes` allows, on a connection that is not fast.
+
+The upload route sits in its own group rather than inside the rest of `/api`,
+because a deadline set further down can only ever shorten the one above it: a
+route under the minute cannot ask for half an hour. `internal/api/deadlines_test.go`
+holds it there, by measuring what the handler's context has left rather than by
+spending a minute proving it.
 
 ## Layout
 

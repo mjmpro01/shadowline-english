@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
-import { asAdmin, asLearner, startFresh } from './session'
-import { publishLesson } from './studio'
+import { asLearner, startFresh } from './session'
+import { publishLesson } from './seed'
 
 /**
  * The library as a tree: a series, its episodes, and the clips cut out of each.
@@ -143,46 +143,4 @@ test('one letter is not a search', async ({ page }) => {
   await page.getByLabel('Search the library').fill('l')
 
   await expect(page.getByText('Type two letters or more.')).toBeVisible()
-})
-
-// ------------------------------------------------------------------ the studio
-
-test('an admin names a series, describes it and marks it hot', async ({ page }) => {
-  await asAdmin(page)
-  await page.goto('/admin')
-  await page.getByText('Series (', { exact: false }).click()
-
-  // By its slug, which is text on the card. The name is the value of an input,
-  // and an input's value is not text content — filtering on it finds nothing.
-  const card = page.locator('.card').filter({ hasText: '/lesson-one' })
-  await card.getByLabel('About this series').fill('Ten seasons of it.')
-  await card.getByLabel('About this series').press('Enter')
-  await card.getByRole('button', { name: 'Mark hot' }).click()
-  await expect(card.getByRole('button', { name: 'Hot', exact: true })).toBeVisible()
-
-  // The learner sees both, and the hot one leads the library.
-  await asLearner(page)
-  await page.goto('/library')
-  await expect(page.locator('.series-card').first()).toContainText(SERIES)
-  await expect(page.locator('.series-card').first()).toContainText('Hot')
-
-  await openSeries(page)
-  await expect(page.getByText('Ten seasons of it.')).toBeVisible()
-})
-
-test('an admin renames an episode from the file it was cut from', async ({ page }) => {
-  await asAdmin(page)
-  await page.goto('/admin')
-  await page.getByText('Series (', { exact: false }).click()
-
-  // By its slug, which is text on the card. The name is the value of an input,
-  // and an input's value is not text content — filtering on it finds nothing.
-  const card = page.locator('.card').filter({ hasText: '/lesson-one' })
-  await card.getByRole('button', { name: /episode/ }).click()
-  await card.getByLabel('Episode name').fill('S01E01 — The pilot')
-  await card.getByLabel('Episode name').press('Enter')
-
-  await asLearner(page)
-  await openSeries(page)
-  await expect(page.getByRole('button', { name: 'Open S01E01 — The pilot' })).toBeVisible()
 })

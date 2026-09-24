@@ -26,31 +26,6 @@ type Source struct {
 	HasVideo bool `json:"hasVideo"`
 }
 
-// CreateSource records the upload and schedules its transcription, in one
-// transaction: a source that exists with nothing queued to read it would leave
-// the studio waiting for words that were never coming.
-func (s *Store) CreateSource(ctx context.Context, name, key, contentType string, hasVideo bool, createdBy uuid.UUID) (Source, error) {
-	var author *uuid.UUID
-	if createdBy != uuid.Nil {
-		author = &createdBy
-	}
-	var out Source
-	err := s.inTx(ctx, func(tx pgx.Tx) error {
-		if err := tx.QueryRow(ctx, `
-			insert into clip_sources (name, key, content_type, has_video, created_by)
-			values ($1, $2, $3, $4, $5)
-			returning id, name, key, content_type, has_video`,
-			name, key, contentType, hasVideo, author).
-			Scan(&out.ID, &out.Name, &out.Key, &out.ContentType, &out.HasVideo); err != nil {
-			return err
-		}
-		_, err := tx.Exec(ctx,
-			`insert into transcribe_jobs (source_id) values ($1) on conflict (source_id) do nothing`, out.ID)
-		return err
-	})
-	return out, mapErr(err)
-}
-
 func (s *Store) SourceByID(ctx context.Context, id uuid.UUID) (Source, error) {
 	var out Source
 	err := s.pool.QueryRow(ctx,

@@ -106,14 +106,11 @@ export function ProfileScreen() {
           <div className="card-kicker">{t('nav.studio')}</div>
           <div className="row between gap-3">
             <span style={{ fontSize: 13, opacity: 0.75 }}>{t('profile.studioBody')}</span>
-            <button
-              type="button"
-              className="btn btn-primary"
-              style={{ flexShrink: 0 }}
-              onClick={() => navigate('/admin')}
-            >
+            {/* Out of the app: the console is a separate build served at
+                /admin/ on this origin, so this leaves rather than routes. */}
+            <a className="btn btn-primary" style={{ flexShrink: 0 }} href="/admin/">
               {t('profile.open')}
-            </button>
+            </a>
           </div>
         </div>
       )}

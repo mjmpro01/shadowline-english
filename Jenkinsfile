@@ -48,6 +48,15 @@ pipeline {
           sh 'yarn test'
           sh 'yarn build'
         }
+        // The admin console is its own build with its own dependencies. Both
+        // dists go into one image — they are one origin — so both have to be
+        // built here for the deploy step below to have them.
+        dir('app-admin') {
+          sh 'npm ci'
+          sh 'npm run lint'
+          sh 'npm test'
+          sh 'npm run build'
+        }
       }
     }
 
@@ -95,12 +104,16 @@ pipeline {
             --exclude 'server/.env' \
             --exclude '**/node_modules/' \
             --exclude 'app/dist/' \
+            --exclude 'app-admin/dist/' \
             ./ "$ROOT/"
 
-          # SPA build from the Test app stage (reuseNode keeps workspace).
-          mkdir -p "$ROOT/app/dist"
+          # Both SPA builds from the Test app stage (reuseNode keeps workspace).
+          mkdir -p "$ROOT/app/dist" "$ROOT/app-admin/dist"
           if [ -d app/dist ]; then
             rsync -a --delete app/dist/ "$ROOT/app/dist/"
+          fi
+          if [ -d app-admin/dist ]; then
+            rsync -a --delete app-admin/dist/ "$ROOT/app-admin/dist/"
           fi
 
           cd "$COMPOSE_DIR"

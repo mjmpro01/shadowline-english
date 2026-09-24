@@ -91,9 +91,14 @@ func (h *harness) transcribeQueueDepth(t *testing.T) int {
 
 // storeTranscript writes what the transcriber would have written, so the API
 // can be checked against a transcript without a Whisper model on disk.
+// storeTranscript is the transcriber finishing: the words are written and the
+// job goes, in that order and together, exactly as TranscribeQueue.complete does
+// it. Leaving the job behind would leave every reader of it — the studio, the
+// upload history — saying the words were still coming.
 func (h *harness) storeTranscript(t *testing.T, sourceID string) {
 	t.Helper()
-	_, err := h.pool.Exec(context.Background(), `
+	ctx := context.Background()
+	_, err := h.pool.Exec(ctx, `
 		insert into transcripts (source_id, words, language)
 		values ($1, $2, 'en')`, sourceID, []byte(`[
 			{"start": 0.1, "end": 0.45, "text": "One", "ipa": "ˈwʌn"},
@@ -101,6 +106,10 @@ func (h *harness) storeTranscript(t *testing.T, sourceID string) {
 		]`))
 	if err != nil {
 		t.Fatalf("store transcript: %v", err)
+	}
+	if _, err := h.pool.Exec(ctx,
+		`delete from transcribe_jobs where source_id = $1`, sourceID); err != nil {
+		t.Fatalf("clear the transcribe job for %s: %v", sourceID, err)
 	}
 }
 
@@ -414,4 +423,53 @@ func silentWAV(seconds float64) []byte {
 	binary.Write(&b, binary.LittleEndian, uint32(dataLen))
 	b.Write(make([]byte, dataLen))
 	return b.Bytes()
+}
+
+// dropTranscribeJob is what giving up looks like: the worker deletes the job and
+// writes no transcript, which is what makes the studio stop promising words.
+func (h *harness) dropTranscribeJob(t *testing.T, sourceID string) {
+	t.Helper()
+	if _, err := h.pool.Exec(context.Background(),
+		`delete from transcribe_jobs where source_id = $1`, sourceID); err != nil {
+		t.Fatalf("drop the transcribe job for %s: %v", sourceID, err)
+	}
+}
+
+// dropCutJobs is the cutter giving up on every clip of a recording. It costs
+// them their picture and nothing else: video_key stays null, which every screen
+// already copes with because that is what an audio upload looks like.
+func (h *harness) dropCutJobs(t *testing.T, sourceID string) {
+	t.Helper()
+	if _, err := h.pool.Exec(context.Background(), `
+		delete from cut_jobs
+		where clip_id in (select id from clips where source_id = $1)`, sourceID); err != nil {
+		t.Fatalf("drop the cut jobs for %s: %v", sourceID, err)
+	}
+}
+
+// failUpload is a transfer that died: the row says so and carries the reason,
+// which is the whole point of writing it before the bytes.
+func (h *harness) failUpload(t *testing.T, id, reason string) {
+	t.Helper()
+	if _, err := h.pool.Exec(context.Background(),
+		`update clip_sources set upload_state = 'failed', error = $2 where id = $1`,
+		id, reason); err != nil {
+		t.Fatalf("fail the upload %s: %v", id, err)
+	}
+}
+
+// recordScoredTake records a take through the API and scores it the way the
+// worker would, with the four metrics as given.
+func (h *harness) recordScoredTake(t *testing.T, c *client, clipID string, score float64, metrics map[string]float64) {
+	t.Helper()
+	take := record(t, c, clipID)
+	raw, err := json.Marshal(metrics)
+	if err != nil {
+		t.Fatalf("encode metrics: %v", err)
+	}
+	if _, err := h.pool.Exec(context.Background(), `
+		update takes set score = $2, scores = $3, status = 'scored'
+		where id = $1`, take.ID, score, raw); err != nil {
+		t.Fatalf("score take %s: %v", take.ID, err)
+	}
 }

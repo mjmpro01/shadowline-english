@@ -1,25 +1,6 @@
 import { createContext, useContext } from 'react'
 import type { LeaderboardRow } from '../repository'
-import type { AppData, Take, Video, VocabStatus } from '../data/types'
-
-export interface NewClip {
-  /** What the library shows; falls back to the line when left empty. */
-  title: string
-  line: string
-  ipa: string
-  source: string
-  playlist: string
-  categories: string[]
-  start: number
-  end: number
-  audio: Blob
-}
-
-/** The parts of a published clip an admin can still change. */
-export type ClipEdit = Partial<Pick<Video, 'title' | 'playlist' | 'categories' | 'featured'>> & {
-  line?: string
-  ipa?: string
-}
+import type { AppData, Take, VocabStatus } from '../data/types'
 
 export interface VideoStats {
   takes: Take[]
@@ -48,14 +29,6 @@ export interface Store {
   isAdmin: boolean
   reload: () => Promise<void>
   logout: () => Promise<void>
-  /** Publishes a batch. `sourceId` is the recording the studio already
-   *  uploaded: pass it and the server cuts each clip's video out of it in the
-   *  background. */
-  addClips: (clips: NewClip[], sourceId?: string | null) => Promise<void>
-  updateClip: (id: string, edit: ClipEdit) => Promise<void>
-  deleteClip: (id: string) => Promise<void>
-  /** Forgets the clips an episode the studio deleted took with it. */
-  forgetEpisode: (episodeId: string) => void
   /** Fetches clips the app does not hold yet. `data.videos` is a cache of the
    *  clips screens have asked for, not the library. */
   ensureClips: (ids: string[]) => Promise<void>

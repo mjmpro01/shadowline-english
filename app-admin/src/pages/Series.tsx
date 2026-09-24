@@ -8,7 +8,6 @@ import type { Episode, Playlist } from '../data/types'
 import { ApiError } from '../lib/api'
 import { clock } from '../lib/time'
 import { repository } from '../repository'
-import { useApp } from '../store/context'
 
 /**
  * The studio's third tab: the shelf rather than what is on it.
@@ -17,7 +16,7 @@ import { useApp } from '../store/context'
  * describe, order and push. Without this the only way to mark a series hot
  * would be a PATCH by hand, which is not a feature — it is an endpoint.
  */
-export function StudioSeries({ onCount }: { onCount: (n: number) => void }) {
+export function Series() {
   const t = useT()
   const [series, setSeries] = useState<Playlist[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -28,12 +27,11 @@ export function StudioSeries({ onCount }: { onCount: (n: number) => void }) {
     try {
       const listed = await repository.listPlaylists()
       setSeries(listed)
-      onCount(listed.length)
       setError(null)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not load the series.')
     }
-  }, [onCount])
+  }, [])
 
   useEffect(() => {
     // Every setState inside reload() runs after an await, so none of them
@@ -43,12 +41,29 @@ export function StudioSeries({ onCount }: { onCount: (n: number) => void }) {
     void reload()
   }, [reload])
 
+  const heading = (
+    <div>
+      <h1 style={{ marginBottom: 2 }}>{t('studio.tabSeriesTitle')}</h1>
+      <div className="card-meta">
+        {series === null ? '—' : t('studio.seriesCount', series.length)}
+      </div>
+    </div>
+  )
+
   if (error !== null) return <div className="card-meta">{error}</div>
   if (series === null) return <Loading />
-  if (series.length === 0) return <div className="card-meta">{t('library.noSeries')}</div>
+  if (series.length === 0) {
+    return (
+      <div className="stack gap-3">
+        {heading}
+        <div className="card-meta">{t('library.noSeries')}</div>
+      </div>
+    )
+  }
 
   return (
     <div className="stack gap-3">
+      {heading}
       {deleting && (
         <ConfirmDelete
           title={t('studio.deleteSeriesTitle')}
@@ -151,10 +166,6 @@ function Episodes({
   onChange: () => Promise<void>
 }) {
   const t = useT()
-  // Deleting an episode takes its clips with it, and the clips the rest of the
-  // app holds are the ones loaded at sign-in. Without this the studio's Clips
-  // tab would keep offering rows that no longer exist.
-  const { forgetEpisode } = useApp()
   const [episodes, setEpisodes] = useState<Episode[] | null>(null)
   const [dropping, setDropping] = useState<Episode | null>(null)
 
@@ -189,10 +200,7 @@ function Episodes({
           onConfirm={() => {
             const id = dropping.id
             setDropping(null)
-            void repository.deleteEpisode(id).then(() => {
-              forgetEpisode(id)
-              return after()
-            })
+            void repository.deleteEpisode(id).then(after)
           }}
         />
       )}

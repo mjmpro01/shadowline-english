@@ -20,6 +20,7 @@ import (
 	"github.com/shadowline/server/internal/storage"
 	"github.com/shadowline/server/internal/store"
 	"github.com/shadowline/server/internal/telemetry"
+	"github.com/shadowline/server/internal/tutor"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -113,6 +114,16 @@ func run(log *slog.Logger) error {
 		Keycloak: kcProvider,
 		Users:    kcUsers,
 		Log:      log,
+	}
+	if cfg.TutorConfigured() {
+		srv.Tutor = &tutor.Client{BaseURL: cfg.TutorAPIURL, APIKey: cfg.TutorAPIKey, Model: cfg.TutorModel}
+		// Thirty messages in ten minutes is a learner talking through a line in
+		// detail; more than that is somebody holding Enter, and each one is paid
+		// for.
+		srv.TutorLimit = &tutor.Limiter{Max: 30, Window: 10 * time.Minute}
+		log.Info("tutor enabled", "url", cfg.TutorAPIURL, "model", cfg.TutorModel)
+	} else {
+		log.Info("tutor off — set TUTOR_API_KEY and TUTOR_MODEL to give learners a chat")
 	}
 
 	go sweepSessions(ctx, st, log)

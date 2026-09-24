@@ -1,5 +1,16 @@
 import { defineConfig } from '@playwright/test'
-import { API_URL, APP_PORT, APP_URL, SERVER_DIR, serverEnv } from './e2e/environment'
+import {
+  ADMIN_DIR,
+  ADMIN_PORT,
+  ADMIN_URL,
+  API_URL,
+  APP_PORT,
+  APP_URL,
+  ROUTER_PORT,
+  ROUTER_URL,
+  SERVER_DIR,
+  serverEnv,
+} from './e2e/environment'
 import { USER_TAKE, writeAudioFixtures } from './e2e/fixtures'
 import { provision } from './e2e/provision'
 
@@ -7,8 +18,19 @@ writeAudioFixtures()
 provision()
 
 export default defineConfig({
-  testDir: './e2e',
   testMatch: '**/*.spec.ts',
+  /**
+   * Two apps, one stack.
+   *
+   * The console is a separate build with its own dev server, but there is one
+   * API, one database and one set of workers to test either of them against, so
+   * there is one browser-test run. The specs are split by which app they drive;
+   * `baseURL` is what says which.
+   */
+  projects: [
+    { name: 'app', testDir: './e2e', testIgnore: '**/console/**' },
+    { name: 'console', testDir: './e2e/console', use: { baseURL: ADMIN_URL } },
+  ],
   timeout: 90_000,
   // The tests share one database and one library, so they run one at a time.
   // Parallelism would need a database per worker, which is not worth it for a
@@ -31,6 +53,14 @@ export default defineConfig({
   },
   webServer: [
     {
+      // Before the API, which is told to send the tutor's questions here.
+      command: 'node e2e/fake-router.mjs',
+      env: { ...process.env, FAKE_ROUTER_PORT: String(ROUTER_PORT) } as Record<string, string>,
+      url: `${ROUTER_URL}/health`,
+      reuseExistingServer: false,
+      timeout: 20_000,
+    },
+    {
       command: 'go run ./cmd/api',
       cwd: SERVER_DIR,
       env: serverEnv() as Record<string, string>,
@@ -46,6 +76,17 @@ export default defineConfig({
       command: `npm run dev -- --port ${APP_PORT} --strictPort`,
       env: { ...process.env, VITE_API_URL: API_URL } as Record<string, string>,
       url: APP_URL,
+      reuseExistingServer: false,
+      timeout: 60_000,
+    },
+    {
+      // The console reaches the API through its own Vite proxy rather than
+      // across origins, which is what nginx does for it in production and the
+      // reason it needs no CORS allowance of its own.
+      command: `npm run dev -- --port ${ADMIN_PORT} --strictPort`,
+      cwd: ADMIN_DIR,
+      env: { ...process.env, ADMIN_API_URL: API_URL } as Record<string, string>,
+      url: `${ADMIN_URL}/admin/`,
       reuseExistingServer: false,
       timeout: 60_000,
     },
