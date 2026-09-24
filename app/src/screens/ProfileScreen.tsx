@@ -7,6 +7,7 @@ import { AvatarSlot } from '../components/AvatarSlot'
 import { Dialog } from '../components/Dialog'
 import { Icon } from '../components/Icon'
 import { LOCALE_CODES, LOCALES, useI18n } from '../i18n'
+import { applyTheme, storedTheme, THEMES, type Theme } from '../lib/theme'
 import { useApp } from '../store/context'
 
 export function ProfileScreen() {
@@ -22,6 +23,7 @@ export function ProfileScreen() {
   const [changing, setChanging] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [note, setNote] = useState<string | null>(null)
+  const [theme, setTheme] = useState<Theme>(storedTheme)
   // Above the early return: a hook after it runs on some renders and not
   // others, which is the one thing React cannot cope with.
   const summary = useRemote('', () => repository.librarySummary())
@@ -93,7 +95,7 @@ export function ProfileScreen() {
         <div className="card-kicker">{t('profile.account')}</div>
         {stats.map((stat) => (
           <div className="row between" style={{ fontSize: 14 }} key={stat.label}>
-            <span style={{ opacity: 0.7 }}>{stat.label}</span>
+            <span style={{ color: 'var(--color-text-muted)' }}>{stat.label}</span>
             <span className="mono">{stat.value}</span>
           </div>
         ))}
@@ -126,11 +128,33 @@ export function ProfileScreen() {
         </div>
       </div>
 
+      {/* Light, dark, or the device's: this device's choice, not the account's,
+          so a phone at night and a classroom screen can each have their own. */}
+      <div className="card elev-sm stack gap-2" style={{ width: '100%', textAlign: 'left' }}>
+        <div className="card-kicker">{t('profile.theme')}</div>
+        <div className="row gap-2 wrap">
+          {THEMES.map((one) => (
+            <button
+              type="button"
+              key={one}
+              className={`btn ${one === theme ? 'btn-primary' : 'btn-secondary'}`}
+              aria-pressed={one === theme}
+              onClick={() => {
+                applyTheme(one)
+                setTheme(one)
+              }}
+            >
+              {t(`profile.theme.${one}`)}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {isAdmin && (
         <div className="card elev-sm stack gap-2" style={{ width: '100%', textAlign: 'left' }}>
           <div className="card-kicker">{t('nav.studio')}</div>
           <div className="row between gap-3">
-            <span style={{ fontSize: 13, opacity: 0.75 }}>{t('profile.studioBody')}</span>
+            <span style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>{t('profile.studioBody')}</span>
             {/* Out of the app: the console is a separate build served at
                 /admin/ on this origin, so this leaves rather than routes. */}
             <a className="btn btn-primary" style={{ flexShrink: 0 }} href="/admin/">
@@ -142,7 +166,7 @@ export function ProfileScreen() {
 
       <div className="card elev-sm stack gap-2" style={{ width: '100%', textAlign: 'left' }}>
         <div className="card-kicker">{t('profile.yourData')}</div>
-        <span style={{ fontSize: 13, opacity: 0.75 }}>{t('profile.exportBody')}</span>
+        <span style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>{t('profile.exportBody')}</span>
         <div className="row gap-2 wrap">
           <button
             type="button"
@@ -219,7 +243,7 @@ export function ProfileScreen() {
         >
           <div className="row gap-3">
             <AvatarSlot src={avatarUrl} size={64} editable onPick={setAvatar} />
-            <div style={{ fontSize: 12, opacity: 0.6, textAlign: 'left' }}>
+            <div style={{ fontSize: 14, color: 'var(--color-text-muted)', textAlign: 'left' }}>
               {t('profile.avatarHint')}
             </div>
           </div>

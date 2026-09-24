@@ -44,9 +44,11 @@ test('a learner can throw away a recording they are not happy with', async ({ pa
 
   await expect(page.locator('.seg-opt')).toHaveCount(0)
 
-  // And it is gone from the numbers, not just from this screen.
+  // And it is gone from the numbers, not just from this screen: with no take
+  // left, the dashboard is back to a learner's first step.
   await page.goto('/dashboard')
-  await expect(page.locator('.stat-tile', { hasText: 'Takes recorded' }).locator('.mono')).toHaveText('0')
+  await expect(page.getByRole('heading', { name: 'Start your journey' })).toBeVisible()
+  await expect(page.locator('.stat-tile')).toHaveCount(0)
 })
 
 test('cancelling keeps the recording', async ({ page }) => {

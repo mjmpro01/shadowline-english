@@ -9,6 +9,7 @@ import type { Episode, Playlist, SearchResults } from '../data/types'
 import { searchIsWorthRunning } from '../lib/library'
 import { useDebounced, useRemote } from '../lib/remote'
 import { tintOf } from '../lib/score'
+import { iconFor } from '../lib/topics'
 import { clock } from '../lib/time'
 import { repository } from '../repository'
 
@@ -58,13 +59,8 @@ export function LibraryScreen() {
       {categories.length > 0 && query.trim() === '' && (
         <div className="row gap-2 wrap">
           {categories.map((name) => (
-            <button
-              type="button"
-              key={name}
-              className="tag tag-neutral"
-              style={{ cursor: 'pointer', border: 'none' }}
-              onClick={() => setQuery(name)}
-            >
+            <button type="button" key={name} className="topic-chip" onClick={() => setQuery(name)}>
+              <span aria-hidden="true">{iconFor([name])}</span>
               {name}
             </button>
           ))}

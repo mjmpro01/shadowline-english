@@ -84,7 +84,7 @@ export function AvatarSlot({
           onChange={(e) => void accept(e.target.files?.[0])}
         />
       )}
-      {error && <div style={{ fontSize: 11, color: 'var(--score-attention)' }}>{error}</div>}
+      {error && <div style={{ fontSize: 13, color: 'var(--score-attention)' }}>{error}</div>}
     </div>
   )
 }

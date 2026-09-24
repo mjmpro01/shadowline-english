@@ -7,6 +7,9 @@ import './styles/app.css'
 import { router } from './router'
 import { I18nProvider } from './i18n/I18nProvider'
 import { AppProvider } from './store/AppStore'
+import { startTheme } from './lib/theme'
+
+startTheme()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

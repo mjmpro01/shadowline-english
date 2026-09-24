@@ -87,7 +87,7 @@ export function FlashcardsScreen() {
             style={{ width: '100%', gap: 'var(--space-3)', minHeight: 220, justifyContent: 'center', alignItems: 'center' }}
           >
             <h2 style={{ fontSize: 28, margin: 0 }}>{card.word}</h2>
-            <div className="mono" style={{ fontSize: 13, opacity: 0.6 }}>
+            <div className="mono" style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>
               {card.ipa}
             </div>
 

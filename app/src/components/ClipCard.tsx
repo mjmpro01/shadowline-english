@@ -33,7 +33,12 @@ export function ClipCard({ clip }: { clip: Video }) {
       >
         {/* The still when the cutter has made one; the icon otherwise, which is
             every clip cut from audio and every one whose cut is still queued. */}
-        <ClipFace id={clip.id} posterUrl={clip.posterUrl} line={clip.captions[0]?.text ?? ''} />
+        <ClipFace
+          id={clip.id}
+          posterUrl={clip.posterUrl}
+          line={clip.captions[0]?.text ?? ''}
+          categories={clip.categories}
+        />
         <span className="tag tag-neutral thumb-tag">{clock(clip.durationSeconds)}</span>
       </button>
 

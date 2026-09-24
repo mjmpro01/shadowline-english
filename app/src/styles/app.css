@@ -486,7 +486,7 @@
   color: var(--menu-ink);
   font-family: var(--font-heading);
   font-weight: var(--font-heading-weight);
-  font-size: 10px;
+  font-size: 12px;
   text-decoration: none;
   cursor: pointer;
   overflow: hidden;
@@ -564,7 +564,9 @@
 .thumb {
   position: relative;
   width: 100%;
-  aspect-ratio: 9 / 16;
+  /* Portrait, but not a phone screen: 9:16 made a row of two featured clips
+     taller than the window, and the title under each fell below the fold. */
+  aspect-ratio: 4 / 5;
   background: var(--color-accent-100);
   border-radius: var(--radius-md);
   display: flex;
@@ -679,7 +681,7 @@
   font-variant-numeric: tabular-nums;
 }
 .score-badge-tier {
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--tier);
@@ -1113,7 +1115,7 @@
   height: 28px;
   border-radius: 8px;
   margin-bottom: 2px;
-  color: var(--color-neutral-400);
+  color: var(--color-text-muted);
   background: color-mix(in srgb, var(--color-text) 7%, transparent);
   border: 2px solid var(--game-rim);
 }
@@ -1128,7 +1130,7 @@
   border-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
 }
 .stat-tile[data-lit] .stat-tile-icon {
-  color: var(--color-bg);
+  color: var(--color-on-accent);
   background: var(--color-accent);
   border-color: var(--color-accent-400);
 }
@@ -1148,12 +1150,47 @@
   /* Room for the duration tag, which sits in the bottom right. */
   padding-bottom: 38px;
 }
+.thumb-face {
+  /* Sized by its frame, so the icon below can scale with it: the same face
+     is a 52px thumbnail on Progress and the whole player on Practice. */
+  container-type: size;
+}
+.thumb-face::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 85% 12%, rgba(255, 255, 255, 0.28) 0 18%, transparent 19%),
+    radial-gradient(circle at 12% 88%, rgba(255, 255, 255, 0.16) 0 26%, transparent 27%);
+  pointer-events: none;
+}
+.thumb-face-icon {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  font-size: 34px;
+  line-height: 1;
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.18));
+}
+/* With no line to show — the practice screen's big frame — the icon is the
+   face, in the middle. */
+.thumb-face:not(:has(.thumb-face-line)) {
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.thumb-face:not(:has(.thumb-face-line)) .thumb-face-icon {
+  position: static;
+  font-size: min(38cqw, 38cqh, 104px);
+}
 .thumb-face-line {
+  position: relative;
   font-family: var(--font-heading);
   font-weight: var(--font-heading-weight);
-  font-size: 17px;
-  line-height: 1.25;
-  color: var(--color-text);
+  font-size: 19px;
+  line-height: 1.2;
+  color: #fff;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.22);
   /* Four lines at most. A long line would otherwise push its own last words
      out through the bottom of the frame. */
   display: -webkit-box;
@@ -1194,7 +1231,7 @@
 }
 .studio-steps ::marker,
 .studio-steps > li::marker {
-  color: var(--color-accent);
+  color: var(--color-accent-ink);
   font-family: var(--font-mono);
 }
 .studio-steps b {
@@ -1631,21 +1668,34 @@
 /* A heading over a section of search results: a label, not a title. h2 at 32px
    would outweigh the results underneath it. */
 .section-title {
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-accent);
+  color: var(--color-accent-ink);
   margin: 0;
 }
 
 /* The face of a series with no cover: its own name, set large, on a tint it
    keeps — the same idea as a clip's face, and for the same reason. */
+.series-cover:has(.series-face)::before {
+  /* The same two bubbles a clip's face has, so a series without a picture
+     looks made rather than filled in. */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 88% 16%, rgba(255, 255, 255, 0.26) 0 16%, transparent 17%),
+    radial-gradient(circle at 8% 92%, rgba(255, 255, 255, 0.14) 0 24%, transparent 25%);
+  pointer-events: none;
+}
 .series-face {
+  position: relative;
   font-family: var(--font-heading);
   font-weight: var(--font-heading-weight);
-  font-size: 22px;
+  font-size: 24px;
   line-height: 1.2;
-  color: var(--color-text);
+  color: #fff;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.22);
   padding: var(--space-3);
   text-align: center;
   display: -webkit-box;
@@ -1671,7 +1721,7 @@
   border: 0;
   border-radius: 999px;
   background: var(--color-accent);
-  color: var(--color-bg);
+  color: var(--color-on-accent);
   font: inherit;
   font-weight: 700;
   box-shadow: var(--shadow-lg);
@@ -1683,7 +1733,9 @@
 }
 
 .tutor-launcher[aria-expanded='true'] {
-  background: var(--color-accent-700);
+  /* A step toward the page rather than away from it, so the dark ink on it
+     still reads in both themes. */
+  background: var(--color-accent-400);
 }
 
 .tutor-panel {
@@ -1727,12 +1779,12 @@
   border: 0;
   border-radius: 10px;
   background: transparent;
-  color: var(--color-accent);
+  color: var(--color-accent-ink);
   cursor: pointer;
 }
 
 .tutor-icon-btn:hover {
-  background: var(--color-neutral-800);
+  background: var(--color-surface-2);
 }
 
 .tutor-title {
@@ -1744,8 +1796,8 @@
 /* What the tutor can see. Small, and always there: "this line" is only a
    question worth asking when both sides agree which line it is. */
 .tutor-context {
-  font-size: 12px;
-  opacity: 0.7;
+  font-size: 13px;
+  color: var(--color-text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1778,7 +1830,7 @@
 
 .tutor-assistant {
   align-self: flex-start;
-  background: var(--color-neutral-800);
+  background: var(--color-surface-2);
 }
 
 .tutor-assistant p,
@@ -1806,7 +1858,7 @@
 }
 
 .tutor-thinking {
-  opacity: 0.6;
+  color: var(--color-text-muted);
   font-style: italic;
 }
 
@@ -1818,7 +1870,7 @@
   background: transparent;
   color: inherit;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
 }
 
@@ -1827,7 +1879,7 @@
 }
 
 .tutor-failure {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--color-accent-700);
 }
 
@@ -1849,8 +1901,8 @@
    scores beside it are measurements. */
 .tutor-note {
   padding: 0 var(--space-3) var(--space-2);
-  font-size: 11px;
-  opacity: 0.55;
+  font-size: 12px;
+  color: var(--color-text-muted);
 }
 
 /* On a phone the button sits above the tab bar, and the panel takes the whole
@@ -1953,7 +2005,7 @@
 
 .banner-close:hover {
   opacity: 1;
-  background: var(--color-neutral-800);
+  background: var(--color-surface-2);
 }
 
 @media (max-width: 760px) {
@@ -1965,4 +2017,107 @@
     width: 64px;
     height: 64px;
   }
+}
+
+/* --- First steps -------------------------------------------------------------
+   The dashboard before a learner's first take: one bright card with one thing
+   to do. Tinted from the accent ramp, so it is honey on parchment in the light
+   theme and a warm glow in the dark one. */
+.first-steps {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-6);
+  background: linear-gradient(135deg, var(--color-accent-100), var(--color-accent-200));
+  border: 2px solid var(--color-accent-300);
+}
+.first-steps-art {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  font-size: 60px;
+  background: var(--color-surface);
+  box-shadow: 0 var(--game-lift) 0 var(--game-edge);
+}
+.first-steps-title {
+  margin: 0;
+  font-size: 30px;
+}
+.first-steps-body {
+  margin: 0;
+  font-size: 17px;
+  color: var(--color-text-muted);
+}
+.first-steps-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.first-steps-list li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 6px;
+  border-radius: 999px;
+  background: var(--color-surface);
+  font-weight: 600;
+}
+.first-steps-number {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: #2b2119;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+}
+@media (max-width: 760px) {
+  .first-steps {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+    padding: var(--space-4);
+  }
+  .first-steps-art {
+    width: 80px;
+    height: 80px;
+    font-size: 44px;
+  }
+  .first-steps-title {
+    font-size: 24px;
+  }
+}
+
+/* A topic to browse by: the icon its clips wear, and a size worth tapping. */
+.topic-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 6px 14px;
+  border: 2px solid var(--color-divider);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--game-edge);
+}
+.topic-chip:hover {
+  border-color: var(--color-accent);
+}
+.topic-chip:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--game-edge);
 }

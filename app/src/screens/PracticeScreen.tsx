@@ -188,7 +188,7 @@ export function PracticeScreen() {
                 brown box the moment it is opened. No line on it: the line is
                 directly below with every word tappable, and that copy is the
                 useful one. */}
-            {!sourceVideoUrl && <ClipFace id={video.id} posterUrl="" line="" />}
+            {!sourceVideoUrl && <ClipFace id={video.id} posterUrl="" line="" categories={video.categories} />}
           </div>
 
           <div style={{ fontSize: 16, fontStyle: 'italic', textAlign: 'center' }}>
@@ -207,16 +207,16 @@ export function PracticeScreen() {
           {checked && (
             <div
               className="card-meta"
-              style={{ fontSize: 12, textAlign: 'center' }}
+              style={{ fontSize: 14, textAlign: 'center' }}
               data-testid="words-heard"
             >
               {t('practice.wordsHeard', heardCount(checked).heard, heardCount(checked).total)}
             </div>
           )}
-          <div style={{ fontSize: 11, textAlign: 'center', opacity: 0.5 }}>
+          <div style={{ fontSize: 13, textAlign: 'center', color: 'var(--color-text-muted)' }}>
             {t('practice.tapWord')}
           </div>
-          <div className="mono" style={{ fontSize: 13, textAlign: 'center', opacity: 0.6 }}>
+          <div className="mono" style={{ fontSize: 14, textAlign: 'center', color: 'var(--color-text-muted)' }}>
             {line.ipa}
           </div>
 
@@ -232,7 +232,7 @@ export function PracticeScreen() {
                 <Icon name="x" size={14} />
               </button>
               <div className="card-title">{popup.word}</div>
-              <div className="mono" style={{ fontSize: 13, opacity: 0.6 }}>
+              <div className="mono" style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>
                 {gloss?.ipa}
               </div>
               {/* Three answers, and the popup says which: the definition, the
@@ -248,7 +248,7 @@ export function PracticeScreen() {
                   learner should know whether they are reading a lexicographer
                   or a model. */}
               {gloss?.source && (
-                <div style={{ fontSize: 11, opacity: 0.55 }}>
+                <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
                   {SOURCE_LABEL[gloss.source] ?? gloss.source}
                 </div>
               )}
@@ -304,24 +304,24 @@ export function PracticeScreen() {
             <div className="row gap-4" style={{ justifyContent: 'center', flexWrap: 'wrap' }}>
               <div className="row gap-2">
                 <div style={{ width: 14, height: 8, borderRadius: 2, background: SOURCE_PURPLE }} />
-                <span style={{ fontSize: 12, opacity: 0.7 }}>{t('practice.pitchSource')}</span>
+                <span style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>{t('practice.pitchSource')}</span>
               </div>
               <div className="row gap-2">
                 <div style={{ width: 14, height: 8, borderRadius: 2, background: YOU_CYAN }} />
-                <span style={{ fontSize: 12, opacity: 0.7 }}>{t('practice.pitchYou')}</span>
+                <span style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>{t('practice.pitchYou')}</span>
               </div>
             </div>
           )}
 
           {recording && (
-            <div className="row gap-2" style={{ justifyContent: 'center', fontSize: 13 }}>
+            <div className="row gap-2" style={{ justifyContent: 'center', fontSize: 14 }}>
               <span className="rec-dot" />
               {recorder.status === 'requesting' ? (
                 t('practice.waitingMic')
               ) : (
                 <>
                   {t('practice.recording')}
-                  <span className="mono" style={{ opacity: 0.7 }}>
+                  <span className="mono" style={{ color: 'var(--color-text-muted)' }}>
                     {t('practice.secondsLeft', Math.max(0, recordLimit - recorder.elapsed).toFixed(1))}
                   </span>
                 </>
@@ -329,29 +329,29 @@ export function PracticeScreen() {
             </div>
           )}
           {recorder.status === 'denied' && (
-            <div style={{ fontSize: 13, textAlign: 'center', color: 'var(--score-attention)' }}>
+            <div style={{ fontSize: 14, textAlign: 'center', color: 'var(--score-attention)' }}>
               {t('practice.micBlocked')}
             </div>
           )}
           {recorder.status === 'unsupported' && (
-            <div style={{ fontSize: 13, textAlign: 'center', color: 'var(--score-attention)' }}>
+            <div style={{ fontSize: 14, textAlign: 'center', color: 'var(--score-attention)' }}>
               {t('practice.micUnsupported')}
             </div>
           )}
 
           {(analysing || take?.status === 'pending') && (
-            <div style={{ fontSize: 13, textAlign: 'center', opacity: 0.7 }}>{t('practice.measuring')}</div>
+            <div style={{ fontSize: 14, textAlign: 'center', color: 'var(--color-text-muted)' }}>{t('practice.measuring')}</div>
           )}
 
           {take && take.score !== null && (
             <div className="card elev-sm row between gap-3">
               <div className="stack gap-1" style={{ flex: 1 }}>
                 <div className="card-kicker">{t('practice.scoreKicker')}</div>
-                <div style={{ fontSize: 13, opacity: 0.75 }}>{t(scoreLabelKey(take.score))}</div>
+                <div style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>{t(scoreLabelKey(take.score))}</div>
                 {/* What the next band costs, rather than a bare "re-record to
                     improve": a learner deciding whether to go again wants to
                     know how far away it is. */}
-                <div style={{ fontSize: 12, opacity: 0.6 }}>
+                <div style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>
                   {nextTierIn(take.score) === null
                     ? t('practice.topBand')
                     : t('practice.toNextBand', nextTierIn(take.score) ?? 0)}
@@ -378,14 +378,14 @@ export function PracticeScreen() {
               {take.status === 'failed' ? (
                 <>
                   <div className="card-kicker">{t('practice.nothingToMeasure')}</div>
-                  <div style={{ fontSize: 13, opacity: 0.75 }}>
+                  <div style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>
                     {take.error ?? t('practice.tooQuiet')} {t('practice.tryCloser')}
                   </div>
                 </>
               ) : (
                 <>
                   <div className="card-kicker">{t('practice.takeRecorded')}</div>
-                  <div style={{ fontSize: 13, opacity: 0.75 }}>
+                  <div style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>
                     {t('practice.nothingToScore')}
                   </div>
                 </>

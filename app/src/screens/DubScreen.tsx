@@ -150,7 +150,12 @@ export function DubScreen() {
               second it paints straight over the thing it is meant to sit
               behind. */}
           {!clipVideoUrl && (
-            <ClipFace id={video.id} posterUrl="" line={video.captions[0]?.text ?? ''} />
+            <ClipFace
+              id={video.id}
+              posterUrl=""
+              line={video.captions[0]?.text ?? ''}
+              categories={video.categories}
+            />
           )}
           <span
             className="tag tag-neutral"
@@ -211,12 +216,12 @@ export function DubScreen() {
               aria-label={t('dub.position')}
             />
           </div>
-          <div className="row between mono" style={{ fontSize: 12, opacity: 0.65 }}>
+          <div className="row between mono" style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>
             <span>{clock(position)}</span>
             <span>{canPlay ? clock(duration) : clock(video.durationSeconds)}</span>
           </div>
           {source === 'original' && !originalUrl && (
-            <div style={{ fontSize: 12, opacity: 0.6 }}>
+            <div style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>
               {t('dub.noOriginal')}
             </div>
           )}
@@ -296,7 +301,7 @@ export function DubScreen() {
             ))}
           </div>
           {take && !take.hasAudio && (
-            <div style={{ fontSize: 12, opacity: 0.6 }}>{t('dub.noRecording')}</div>
+            <div style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>{t('dub.noRecording')}</div>
           )}
         </div>
         </div>

@@ -226,7 +226,7 @@ export function AnalysisScreen() {
         )}
 
         {chart && (
-        <div className="row between mono" style={{ marginTop: 2, fontSize: 11, color: 'var(--color-neutral-600)' }}>
+        <div className="row between mono" style={{ marginTop: 2, fontSize: 13, color: 'var(--color-neutral-600)' }}>
           {chart.xLabels.map((label) => (
             <span key={label}>{label}</span>
           ))}
@@ -238,12 +238,12 @@ export function AnalysisScreen() {
           {chart.refPoints && (
             <div className="row gap-2">
               <div style={{ width: 14, height: 2, background: 'var(--color-neutral-600)' }} />
-              <span style={{ fontSize: 12, opacity: 0.7 }}>{t('analysis.source')}</span>
+              <span style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>{t('analysis.source')}</span>
             </div>
           )}
           <div className="row gap-2">
             <div style={{ width: 14, height: 3, background: 'var(--score-good)', borderRadius: 2 }} />
-            <span style={{ fontSize: 12, opacity: 0.7 }}>{t('analysis.you')}</span>
+            <span style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>{t('analysis.you')}</span>
           </div>
         </div>
         )}

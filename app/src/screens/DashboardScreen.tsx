@@ -54,6 +54,14 @@ export function DashboardScreen() {
 
       <Banners placement="dashboard" />
 
+      {data.takes.length === 0 ? (
+        <FirstSteps
+          onStart={() =>
+            navigate(featured[0] ? `/library/${featured[0].id}/practice` : '/library')
+          }
+          onBrowse={() => navigate('/library')}
+        />
+      ) : (
       <div className="grid-scores">
         {summary.map((stat) => (
           <div className="card elev-sm gap-1 stat-tile" data-lit={stat.lit ? '' : undefined} key={stat.label}>
@@ -67,7 +75,11 @@ export function DashboardScreen() {
           </div>
         ))}
       </div>
+      )}
 
+      {/* Only once somebody is on it. An empty board with "0 learners" beside
+          it told a new learner the app was deserted. */}
+      {rows.length > 0 && (
       <div>
         <div className="row between wrap gap-2" style={{ marginBottom: 'var(--space-2)' }}>
           <div className="card-kicker" style={{ margin: 0 }}>
@@ -92,15 +104,15 @@ export function DashboardScreen() {
                 className="podium-rank"
                 style={{
                   background: row.rank === 1 ? 'var(--color-accent)' : 'var(--color-accent-300)',
-                  color: 'var(--color-bg)',
+                  color: 'var(--color-on-accent)',
                 }}
               >
                 <span className="mono">{row.rank}</span>
               </div>
               <div className="podium-avatar">{row.name.charAt(0) || '?'}</div>
-              <div style={{ fontSize: 13, fontWeight: row.isYou ? 700 : 400 }}>
+              <div style={{ fontSize: 14, fontWeight: row.isYou ? 700 : 400 }}>
                 {row.name}
-                {row.isYou && ' (You)'}
+                {row.isYou && ` (${t('dash.you')})`}
               </div>
               <div className="mono" style={{ fontSize: 26, color: colorFor(row.avg) }}>
                 {Math.round(row.avg)}
@@ -129,7 +141,7 @@ export function DashboardScreen() {
                     <td className="mono">{row.rank}</td>
                     <td style={{ fontWeight: row.isYou ? 700 : 400 }}>
                       {row.name}
-                      {row.isYou && ' (You)'}
+                      {row.isYou && ` (${t('dash.you')})`}
                     </td>
                     <td className="mono" style={{ color: colorFor(row.avg) }}>{Math.round(row.avg)}</td>
                     <td className="mono">{row.takes}</td>
@@ -140,16 +152,12 @@ export function DashboardScreen() {
           </div>
         )}
       </div>
+      )}
 
       <div>
         <div className="card-kicker" style={{ marginBottom: 'var(--space-2)' }}>
           {t('dash.featured')}
         </div>
-        {rows.length === 0 && (
-          <div className="card-meta" style={{ marginBottom: 'var(--space-3)' }}>
-            {t('dash.nobodyScored')}
-          </div>
-        )}
 
         {featured.length === 0 ? (
           <div className="card-meta">{t('dash.nothingFeatured')}</div>
@@ -167,10 +175,8 @@ export function DashboardScreen() {
                     id={video.id}
                     posterUrl={video.posterUrl}
                     line={video.captions[0]?.text ?? ''}
+                    categories={video.categories}
                   />
-                  <span className="tag tag-accent" style={{ position: 'absolute', left: 8, top: 8 }}>
-                    featured
-                  </span>
                   <span className="tag tag-neutral thumb-tag">{clock(video.durationSeconds)}</span>
                 </button>
                 <div className="card-title clamp-2" style={{ fontSize: 15, marginTop: 'var(--space-2)' }}>
@@ -205,5 +211,47 @@ export function DashboardScreen() {
         )}
       </div>
     </div>
+  )
+}
+
+/**
+ * What a learner sees before their first take: one thing to do, and how.
+ *
+ * It used to be four tiles reading 0, 0, — and 0, a leaderboard of nobody and
+ * "0 learners" — the screen of an app nobody uses, shown to the one person who
+ * has just arrived to use it.
+ */
+function FirstSteps({ onStart, onBrowse }: { onStart: () => void; onBrowse: () => void }) {
+  const t = useT()
+  const steps = [t('dash.stepListen'), t('dash.stepSpeak'), t('dash.stepScore')]
+  return (
+    <section className="card elev-sm first-steps" aria-labelledby="first-steps-title">
+      <div className="first-steps-art" aria-hidden="true">
+        🌱
+      </div>
+      <div className="stack gap-2" style={{ minWidth: 0 }}>
+        <h2 id="first-steps-title" className="first-steps-title">
+          {t('dash.firstTitle')}
+        </h2>
+        <p className="first-steps-body">{t('dash.firstBody')}</p>
+        <ol className="first-steps-list">
+          {steps.map((step, i) => (
+            <li key={step}>
+              <span className="first-steps-number">{i + 1}</span>
+              {step}
+            </li>
+          ))}
+        </ol>
+        <div className="row gap-2 wrap">
+          <button type="button" className="btn btn-primary" onClick={onStart}>
+            <Icon name="mic" size={18} />
+            {t('dash.firstStart')}
+          </button>
+          <button type="button" className="btn btn-secondary" onClick={onBrowse}>
+            {t('dash.firstBrowse')}
+          </button>
+        </div>
+      </div>
+    </section>
   )
 }
