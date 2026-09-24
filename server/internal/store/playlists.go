@@ -75,9 +75,37 @@ func itoa(n int) string { return strconv.Itoa(n) }
 // Hot first, then the order an admin gave them, then alphabetically — so a
 // library nobody has curated still reads as a list rather than as insertion
 // order, which is the order of nothing a learner can see.
+//
+// Written apart from playlistColumns, which counts per series with a subquery
+// each: right for the one series a page asks for, and for the whole list a
+// scan of every clip and every take once per series. Here each count is taken
+// once over the table and joined on, and only the cover is looked up per
+// series, on the index made for it. 37–48 ms became 3.1 ms on a library of
+// 12,650 clips (migration 00015 has the numbers).
 func (s *Store) ListPlaylists(ctx context.Context) ([]Playlist, error) {
-	rows, err := s.pool.Query(ctx, `select `+playlistColumns+`
+	rows, err := s.pool.Query(ctx, `
+		with episodes as (
+			select playlist_id, count(*) as n from clip_sources
+			where published group by playlist_id),
+		clip_counts as (
+			select playlist_id, count(*) as n from clips
+			where playlist_id is not null group by playlist_id),
+		recent as (
+			select c.playlist_id, count(*) as n
+			from takes t join clips c on c.id = t.clip_id
+			where t.recorded_at > now() - $1::interval and c.playlist_id is not null
+			group by c.playlist_id)
+		select p.id, p.slug, p.title, p.description, p.hot, p.position,
+		       coalesce(e.n, 0), coalesce(cc.n, 0), coalesce(r.n, 0), cover.poster_key,
+		       p.created_at
 		from playlists p
+		left join episodes e on e.playlist_id = p.id
+		left join clip_counts cc on cc.playlist_id = p.id
+		left join recent r on r.playlist_id = p.id
+		left join lateral (
+			select c.poster_key from clips c
+			where c.playlist_id = p.id and c.poster_key is not null
+			order by c.start_seconds, c.created_at limit 1) cover on true
 		order by p.hot desc, p.position, p.title`, recentInterval())
 	if err != nil {
 		return nil, err
