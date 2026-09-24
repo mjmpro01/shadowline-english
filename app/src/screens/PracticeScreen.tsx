@@ -6,6 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useT } from '../i18n'
 import { ClipPlayer } from '../components/ClipPlayer'
 import { DubExport } from '../components/DubExport'
+import { Celebrate } from '../components/Celebrate'
 import { ClipFace } from '../components/ClipFace'
 import { Icon } from '../components/Icon'
 import { ScoreBadge } from '../components/ScoreBadge'
@@ -57,6 +58,11 @@ export function PracticeScreen() {
   const [take, setTake] = useState<Take | null>(null)
   const [popup, setPopup] = useState<Popup | null>(null)
   const [analysing, setAnalysing] = useState(false)
+  // A take that has just landed in gold, for the owl to cheer. Only ever set
+  // from a recording made on this screen, so reopening an old take never
+  // throws confetti at anybody.
+  const [cheer, setCheer] = useState<string | null>(null)
+  const endCheer = useCallback(() => setCheer(null), [])
   const sourcePlayer = useRef<HTMLMediaElement | null>(null)
   // Stable, so the element is not detached and reattached every render.
   const attachSource = useCallback((element: HTMLMediaElement | null) => {
@@ -89,7 +95,12 @@ export function PracticeScreen() {
         const scored = await addTake(video.id, recording)
         // Stored either way — it is the learner's recording and it is theirs to
         // keep — but only shown while it is still the one on screen.
-        if (attempt.current === mine) setTake(scored)
+        if (attempt.current === mine) {
+          setTake(scored)
+          if (scored.score !== null && scored.score >= 75) {
+            setCheer(scored.score >= 90 ? t('practice.cheerTop') : t('practice.cheerGold'))
+          }
+        }
       } finally {
         if (attempt.current === mine) setAnalysing(false)
       }
@@ -168,6 +179,7 @@ export function PracticeScreen() {
 
   return (
     <div className="stack gap-4" style={{ maxWidth: 820 }}>
+      {cheer && <Celebrate message={cheer} onDone={endCheer} />}
       <div className="row between wrap gap-2">
         <h2 style={{ margin: 0 }}>{video.title}</h2>
         <div className="tag tag-neutral mono">

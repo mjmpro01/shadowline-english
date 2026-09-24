@@ -1829,6 +1829,10 @@
 }
 
 .tutor-assistant {
+  position: relative;
+  /* Room for the owl, which sits outside the bubble on its left. */
+  margin-left: 36px;
+  max-width: calc(88% - 36px);
   align-self: flex-start;
   background: var(--color-surface-2);
 }
@@ -2036,10 +2040,9 @@
   flex: none;
   display: grid;
   place-items: center;
-  width: 112px;
-  height: 112px;
+  width: 124px;
+  height: 124px;
   border-radius: 50%;
-  font-size: 60px;
   background: var(--color-surface);
   box-shadow: 0 var(--game-lift) 0 var(--game-edge);
 }
@@ -2088,9 +2091,12 @@
     padding: var(--space-4);
   }
   .first-steps-art {
-    width: 80px;
-    height: 80px;
-    font-size: 44px;
+    width: 96px;
+    height: 96px;
+  }
+  .first-steps-art .mascot {
+    width: 76px;
+    height: 76px;
   }
   .first-steps-title {
     font-size: 24px;
@@ -2120,4 +2126,135 @@
 .topic-chip:active {
   transform: translateY(2px);
   box-shadow: 0 1px 0 var(--game-edge);
+}
+
+/* --- Tí, the owl ------------------------------------------------------------ */
+.mascot {
+  display: block;
+  flex: none;
+}
+.tutor-avatar {
+  position: absolute;
+  left: -36px;
+  top: 0;
+}
+.tutor-head .mascot {
+  margin-right: 4px;
+}
+.tutor-launcher .mascot {
+  margin: -6px 0;
+}
+/* The panel's first words, said by the owl rather than printed under it. */
+.tutor-hello {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+.tutor-hello-text {
+  position: relative;
+  padding: 10px 14px;
+  border-radius: 16px 16px 16px 4px;
+  background: var(--color-surface-2);
+  font-size: 14px;
+  line-height: 1.5;
+}
+/* A small hop when it has something to celebrate, and nothing at all for
+   anybody who has asked for less motion. */
+.mascot-cheer {
+  animation: mascot-hop 900ms var(--ease-pop) 2;
+  transform-origin: 50% 100%;
+}
+@keyframes mascot-hop {
+  0%, 100% { transform: translateY(0) scale(1); }
+  35% { transform: translateY(-10%) scale(1.04, 0.97); }
+  60% { transform: translateY(0) scale(0.98, 1.03); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mascot-cheer {
+    animation: none;
+  }
+}
+
+/* --- A gold take ---------------------------------------------------------- */
+.celebrate {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  overflow: hidden;
+}
+.celebrate-confetti .confetti {
+  position: absolute;
+  top: -16px;
+  width: 9px;
+  height: 14px;
+  border-radius: 2px;
+  animation-name: confetti-fall;
+  animation-timing-function: cubic-bezier(0.25, 0.6, 0.45, 1);
+  animation-fill-mode: both;
+}
+.celebrate-confetti .confetti.round {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+@keyframes confetti-fall {
+  from {
+    transform: translate(0, 0) rotate(0);
+    opacity: 1;
+  }
+  to {
+    transform: translate(var(--drift), 105vh) rotate(var(--spin));
+    opacity: 0.9;
+  }
+}
+.celebrate-card {
+  position: absolute;
+  left: 50%;
+  top: 18%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 12px 22px 12px 14px;
+  border-radius: 999px;
+  background: var(--color-surface);
+  border: 3px solid var(--tier-gold);
+  box-shadow: 0 var(--game-lift) 0 var(--game-edge);
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 26px;
+  white-space: nowrap;
+  animation: score-land 420ms var(--ease-pop) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .celebrate-confetti {
+    display: none;
+  }
+  .celebrate-card {
+    animation: none;
+  }
+}
+
+/* An example the tutor wrote, which can be heard. Reads as the phrase it is,
+   underlined like a link, with a small speaker after it. */
+.tutor-say {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 2px dotted var(--color-accent);
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.tutor-say:hover {
+  background: var(--color-accent-100);
+}
+.tutor-say svg {
+  color: var(--color-accent-ink);
+  flex: none;
 }

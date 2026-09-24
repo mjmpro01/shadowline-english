@@ -5,6 +5,7 @@ import { useT } from '../i18n'
 import { Banners } from '../components/Banners'
 import { ClipFace } from '../components/ClipFace'
 import { Icon } from '../components/Icon'
+import { Mascot } from '../components/Mascot'
 import { statsFor } from '../lib/leaderboard'
 import { colorFor } from '../lib/score'
 import { clock } from '../lib/time'
@@ -227,7 +228,7 @@ function FirstSteps({ onStart, onBrowse }: { onStart: () => void; onBrowse: () =
   return (
     <section className="card elev-sm first-steps" aria-labelledby="first-steps-title">
       <div className="first-steps-art" aria-hidden="true">
-        🌱
+        <Mascot mood="cheer" size={96} />
       </div>
       <div className="stack gap-2" style={{ minWidth: 0 }}>
         <h2 id="first-steps-title" className="first-steps-title">
