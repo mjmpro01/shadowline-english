@@ -172,10 +172,10 @@ func TestDeletingAClipRemovesItsVideoToo(t *testing.T) {
 	}
 }
 
-// An audio upload has a source row too, because transcription wants the file
-// whether or not there is a picture in it. What it must not get is a cut job:
-// the cutter could only fail that one, three times, before giving up.
-func TestAnAudioSourceIsTranscribedButNotCut(t *testing.T) {
+// An audio upload is cut too, for its clips' sound — which the studio used to
+// cut in the browser and upload clip by clip. Its clips say their sound is
+// coming and their picture is not.
+func TestAnAudioSourceIsCutForItsSoundOnly(t *testing.T) {
 	h := newHarness(t)
 	admin := h.login("admin@example.com")
 
@@ -184,10 +184,22 @@ func TestAnAudioSourceIsTranscribedButNotCut(t *testing.T) {
 	clip := aClip("Line one")
 	clip["sourceId"] = source.ID
 	clip["endSeconds"] = 3.4
-	publishClips(t, admin, clip)
+	published := publishClips(t, admin, clip)
 
-	if depth := h.cutQueueDepth(t); depth != 0 {
-		t.Fatalf("an audio source queued %d cuts, want 0", depth)
+	if depth := h.cutQueueDepth(t); depth != 1 {
+		t.Fatalf("an audio source queued %d cuts, want 1", depth)
+	}
+	if !published[0].AudioPending || published[0].VideoPending {
+		t.Fatalf("audioPending %v, videoPending %v — sound is coming, a picture is not",
+			published[0].AudioPending, published[0].VideoPending)
+	}
+
+	// A take recorded before the sound is cut waits to be scored, rather than
+	// being kept unscored for good.
+	learner := h.login("learner@example.com")
+	take := record(t, learner, published[0].ID)
+	if take.Status != "pending" {
+		t.Fatalf("a take of a clip whose sound is coming is %q, want pending", take.Status)
 	}
 	// The transcription was queued when the source was created, before any clip
 	// existed: the words belong to the recording, not to the cuts.

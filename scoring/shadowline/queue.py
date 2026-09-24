@@ -59,13 +59,21 @@ class Queue:
     def claim(self) -> Job | None:
         """One job, marked running. None when the queue is empty."""
         with self.conn.transaction(), self.conn.cursor(row_factory=dict_row) as cur:
+            # A take of a clip whose sound is still being cut waits for it: the
+            # cutter makes a clip's sound on the server now, moments after it
+            # is published, and a take recorded in those moments is scored
+            # once it is there rather than never.
             cur.execute(
                 """
-                select id from scoring_jobs
-                where (state = 'queued')
-                   or (state = 'running' and locked_at < now() - %s::interval)
-                order by created_at
-                for update skip locked
+                select j.id from scoring_jobs j
+                join takes t on t.id = j.take_id
+                join clips c on c.id = t.clip_id
+                where ((j.state = 'queued')
+                       or (j.state = 'running' and j.locked_at < now() - %s::interval))
+                  and not (c.audio_key is null
+                           and exists (select 1 from cut_jobs k where k.clip_id = c.id))
+                order by j.created_at
+                for update of j skip locked
                 limit 1
                 """,
                 (STALE_AFTER,),
@@ -93,6 +101,15 @@ class Queue:
                 # The take or clip went away between the two statements — a
                 # learner deleting a take mid-flight. Drop the job with it.
                 cur.execute("delete from scoring_jobs where id = %s", (row["id"],))
+                return None
+            if claimed["clip_audio_key"] is None:
+                # The sound it was waiting for never came: the cut gave up.
+                # Nothing to score against, so the take is final unscored —
+                # what a take of a clip with no sound has always been.
+                cur.execute(
+                    "update takes set status = 'scored' where id = %s", (claimed["take_id"],)
+                )
+                cur.execute("delete from scoring_jobs where id = %s", (claimed["id"],))
                 return None
             return Job(
                 id=claimed["id"],

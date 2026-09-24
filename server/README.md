@@ -231,7 +231,16 @@ the way it slices a wav, so the cut happens here:
    `cut_jobs` is written in the same transaction as the clip. There is no moment
    where a clip promises a picture with nothing scheduled to produce one.
 3. The cutter (`python -m shadowline.cutter`) claims a job, runs ffmpeg, stores
-   the mp4 and records `clips.video_key`.
+   the clip's **sound** (mono 16-bit WAV at 48 kHz, `clips.audio_key`) and, when
+   the recording has a picture, the mp4 (`clips.video_key`). Every clip with a
+   stored source gets a job, audio uploads included: the sound used to be cut in
+   the admin's browser and uploaded clip by clip, 220 MB for a batch of 400, and
+   is not any more. The sound and the picture fail apart — whichever came out
+   is kept and the job goes back for the rest — and a sound already uploaded
+   (an older studio, or a recording that never reached the server) is kept.
+   While the sound is owed the clip says `audioPending`; a take recorded
+   meanwhile is queued, and the scorer passes over it until the sound is there
+   (or scores nothing if the cut gives up), instead of keeping it unscored.
 4. `GET /api/clips/{id}/video` answers with a signed URL, or null.
 
 The cutter takes a still in the same run, a third of the way into the clip —

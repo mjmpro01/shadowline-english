@@ -16,6 +16,7 @@ type clipJSON struct {
 	DurationSeconds float64  `json:"durationSeconds"`
 	HasVideo        bool     `json:"hasVideo"`
 	VideoPending    bool     `json:"videoPending"`
+	AudioPending    bool     `json:"audioPending"`
 	Captions        []struct {
 		Text string `json:"text"`
 		IPA  string `json:"ipa"`

@@ -172,20 +172,26 @@ func TestTheStatusFollowsTheWork(t *testing.T) {
 			t.Fatalf("status %q, want cut-failed", got)
 		}
 		h.attachVideo(t, published[0].ID)
+		h.cutSound(t, published[0].ID)
 		if got := statusOf(id); got != "done" {
-			t.Fatalf("status %q once every picture is there, want done", got)
+			t.Fatalf("status %q once every picture and sound is there, want done", got)
 		}
 	})
 
-	t.Run("audio has no picture to wait for", func(t *testing.T) {
+	t.Run("audio is cut for its sound, with no picture to wait for", func(t *testing.T) {
 		id := announce(t, admin, "lesson.wav", "audio/wav")
 		sendFile(t, admin, id, "audio/wav")
 		h.storeTranscript(t, id)
 		clip := aClip("Line one")
 		clip["sourceId"] = id
-		publishClips(t, admin, clip)
+		published := publishClips(t, admin, clip)
+		if got := statusOf(id); got != "cutting" {
+			t.Fatalf("status %q — the clip's sound is still being cut", got)
+		}
+		h.cutSound(t, published[0].ID)
+		h.dropCutJobs(t, id)
 		if got := statusOf(id); got != "done" {
-			t.Fatalf("status %q — an audio upload is finished when it is published", got)
+			t.Fatalf("status %q — an audio upload is finished once its sound is cut", got)
 		}
 	})
 }

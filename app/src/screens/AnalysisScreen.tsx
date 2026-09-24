@@ -44,7 +44,7 @@ export function AnalysisScreen() {
   const measured = take?.analysis ?? null
   const chart = measured ? chartFromAnalysis(measured) : null
   const myVoiceUrl = urlOf(useTakeAudio(take?.hasAudio ? take.id : null))
-  const sourceAudio = useClipAudio(video?.id ?? null)
+  const sourceAudio = useClipAudio(video?.id ?? null, Boolean(video?.audioPending))
   const sourceUrl = urlOf(sourceAudio)
   const sourceVideoUrl = urlOf(useClipVideo(video?.id ?? null, Boolean(video?.videoPending)))
   const playable = sourceVideoUrl ?? sourceUrl

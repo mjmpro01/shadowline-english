@@ -40,6 +40,10 @@ type Clip struct {
 	// running. The app polls for the picture in that case, and plays audio
 	// meanwhile — the same as HasVideo false, except it knows to keep asking.
 	VideoPending bool `json:"videoPending"`
+	// AudioPending is the same for the clip's sound, which is cut on the server
+	// too now: none yet, and a cut still owed. Takes recorded meanwhile wait
+	// for it to be scored rather than being kept unscored.
+	AudioPending bool `json:"audioPending"`
 	// Where in its source this clip was cut from, which the cutter needs long
 	// after the browser that chose the boundaries has gone — and, since the
 	// library became a tree, which episode the app goes back up to.
@@ -68,6 +72,11 @@ const clipColumns = `id, title, source, playlist, categories, featured, timestam
 	source_id, playlist_id, start_seconds, end_seconds, created_at,
 	(video_key is null and exists (
 		select 1 from cut_jobs j where j.clip_id = clips.id
+	) and exists (
+		select 1 from clip_sources s where s.id = clips.source_id and s.has_video
+	)),
+	(audio_key is null and exists (
+		select 1 from cut_jobs j where j.clip_id = clips.id
 	))`
 
 func scanClip(row pgx.Row) (Clip, error) {
@@ -76,7 +85,7 @@ func scanClip(row pgx.Row) (Clip, error) {
 	err := row.Scan(&c.ID, &c.Title, &c.Source, &c.Playlist, &c.Categories, &c.Featured,
 		&c.TimestampLabel, &c.DurationSeconds, &c.Summary, &captions, &c.AudioKey, &c.VideoKey,
 		&c.PosterKey, &c.SourceID, &c.PlaylistID, &c.StartSeconds, &c.EndSeconds, &c.CreatedAt,
-		&c.VideoPending)
+		&c.VideoPending, &c.AudioPending)
 	if err != nil {
 		return c, mapErr(err)
 	}
@@ -223,8 +232,9 @@ func (s *Store) CreateClip(ctx context.Context, in NewClip, createdBy uuid.UUID)
 		// asks whether a cut is owed could not see it. Nobody should have to
 		// list the library again to learn that the picture they just asked for
 		// is coming.
-		queued, err := s.EnqueueCut(ctx, tx, clip.ID)
-		clip.VideoPending = queued
+		queued, picture, err := s.EnqueueCut(ctx, tx, clip.ID)
+		clip.VideoPending = queued && picture && clip.VideoKey == nil
+		clip.AudioPending = queued && clip.AudioKey == nil
 		return err
 	})
 	return clip, err

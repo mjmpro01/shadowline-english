@@ -119,18 +119,59 @@ def test_an_empty_queue_is_not_an_error(db, blobs, tmp_path):
     assert run_once(CutQueue(db), store, SourceCache(tmp_path), tmp_path) is False
 
 
-def test_a_source_with_no_picture_is_given_up_on(db, blobs, tmp_path):
+def audio_key(conn, clip_id):
+    return conn.execute("select audio_key from clips where id = %s", (clip_id,)).fetchone()[0]
+
+
+def probe(path: Path, entries: str) -> str:
+    return subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", entries, "-of", "csv=p=0", str(path)],
+        capture_output=True, text=True, check=True,
+    ).stdout.strip()
+
+
+def test_an_audio_recording_gives_its_clip_a_sound_and_no_picture(db, blobs, tmp_path):
+    """A clip's sound is cut here now, not in the admin's browser — and a
+    recording with no picture is done after one pass, not three failed ones."""
     store, root = blobs
     [clip_id] = seed(db, root, source="audio", start=0.5, end=2.0)
-    queue, cache = CutQueue(db), SourceCache(tmp_path)
 
-    # Audio in a video container cannot produce a picture, and retrying will
-    # never change that — but the queue still walks its attempts before it stops.
-    for _ in range(MAX_ATTEMPTS):
-        assert run_once(queue, store, cache, tmp_path) is True
+    assert run_once(CutQueue(db), store, SourceCache(tmp_path), tmp_path) is True
 
+    key = audio_key(db, clip_id)
+    assert key and key.endswith(".wav"), f"audio key is {key!r}"
     assert video_key(db, clip_id) is None
+    assert poster_key(db, clip_id) is None
     assert db.execute("select count(*) from cut_jobs").fetchone()[0] == 0
+
+
+def test_a_cut_clip_gets_its_sound_as_the_studio_made_it(db, blobs, tmp_path):
+    """Mono 16-bit WAV at 48 kHz, as the browser used to slice it: the same
+    thing to play and to score against, whichever side cut it."""
+    store, root = blobs
+    [clip_id] = seed(db, root, start=2.0, end=5.0)
+
+    run_once(CutQueue(db), store, SourceCache(tmp_path), tmp_path)
+
+    sound = root / "clips" / audio_key(db, clip_id)
+    assert sound.exists(), "the audio key points at nothing"
+    assert probe(sound, "stream=codec_name,channels,sample_rate") == "pcm_s16le,48000,1"
+    duration = float(probe(sound, "format=duration"))
+    assert 2.9 < duration < 3.1, f"sound is {duration}s, wanted 3s"
+    assert video_key(db, clip_id), "the picture should still be cut alongside"
+
+
+def test_a_sound_already_uploaded_is_kept(db, blobs, tmp_path):
+    """Clips published by an older studio arrive with their sound; the cut
+    makes the picture and leaves the sound it was given."""
+    store, root = blobs
+    [clip_id] = seed(db, root, start=1.0, end=3.0)
+    db.execute("update clips set audio_key = 'clip/one/uploaded.wav' where id = %s", (clip_id,))
+
+    run_once(CutQueue(db), store, SourceCache(tmp_path), tmp_path)
+
+    assert audio_key(db, clip_id) == "clip/one/uploaded.wav"
+    assert video_key(db, clip_id)
 
 
 def test_a_missing_source_stops_being_retried(db, blobs, tmp_path):

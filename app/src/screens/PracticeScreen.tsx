@@ -96,7 +96,7 @@ export function PracticeScreen() {
     },
   })
 
-  const sourceAudio = useClipAudio(video?.id ?? null)
+  const sourceAudio = useClipAudio(video?.id ?? null, Boolean(video?.audioPending))
   const sourceUrl = urlOf(sourceAudio)
   const sourceVideoUrl = urlOf(useClipVideo(video?.id ?? null, Boolean(video?.videoPending)))
   const clipPitch = useClipPitch(sourceUrl)

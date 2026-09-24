@@ -126,6 +126,10 @@ export interface Video {
   /** True while the cutter still owes this clip a picture. The player polls
    *  for the video URL in that case rather than giving up after one null. */
   videoPending: boolean
+  /** True while the cutter still owes this clip its sound, which is cut on the
+   *  server a few seconds after publishing. The player asks again until it is
+   *  there; a take recorded meanwhile is scored once it is. */
+  audioPending?: boolean
   /** A still from the clip, for the card. Empty for a clip cut from audio, and
    *  for one whose cut has not finished — both fall back to the play icon. */
   posterUrl: string

@@ -83,7 +83,7 @@ export const vi: Messages = {
   'uploads.state.transcribing': 'Đang chép lời',
   'uploads.state.transcribe-failed': 'Không có lời',
   'uploads.state.ready': 'Chờ cắt',
-  'uploads.state.cutting': 'Đang cắt hình',
+  'uploads.state.cutting': 'Đang cắt clip',
   'uploads.state.cut-failed': 'Có clip cắt lỗi',
   'uploads.state.done': 'Xong',
   'uploads.transcript.none': 'Chưa bắt đầu',
@@ -142,6 +142,10 @@ export const vi: Messages = {
   'studio.publishedBody': (n: number) => `${n} clip đã vào thư viện.`,
   'studio.publishedSilent': (n: number) =>
     `${n} clip trong số đó lên mà chưa có tiếng. Bài thu vào những clip này vẫn được giữ và đo, nhưng không chấm điểm — publish lại lô này để đưa tiếng lên.`,
+  'studio.cutOnServer': (video: boolean) =>
+    video
+      ? 'Âm thanh và hình của các clip đang được cắt trên server — mỗi clip xong sau vài giây. Lần thu trong lúc chờ sẽ được chấm khi clip có âm thanh.'
+      : 'Âm thanh của các clip đang được cắt trên server — mỗi clip xong sau vài giây. Lần thu trong lúc chờ sẽ được chấm khi clip có âm thanh.',
   'studio.publishFailed': 'Publish đã dừng',
   'studio.publishFailedKept':
     'Bản cắt vẫn còn nguyên như lúc bạn để lại. Không có gì bị bỏ đi — xem lỗi rồi thử lại.',

@@ -88,7 +88,7 @@ export const en = {
   'uploads.state.transcribing': 'Transcribing',
   'uploads.state.transcribe-failed': 'No transcript',
   'uploads.state.ready': 'Ready to cut',
-  'uploads.state.cutting': 'Cutting video',
+  'uploads.state.cutting': 'Cutting clips',
   'uploads.state.cut-failed': 'Some cuts failed',
   'uploads.state.done': 'Done',
   'uploads.transcript.none': 'Not started',
@@ -147,6 +147,10 @@ export const en = {
   'studio.publishedBody': (n: number) => `${n} clips are now in the library.`,
   'studio.publishedSilent': (n: number) =>
     `${n} of them went up without their audio. A take against one of those is kept and measured, but not scored — publish the batch again to put the sound back.`,
+  'studio.cutOnServer': (video: boolean) =>
+    video
+      ? 'Their sound and picture are being cut on the server — each clip is ready a few seconds after the last. A take recorded meanwhile is scored once its clip has a sound.'
+      : 'Their sound is being cut on the server — each clip is ready a few seconds after the last. A take recorded meanwhile is scored once its clip has a sound.',
   'studio.publishFailed': 'Publishing stopped',
   'studio.publishFailedKept':
     'The cut is still here, exactly as you left it. Nothing has been thrown away — try again when you know what went wrong.',
