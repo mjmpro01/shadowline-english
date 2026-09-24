@@ -141,77 +141,23 @@ clips in it, and the studio's button is disabled with the reason on it rather
 than hidden — the mistake a series delete recovers from is a name typed wrong,
 and what a cascade would take with it is a whole season of somebody's practice.
 
-## Clip studio
+## The clip studio is a different app
 
-Upload a recording and it is cut at the pauses between sentences rather than on
-a fixed grid, because a clip cut mid-word is useless to shadow
-(`src/lib/audio/segment.ts`: an RMS envelope, a noise floor taken from the
-quietest tenth of the recording, and a split at the quietest moment of anything
-still over the limit). The proposal is a starting point — boundaries drag, clips
-merge and delete, and each one gets its line of text — and publishing stores each
-cut as its own clip with its own audio.
+It was a screen here, behind an admin check. It is a console of its own now, in
+`../app-admin`, served under `/admin/` on this origin — see that README for why,
+and for what was measured before deciding.
 
-Each cut gets a name, and the batch gets a playlist and categories, which is what
-the library's search and filters run on. The studio's second tab lists everything
-already published so a clip can be renamed, re-tagged, moved to another playlist,
-featured on the dashboard or deleted — deleting a clip drops the practice history
-that only made sense alongside it, and the audio with it.
-
-Those editors keep a draft and save when they lose focus. They used to call the
-store on every keystroke, which was free against localStorage and is a request
-per character against an API.
-
-The studio is open to the addresses in the server's `ADMIN_EMAILS` and to nobody
-else. `RequireAdmin` only hides the screen; every admin endpoint checks again.
-
-## Publishing a long recording
-
-Publishing is two things: the clip rows, then their audio. The studio says which
-it is on and how far through — "Sending audio… 180 of 412" — because it used to
-say "Saving…" for all of it, and a batch that had stopped looked exactly like a
-batch that was working.
-
-Three rules behind it:
-
-- The rows go up **200 at a time**. The server refuses a JSON body over a
-  megabyte, which a batch of about two thousand clips reaches; a fifty-minute
-  recording proposes enough cuts to get there, and from the studio that read as
-  publishing simply not working.
-- The audio goes up **four at a time**. It was every clip at once: the browser
-  runs six requests to a host anyway, so the rest sat in a queue nothing could
-  see, and one rejection abandoned the others with the clips already published.
-- A clip whose audio never arrives is **counted and reported**, not thrown. The
-  clip is worth having — a take against it is kept and measured, only not scored
-  — and saying nothing is how an admin finds out from a learner.
-
-And publishing now has a catch. It did not: any failure left `busy` set, which
-leaves "Saving…" on screen and the Publish button disabled for good, with no way
-back but a reload. That is most of what "publishing does not work" was.
-
-What is still expensive is the audio itself. Each clip goes up as 16-bit WAV at
-the recording's own sample rate — 563 kB for six seconds at 48 kHz — so a batch
-of 400 clips is **220 MB** after the film has already been uploaded once. The
-server has the recording and the cutter already re-cuts the picture from it;
-cutting the audio there too would remove that upload entirely. Not done yet.
-
-## The cut survives leaving the studio
-
-The recording being cut lives in `src/lib/studioDraft.ts`, not in the screen.
-Leaving the studio unmounts it, and everything used to go with it: the decoded
-file, the proposed cuts, every line typed into them, the upload already on the
-server and the transcript being waited for. Opening the library for ten seconds
-to check a name meant starting a fifty-minute recording again.
-
-Nothing is persisted, and deliberately: the decoded samples are hundreds of
-megabytes and the object URL belongs to the document, so neither could survive a
-reload. This carries the work across a screen, not across a session.
+What is left in this app is one plank on the menu and one card on the Profile
+screen, both of them plain links out. Nothing here uploads a recording, proposes
+a cut, or writes to `/api/admin/*` any more, and `data.videos` is a cache of the
+clips screens have asked for rather than a library to manage.
 
 ## Clip length
 
 A clip is one line to shadow, capped at `MAX_CLIP_SECONDS` (6) in
 `src/data/types.ts`. Recording stops itself at the cap with a countdown on
-screen, the studio never proposes a longer cut, and the server refuses one
-regardless of what the studio's editing allowed.
+screen. The console holds its own copy of the same number, and the server refuses
+a longer clip regardless of what either of them allowed.
 
 ## Scoring
 
@@ -261,16 +207,29 @@ in English, which is the default, so they read as they always did.
 
 ## Tests
 
-`test/` checks the cut proposal, the library search, the flashcard deck, the
-streak arithmetic and the analysis chart against known inputs.
+`test/` checks the library search, the flashcard deck, the streak arithmetic and
+the analysis chart against known inputs.
 
 `e2e/` drives the real browser against the real stack: Playwright starts the Go
-API, the Python worker and the dev server, on a database of the run's own, with a
-WAV file fed in as the microphone. It covers record → score, the shared dub
-timeline, the studio's cut-and-publish flow, admin access from both sides, and
-two learners on one leaderboard. Sign-in goes through the whole OAuth route with
-only the provider faked (`AUTH_FAKE=1`), so the state parameter, the PKCE cookie
-and `ADMIN_EMAILS` are all exercised.
+API, the Python workers and **both** dev servers, on a database of the run's own,
+with a WAV file fed in as the microphone. There is one API to test either front
+end against, so there is one run with two projects:
+
+```bash
+npx playwright test                    # both
+npx playwright test --project=app      # the learner app
+npx playwright test --project=console  # ../app-admin, specs in e2e/console/
+```
+
+It covers record → score, the shared dub timeline, the console's cut-and-publish
+flow, who can reach the console from either side, and two learners on one
+leaderboard. Sign-in goes through the whole OAuth route with only the provider
+faked (`AUTH_FAKE=1`), so the state parameter, the PKCE cookie and `ADMIN_EMAILS`
+are all exercised.
+
+A test that needs a library rather than a studio gets one from `e2e/seed.ts`,
+through the API. Driving the console's screens to set up a learner test would
+couple the two apps for nothing — and would be slower.
 
 Set `CHROMIUM_PATH` to reuse a browser already on the machine, and
 `TEST_DATABASE_URL` to point at a Postgres the run may create a database in.

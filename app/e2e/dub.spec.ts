@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test'
-import { join } from 'node:path'
-import { API_URL } from './environment'
-import { asAdmin, asLearner, resetServer } from './session'
+import { asLearner, resetServer } from './session'
+import { publishVideoLesson } from './seed'
 
 /**
  * Exporting a dub: the learner's voice muxed onto the clip's picture, as a file
@@ -11,38 +10,13 @@ import { asAdmin, asLearner, resetServer } from './session'
  * take, ask for the dub, wait for the dubber — with nothing stubbed but the
  * microphone, which Chromium plays from a file.
  */
-const CLIP = join(import.meta.dirname, 'fixtures', 'studio-clip.webm')
 
 async function publishVideoClip(page: import('@playwright/test').Page) {
   await resetServer(page)
-  await asAdmin(page)
-  await page.goto('/admin')
-  await page.locator('input[type=file]').setInputFiles(CLIP)
-  await expect(page.locator('.waveform')).toBeVisible({ timeout: 30_000 })
-
-  const lines = page.locator('input[id^="line-"]')
-  for (let i = 0; i < (await lines.count()); i++) {
-    await lines.nth(i).fill(`Dub this line ${i + 1}`)
-  }
-  await page.getByRole('button', { name: /Publish \d+ clips/ }).click()
-  await expect(page.getByText(/clips are now in the library/)).toBeVisible({ timeout: 60_000 })
-
-  // The cutter has to land before there is a picture to dub onto. Polled as the
-  // admin, through the studio's clip manager: there is no endpoint that hands
-  // out the whole library any more, and the studio is the one screen whose job
-  // it is.
-  await expect
-    .poll(
-      async () => {
-        const listing = await (
-          await page.request.get(`${API_URL}/api/admin/clips?limit=200`)
-        ).json()
-        return (listing.clips as { hasVideo: boolean }[]).filter((clip) => clip.hasVideo).length
-      },
-      { timeout: 90_000, intervals: [1000] },
-    )
-    .toBeGreaterThan(0)
-
+  // Published through the API and the cutter waited for. It used to be cut
+  // through the studio's screens, which are a different app now — and what these
+  // tests are about is the dub, not the cut.
+  await publishVideoLesson(page, (n) => `Dub this line ${n}`)
   await asLearner(page)
 }
 

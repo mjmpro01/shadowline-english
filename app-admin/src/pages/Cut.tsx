@@ -2,13 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRemote } from '../lib/remote'
 import { useT } from '../i18n'
 import { Icon } from '../components/Icon'
-import { SegmentedControl } from '../components/SegmentedControl'
-import { StudioClips } from './StudioClips'
-import { StudioSeries } from './StudioSeries'
 import { ThumbnailStrip } from '../components/ThumbnailStrip'
 import { WaveformEditor } from '../components/WaveformEditor'
 import { MAX_CLIP_SECONDS, type Transcript } from '../data/types'
-import type { PublishProgress } from '../store/context'
+import { publishClips, type PublishProgress } from '../lib/publish'
 import { looksLikeVideo } from '../lib/media'
 import { decodeFile, peaks as computePeaks } from '../lib/audio/decode'
 import { proposeSegments, type Segment } from '../lib/audio/segment'
@@ -18,7 +15,6 @@ import { ipaOf, lineOf, wordsBetween } from '../lib/transcript'
 import { extractFrames } from '../lib/video/frames'
 import { readDraft, saveDraft, type StudioLine, type StudioLoaded } from '../lib/studioDraft'
 import { repository } from '../repository'
-import { useApp } from '../store/context'
 
 const WAVEFORM_COLUMNS = 900
 /** Slots on the filmstrip. Enough to show a change of speaker on a wide screen,
@@ -52,17 +48,8 @@ function lengthLabel(seconds: number): string {
   return (Math.floor(seconds * 10) / 10).toFixed(1)
 }
 
-type Tab = 'cut' | 'clips' | 'series'
-
-export function AdminScreen() {
+export function Cut() {
   const t = useT()
-  const { addClips } = useApp()
-  const [tab, setTab] = useState<Tab>('cut')
-  // Shown on the tabs themselves, so the counts are right before a tab is
-  // opened. Each tab reports its own; the app no longer holds a library to
-  // count.
-  const [seriesCount, setSeriesCount] = useState(0)
-  const [clipCount, setClipCount] = useState(0)
   const fileInput = useRef<HTMLInputElement>(null)
   const player = useRef<HTMLAudioElement>(null)
   const video = useRef<HTMLVideoElement>(null)
@@ -432,7 +419,7 @@ export function AdminScreen() {
       // Wait out an in-flight upload: sourceId state can still be null while the
       // promise is about to resolve, and publishing without it skips the cut.
       const uploadedId = sourceId ?? (await sourceUpload.current)
-      result = await addClips(
+      result = await publishClips(
         chosen.map(({ segment, line }) => ({
           title: line.title.trim(),
           line: line.text.trim(),
@@ -519,22 +506,6 @@ export function AdminScreen() {
         </div>
       </div>
 
-      <SegmentedControl
-        name="admin-tab"
-        value={tab}
-        onChange={setTab}
-        options={[
-          { value: 'cut', label: t('studio.tabCut') },
-          { value: 'clips', label: t('studio.tabClipsCount', clipCount) },
-          { value: 'series', label: t('studio.tabSeries', seriesCount) },
-        ]}
-      />
-
-      {tab === 'series' && <StudioSeries onCount={setSeriesCount} />}
-
-      {tab === 'clips' && <StudioClips onCount={setClipCount} />}
-
-      {tab === 'cut' && (
       <div className="row gap-3 wrap">
         <button type="button" className="btn btn-primary" onClick={() => fileInput.current?.click()}>
           {t('studio.upload')}
@@ -562,14 +533,13 @@ export function AdminScreen() {
           </span>
         )}
       </div>
-      )}
 
-      {/* What the tab looked like before a file is chosen: two buttons on an
+      {/* What the screen looked like before a file is chosen: two buttons on an
           empty page, with nothing saying what pressing one leads to. An admin
           opening this for the first time has no idea whether it wants a
           three-second clip or an hour-long lecture, or that the lines write
           themselves. Four steps is the whole answer. */}
-      {tab === 'cut' && !loaded && !busy && (
+      {!loaded && !busy && (
         <div className="card elev-sm stack gap-3" style={{ maxWidth: 640 }}>
           <div className="card-kicker">{t('studio.stepsKicker')}</div>
           <ol className="studio-steps">
@@ -618,7 +588,7 @@ export function AdminScreen() {
         </div>
       )}
 
-      {tab === 'cut' && loaded && (
+      {loaded && (
         <>
           <div className="row gap-3 wrap" style={{ alignItems: 'flex-end' }}>
             <div className="field" style={{ flex: '1 1 220px' }}>

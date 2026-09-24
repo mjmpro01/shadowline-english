@@ -283,38 +283,6 @@ export const vi: Messages = {
   'profile.open': 'Mở',
 
   // --- studio ---------------------------------------------------------------
-  'studio.title': 'Xưởng cắt clip',
-  'studio.subtitle':
-    'Cắt một bản ghi thành từng câu cho thư viện. Người học luyện những clip này; họ không tự thêm được.',
-  'studio.tabSeries': (n: number) => `Series (${n})`,
-  'studio.hotOn': 'Đang nổi bật',
-  'studio.hotOff': 'Đánh dấu nổi bật',
-  'studio.episodes': (n: number) => `${n} tập`,
-  'studio.seriesName': 'Tên series',
-  'studio.seriesAbout': 'Giới thiệu series',
-  'studio.episodeName': 'Tên tập',
-  'studio.order': 'Thứ tự',
-  'studio.inSeries': 'Thuộc series',
-  'studio.findClip': 'Tìm clip theo tên, câu thoại, playlist hoặc thẻ',
-  'studio.findClipLabel': 'Tìm clip',
-  'studio.noMatch': 'Không có clip nào trong thư viện khớp.',
-  'studio.clipName': 'Tên',
-  'studio.categories': 'Thẻ',
-  'studio.line': 'Câu thoại',
-  'studio.deleteClip': 'Xoá clip',
-  'studio.deleteClipTitle': 'Xoá clip này?',
-  'studio.deleteClipBody': (title: string) =>
-    `“${title}”, phần âm thanh của nó và mọi bản thu người học đã ghi cho nó đều mất hẳn.`,
-  'studio.previousPage': 'Trước',
-  'studio.nextPage': 'Sau',
-  'studio.showing': (from: number, to: number, total: number) => `${from}–${to} / ${total}`,
-  'studio.tabClipsCount': (n: number) => `Clip (${n})`,
-  'studio.tabCut': 'Cắt một bản ghi',
-  'studio.tabClips': (n: number) => `Clip (${n})`,
-  'studio.upload': 'Tải lên audio hoặc video',
-  'studio.youtube': 'Dán đường dẫn YouTube',
-  'studio.youtubeSoon': 'Chưa dùng được — tải tệp lên thay nhé',
-  'studio.stepsKicker': 'Tiếp theo sẽ thế nào',
   'studio.step1Title': 'Tải một bản ghi lên.',
   'studio.step1': 'Dài một tiếng cũng được — nó được cắt thành từng câu, không luyện cả bài.',
   'studio.step2Title': 'Phần lời tự viết ra.',
@@ -325,32 +293,6 @@ export const vi: Messages = {
     'Mỗi clip được đề xuất từ những khoảng lặng; kéo, tách, hoặc bỏ chọn clip bạn không muốn.',
   'studio.step4Title': 'Đăng.',
   'studio.step4': 'Clip đã chọn vào thư viện, và video của chúng được cắt ở nền.',
-  'studio.stepsFooter':
-    'Người học luyện những gì được đăng ở đây. Họ không tự thêm clip được.',
-  'studio.playlist': 'Playlist',
-  'studio.playlistHint': 'Tên bài học hoặc tập',
-  'studio.batchCategories': 'Thể loại cho cả đợt',
-  'studio.batchCategoriesHint': 'phỏng vấn, hội thoại hằng ngày',
-  'studio.applyToAll': 'Áp dụng cho mọi clip',
-  'studio.clipsProposed': (n: number) => `đề xuất ${n} clip`,
-  'studio.listening': 'Đang nghe ra từng chữ…',
-  'studio.transcribing':
-    'Đang chép lời — các câu sẽ tự điền khi xong. Bạn cứ cắt tiếp trong lúc đó.',
-  'studio.published': 'Đã đăng',
-  'studio.publishedBody': (n: number) => `${n} clip đã vào thư viện.`,
-  'studio.publishedSilent': (n: number) =>
-    `${n} clip trong số đó lên mà chưa có tiếng. Bài thu vào những clip này vẫn được giữ và đo, nhưng không chấm điểm — publish lại lô này để đưa tiếng lên.`,
-  'studio.publishFailed': 'Publish đã dừng',
-  'studio.publishFailedKept':
-    'Bản cắt vẫn còn nguyên như lúc bạn để lại. Không có gì bị bỏ đi — xem lỗi rồi thử lại.',
-  'studio.savingClips': (done: number, total: number) => `Đang lưu clip… ${done}/${total}`,
-  'studio.savingAudio': (done: number, total: number) => `Đang gửi tiếng… ${done}/${total}`,
-  'studio.cuttingVideo':
-    'Video của chúng đang được cắt ở nền — người học luyện phần audio trước được, hình sẽ hiện khi cắt xong từng clip.',
-  'studio.noClips': 'Chưa có clip nào — cắt một bản ghi trước đã.',
-  'studio.selectAll': 'Chọn tất cả',
-  'studio.selectNone': 'Bỏ chọn tất cả',
-  'studio.onlyWithLine': 'Chỉ clip có câu thoại',
 
   'dash.nothingFeatured': 'Chưa có clip nổi bật — quản trị viên chọn ở xưởng cắt.',
   'dash.rank': 'Hạng',
@@ -390,13 +332,6 @@ export const vi: Messages = {
   'score.bestSoFar': (score: number) => `Cao nhất ${score}`,
   'score.bestSoFarWeakest': (score: number, metric: string, value: number) =>
     `Cao nhất ${score} — ${metric.toLowerCase()} yếu nhất, chỉ ${value}`,
-  'studio.decoding': 'Đang giải mã…',
-  'studio.saving': 'Đang lưu…',
-  'studio.featured': 'Đang nổi bật',
-  'studio.feature': 'Cho nổi bật',
-  'studio.noTranscript': 'Không chép lời được, nên phần câu thoại bạn tự gõ nhé.',
-  'studio.nameOptional': 'Tên (không bắt buộc)',
-  'studio.namedWhenPublished': 'Đặt tên khi đăng',
 
   'profile.changeAvatar': 'Đổi ảnh đại diện',
 
@@ -407,15 +342,6 @@ export const vi: Messages = {
   'take.deleteTitle': 'Xoá bản ghi này?',
   'take.deleteBody': (n: number) =>
     `Bản ghi và điểm của nó mất hẳn. Bạn có ${n} bản ghi cho clip này.`,
-  'studio.deleteEpisode': 'Xoá tập',
-  'studio.deleteEpisodeTitle': 'Xoá tập này?',
-  'studio.deleteEpisodeBody': (title: string, clips: number) =>
-    `“${title}”, ${clips} clip trong đó và bản ghi gốc đều mất hẳn, cùng mọi bản thu mà người học đã ghi cho chúng.`,
-  'studio.deleteSeries': 'Xoá series',
-  'studio.deleteSeriesTitle': 'Xoá series này?',
-  'studio.deleteSeriesBody': (title: string) =>
-    `“${title}” đang rỗng, nên chỉ mất cái tên.`,
-  'studio.deleteSeriesBlocked': 'Xoá các tập trước đã — series còn clip thì không bị xoá nhầm.',
   'common.loading': 'Đang tải…',
   'common.cantReach': 'Không kết nối được Shadowline',
   'common.somethingWrong': 'Đã có lỗi xảy ra.',

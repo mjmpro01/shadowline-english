@@ -123,3 +123,54 @@ func TestAnOrdinaryRouteKeepsTheMinute(t *testing.T) {
 		t.Fatalf("an ordinary route had %s left; the request timeout is not on it", d)
 	}
 }
+
+// A browser can only seek in a file the server says it may ask for ranges of.
+//
+// This served the whole object with an io.Copy, which advertises nothing.
+// Chromium then treats the resource as unseekable until it holds all of it and
+// silently clamps a currentTime assigned before that to zero — which is what
+// made switching voices in Dub Review start the line again, and what would make
+// the slider useless on a slow connection.
+func TestServingAFileAnswersRanges(t *testing.T) {
+	h := newHarness(t)
+	body := strings.Repeat("shadowline", 200) // 2,000 bytes
+	if err := h.blobs.Put(context.Background(), storage.Clips, "clip/range.wav",
+		strings.NewReader(body), -1, "audio/wav"); err != nil {
+		t.Fatalf("put: %v", err)
+	}
+
+	query := h.srv.Signer.SignPath(string(storage.Clips), "clip/range.wav", time.Now().Add(time.Hour))
+	path := "/files/clips/clip/range.wav?" + query
+	client := h.anonymous()
+
+	whole := client.do("GET", path, "", nil)
+	defer whole.Body.Close()
+	if whole.StatusCode != http.StatusOK {
+		t.Fatalf("whole file: %d", whole.StatusCode)
+	}
+	if got := whole.Header.Get("Accept-Ranges"); got != "bytes" {
+		t.Fatalf("Accept-Ranges = %q, so nothing may be seeked in", got)
+	}
+	if got := whole.Header.Get("Content-Type"); got != "audio/wav" {
+		t.Fatalf("Content-Type = %q — the project's own mapping should survive ServeContent", got)
+	}
+
+	// And a range really is answered, rather than the header being a promise.
+	req, err := http.NewRequest("GET", client.base+path, nil)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Range", "bytes=10-19")
+	part, err := client.http.Do(req)
+	if err != nil {
+		t.Fatalf("range request: %v", err)
+	}
+	defer part.Body.Close()
+	if part.StatusCode != http.StatusPartialContent {
+		t.Fatalf("range request: %d, want 206", part.StatusCode)
+	}
+	got, _ := io.ReadAll(part.Body)
+	if string(got) != body[10:20] {
+		t.Fatalf("range returned %q, want %q", got, body[10:20])
+	}
+}

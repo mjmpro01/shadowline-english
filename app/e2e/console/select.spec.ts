@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
-import { LESSON } from './fixtures'
-import { asAdmin, resetServer } from './session'
+import { APP_URL } from '../environment'
+import { LESSON } from '../fixtures'
+import { asAdmin, resetServer } from '../session'
 
 /**
  * Choosing which cuts reach the library.
@@ -13,7 +14,7 @@ import { asAdmin, resetServer } from './session'
 test.beforeEach(async ({ page }) => {
   await resetServer(page)
   await asAdmin(page)
-  await page.goto('/admin')
+  await page.goto('/admin/cut')
   await page.locator('input[type=file]').setInputFiles(LESSON)
   await expect(page.locator('.waveform-segment')).toHaveCount(4, { timeout: 15_000 })
 })
@@ -48,7 +49,7 @@ test('unselecting a clip keeps it out of the library', async ({ page }) => {
 
   // Searched rather than browsed: the library opens on series now, and what
   // this test is about is which four lines exist at all.
-  await page.goto('/library')
+  await page.goto(`${APP_URL}/library`)
   await page.getByLabel('Search the library').fill('Shadow this line')
   await expect(page.getByText('Shadow this line 1')).toBeVisible()
   await expect(page.getByText('Shadow this line 3')).toBeVisible()
@@ -125,13 +126,13 @@ test('the cut survives leaving the studio and coming back', async ({ page }) => 
   await page.getByLabel('Playlist').fill('Kept across screens')
   await page.getByLabel('Publish clip 2').uncheck()
 
-  // Through the menu, the way an admin leaves: a reload is a different question
-  // — the decoded samples are hundreds of megabytes and the object URL belongs
-  // to the document, so neither could survive one. This carries the work across
-  // a screen, not across a session.
-  await page.locator('.menu-plank').filter({ hasText: 'Library' }).click()
-  await expect(page.getByLabel('Search the library')).toBeVisible()
-  await page.locator('.menu-plank').filter({ hasText: 'Clip studio' }).click()
+  // Through the console's own nav, the way an admin leaves: a reload is a
+  // different question — the decoded samples are hundreds of megabytes and the
+  // object URL belongs to the document, so neither could survive one. This
+  // carries the work across a screen, not across a session.
+  await page.getByRole('link', { name: 'Series' }).click()
+  await expect(page).toHaveURL(/\/admin\/series$/)
+  await page.getByRole('link', { name: 'Cut a recording' }).click()
 
   // The same recording, the same cuts, the same words, the same choice.
   await expect(page.locator('.waveform-segment')).toHaveCount(4)

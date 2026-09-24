@@ -229,9 +229,27 @@ export function DubScreen() {
             onLoadedMetadata={(e) => {
               setDuration(e.currentTarget.duration)
               // Swapping voices reloads the element; drop back onto the shared timeline.
-              e.currentTarget.currentTime = Math.min(resumeAt.current, e.currentTarget.duration)
-              swapping.current = false
+              const at = Math.min(resumeAt.current, e.currentTarget.duration)
+              if (at > 0) {
+                e.currentTarget.currentTime = at
+              } else {
+                // Nothing to seek to, so no `seeked` is coming to clear this.
+                swapping.current = false
+              }
               if (playing) void e.currentTarget.play()
+            }}
+            // The seek above is asynchronous, so `swapping` is cleared when it
+            // lands rather than on the line after it was asked for: until then
+            // the element reports zero, and recording one of those would throw
+            // away the position being restored.
+            //
+            // What actually broke this was on the server — `/files/*` served the
+            // bytes with no Accept-Ranges, so Chromium clamped the seek to zero
+            // and switching voices started the line again. That is fixed in
+            // `handleFile`. This is the half of it that belongs here.
+            onSeeked={(e) => {
+              swapping.current = false
+              resumeAt.current = e.currentTarget.currentTime
             }}
             onTimeUpdate={(e) => {
               if (swapping.current) return

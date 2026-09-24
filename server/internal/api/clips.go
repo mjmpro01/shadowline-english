@@ -417,8 +417,9 @@ func (s *Server) handleCreateClips(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, created)
 }
 
-// MaxClipSeconds mirrors MAX_CLIP_SECONDS in app/src/data/types.ts. A clip is one
-// line to shadow; the studio already refuses longer cuts, and so does this.
+// MaxClipSeconds mirrors MAX_CLIP_SECONDS in app/src/data/types.ts and in
+// app-admin/src/data/types.ts. A clip is one line to shadow; the console already
+// refuses longer cuts, and so does this.
 const MaxClipSeconds = 6
 
 func validateClip(in store.NewClip) error {
@@ -620,6 +621,24 @@ func (s *Server) handleFile(w http.ResponseWriter, r *http.Request) {
 	defer rc.Close()
 	w.Header().Set("Content-Type", contentTypeFor(key))
 	w.Header().Set("Cache-Control", "private, max-age=3600")
+
+	// Range requests, so a browser can seek.
+	//
+	// This used to be an io.Copy, which serves the bytes and advertises nothing.
+	// Chromium then treats the whole file as unseekable until it holds all of it,
+	// and a currentTime assigned before that is silently clamped to zero — which
+	// is what made switching voices in Dub Review start the line again instead of
+	// keeping its place, and what would make the slider useless on a slow line.
+	//
+	// Disk storage hands back an *os.File, so the seek is free. S3 does not come
+	// through here at all: the browser goes straight to the presigned URL, and
+	// S3 answers ranges itself.
+	if seeker, ok := rc.(io.ReadSeeker); ok {
+		// An empty name and no modtime: the Content-Type above is this project's
+		// own mapping, and ServeContent leaves a header that is already set.
+		http.ServeContent(w, r, "", time.Time{}, seeker)
+		return
+	}
 	if _, err := io.Copy(w, rc); err != nil {
 		s.Log.Warn("truncated file response", "key", key, "error", err)
 	}

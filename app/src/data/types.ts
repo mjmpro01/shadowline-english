@@ -26,15 +26,6 @@ export interface Dub {
   url: string | null
 }
 
-/** One word Whisper heard, when it was said, and how to say it. */
-export interface TranscriptWord {
-  start: number
-  end: number
-  text: string
-  /** Empty when CMUdict has never heard of the word. */
-  ipa: string
-}
-
 /** What a word means and how it is said, looked up once and kept for ever.
  *
  * `pending` while the worker has it — the first tap on a word nobody has ever
@@ -53,15 +44,6 @@ export interface Gloss {
    *  appear, and a learner is owed the difference anyway between a
    *  lexicographer's sentence and a model's. Empty when there is no meaning. */
   source: string
-}
-
-export interface Transcript {
-  /** `pending` while the worker is still running, and the ordinary first
-   *  answer: transcribing an hour takes minutes. `failed` means no transcript
-   *  is coming and the lines have to be typed. */
-  status: 'pending' | 'ready' | 'failed'
-  language: string
-  words: TranscriptWord[]
 }
 
 /**

@@ -283,38 +283,6 @@ export const en = {
   'profile.open': 'Open',
 
   // --- studio ---------------------------------------------------------------
-  'studio.title': 'Clip studio',
-  'studio.subtitle':
-    'Cut a recording into single lines for the library. Learners practise these; they cannot add their own.',
-  'studio.tabSeries': (n: number) => `Series (${n})`,
-  'studio.hotOn': 'Hot',
-  'studio.hotOff': 'Mark hot',
-  'studio.episodes': (n: number) => `${n} ${n === 1 ? 'episode' : 'episodes'}`,
-  'studio.seriesName': 'Series name',
-  'studio.seriesAbout': 'About this series',
-  'studio.episodeName': 'Episode name',
-  'studio.order': 'Order',
-  'studio.inSeries': 'In series',
-  'studio.findClip': 'Find a clip by name, line, playlist or category',
-  'studio.findClipLabel': 'Find a clip',
-  'studio.noMatch': 'No clip in the library matches that.',
-  'studio.clipName': 'Name',
-  'studio.categories': 'Categories',
-  'studio.line': 'Line',
-  'studio.deleteClip': 'Delete clip',
-  'studio.deleteClipTitle': 'Delete this clip?',
-  'studio.deleteClipBody': (title: string) =>
-    `“${title}”, its audio and every take anybody has recorded against it all go for good.`,
-  'studio.previousPage': 'Previous',
-  'studio.nextPage': 'Next',
-  'studio.showing': (from: number, to: number, total: number) => `${from}–${to} of ${total}`,
-  'studio.tabClipsCount': (n: number) => `Clips (${n})`,
-  'studio.tabCut': 'Cut a recording',
-  'studio.tabClips': (n: number) => `Clips (${n})`,
-  'studio.upload': 'Upload audio or video',
-  'studio.youtube': 'Paste a YouTube URL',
-  'studio.youtubeSoon': 'Not available yet — upload a file instead',
-  'studio.stepsKicker': 'What happens next',
   'studio.step1Title': 'Upload a recording.',
   'studio.step1': 'An hour is fine — it is cut into single lines, not practised whole.',
   'studio.step2Title': 'The words write themselves.',
@@ -326,31 +294,6 @@ export const en = {
   'studio.step4Title': 'Publish.',
   'studio.step4':
     'The selected clips reach the library, and their video is cut in the background.',
-  'studio.stepsFooter': 'Learners practise what is published here. They cannot add clips of their own.',
-  'studio.playlist': 'Playlist',
-  'studio.playlistHint': 'Lesson or episode name',
-  'studio.batchCategories': 'Categories for the batch',
-  'studio.batchCategoriesHint': 'interview, daily conversation',
-  'studio.applyToAll': 'Apply to all clips',
-  'studio.clipsProposed': (n: number) => `${n} clips proposed`,
-  'studio.listening': 'Listening for the words…',
-  'studio.transcribing':
-    'Transcribing — the lines fill themselves in when it finishes. Keep cutting meanwhile.',
-  'studio.published': 'Published',
-  'studio.publishedBody': (n: number) => `${n} clips are now in the library.`,
-  'studio.publishedSilent': (n: number) =>
-    `${n} of them went up without their audio. A take against one of those is kept and measured, but not scored — publish the batch again to put the sound back.`,
-  'studio.publishFailed': 'Publishing stopped',
-  'studio.publishFailedKept':
-    'The cut is still here, exactly as you left it. Nothing has been thrown away — try again when you know what went wrong.',
-  'studio.savingClips': (done: number, total: number) => `Saving clips… ${done} of ${total}`,
-  'studio.savingAudio': (done: number, total: number) => `Sending audio… ${done} of ${total}`,
-  'studio.cuttingVideo':
-    'Their video is being cut in the background — learners can practise the audio meanwhile, and the picture appears when each cut is done.',
-  'studio.noClips': 'No clips yet — cut a recording first.',
-  'studio.selectAll': 'Select all',
-  'studio.selectNone': 'Select none',
-  'studio.onlyWithLine': 'Only clips with a line',
 
   'dash.nothingFeatured': 'Nothing featured yet — an admin picks these in the clip studio.',
   'dash.rank': 'Rank',
@@ -390,13 +333,6 @@ export const en = {
   'score.bestSoFar': (score: number) => `Best so far ${score}`,
   'score.bestSoFarWeakest': (score: number, metric: string, value: number) =>
     `Best so far ${score} — ${metric.toLowerCase()} is the weakest at ${value}`,
-  'studio.decoding': 'Decoding…',
-  'studio.saving': 'Saving…',
-  'studio.featured': 'Featured',
-  'studio.feature': 'Feature',
-  'studio.noTranscript': 'The words could not be transcribed, so the lines are yours to type.',
-  'studio.nameOptional': 'Name (optional)',
-  'studio.namedWhenPublished': 'Named when published',
 
   'profile.changeAvatar': 'Change avatar',
 
@@ -407,15 +343,6 @@ export const en = {
   'take.deleteTitle': 'Delete this take?',
   'take.deleteBody': (n: number) =>
     `The recording and its score go for good. You have ${n} ${n === 1 ? 'take' : 'takes'} on this clip.`,
-  'studio.deleteEpisode': 'Delete episode',
-  'studio.deleteEpisodeTitle': 'Delete this episode?',
-  'studio.deleteEpisodeBody': (title: string, clips: number) =>
-    `“${title}”, its ${clips} ${clips === 1 ? 'clip' : 'clips'} and the recording they were cut from all go for good, along with every take anybody has recorded against them.`,
-  'studio.deleteSeries': 'Delete series',
-  'studio.deleteSeriesTitle': 'Delete this series?',
-  'studio.deleteSeriesBody': (title: string) =>
-    `“${title}” is empty, so only the name goes.`,
-  'studio.deleteSeriesBlocked': 'Delete its episodes first — a series with clips in it is not deleted by accident.',
   'common.loading': 'Loading…',
   'common.cantReach': 'Can’t reach Shadowline',
   'common.somethingWrong': 'Something went wrong.',

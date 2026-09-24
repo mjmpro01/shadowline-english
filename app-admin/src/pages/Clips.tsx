@@ -6,10 +6,10 @@ import { SavedField } from '../components/SavedField'
 import type { Video } from '../data/types'
 import { ApiError } from '../lib/api'
 import { formatCategories, parseCategories } from '../lib/clips'
+import { editClip } from '../lib/editClip'
 import { useDebounced } from '../lib/remote'
 import { clock } from '../lib/time'
 import { repository } from '../repository'
-import { useApp } from '../store/context'
 
 /** How many clips the manager asks for at once. Mirrors the server's own page
  *  size, which is what actually caps it. */
@@ -23,9 +23,8 @@ const PAGE = 50
  * that list was 7.4MB against forty series and is gone, so the search runs on
  * the server and the rows arrive fifty at a time.
  */
-export function StudioClips({ onCount }: { onCount: (n: number) => void }) {
+export function Clips() {
   const t = useT()
-  const { updateClip, deleteClip } = useApp()
   const [query, setQuery] = useState('')
   const settled = useDebounced(query.trim(), 250)
   const [offset, setOffset] = useState(0)
@@ -38,13 +37,12 @@ export function StudioClips({ onCount }: { onCount: (n: number) => void }) {
       try {
         const got = await repository.studioClips(settled, PAGE, at)
         setPage(got)
-        onCount(got.total)
         setError(null)
       } catch (err) {
         setError(err instanceof ApiError ? err.message : 'Could not load the clips.')
       }
     },
-    [settled, onCount],
+    [settled],
   )
 
   // A new search starts at the first page: staying on page four of the last
@@ -65,6 +63,15 @@ export function StudioClips({ onCount }: { onCount: (n: number) => void }) {
 
   return (
     <div className="stack gap-3">
+      <div>
+        <h1 style={{ marginBottom: 2 }}>{t('studio.clipsTitle')}</h1>
+        {/* The count comes from the same answer as the rows, so it is the number
+            of clips the search found rather than the number on this page. */}
+        <div className="card-meta">
+          {page === null ? '—' : t('studio.clipsFound', page.total)}
+        </div>
+      </div>
+
       <input
         className="input"
         placeholder={t('studio.findClip')}
@@ -81,7 +88,7 @@ export function StudioClips({ onCount }: { onCount: (n: number) => void }) {
           onConfirm={() => {
             const id = deleting.id
             setDeleting(null)
-            void deleteClip(id).then(refresh)
+            void repository.deleteClip(id).then(refresh)
           }}
         />
       )}
@@ -102,7 +109,7 @@ export function StudioClips({ onCount }: { onCount: (n: number) => void }) {
               <button
                 type="button"
                 className={`btn ${video.featured ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => void updateClip(video.id, { featured: !video.featured }).then(refresh)}
+                onClick={() => void editClip(video, { featured: !video.featured }).then(refresh)}
               >
                 {video.featured ? t('studio.featured') : t('studio.feature')}
               </button>
@@ -117,14 +124,14 @@ export function StudioClips({ onCount }: { onCount: (n: number) => void }) {
               label={t('studio.clipName')}
               value={video.title}
               style={{ flex: '1 1 220px' }}
-              onSave={(title) => void updateClip(video.id, { title }).then(refresh)}
+              onSave={(title) => void editClip(video, { title }).then(refresh)}
             />
             <SavedField
               id={`playlist-${video.id}`}
               label={t('studio.playlist')}
               value={video.playlist}
               style={{ flex: '1 1 160px' }}
-              onSave={(playlist) => void updateClip(video.id, { playlist }).then(refresh)}
+              onSave={(playlist) => void editClip(video, { playlist }).then(refresh)}
             />
             <SavedField
               id={`cats-${video.id}`}
@@ -132,7 +139,7 @@ export function StudioClips({ onCount }: { onCount: (n: number) => void }) {
               value={formatCategories(video.categories)}
               style={{ flex: '1 1 160px' }}
               onSave={(raw) =>
-                void updateClip(video.id, { categories: parseCategories(raw) }).then(refresh)
+                void editClip(video, { categories: parseCategories(raw) }).then(refresh)
               }
             />
           </div>
@@ -140,7 +147,7 @@ export function StudioClips({ onCount }: { onCount: (n: number) => void }) {
             id={`text-${video.id}`}
             label={t('studio.line')}
             value={video.captions[0]?.text ?? ''}
-            onSave={(line) => void updateClip(video.id, { line }).then(refresh)}
+            onSave={(line) => void editClip(video, { line }).then(refresh)}
           />
         </div>
       ))}

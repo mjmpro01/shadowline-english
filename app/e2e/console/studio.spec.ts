@@ -1,56 +1,23 @@
 import { expect, test } from '@playwright/test'
-import { practiseFirstClip } from './library'
-import { API_URL } from './environment'
-import { LESSON } from './fixtures'
-import { asAdmin, resetServer, startFresh } from './session'
-import { publishLesson } from './studio'
+import { APP_URL } from '../environment'
+import { LESSON } from '../fixtures'
+import { asAdmin, resetServer } from '../session'
+import { publishLesson } from '../seed'
+
+/**
+ * The console's cut screen: a recording in, a batch of clips out.
+ *
+ * `baseURL` here is the console's own dev server, so a bare path is a console
+ * path. Where a test checks what a learner ends up seeing it says APP_URL, and
+ * that is the point of the assertion rather than an accident of routing.
+ */
 
 /** Opens the studio as an admin, with a fresh library behind it. */
 async function openStudio(page: import('@playwright/test').Page): Promise<void> {
   await resetServer(page)
   await asAdmin(page)
-  await page.goto('/admin')
+  await page.goto('/admin/cut')
 }
-
-test('learners cannot add clips of their own', async ({ page }) => {
-  await startFresh(page)
-  await page.goto('/library')
-
-  await expect(page.getByPlaceholder(/Paste a YouTube/)).toHaveCount(0)
-  await expect(page.getByRole('link', { name: 'Clip studio' })).toHaveCount(0)
-
-  await practiseFirstClip(page)
-  await expect(page.getByRole('button', { name: /source audio/ })).toHaveCount(0)
-})
-
-// The studio used to be behind a switch on the Profile screen that anyone could
-// flip. It is now behind ADMIN_EMAILS, and there is nothing on screen to turn on.
-test('the clip studio is closed to a learner and open to an admin', async ({ page }) => {
-  await startFresh(page)
-
-  await page.goto('/admin')
-  await expect(page).toHaveURL(/\/library$/)
-  await page.goto('/profile')
-  await expect(page.getByText('Clip studio')).toHaveCount(0)
-
-  await asAdmin(page)
-  await page.getByRole('link', { name: 'Clip studio' }).click()
-  await expect(page).toHaveURL(/\/admin$/)
-})
-
-// Hiding the route is a convenience; the rule is on the server. A learner who
-// calls the endpoint directly must be refused.
-test('the admin endpoints refuse a learner even when the route is reached', async ({ page }) => {
-  await startFresh(page)
-
-  const response = await page.request.post(`${API_URL}/api/admin/clips`, {
-    data: { clips: [{ title: 'Sneaked in', durationSeconds: 2 }] },
-  })
-  expect(response.status()).toBe(403)
-
-  await page.goto('/library')
-  await expect(page.getByText('Sneaked in')).toHaveCount(0)
-})
 
 test('cuts a recording into lines and publishes them to the library', async ({ page }) => {
   await openStudio(page)
@@ -73,7 +40,7 @@ test('cuts a recording into lines and publishes them to the library', async ({ p
   await page.getByRole('button', { name: /Publish 4 clips/ }).click()
   await expect(page.getByText('4 clips are now in the library.')).toBeVisible({ timeout: 15_000 })
 
-  await page.goto('/library')
+  await page.goto(`${APP_URL}/library`)
   await page.getByLabel('Search the library').fill('Shadow this line 1')
   await expect(page.getByText('Shadow this line 1')).toBeVisible()
 
@@ -151,8 +118,7 @@ test('clips get a name, a playlist and categories, and stay editable after publi
   await resetServer(page)
   await publishLesson(page)
 
-  await page.goto('/admin')
-  await page.getByText('Clips (', { exact: false }).click()
+  await page.goto('/admin/clips')
 
   await page.getByLabel('Find a clip').fill('Shadow this line 1')
   const first = page.locator('.card', { hasText: 'Name' }).first()
@@ -167,7 +133,7 @@ test('clips get a name, a playlist and categories, and stay editable after publi
   await first.getByLabel('Categories').fill('interview, greeting')
   await first.getByLabel('Categories').press('Enter')
 
-  await page.goto('/library')
+  await page.goto(`${APP_URL}/library`)
   await page.getByLabel('Search the library').fill('Greeting')
   await expect(page.getByText('Greeting the interviewer')).toBeVisible()
   await page.getByLabel('Search the library').fill('')
@@ -177,8 +143,7 @@ test('clips get a name, a playlist and categories, and stay editable after publi
 test('deleting a clip removes it from the library', async ({ page }) => {
   await resetServer(page)
   await publishLesson(page)
-  await page.goto('/admin')
-  await page.getByText('Clips (', { exact: false }).click()
+  await page.goto('/admin/clips')
 
   // The search runs on the server now — the studio pages through the library
   // rather than filtering a copy of it.
@@ -189,7 +154,7 @@ test('deleting a clip removes it from the library', async ({ page }) => {
   await page.getByRole('button', { name: 'Delete', exact: true }).click()
   await expect(page.locator('.card', { hasText: 'Name' })).toHaveCount(0)
 
-  await page.goto('/library')
+  await page.goto(`${APP_URL}/library`)
   await page.getByLabel('Search the library').fill('Shadow this line 1')
   await expect(page.getByText(/Nothing in the library matches/)).toBeVisible()
 })

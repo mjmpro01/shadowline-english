@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { asLearner, startFresh } from './session'
-import { publishLesson } from './studio'
+import { publishLesson } from './seed'
 
 /** Long enough for the fake microphone to play through most of the clip. */
 const RECORD_MS = 2600

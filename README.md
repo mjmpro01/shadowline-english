@@ -1,8 +1,12 @@
 > **Implementation status:** the designs in this bundle have been built, and now run
 > against a backend:
 >
-> - [`app/`](app/) — Vite + React + TypeScript: Login, Dashboard, Library, Practice,
->   Analysis, Dub Review, Progress, Vocabulary, Profile and the clip studio.
+> - [`app/`](app/) — Vite + React + TypeScript, what a learner opens: Login,
+>   Dashboard, Library, Practice, Analysis, Dub Review, Progress, Vocabulary,
+>   Profile.
+> - [`app-admin/`](app-admin/) — the admin console, its own build served under
+>   `/admin/` on the same origin: cutting recordings into clips, and the library
+>   they land in.
 > - [`server/`](server/) — Go API: Google OAuth, clips, takes, vocabulary, the
 >   leaderboard, and a scoring queue in Postgres.
 > - [`scoring/`](scoring/) — Python worker: pitch tracking and scoring, with parity

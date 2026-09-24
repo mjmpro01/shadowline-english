@@ -13,6 +13,17 @@ export const API_URL = `http://localhost:${API_PORT}`
 export const APP_PORT = Number(process.env.E2E_APP_PORT ?? 5173)
 export const APP_URL = `http://localhost:${APP_PORT}`
 
+/**
+ * The console: a separate build, served under /admin/ on the same host in
+ * production and by its own dev server here.
+ *
+ * A different port and the same host on purpose. Cookies ignore the port, so one
+ * sign-in covers both — which is the point of serving the console on the app's
+ * origin rather than on a subdomain.
+ */
+export const ADMIN_PORT = Number(process.env.E2E_ADMIN_PORT ?? 5174)
+export const ADMIN_URL = `http://localhost:${ADMIN_PORT}`
+
 /** A database of the test run's own, created and dropped by the global setup. */
 export const DATABASE = process.env.E2E_DATABASE ?? 'shadowline_e2e'
 
@@ -25,6 +36,7 @@ export const DATABASE_URL = ADMIN_DSN.replace(/\/[^/?]*(\?|$)/, `/${DATABASE}$1`
 export const REPO_ROOT = join(import.meta.dirname, '../..')
 export const SERVER_DIR = join(REPO_ROOT, 'server')
 export const SCORING_DIR = join(REPO_ROOT, 'scoring')
+export const ADMIN_DIR = join(REPO_ROOT, 'app-admin')
 
 /** Object storage on disk: MinIO is not worth a container for a test run. */
 export const BLOB_ROOT = join(process.cwd(), 'test-results', 'blobs')

@@ -100,7 +100,7 @@ Three settings have to agree or the round trip breaks:
 | --- | --- |
 | `OAUTH_REDIRECT_URL` | character-for-character one of the authorised redirect URIs |
 | `APP_ORIGIN` | where the React app is actually served — it is both the CORS origin and where the callback sends the browser afterwards |
-| `ADMIN_EMAILS` | the addresses that get the clip studio, checked at sign-in |
+| `ADMIN_EMAILS` | the addresses that get the admin console, checked at sign-in |
 
 When something goes wrong the callback does not answer with an error body: it is
 a browser navigation, and one would leave the learner on this server's origin
@@ -374,7 +374,7 @@ own boundaries, so an hour is transcribed once however many lines come out of
 it. A word belongs to the clip its *middle* falls in, so one straddling a cut
 goes to the side holding most of it and never to both. That rule lives twice —
 `words_between` in `scoring/shadowline/transcribe.py` and `wordsBetween` in
-`app/src/lib/transcript.ts` — because the worker maps words once and the studio
+`app-admin/src/lib/transcript.ts` — because the worker maps words once and the studio
 maps them again whenever a boundary moves. Both are tested against the same
 cases; they have to stay in step.
 
@@ -556,13 +556,27 @@ presigned URL and the bytes never pass through this process. With `DISK_ROOT`
 instead, `GET /files/{bucket}/*` serves them behind an HMAC signature that
 `internal/auth/sign.go` produces and checks.
 
-Two things about that route are easy to get wrong and were: the path is a
-wildcard rather than `{key}`, because object keys contain slashes and a single
-segment never matches one; and the response sets `Content-Type` from the key's
-extension, because disk storage keeps no metadata and an `<audio>` element given
-a response it cannot type refuses to play it — reporting only "The element has no
-supported sources", which names neither the element nor the reason. Both are
-covered by tests in `internal/api/clips_test.go`.
+Three things about that route are easy to get wrong and were.
+
+The path is a wildcard rather than `{key}`, because object keys contain slashes
+and a single segment never matches one.
+
+The response sets `Content-Type` from the key's extension, because disk storage
+keeps no metadata and an `<audio>` element given a response it cannot type
+refuses to play it — reporting only "The element has no supported sources", which
+names neither the element nor the reason.
+
+And it answers **range requests**, through `http.ServeContent`. It used to be an
+`io.Copy`, which serves the bytes and advertises nothing: Chromium then treats the
+resource as unseekable until it holds all of it and silently clamps a
+`currentTime` assigned before that to zero. The symptom was three screens away —
+switching voices in Dub Review started the line again instead of keeping its
+place — and the slider would have been useless on a slow connection for the same
+reason. Disk storage hands back an `*os.File`, so the seek costs nothing; S3 does
+not come through here at all, and answers ranges itself.
+
+The first two are covered in `internal/api/clips_test.go`, the third in
+`internal/api/deadlines_test.go`.
 
 ## Two deadlines, not one
 

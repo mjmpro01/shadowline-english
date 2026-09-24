@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
-import { join } from 'node:path'
-import { API_URL } from './environment'
-import { asAdmin, resetServer } from './session'
+import { API_URL, APP_URL } from '../environment'
+import { VIDEO_CLIP as CLIP } from '../fixtures'
+import { asAdmin, resetServer } from '../session'
 
 /**
  * The studio filling its own lines in.
@@ -14,7 +14,6 @@ import { asAdmin, resetServer } from './session'
  * sees: words arriving, landing in the right clip, and never overwriting a
  * correction.
  */
-const CLIP = join(import.meta.dirname, 'fixtures', 'studio-clip.webm')
 
 /** Words placed inside the fixture's three cuts, which fall near 0–1.8, 3–4.8
  *  and 6–7.8 seconds. */
@@ -30,7 +29,7 @@ const WORDS = [
 test.beforeEach(async ({ page }) => {
   await resetServer(page)
   await asAdmin(page)
-  await page.goto('/admin')
+  await page.goto('/admin/cut')
 })
 
 async function upload(page: import('@playwright/test').Page) {
@@ -109,7 +108,7 @@ test('the published clips carry the transcribed line', async ({ page }) => {
   await page.getByRole('button', { name: /Publish \d+ clips/ }).click()
   await expect(page.getByText(/clips are now in the library/)).toBeVisible({ timeout: 60_000 })
 
-  await page.goto('/library')
+  await page.goto(`${APP_URL}/library`)
   await page.getByLabel('Search the library').fill('One step')
   await expect(page.getByText('One step').first()).toBeVisible()
 })

@@ -44,6 +44,17 @@ export const LESSON = join(FIXTURE_DIR, 'lesson.wav')
 /** A decent shadow of it, in a lower voice, fed in as the microphone. */
 export const USER_TAKE = join(FIXTURE_DIR, 'user-take.wav')
 
+/**
+ * A real video, committed rather than generated: making one needs ffmpeg, and
+ * the browser tests should not. WebM because the Chromium these run against
+ * ships without the patented codecs — an MP4 of the same clip cannot be decoded
+ * here, though it plays in the Chrome an admin actually uses.
+ *
+ * Beside the specs rather than in the generated directory above, because it is
+ * committed: nothing writes it at startup.
+ */
+export const VIDEO_CLIP = join(import.meta.dirname, 'fixtures', 'studio-clip.webm')
+
 export function writeAudioFixtures(): void {
   writeWav(SOURCE_CLIP, tone({ melody: MELODIES.wide }))
   writeWav(FLAT_CLIP, tone({ melody: MELODIES.flat }))

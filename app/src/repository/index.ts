@@ -1,6 +1,5 @@
 import { api, ApiError } from '../lib/api'
 import type {
-  CaptionLine,
   Dub,
   Episode,
   Gloss,
@@ -8,7 +7,6 @@ import type {
   Profile,
   SearchResults,
   Take,
-  Transcript,
   Video,
   VocabStatus,
   VocabWord,
@@ -37,14 +35,6 @@ export interface Repository {
   episode(id: string): Promise<EpisodePage>
   /** One search across all three levels. */
   searchLibrary(query: string): Promise<SearchResults>
-  /** Renames a series, describes it, or marks it hot. Admin only. */
-  updatePlaylist(id: string, patch: PlaylistPatch): Promise<Playlist>
-  /** Renames an episode, moves it to another series, or reorders it. */
-  updateEpisode(id: string, patch: EpisodePatch): Promise<Episode>
-  /** Removes an episode, its clips and the recording they were cut from. */
-  deleteEpisode(id: string): Promise<void>
-  /** Removes a series. The server refuses one that still has clips in it. */
-  deletePlaylist(id: string): Promise<void>
 
   /** The clips a screen already knows it wants. There is no endpoint for the
    *  whole library any more: it was 7.4MB at sign-in, most of it signed poster
@@ -60,23 +50,9 @@ export interface Repository {
   /** The counts and the tags the app used to work out by counting a library
    *  it had been sent. */
   librarySummary(): Promise<LibrarySummary>
-  /** The studio's clip manager, which is the one screen whose job is the whole
-   *  library — and it still pages through it. */
-  studioClips(query: string, limit: number, offset: number): Promise<StudioClips>
-  /** What the next unnamed clip in a playlist should be called. A fact about
-   *  the playlist, which the app no longer holds. */
-  nextClipNumber(playlist: string): Promise<number>
   clipAudioURL(clipId: string): Promise<string | null>
   /** Null until the cutter has produced one, and for ever on an audio clip. */
   clipVideoURL(clipId: string): Promise<string | null>
-  createClips(clips: NewClipInput[]): Promise<Video[]>
-  /** Stores the recording a batch is cut from, once, and returns its id. */
-  uploadSource(file: Blob, name: string): Promise<string>
-  /** The words Whisper found in a source, or word that they are still coming. */
-  sourceTranscript(sourceId: string): Promise<Transcript>
-  uploadClipAudio(clipId: string, audio: Blob): Promise<void>
-  updateClip(clipId: string, patch: ClipPatch): Promise<Video>
-  deleteClip(clipId: string): Promise<void>
 
   listTakes(): Promise<Take[]>
   createTake(clipId: string, audio: Blob): Promise<Take>
@@ -112,11 +88,6 @@ export interface LibrarySummary {
   categories: string[]
 }
 
-export interface StudioClips {
-  clips: Video[]
-  total: number
-}
-
 export interface PlaylistPage {
   playlist: Playlist
   episodes: Episode[]
@@ -128,45 +99,6 @@ export interface EpisodePage {
    *  drops the breadcrumb rather than inventing one. */
   playlist: Playlist | null
   clips: Video[]
-}
-
-export interface PlaylistPatch {
-  title?: string
-  description?: string
-  hot?: boolean
-  position?: number
-}
-
-export interface EpisodePatch {
-  title?: string
-  playlistId?: string
-  position?: number
-  published?: boolean
-}
-
-export interface NewClipInput {
-  title: string
-  source: string
-  playlist: string
-  categories: string[]
-  timestamp: string
-  durationSeconds: number
-  summary: string
-  captions: CaptionLine[]
-  /** The upload this clip is cut from, when it is a video. Set it and the
-   *  server queues the cut; leave it out and the clip is audio only. */
-  sourceId?: string
-  startSeconds?: number
-  endSeconds?: number
-}
-
-export interface ClipPatch {
-  title?: string
-  playlist?: string
-  categories?: string[]
-  featured?: boolean
-  summary?: string
-  captions?: CaptionLine[]
 }
 
 export interface NewVocabWord {
@@ -222,22 +154,6 @@ class ApiRepository implements Repository {
     return api.get<SearchResults>(`/api/library/search?q=${encodeURIComponent(query)}`)
   }
 
-  updatePlaylist(id: string, patch: PlaylistPatch) {
-    return api.send<Playlist>('PATCH', `/api/admin/playlists/${id}`, patch)
-  }
-
-  updateEpisode(id: string, patch: EpisodePatch) {
-    return api.send<Episode>('PATCH', `/api/admin/episodes/${id}`, patch)
-  }
-
-  deleteEpisode(id: string) {
-    return api.del(`/api/admin/episodes/${id}`)
-  }
-
-  deletePlaylist(id: string) {
-    return api.del(`/api/admin/playlists/${id}`)
-  }
-
   clipsByIds(ids: string[]) {
     if (ids.length === 0) return Promise.resolve([])
     return api.get<Video[]>(`/api/clips?ids=${ids.join(',')}`)
@@ -267,18 +183,6 @@ class ApiRepository implements Repository {
     return api.get<LibrarySummary>('/api/library/summary')
   }
 
-  studioClips(query: string, limit: number, offset: number) {
-    const params = new URLSearchParams({ q: query, limit: String(limit), offset: String(offset) })
-    return api.get<StudioClips>(`/api/admin/clips?${params.toString()}`)
-  }
-
-  async nextClipNumber(playlist: string) {
-    const { next } = await api.get<{ next: number }>(
-      `/api/admin/clips/next-number?playlist=${encodeURIComponent(playlist)}`,
-    )
-    return next
-  }
-
   async clipAudioURL(clipId: string) {
     const { url } = await api.get<SignedURL>(`/api/clips/${clipId}/audio`)
     return url
@@ -287,35 +191,6 @@ class ApiRepository implements Repository {
   async clipVideoURL(clipId: string) {
     const { url } = await api.get<SignedURL>(`/api/clips/${clipId}/video`)
     return url
-  }
-
-  sourceTranscript(sourceId: string) {
-    return api.get<Transcript>(`/api/admin/sources/${sourceId}/transcript`)
-  }
-
-  async uploadSource(file: Blob, name: string) {
-    const { id } = await api.upload<{ id: string }>(
-      'POST',
-      `/api/admin/sources?name=${encodeURIComponent(name)}`,
-      file,
-    )
-    return id
-  }
-
-  createClips(clips: NewClipInput[]) {
-    return api.send<Video[]>('POST', '/api/admin/clips', { clips })
-  }
-
-  async uploadClipAudio(clipId: string, audio: Blob) {
-    await api.upload<{ ok: boolean }>('PUT', `/api/admin/clips/${clipId}/audio`, audio)
-  }
-
-  updateClip(clipId: string, patch: ClipPatch) {
-    return api.send<Video>('PATCH', `/api/admin/clips/${clipId}`, patch)
-  }
-
-  deleteClip(clipId: string) {
-    return api.del(`/api/admin/clips/${clipId}`)
   }
 
   listTakes() {

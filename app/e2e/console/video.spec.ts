@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
-import { join } from 'node:path'
-import { API_URL } from './environment'
-import { asAdmin, asLearner, resetServer } from './session'
+import { API_URL, APP_URL } from '../environment'
+import { VIDEO_CLIP as CLIP } from '../fixtures'
+import { asAdmin, asLearner, resetServer } from '../session'
 
 /**
  * The studio accepted video from the start but only ever decoded its audio, so
@@ -14,12 +14,10 @@ import { asAdmin, asLearner, resetServer } from './session'
  * against ships without the patented codecs — an MP4 of the same clip cannot be
  * decoded here, though it plays in the Chrome an admin actually uses.
  */
-const CLIP = join(import.meta.dirname, 'fixtures', 'studio-clip.webm')
-
 test.beforeEach(async ({ page }) => {
   await resetServer(page)
   await asAdmin(page)
-  await page.goto('/admin')
+  await page.goto('/admin/cut')
 })
 
 async function upload(page: import('@playwright/test').Page) {
@@ -135,7 +133,7 @@ test('a clip published from video reaches the learner with its picture', async (
 
   await asLearner(page)
 
-  await page.goto('/library')
+  await page.goto(`${APP_URL}/library`)
   await page.getByLabel('Search the library').fill('Watch this line 1')
   await page.getByRole('button', { name: 'Practice', exact: true }).first().click()
   await page.waitForURL('**/practice')
@@ -156,96 +154,3 @@ test('a clip published from video reaches the learner with its picture', async (
   // And the button offers to watch it, rather than still talking about audio.
   await expect(page.getByRole('button', { name: 'Watch clip again' })).toBeEnabled()
 })
-
-/**
- * Where the picture shows up once a clip is in the library.
- *
- * Practice and Analysis play it; the library and the dashboard show a still,
- * because a grid of twenty cards wants twenty thumbnails and not twenty
- * downloads; Dub Review runs it muted under whichever voice is playing.
- */
-test('the library and dashboard show a still from the clip', async ({ page }) => {
-  await publishFromVideo(page)
-
-  await page.goto('/library')
-  await page.getByLabel('Search the library').fill('Watch this line 1')
-  const poster = page.locator('.thumb-poster').first()
-  await expect(poster).toBeVisible({ timeout: 20_000 })
-
-  const src = await poster.getAttribute('src')
-  expect(src).toContain('.jpg')
-  // A frame that actually decoded, not a broken image with a src on it.
-  await expect
-    .poll(async () => poster.evaluate((el: HTMLImageElement) => el.naturalWidth), { timeout: 20_000 })
-    .toBeGreaterThan(0)
-})
-
-test('dub review runs the picture under the voice, muted', async ({ page }) => {
-  await publishFromVideo(page)
-
-  await page.goto('/library')
-  await page.getByLabel('Search the library').fill('Watch this line 1')
-  await page.getByRole('button', { name: 'Practice', exact: true }).first().click()
-  await page.waitForURL('**/practice')
-
-  // A take is what Dub Review compares against, so record one.
-  await page.getByRole('button', { name: 'Record', exact: true }).click()
-  await page.waitForTimeout(1200)
-  await page.getByRole('button', { name: 'Stop' }).click()
-
-  const toDubReview = page.getByRole('button', { name: 'Dub review' })
-  await expect(toDubReview).toBeEnabled({ timeout: 20_000 })
-  await toDubReview.click()
-  await page.waitForURL('**/dub')
-
-  const picture = page.locator('.thumb video')
-  await expect(picture).toBeVisible({ timeout: 20_000 })
-
-  const wiring = await picture.evaluate((el: HTMLVideoElement) => ({
-    muted: el.muted,
-    controls: el.controls,
-    src: el.getAttribute('src') ?? '',
-  }))
-  // Muted is the whole idea: the sound is whichever voice is being compared.
-  expect(wiring.muted).toBe(true)
-  // No controls of its own — the transport below drives it, or the picture and
-  // the voice would each have a play button and disagree.
-  expect(wiring.controls).toBe(false)
-  expect(wiring.src).toContain('.mp4')
-
-  // What is not asserted here: that the picture follows the slider. It does not
-  // in this browser, because this Chromium ships without h264 and never loads
-  // the clip at all — the same reason the published-clip test checks the format
-  // rather than the decoded size. Asserting currentTime here would be asserting
-  // the codec, not the wiring.
-})
-
-/** Publishes the fixture as a batch of clips and waits for the cutter. */
-async function publishFromVideo(page: import('@playwright/test').Page) {
-  await upload(page)
-  const lines = page.locator('input[id^="line-"]')
-  for (let i = 0; i < (await lines.count()); i++) {
-    await lines.nth(i).fill(`Watch this line ${i + 1}`)
-  }
-  await page.getByRole('button', { name: /Publish \d+ clips/ }).click()
-  await expect(page.getByText(/clips are now in the library/)).toBeVisible({ timeout: 60_000 })
-
-  // Polled as the admin, through the studio's clip manager: there is no
-  // endpoint that hands out the whole library any more, and the studio is the
-  // one screen whose job it is.
-  await expect
-    .poll(
-      async () => {
-        const page_ = await (
-          await page.request.get(`${API_URL}/api/admin/clips?limit=200`)
-        ).json()
-        // By poster rather than by name: an unnamed clip is called "Clip N",
-        // and the starter clips — the only others here — have no poster.
-        return (page_.clips as { posterUrl: string }[]).filter((clip) => clip.posterUrl).length
-      },
-      { timeout: 90_000, intervals: [1000] },
-    )
-    .toBeGreaterThan(0)
-
-  await asLearner(page)
-}
