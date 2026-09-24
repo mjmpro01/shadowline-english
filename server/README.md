@@ -451,12 +451,25 @@ default transport now. And 9router's Claude Code route puts `<think></think>`
 ahead of every answer; `internal/tutor/think.go` drops those blocks as they
 stream, including when a tag arrives split across two pieces.
 
-One thing it found that is not this server's to fix: every piece of the answer
-arrived at once, at the end. Calling 9router directly showed exactly the same, so
-the buffering is in front of this server — 9router itself, or a reverse proxy in
-front of it. If yours is nginx, `proxy_buffering off;` on its `/v1/` location is
-the usual cause. `TestEachPieceReachesTheLearnerBeforeTheNextIsWritten` holds that
-nothing on this side of it waits.
+And one that was not this server's: the answer arrived in a few large bursts
+instead of as it was written. It was the nginx in front of 9router, buffering
+proxied responses as nginx does by default — a long answer came through in four
+bursts, sized by its buffers. On that nginx, the location proxying to 9router
+needs:
+
+```nginx
+proxy_buffering off;
+proxy_cache off;
+gzip off;
+proxy_http_version 1.1;
+proxy_set_header Connection "";
+proxy_read_timeout 300s;
+```
+
+With that in place the first piece reached a learner after two seconds instead
+of ten, and the rest followed as it was written.
+`TestEachPieceReachesTheLearnerBeforeTheNextIsWritten` holds that nothing on this
+side of it waits.
 
 Conversations are not stored. The app keeps one for the tab, and a
 conversation about one evening's practice is not a record anybody asked the
