@@ -364,3 +364,14 @@
 .studio-steps b {
   font-weight: 600;
 }
+
+/* Tables of numbers: right-aligned so the digits line up, and a wrapper that
+   scrolls sideways on a narrow window rather than pushing the page wider. */
+.table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}

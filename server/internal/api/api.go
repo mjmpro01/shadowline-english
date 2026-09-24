@@ -36,8 +36,8 @@ type Server struct {
 	// Tutor answers the learner's chat. Nil when TUTOR_API_KEY is unset, and
 	// the app then leaves the chat out.
 	Tutor *tutor.Client
-	// TutorLimit caps messages per learner; every one is paid for.
-	TutorLimit *tutor.Limiter
+	// TutorLimit caps questions per learner; every one is paid for.
+	TutorLimit tutor.Limit
 	Log        *slog.Logger
 }
 
@@ -170,6 +170,7 @@ func (s *Server) Routes() http.Handler {
 				r.Get("/admin/uploads/{id}", s.handleGetUpload)
 				r.Post("/admin/uploads/{id}/retry", s.handleRetryUpload)
 				r.Get("/admin/uploads/{id}/transcript", s.handleSourceTranscript)
+				r.Get("/admin/tutor/usage", s.handleTutorUsage)
 				r.Post("/admin/clips", s.handleCreateClips)
 				r.Put("/admin/clips/{id}/audio", s.handleUploadClipAudio)
 				r.Patch("/admin/clips/{id}", s.handleUpdateClip)

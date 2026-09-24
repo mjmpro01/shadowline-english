@@ -432,10 +432,18 @@ beside the first's 58 to hold that.
 **It costs money per message, so it is bounded.** The last 20 turns go to the
 model and no more; a question can be 2,000 characters; an answer is capped at 700
 tokens; and a learner gets 30 questions per 10 minutes, after which the answer is
-a 429 with `Retry-After` and the router is not called at all. The limit is in
-memory, which is right for one API instance — a second replica would give each
-learner the allowance twice, and the day there is one it wants to move into
-Postgres.
+a 429 with `Retry-After` and the router is not called at all.
+
+**Every question is written down, and the limit is counted from that.** A row in
+`tutor_questions` per question — who, when, which model, which clip, how it
+ended, and the tokens the router reported on the stream's last chunk (it does
+when asked with `stream_options.include_usage`). The question's text is not
+kept. The limit counts those rows under a lock on the learner's own row, so a
+restart does not reset it and every replica sees the same count; it used to live
+in the API's memory. The console's **Tutor usage** page
+(`GET /api/admin/tutor/usage?days=30`) reads the same rows back by day and by
+learner. An answer the learner stopped never reaches the chunk with the counts,
+so it is a question with no tokens.
 
 **It streams.** Server-sent events: `{"delta": "…"}` per piece, `{"done": true}`
 at the end, `{"error": "…"}` if the model fails part-way. Headers are held back

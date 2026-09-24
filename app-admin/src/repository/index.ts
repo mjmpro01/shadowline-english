@@ -109,6 +109,33 @@ export interface EpisodePatch {
   published?: boolean
 }
 
+/** One day of the tutor's use, as `server/internal/store/tutorusage.go` counts it. */
+export interface TutorDay {
+  day: string
+  questions: number
+  learners: number
+  failed: number
+  promptTokens: number
+  completionTokens: number
+}
+
+export interface TutorLearner {
+  userId: string
+  email: string
+  name: string
+  questions: number
+  promptTokens: number
+  completionTokens: number
+  lastAsked: string
+}
+
+export interface TutorUsage {
+  days: TutorDay[]
+  learners: TutorLearner[]
+  model: string
+  limit: { questions: number; windowMinutes: number }
+}
+
 export const repository = {
   async me(): Promise<Profile | null> {
     const { user } = await api.get<{ user: Profile | null }>('/auth/me')
@@ -186,6 +213,11 @@ export const repository = {
 
   upload(id: string) {
     return api.get<{ upload: Upload; clips: Video[] }>(`/api/admin/uploads/${id}`)
+  },
+
+  /** What the tutor has cost over the last `days` days: by day and by learner. */
+  tutorUsage(days: number) {
+    return api.get<TutorUsage>(`/api/admin/tutor/usage?days=${days}`)
   },
 
   /** Puts the work that gave up back on the queue. Answers with how much, so

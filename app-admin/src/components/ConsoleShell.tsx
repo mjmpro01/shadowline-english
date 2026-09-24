@@ -1,4 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import { useT } from '../i18n'
+import type { MessageKey } from '../i18n/en'
 import { Icon, type IconName } from './Icon'
 import { LOGIN_URL, useSession } from '../session'
 import { repository } from '../repository'
@@ -13,18 +15,20 @@ import { repository } from '../repository'
 
 interface Section {
   to: string
-  label: string
+  label: MessageKey
   icon: IconName
 }
 
 const SECTIONS: Section[] = [
-  { to: '/cut', label: 'Cut a recording', icon: 'scissors' },
-  { to: '/uploads', label: 'Uploads', icon: 'upload' },
-  { to: '/clips', label: 'Clips', icon: 'book-open' },
-  { to: '/series', label: 'Series', icon: 'layers' },
+  { to: '/cut', label: 'nav.cut', icon: 'scissors' },
+  { to: '/uploads', label: 'nav.uploads', icon: 'upload' },
+  { to: '/clips', label: 'nav.clips', icon: 'book-open' },
+  { to: '/series', label: 'nav.series', icon: 'layers' },
+  { to: '/tutor', label: 'nav.tutor', icon: 'message-square' },
 ]
 
 export function ConsoleShell() {
+  const t = useT()
   const session = useSession()
   const user = session.state === 'ready' ? session.user : null
 
@@ -47,7 +51,7 @@ export function ConsoleShell() {
             <li key={section.to}>
               <NavLink to={section.to} className="console-link">
                 <Icon name={section.icon} size={16} />
-                <span>{section.label}</span>
+                <span>{t(section.label)}</span>
               </NavLink>
             </li>
           ))}
@@ -58,7 +62,7 @@ export function ConsoleShell() {
               is also somebody who practises, and the two live on one origin. */}
           <a className="console-link" href="/dashboard">
             <Icon name="house-plus" size={16} />
-            <span>Back to the app</span>
+            <span>{t('nav.back')}</span>
           </a>
           <div className="console-who">
             <div className="console-who-name">{user?.name}</div>
@@ -66,7 +70,7 @@ export function ConsoleShell() {
           </div>
           <button type="button" className="btn btn-secondary btn-block" onClick={signOut}>
             <Icon name="log-out" size={15} />
-            Sign out
+            {t('nav.signOut')}
           </button>
         </div>
       </nav>

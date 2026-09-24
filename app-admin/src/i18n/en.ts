@@ -179,6 +179,35 @@ export const en = {
     `“${title}” is empty, so only the name goes.`,
   'studio.deleteSeriesBlocked': 'Delete its episodes first — a series with clips in it is not deleted by accident.',
   'common.loading': 'Loading…',
+  // --- console navigation ---------------------------------------------------
+  'nav.cut': 'Cut a recording',
+  'nav.uploads': 'Uploads',
+  'nav.clips': 'Clips',
+  'nav.series': 'Series',
+  'nav.tutor': 'Tutor usage',
+  'nav.back': 'Back to the app',
+  'nav.signOut': 'Sign out',
+  // --- tutor usage ----------------------------------------------------------
+  'tutor.title': 'Tutor usage',
+  'tutor.subtitle': (model: string, questions: number, minutes: number) =>
+    `${model || 'No model set'} · each learner can ask ${questions} questions per ${minutes} minutes`,
+  'tutor.period': 'Period',
+  'tutor.days': (n: number) => `${n} days`,
+  'tutor.questions': 'Questions',
+  'tutor.learners': 'Learners',
+  'tutor.inputTokens': 'Tokens in',
+  'tutor.outputTokens': 'Tokens out',
+  'tutor.failed': 'Failed',
+  'tutor.day': 'Day',
+  'tutor.learner': 'Learner',
+  'tutor.lastAsked': 'Last asked',
+  'tutor.byDay': 'By day',
+  'tutor.byLearner': 'Who asks most',
+  'tutor.none': 'Nobody has asked the tutor anything in this period.',
+  'tutor.total': (questions: number, tokens: string) =>
+    `${questions} questions · ${tokens} tokens in total`,
+  'tutor.tokensNote':
+    'Tokens are what the router reported. An answer the learner stopped reports none, so it is counted as a question but not in tokens.',
 } as const
 
 /** Every key the app can ask for. Other locales are checked against this. */
