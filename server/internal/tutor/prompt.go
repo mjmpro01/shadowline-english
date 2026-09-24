@@ -44,6 +44,7 @@ What you know about their practice:
 - The metrics run 0 to 100. Higher is closer to the original speaker.
 - "Words not heard" means the speech recogniser did not pick those words up in their latest recording. That is evidence, not proof: it might be pronunciation, a quiet ending, or a noisy room. Say "the app did not hear", never "you said it wrong".
 - If there is no clip block, they are asking in general. Do not pretend to know which line they mean.
+- About the line, talk only about the words that are in it, and quote each one exactly as the line has it. Before you name a sound, find the word in the line that carries it, and use the IPA given for the line rather than your own. If no word in the line has a sound — /θ/ and /ð/ in a line with no "th", say — that sound is not what makes this line hard, however often it troubles learners elsewhere. The list of common mistakes above is for when one applies, not a checklist.
 
 Never claim to be a human teacher.`
 

@@ -74,11 +74,28 @@ LANGUAGE_CASES = [
     ("lang-decline-es", "decline", "¿Quién ganó el Mundial de 2022?", r"Argentina|Messi", "vi", "es"),
 ]
 
+# (id, line, IPA, question, forbidden). On a clip the tutor is told the line,
+# and has to talk about that line: the first version of this case caught it
+# naming /ð/ in "the" as the hard sound in a line with no "the" in it.
+# `forbidden` matches a word quoted or bolded as if it were in the line.
+CLIP_CASES = [
+    ("clip-hardest", "Let's just take it one step at a time", "/lɛts dʒʌst teɪk ɪt wʌn stɛp æt ə taɪm/",
+     "Âm nào trong câu này khó nhất với mình?", r"[\"“*](the|this|that|there|think|with)[\"”*]"),
+    ("clip-stress", "Can you pick me up at six?", "/kæn ju pɪk mi ʌp æt sɪks/",
+     "Câu này nhấn trọng âm vào đâu?", r"[\"“*](the|this|that|there|think|with|will)[\"”*]"),
+]
+
+# The clip block as the server writes it, for a learner with no scored take.
+# Kept to the lines internal/tutor/prompt.go writes; the Go tests hold that side.
+CLIP_BLOCK = "\n\nCurrent clip\n- Title: {line}\n- Line: \"{line}\"\n- IPA: {ipa}\n- The learner has no scored recording of this line yet.\n"
+
 # What Vietnamese is written with and English is not. IPA shares none of these.
 VIETNAMESE = re.compile(r"[ăâđêôơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]", re.I)
 KANA = re.compile(r"[\u3040-\u30ff]")
 HANGUL = re.compile(r"[\uac00-\ud7af]")
 SPANISH = {"que", "el", "la", "los", "las", "para", "es", "una", "un", "con", "por", "se", "del", "y", "en", "de", "cuando", "significa"}
+# Common Vietnamese words, for an answer too short to carry many tone marks.
+VIETNAMESE_WORDS = {"và", "của", "là", "không", "bạn", "cách", "hoặc", "với", "này", "được", "nói", "mình", "câu", "từ", "khác", "hơn", "cho", "khi"}
 ENGLISH = {"the", "is", "and", "to", "you", "of", "a", "in", "it", "that", "for", "are", "your", "this", "when", "means"}
 
 
@@ -101,6 +118,8 @@ def language(text: str) -> str:
     if len(HANGUL.findall(said)) >= 3:
         return "ko"
     if len(VIETNAMESE.findall(said)) >= 3:
+        return "vi"
+    if sum(w in VIETNAMESE_WORDS for w in re.findall(r"\w+", said.lower())) >= 2:
         return "vi"
     words = re.findall(r"[a-záéíóúñ]+", said.lower())
     spanish = sum(w in SPANISH for w in words)
@@ -145,11 +164,14 @@ def ask(url: str, key: str, model: str, system: str, question: str) -> str:
     return re.sub(r"<think>.*?</think>", "", text, flags=re.S).strip()
 
 
-def grade(expect: str, text: str, forbidden: str | None, want: str | None) -> str:
+def grade(expect: str, text: str, forbidden: str | None, want: str | None, clip: str = "") -> str:
     if text.startswith("ERROR"):
         return "ERR"
     if want and language(text) != want:
         return "LANG"
+    if clip:
+        # On a clip, `forbidden` is a word that is not in the line.
+        return "FAIL" if re.search(forbidden, text, re.I) else "ok"
     if expect == "decline":
         return "FAIL" if forbidden and re.search(forbidden, text, re.I) else "ok"
     return "FAIL" if DECLINE_OPENING.search(text[:120]) else "ok"
@@ -169,13 +191,20 @@ def main() -> None:
          None if cid in unchecked else ("vi" if VIETNAMESE.search(q) else "en"))
         for cid, expect, q, forbidden in CASES
     ] + LANGUAGE_CASES
+    # A clip case carries its own system prompt: the persona and that clip.
+    cases += [
+        (cid, "answer", q, forbidden, "vi", "vi", CLIP_BLOCK.format(line=line, ipa=ipa))
+        for cid, line, ipa, q, forbidden in CLIP_CASES
+    ]
+    cases = [c if len(c) == 7 else (*c, "") for c in cases]
     jobs = [(case, n) for case in cases for n in range(1, rounds + 1)]
     with ThreadPoolExecutor(4) as pool:
-        answers = list(pool.map(lambda job: ask(url, key, model, system(job[0][4]), job[0][2]), jobs))
+        answers = list(pool.map(
+            lambda job: ask(url, key, model, system(job[0][4]) + job[0][6], job[0][2]), jobs))
 
     passed = 0
-    for ((cid, expect, _, forbidden, _, want), n), text in zip(jobs, answers):
-        verdict = grade(expect, text, forbidden, want)
+    for ((cid, expect, _, forbidden, _, want, clip), n), text in zip(jobs, answers):
+        verdict = grade(expect, text, forbidden, want, clip)
         passed += verdict == "ok"
         print(f"[{verdict:4}] {cid:<15} r{n} ({expect:7}) {text[:140]!r}")
         if verdict != "ok":
