@@ -41,6 +41,10 @@ export const ADMIN_DIR = join(REPO_ROOT, 'app-admin')
 /** Object storage on disk: MinIO is not worth a container for a test run. */
 export const BLOB_ROOT = join(process.cwd(), 'test-results', 'blobs')
 
+/** The stand-in for 9router, in `fake-router.mjs`. */
+export const ROUTER_PORT = Number(process.env.FAKE_ROUTER_PORT ?? 8199)
+export const ROUTER_URL = `http://localhost:${ROUTER_PORT}`
+
 export const ADMIN_EMAIL = 'admin@example.com'
 export const LEARNER_EMAIL = 'minh@example.com'
 
@@ -60,5 +64,10 @@ export function serverEnv(): NodeJS.ProcessEnv {
     OAUTH_REDIRECT_URL: `${API_URL}/auth/google/callback`,
     ADMIN_EMAILS: ADMIN_EMAIL,
     LOG_LEVEL: 'WARNING',
+    // The tutor talks to the fake router, never to a real model: those cost
+    // money and answer differently every time.
+    TUTOR_API_URL: `${ROUTER_URL}/v1`,
+    TUTOR_API_KEY: 'e2e-router-key',
+    TUTOR_MODEL: 'e2e/fake-model',
   }
 }

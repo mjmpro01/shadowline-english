@@ -4,6 +4,7 @@ import { useT } from '../i18n'
 import type { MessageKey } from '../i18n/en'
 import { useApp } from '../store/context'
 import { Icon, type IconName } from './Icon'
+import { TutorChat } from './TutorChat'
 
 /** Labels are keys, not words: the tabs are defined once at module scope and
  *  the language is only known inside a component. */
@@ -133,6 +134,10 @@ export function AppShell() {
       <main className="app-content">
         <Outlet />
       </main>
+
+      {/* In the shell rather than on a screen, so the conversation survives
+          moving from a line to its analysis and back. */}
+      <TutorChat />
 
       <nav className="tabbar" aria-label="Main">
         {[...TABS, PROFILE].map((tab) => (

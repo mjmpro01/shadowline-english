@@ -18,6 +18,7 @@ import (
 	"github.com/shadowline/server/internal/storage"
 	"github.com/shadowline/server/internal/store"
 	"github.com/shadowline/server/internal/telemetry"
+	"github.com/shadowline/server/internal/tutor"
 )
 
 type Server struct {
@@ -32,7 +33,12 @@ type Server struct {
 	// Users syncs every successful login into Keycloak's Admin API. Nil when
 	// Keycloak is not configured.
 	Users *keycloak.Admin
-	Log   *slog.Logger
+	// Tutor answers the learner's chat. Nil when TUTOR_API_KEY is unset, and
+	// the app then leaves the chat out.
+	Tutor *tutor.Client
+	// TutorLimit caps messages per learner; every one is paid for.
+	TutorLimit *tutor.Limiter
+	Log        *slog.Logger
 }
 
 // requestTimeout is how long an ordinary request may take. A handler that has
@@ -109,9 +115,16 @@ func (s *Server) Routes() http.Handler {
 			r.Put("/admin/uploads/{id}/file", s.handleUploadFile)
 		})
 
+		// The tutor's answer streams for as long as the model takes to write it.
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.Timeout(streamTimeout))
+			r.Post("/tutor/chat", s.handleTutorChat)
+		})
+
 		r.Group(func(r chi.Router) {
 			quick(r)
 
+			r.Get("/tutor", s.handleTutorStatus)
 			r.Get("/playlists", s.handleListPlaylists)
 			r.Get("/playlists/{slug}", s.handleGetPlaylist)
 			r.Get("/episodes/{id}", s.handleGetEpisode)

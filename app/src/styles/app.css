@@ -1653,3 +1653,198 @@
   -webkit-line-clamp: 3;
   overflow: hidden;
 }
+
+/* --- The tutor -------------------------------------------------------------
+   A button in the corner and a panel above it. Fixed rather than in the page,
+   so it is the same place on every screen and the conversation stays open while
+   the learner moves between a line and its analysis. */
+
+.tutor-launcher {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: var(--color-bg);
+  font: inherit;
+  font-weight: 700;
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+}
+
+.tutor-launcher:hover {
+  background: var(--color-accent-600);
+}
+
+.tutor-launcher[aria-expanded='true'] {
+  background: var(--color-accent-700);
+}
+
+.tutor-panel {
+  position: fixed;
+  right: 20px;
+  bottom: 84px;
+  z-index: 40;
+  width: min(400px, calc(100vw - 32px));
+  height: min(600px, calc(100vh - 120px));
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.tutor-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-3) var(--space-2);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.tutor-title {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 18px;
+}
+
+/* What the tutor can see. Small, and always there: "this line" is only a
+   question worth asking when both sides agree which line it is. */
+.tutor-context {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.tutor-log {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.tutor-turn {
+  max-width: 88%;
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.tutor-user {
+  align-self: flex-end;
+  background: var(--color-accent-200);
+  color: var(--color-accent-800);
+  white-space: pre-wrap;
+}
+
+.tutor-assistant {
+  align-self: flex-start;
+  background: var(--color-neutral-800);
+}
+
+.tutor-assistant p,
+.tutor-assistant ul,
+.tutor-assistant ol {
+  margin: 0 0 6px;
+}
+
+.tutor-assistant p:last-child,
+.tutor-assistant ul:last-child,
+.tutor-assistant ol:last-child {
+  margin-bottom: 0;
+}
+
+.tutor-assistant ul,
+.tutor-assistant ol {
+  padding-left: 20px;
+}
+
+.tutor-assistant code {
+  font-size: 13px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.tutor-thinking {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.tutor-suggestion {
+  text-align: left;
+  padding: 8px 12px;
+  border: 1px solid var(--color-divider);
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.tutor-suggestion:hover {
+  border-color: var(--color-accent);
+}
+
+.tutor-failure {
+  font-size: 13px;
+  color: var(--color-accent-700);
+}
+
+.tutor-compose {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-end;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--color-divider);
+}
+
+.tutor-compose textarea {
+  flex: 1;
+  resize: none;
+  min-height: 44px;
+}
+
+/* Said once, small, under the box: an answer from a model is advice, and the
+   scores beside it are measurements. */
+.tutor-note {
+  padding: 0 var(--space-3) var(--space-2);
+  font-size: 11px;
+  opacity: 0.55;
+}
+
+/* On a phone the tab bar owns the bottom of the screen, so the button sits
+   above it and the panel takes the width. */
+@media (max-width: 760px) {
+  .tutor-launcher {
+    right: 12px;
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+    padding: 12px;
+  }
+
+  .tutor-launcher-label {
+    display: none;
+  }
+
+  .tutor-panel {
+    right: 8px;
+    left: 8px;
+    width: auto;
+    bottom: calc(144px + env(safe-area-inset-bottom, 0px));
+    height: min(560px, calc(100vh - 200px));
+  }
+}

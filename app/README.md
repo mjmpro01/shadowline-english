@@ -141,6 +141,31 @@ clips in it, and the studio's button is disabled with the reason on it rather
 than hidden — the mistake a series delete recovers from is a name typed wrong,
 and what a cascade would take with it is a whole season of somebody's practice.
 
+## The tutor
+
+A button in the corner opens a chat with an AI tutor. It lives in the shell,
+not on a screen, so the conversation survives moving from a line to its analysis
+and back. It is left out entirely when the server has no tutor configured —
+`GET /api/tutor` says which — rather than offering a chat that answers every
+message with an error.
+
+On a clip's own screens it says **Looking at: <clip>** and sends that clip's id
+with the question. The server then tells the tutor what the line is and how this
+learner's takes of it measured, which is the difference between "your stress was
+44" and "stress is important". Elsewhere it says it is taking general questions.
+
+Answers stream in, and **Stop** ends one — which also stops paying for it.
+Enter sends and Shift+Enter is a new line, except while an IME is still
+composing, because that is how Vietnamese is typed.
+
+The tutor writes a little Markdown. `src/lib/markdown.ts` parses it into data
+and the panel renders that as elements; nothing the model writes is ever handed
+to the DOM as HTML, because a model's answer is text somebody else wrote.
+
+The browser tests run it against `e2e/fake-router.mjs`, a stand-in for 9router
+whose answer is built from what it was sent — so the screen shows whether the
+server passed the clip on, and the tests never call a real model.
+
 ## The clip studio is a different app
 
 It was a screen here, behind an admin check. It is a console of its own now, in

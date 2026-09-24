@@ -400,6 +400,53 @@ one is an ordinary `limit`/`offset` page. `POST /api/admin/uploads/{id}/retry`
 puts back exactly what gave up and answers with how much, because "nothing to
 retry" is a real outcome.
 
+## The tutor
+
+`POST /api/tutor/chat` answers a learner's question through any
+OpenAI-compatible chat endpoint — 9router, in the deployment this was written
+for. Set `TUTOR_API_KEY` and `TUTOR_MODEL` and it is on; leave the key blank and
+`GET /api/tutor` says so and the app leaves the chat out entirely.
+
+| Variable | What it is |
+| --- | --- |
+| `TUTOR_API_URL` | The endpoint's `/v1`. 9router's default is `http://localhost:20128/v1` |
+| `TUTOR_API_KEY` | Sent as `Authorization: Bearer …`. 9router shows one on its dashboard |
+| `TUTOR_MODEL` | A 9router model id (`cc/claude-sonnet-4-5`, `glm/…`) or a combo name |
+
+**The key never leaves the server.** The browser sends the conversation — the
+learner's turns and the tutor's, nothing else — and which clip is on screen.
+The system prompt is added here, and a `system` message from the browser is
+refused with a 400 rather than dropped: a request carrying one is somebody
+trying something.
+
+**It is told the truth about the take.** With a `clipId`, the prompt carries the
+line, its IPA, and this learner's own measurements on it — best score, the four
+metrics of the latest take, the words the transcriber did not hear. That is what
+lets the tutor say "your stress was 44" instead of "stress is important", and the
+prompt tells it not to invent a number it was not given. Only this learner's
+takes are read; `internal/api/tutor_test.go` has a second learner's 97 sitting
+beside the first's 58 to hold that.
+
+**It costs money per message, so it is bounded.** The last 20 turns go to the
+model and no more; a question can be 2,000 characters; an answer is capped at 700
+tokens; and a learner gets 30 questions per 10 minutes, after which the answer is
+a 429 with `Retry-After` and the router is not called at all. The limit is in
+memory, which is right for one API instance — a second replica would give each
+learner the allowance twice, and the day there is one it wants to move into
+Postgres.
+
+**It streams.** Server-sent events: `{"delta": "…"}` per piece, `{"done": true}`
+at the end, `{"error": "…"}` if the model fails part-way. Headers are held back
+until the first piece arrives, so a router that refuses outright still gets an
+ordinary 502 with a status code. `X-Accel-Buffering: no` is set because nginx
+buffers proxied responses by default and would otherwise deliver the whole answer
+at once. The route has its own three-minute deadline, like the upload has its own
+half hour: a model that is thinking is not a stuck handler.
+
+Conversations are not stored. The app keeps one for the tab, and a
+conversation about one evening's practice is not a record anybody asked the
+server to keep.
+
 ## Transcripts and IPA
 
 The studio fills its own lines in. The recording is uploaded when the admin

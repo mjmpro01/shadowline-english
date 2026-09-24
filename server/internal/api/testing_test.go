@@ -457,3 +457,19 @@ func (h *harness) failUpload(t *testing.T, id, reason string) {
 		t.Fatalf("fail the upload %s: %v", id, err)
 	}
 }
+
+// recordScoredTake records a take through the API and scores it the way the
+// worker would, with the four metrics as given.
+func (h *harness) recordScoredTake(t *testing.T, c *client, clipID string, score float64, metrics map[string]float64) {
+	t.Helper()
+	take := record(t, c, clipID)
+	raw, err := json.Marshal(metrics)
+	if err != nil {
+		t.Fatalf("encode metrics: %v", err)
+	}
+	if _, err := h.pool.Exec(context.Background(), `
+		update takes set score = $2, scores = $3, status = 'scored'
+		where id = $1`, take.ID, score, raw); err != nil {
+		t.Fatalf("score take %s: %v", take.ID, err)
+	}
+}

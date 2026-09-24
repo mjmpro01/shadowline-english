@@ -6,6 +6,8 @@ import {
   API_URL,
   APP_PORT,
   APP_URL,
+  ROUTER_PORT,
+  ROUTER_URL,
   SERVER_DIR,
   serverEnv,
 } from './e2e/environment'
@@ -50,6 +52,14 @@ export default defineConfig({
     },
   },
   webServer: [
+    {
+      // Before the API, which is told to send the tutor's questions here.
+      command: 'node e2e/fake-router.mjs',
+      env: { ...process.env, FAKE_ROUTER_PORT: String(ROUTER_PORT) } as Record<string, string>,
+      url: `${ROUTER_URL}/health`,
+      reuseExistingServer: false,
+      timeout: 20_000,
+    },
     {
       command: 'go run ./cmd/api',
       cwd: SERVER_DIR,

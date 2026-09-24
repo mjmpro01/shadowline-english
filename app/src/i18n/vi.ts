@@ -32,6 +32,30 @@ export const vi: Messages = {
   'nav.expand': 'Mở rộng menu',
   'nav.logout': 'Đăng xuất',
 
+  // --- tutor -----------------------------------------------------------------
+  'tutor.name': 'Gia sư',
+  'tutor.open': 'Hỏi gia sư',
+  'tutor.close': 'Đóng gia sư',
+  'tutor.about': (title: string) => `Đang xem: ${title}`,
+  'tutor.general': 'Hỏi chung về tiếng Anh',
+  'tutor.intro':
+    'Hỏi về phát âm, một từ, một điểm ngữ pháp, hay cách luyện tập. Mở một clip trước thì mình thấy được câu thoại và điểm các lần bạn thu.',
+  'tutor.introClip':
+    'Mình thấy được câu này và điểm các lần bạn thu nó. Hỏi gì cũng được — bằng tiếng Anh hay tiếng Việt.',
+  'tutor.askExplain': 'Câu này nghĩa là gì, và khi nào thì mình nói câu này?',
+  'tutor.askSounds': 'Âm nào trong câu này khó nhất với mình?',
+  'tutor.askFix': 'Lần thu vừa rồi mình nên sửa gì?',
+  'tutor.askLinking': 'Nối âm giữa các từ hoạt động thế nào?',
+  'tutor.askTh': 'Phát âm "th" cho đúng thế nào?',
+  'tutor.askRoutine': 'Mỗi ngày nên luyện shadowing thế nào?',
+  'tutor.placeholder': 'Hỏi gia sư…',
+  'tutor.send': 'Gửi',
+  'tutor.stop': 'Dừng',
+  'tutor.restart': 'Cuộc trò chuyện mới',
+  'tutor.thinking': 'Đang nghĩ…',
+  'tutor.failed': 'Gia sư chưa trả lời được lúc này. Thử lại sau chút nhé.',
+  'tutor.note': 'Gia sư là AI và có thể sai — điểm của bạn là do app đo, không phải do gia sư.',
+
   // --- login ----------------------------------------------------------------
   'login.brand': 'Shadowing Hero',
   'login.brandAccent': 'English',

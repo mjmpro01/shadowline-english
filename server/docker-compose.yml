@@ -97,6 +97,11 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     ports:
       - "8080:8080"
+    # So TUTOR_API_URL can point at a 9router running on the host itself, as
+    # http://host.docker.internal:20128/v1. Docker Desktop has the name already;
+    # Linux needs it spelled out.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy

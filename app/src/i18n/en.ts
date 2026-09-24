@@ -28,6 +28,30 @@ export const en = {
   'nav.expand': 'Expand the menu',
   'nav.logout': 'Log out',
 
+  // --- tutor -----------------------------------------------------------------
+  'tutor.name': 'Tutor',
+  'tutor.open': 'Ask the tutor',
+  'tutor.close': 'Close the tutor',
+  'tutor.about': (title: string) => `Looking at: ${title}`,
+  'tutor.general': 'General English questions',
+  'tutor.intro':
+    'Ask about pronunciation, a word, a grammar point, or how to practise. Open a clip first and I can see the line and how your takes measured.',
+  'tutor.introClip':
+    'I can see this line and how your takes of it measured. Ask me anything about it — in English or Vietnamese.',
+  'tutor.askExplain': 'What does this line mean, and when would I say it?',
+  'tutor.askSounds': 'Which sounds in this line are hardest for me?',
+  'tutor.askFix': 'What should I fix in my last take?',
+  'tutor.askLinking': 'How does linking between words work?',
+  'tutor.askTh': 'How do I say "th" properly?',
+  'tutor.askRoutine': 'How should I practise shadowing each day?',
+  'tutor.placeholder': 'Ask the tutor…',
+  'tutor.send': 'Send',
+  'tutor.stop': 'Stop',
+  'tutor.restart': 'New chat',
+  'tutor.thinking': 'Thinking…',
+  'tutor.failed': 'The tutor could not answer just now. Try again in a moment.',
+  'tutor.note': 'An AI tutor. It can be wrong — your scores come from the app, not from it.',
+
   // --- login ----------------------------------------------------------------
   'login.brand': 'Shadowing Hero',
   'login.brandAccent': 'English',

@@ -1,0 +1,157 @@
+// Package tutor talks to the language model behind the learner's chat.
+//
+// Any OpenAI-compatible chat endpoint will do. The deployment this was written
+// for uses 9router, which exposes one at /v1/chat/completions and routes each
+// request to whichever provider is behind the model name — `cc/claude-…`,
+// `glm/…`, or a combo alias configured in its dashboard. Nothing here knows
+// which; it speaks the wire format and streams what comes back.
+package tutor
+
+import (
+	"bufio"
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"time"
+)
+
+// Message is one turn of the conversation, in the wire format's own shape.
+type Message struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+// Client is one configured endpoint, key and model.
+type Client struct {
+	BaseURL string
+	APIKey  string
+	Model   string
+	HTTP    *http.Client
+}
+
+// ErrUpstream is the model endpoint refusing or failing. The handler turns it
+// into one sentence for the learner; the detail is for the log.
+var ErrUpstream = errors.New("the tutor could not answer")
+
+// replyBudget caps how long one answer can be. A tutor that writes an essay
+// in reply to "what does this word mean" is worse, and dearer, than one that
+// does not.
+const replyBudget = 700
+
+// Stream sends the conversation and calls onDelta with each piece of the
+// answer as it arrives. It returns when the answer is complete, the context is
+// cancelled — the learner closed the chat — or the endpoint fails.
+func (c *Client) Stream(ctx context.Context, messages []Message, onDelta func(string) error) error {
+	body, err := json.Marshal(map[string]any{
+		"model":       c.Model,
+		"messages":    messages,
+		"stream":      true,
+		"max_tokens":  replyBudget,
+		"temperature": 0.4,
+	})
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		strings.TrimRight(c.BaseURL, "/")+"/chat/completions", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("Authorization", "Bearer "+c.APIKey)
+
+	httpClient := c.HTTP
+	if httpClient == nil {
+		// No overall timeout: an answer streams for as long as it streams, and
+		// the caller's context is what ends it. The transport still gives up on
+		// an endpoint that never answers at all.
+		httpClient = &http.Client{Transport: &http.Transport{
+			ResponseHeaderTimeout: 30 * time.Second,
+		}}
+	}
+	res, err := httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("%w: %v", ErrUpstream, err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		detail, _ := io.ReadAll(io.LimitReader(res.Body, 2048))
+		return fmt.Errorf("%w: %s: %s", ErrUpstream, res.Status, strings.TrimSpace(string(detail)))
+	}
+
+	// Some routers answer a streaming request with one ordinary JSON body when
+	// the provider behind them cannot stream. Both shapes are handled rather
+	// than assuming the one that was asked for.
+	if !strings.HasPrefix(res.Header.Get("Content-Type"), "text/event-stream") {
+		return readWhole(res.Body, onDelta)
+	}
+	return readEvents(res.Body, onDelta)
+}
+
+// readEvents walks an SSE body: `data: {json}` lines, a blank line between
+// events, and `data: [DONE]` at the end.
+func readEvents(body io.Reader, onDelta func(string) error) error {
+	scanner := bufio.NewScanner(body)
+	// A single event can carry a long delta; the default 64K line is not a
+	// limit anybody chose.
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.HasPrefix(line, "data:") {
+			continue
+		}
+		data := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+		if data == "[DONE]" {
+			return nil
+		}
+		var chunk struct {
+			Choices []struct {
+				Delta struct {
+					Content string `json:"content"`
+				} `json:"delta"`
+			} `json:"choices"`
+			Error *struct {
+				Message string `json:"message"`
+			} `json:"error"`
+		}
+		if err := json.Unmarshal([]byte(data), &chunk); err != nil {
+			// One malformed event is not worth losing the answer over.
+			continue
+		}
+		if chunk.Error != nil {
+			return fmt.Errorf("%w: %s", ErrUpstream, chunk.Error.Message)
+		}
+		for _, choice := range chunk.Choices {
+			if choice.Delta.Content == "" {
+				continue
+			}
+			if err := onDelta(choice.Delta.Content); err != nil {
+				return err
+			}
+		}
+	}
+	return scanner.Err()
+}
+
+func readWhole(body io.Reader, onDelta func(string) error) error {
+	var whole struct {
+		Choices []struct {
+			Message Message `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(io.LimitReader(body, 1<<20)).Decode(&whole); err != nil {
+		return fmt.Errorf("%w: unreadable answer: %v", ErrUpstream, err)
+	}
+	if len(whole.Choices) == 0 || whole.Choices[0].Message.Content == "" {
+		return fmt.Errorf("%w: an empty answer", ErrUpstream)
+	}
+	return onDelta(whole.Choices[0].Message.Content)
+}
