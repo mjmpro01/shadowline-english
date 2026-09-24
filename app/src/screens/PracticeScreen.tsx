@@ -58,7 +58,7 @@ export function PracticeScreen() {
   const [take, setTake] = useState<Take | null>(null)
   const [popup, setPopup] = useState<Popup | null>(null)
   const [analysing, setAnalysing] = useState(false)
-  // A take that has just landed in gold, for the owl to cheer. Only ever set
+  // A take that has just landed in gold, for the hero to cheer. Only ever set
   // from a recording made on this screen, so reopening an old take never
   // throws confetti at anybody.
   const [cheer, setCheer] = useState<string | null>(null)

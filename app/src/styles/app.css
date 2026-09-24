@@ -1830,7 +1830,7 @@
 
 .tutor-assistant {
   position: relative;
-  /* Room for the owl, which sits outside the bubble on its left. */
+  /* Room for the hero, which sits outside the bubble on its left. */
   margin-left: 36px;
   max-width: calc(88% - 36px);
   align-self: flex-start;
@@ -2128,7 +2128,7 @@
   box-shadow: 0 1px 0 var(--game-edge);
 }
 
-/* --- Tí, the owl ------------------------------------------------------------ */
+/* --- The hero: the knight from the crest ---------------------------------- */
 .mascot {
   display: block;
   flex: none;
@@ -2144,7 +2144,7 @@
 .tutor-launcher .mascot {
   margin: -6px 0;
 }
-/* The panel's first words, said by the owl rather than printed under it. */
+/* The panel's first words, said by the hero rather than printed under it. */
 .tutor-hello {
   display: flex;
   align-items: flex-end;
@@ -2169,8 +2169,18 @@
   35% { transform: translateY(-10%) scale(1.04, 0.97); }
   60% { transform: translateY(0) scale(0.98, 1.03); }
 }
+/* Thinking: a slow sway while an answer is on its way. */
+.mascot-think {
+  animation: mascot-sway 1.6s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+@keyframes mascot-sway {
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(4deg); }
+}
 @media (prefers-reduced-motion: reduce) {
-  .mascot-cheer {
+  .mascot-cheer,
+  .mascot-think {
     animation: none;
   }
 }

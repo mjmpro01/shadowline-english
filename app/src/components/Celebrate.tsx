@@ -9,10 +9,10 @@ const SHOW_MS = 2600
 const COLOURS = ['#f7c948', '#8fd46b', '#6cc6f0', '#f59aa8', '#b69cf5', '#ffae73']
 
 /**
- * A burst of confetti and the owl cheering, for a take that landed in gold.
+ * A burst of confetti and the hero cheering, for a take that landed in gold.
  *
  * Drawn with CSS, not a library: sixty spans with a fall each, gone after a
- * few seconds. Anybody who has asked their device for less motion gets the owl
+ * few seconds. Anybody who has asked their device for less motion gets the hero
  * and the words without the confetti.
  */
 export function Celebrate({ message, onDone }: { message: string; onDone: () => void }) {

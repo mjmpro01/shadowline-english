@@ -228,7 +228,7 @@ function FirstSteps({ onStart, onBrowse }: { onStart: () => void; onBrowse: () =
   return (
     <section className="card elev-sm first-steps" aria-labelledby="first-steps-title">
       <div className="first-steps-art" aria-hidden="true">
-        <Mascot mood="cheer" size={96} />
+        <Mascot mood="cheer" size={104} />
       </div>
       <div className="stack gap-2" style={{ minWidth: 0 }}>
         <h2 id="first-steps-title" className="first-steps-title">

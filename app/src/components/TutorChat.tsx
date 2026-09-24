@@ -205,7 +205,7 @@ export function TutorChat() {
             )}
             {turns.map((turn, i) => (
               <div key={i} className={`tutor-turn tutor-${turn.role}`}>
-                {/* The owl beside what it says: a face to talk to, which is
+                {/* The hero beside what it says: a face to talk to, which is
                     what makes a chat a conversation for a child. */}
                 {turn.role === 'assistant' && (
                   <span className="tutor-avatar">
