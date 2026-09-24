@@ -24,6 +24,7 @@ const SECTIONS: Section[] = [
   { to: '/uploads', label: 'nav.uploads', icon: 'upload' },
   { to: '/clips', label: 'nav.clips', icon: 'book-open' },
   { to: '/series', label: 'nav.series', icon: 'layers' },
+  { to: '/users', label: 'nav.users', icon: 'user' },
   { to: '/tutor', label: 'nav.tutor', icon: 'message-square' },
 ]
 

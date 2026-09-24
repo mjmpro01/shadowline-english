@@ -171,6 +171,8 @@ func (s *Server) Routes() http.Handler {
 				r.Post("/admin/uploads/{id}/retry", s.handleRetryUpload)
 				r.Get("/admin/uploads/{id}/transcript", s.handleSourceTranscript)
 				r.Get("/admin/tutor/usage", s.handleTutorUsage)
+				r.Get("/admin/users", s.handleListAccounts)
+				r.Patch("/admin/users/{id}", s.handleUpdateAccount)
 				r.Post("/admin/clips", s.handleCreateClips)
 				r.Put("/admin/clips/{id}/audio", s.handleUploadClipAudio)
 				r.Patch("/admin/clips/{id}", s.handleUpdateClip)

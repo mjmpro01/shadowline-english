@@ -375,3 +375,8 @@
 .table-scroll {
   overflow-x: auto;
 }
+
+/* A suspended account: still listed and still changeable, visibly out. */
+.table tr.is-suspended td:not(:last-child) {
+  opacity: 0.55;
+}

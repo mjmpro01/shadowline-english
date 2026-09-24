@@ -5,6 +5,7 @@ import { Clips } from './pages/Clips'
 import { Cut } from './pages/Cut'
 import { Series } from './pages/Series'
 import { Tutor } from './pages/Tutor'
+import { Users } from './pages/Users'
 import { Uploads } from './pages/Uploads'
 
 // basename matches vite's `base`: the console is served under /admin/ on the
@@ -25,6 +26,7 @@ export const router = createBrowserRouter(
         { path: 'series', element: <Series /> },
         { path: 'uploads', element: <Uploads /> },
         { path: 'tutor', element: <Tutor /> },
+        { path: 'users', element: <Users /> },
         { path: '*', element: <Navigate to="/cut" replace /> },
       ],
     },

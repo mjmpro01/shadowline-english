@@ -109,6 +109,25 @@ export interface EpisodePatch {
   published?: boolean
 }
 
+/** One person, as the console's list shows them. */
+export interface Account {
+  id: string
+  email: string
+  name: string
+  isAdmin: boolean
+  /** Made an admin in the console, as opposed to by ADMIN_EMAILS. */
+  adminGranted: boolean
+  /** In ADMIN_EMAILS: always an admin, and out of the console's reach. */
+  owner: boolean
+  suspendedAt: string | null
+  createdAt: string
+  lastSignedIn: string | null
+  takes: number
+  questions: number
+}
+
+export type AccountFilter = '' | 'admins' | 'suspended'
+
 /** One day of the tutor's use, as `server/internal/store/tutorusage.go` counts it. */
 export interface TutorDay {
   day: string
@@ -213,6 +232,17 @@ export const repository = {
 
   upload(id: string) {
     return api.get<{ upload: Upload; clips: Video[] }>(`/api/admin/uploads/${id}`)
+  },
+
+  /** Everybody who has signed in, newest first, a page at a time. */
+  accounts(query: string, filter: AccountFilter, limit: number, offset: number) {
+    const params = new URLSearchParams({ q: query, filter, limit: String(limit), offset: String(offset) })
+    return api.get<{ users: Account[]; total: number }>(`/api/admin/users?${params.toString()}`)
+  },
+
+  /** Gives or takes admin rights, or suspends or restores an account. */
+  setAccess(id: string, change: { admin?: boolean; suspended?: boolean }) {
+    return api.send<Account>('PATCH', `/api/admin/users/${id}`, change)
   },
 
   /** What the tutor has cost over the last `days` days: by day and by learner. */

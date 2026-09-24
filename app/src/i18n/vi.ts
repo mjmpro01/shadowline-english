@@ -88,6 +88,7 @@ export const vi: Messages = {
   'login.error.unknown': 'Đăng nhập chưa xong. Thử lại nhé.',
   'login.tryAgain': 'Thử lại với Google',
   'login.error.server': 'Có lỗi ở phía chúng tôi. Thử lại sau một lát.',
+  'login.error.suspended': 'Tài khoản này đã bị khoá. Nếu bạn nghĩ đây là nhầm lẫn, hãy liên hệ với chúng tôi.',
 
   // --- dashboard ------------------------------------------------------------
   'dash.title': 'Tổng quan',

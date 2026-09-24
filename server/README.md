@@ -100,7 +100,7 @@ Three settings have to agree or the round trip breaks:
 | --- | --- |
 | `OAUTH_REDIRECT_URL` | character-for-character one of the authorised redirect URIs |
 | `APP_ORIGIN` | where the React app is actually served — it is both the CORS origin and where the callback sends the browser afterwards |
-| `ADMIN_EMAILS` | the addresses that get the admin console, checked at sign-in |
+| `ADMIN_EMAILS` | the owners: always admins, checked at sign-in. Others are made admins in the console |
 
 When something goes wrong the callback does not answer with an error body: it is
 a browser navigation, and one would leave the learner on this server's origin
@@ -164,8 +164,23 @@ anything a real browser reaches over https is somewhere a stranger can reach
 too. It is a guard, not a guarantee — an http deployment can still be public, so
 never set the flag outside tests.
 
-Admin is decided by `ADMIN_EMAILS` at sign-in, and every admin route re-checks
-it server-side. The app's `RequireAdmin` route only hides the screen.
+Every admin route re-checks admin rights server-side; the app's `RequireAdmin`
+route only hides the screen.
+
+**Who is an admin.** `ADMIN_EMAILS` are the owners: admins at every sign-in,
+whatever else happens, so a deployment cannot lock itself out. Anybody else is
+made an admin, or stops being one, on the console's **Users** page, and that is
+written down (`users.admin_granted`) — sign-ins used to recompute `is_admin`
+from `ADMIN_EMAILS` alone and so took such rights back. `is_admin` is still the
+column requests read, kept equal to "an owner, or granted", and a change takes
+effect on the session the person already has.
+
+The console refuses two changes: your own access (the one mistake nobody could
+then undo from the console) and an owner's (change `ADMIN_EMAILS`).
+
+**Suspending** an account deletes its sessions and stops `UserBySession` finding
+it, so the person is signed out at once; signing in again ends at
+`/login?error=suspended`. Nothing is deleted, and restoring it is one click.
 
 ## Clip video
 

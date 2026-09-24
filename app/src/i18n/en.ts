@@ -84,6 +84,7 @@ export const en = {
   'login.error.unknown': 'Sign-in did not complete. Try again.',
   'login.tryAgain': 'Try Google again',
   'login.error.server': 'Something went wrong on our side. Try again in a moment.',
+  'login.error.suspended': 'This account has been suspended. If you think that is a mistake, contact us.',
 
   // --- dashboard ------------------------------------------------------------
   'dash.title': 'Dashboard',
