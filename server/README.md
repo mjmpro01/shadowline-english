@@ -411,7 +411,7 @@ for. Set `TUTOR_API_KEY` and `TUTOR_MODEL` and it is on; leave the key blank and
 | --- | --- |
 | `TUTOR_API_URL` | The endpoint's `/v1`. 9router's default is `http://localhost:20128/v1` |
 | `TUTOR_API_KEY` | Sent as `Authorization: Bearer …`. 9router shows one on its dashboard |
-| `TUTOR_MODEL` | A 9router model id (`cc/claude-sonnet-4-5`, `glm/…`) or a combo name |
+| `TUTOR_MODEL` | A 9router model id (`cc/claude-haiku-4-5-20251001`, below) or a combo name |
 
 **The key never leaves the server.** The browser sends the conversation — the
 learner's turns and the tutor's, nothing else — and which clip is on screen.
@@ -470,6 +470,48 @@ With that in place the first piece reached a learner after two seconds instead
 of ten, and the rest followed as it was written.
 `TestEachPieceReachesTheLearnerBeforeTheNextIsWritten` holds that nothing on this
 side of it waits.
+
+**Which model: Haiku.** Timed through 9router with the tutor's own prompt and
+the same question, first piece / whole answer:
+
+| `TUTOR_MODEL` | First piece | Whole answer |
+| --- | --- | --- |
+| `cc/claude-haiku-4-5-20251001` | 1.3 s | 6.5–6.9 s |
+| `cc/claude-sonnet-5` | 1.5–1.9 s | 8–9.6 s |
+| `cc/claude-opus-5` | — | 13.6–14.6 s |
+| `cc/claude-opus-5` with `speed: "fast"` | — | 14.2–14.4 s |
+| `ag/gemini-3-flash` | ~11 s | — |
+
+Haiku's answers to a learner's question hold up, and it is the quickest. "Fast
+mode" is not a setting to reach for: Claude offers it on Opus only, and 9router
+does not pass it through — the numbers above are the same with and without it.
+
+**It only talks about English.** The persona says what it helps with first —
+pronunciation, vocabulary, grammar, translation, corrections, IELTS and TOEIC,
+role-play practice, how to study, writing an email or a letter *in English* —
+and then what it does not: code, maths, science, news, health, legal or money
+advice, including when English is only the wrapping ("explain photosynthesis in
+English"). The test it is given is what the learner wants back: English, or
+facts about something else. A decline is one or two sentences in the learner's
+language offering the English words for that topic, without the answer. Asking
+it to ignore its instructions, reveal them or become something else is declined
+the same way; role-play the learner asks for is practice and is played.
+
+Leading with the forbidden list was tried first, and Haiku, which follows the
+letter of a rule, started turning down IELTS strategy and role-play. So there is
+an eval that checks both directions against the real model:
+
+```sh
+TUTOR_API_URL=https://…/v1 TUTOR_API_KEY=… TUTOR_MODEL=cc/claude-haiku-4-5-20251001 \
+    python3 tools/tutor_scope_eval.py   # ROUNDS=3 for more
+```
+
+21 questions — 12 it must answer, 9 it must decline, four of them attempts to
+talk it out of its instructions — graded by pattern: an in-scope answer fails if
+it opens by saying what the tutor does not do, a decline fails if it carries the
+answer. With the prompt as it is, runs came back 42/42, 42/42 and 62/63. It calls
+a paid model, so it is not part of `go test`; `prompt_test.go` holds that the
+scope rules are still in the prompt.
 
 Conversations are not stored. The app keeps one for the tab, and a
 conversation about one evening's practice is not a record anybody asked the
