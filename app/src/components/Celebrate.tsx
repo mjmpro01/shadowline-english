@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { Mascot } from './Mascot'
+import { Mascot, type Mood } from './Mascot'
 
 /** How long the celebration stays: long enough to see, short enough never to
  *  be in the way of the next take. */
@@ -15,7 +15,16 @@ const COLOURS = ['#f7c948', '#8fd46b', '#6cc6f0', '#f59aa8', '#b69cf5', '#ffae73
  * few seconds. Anybody who has asked their device for less motion gets the hero
  * and the words without the confetti.
  */
-export function Celebrate({ message, onDone }: { message: string; onDone: () => void }) {
+export function Celebrate({
+  message,
+  mood = 'cheer',
+  onDone,
+}: {
+  message: string
+  /** Cheering for gold; a top score gets the jump. */
+  mood?: Mood
+  onDone: () => void
+}) {
   const [on, setOn] = useState(true)
   const pieces = useMemo(
     () =>
@@ -61,7 +70,7 @@ export function Celebrate({ message, onDone }: { message: string; onDone: () => 
         ))}
       </div>
       <div className="celebrate-card">
-        <Mascot mood="cheer" size={72} />
+        <Mascot whole mood={mood} size={84} />
         <span>{message}</span>
       </div>
     </div>

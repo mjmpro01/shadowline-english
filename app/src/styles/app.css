@@ -2094,9 +2094,8 @@
     width: 96px;
     height: 96px;
   }
-  .first-steps-art .mascot {
-    width: 76px;
-    height: 76px;
+  .first-steps-art .knight {
+    height: 80px !important;
   }
   .first-steps-title {
     font-size: 24px;
@@ -2185,6 +2184,186 @@
   }
 }
 
+/* The whole knight, as a puppet: a plume that swings, eyes drawn over the
+   picture, and the body moved as one piece. Transforms only, so a pose costs
+   the compositor and nothing else. */
+.knight {
+  position: relative;
+  display: block;
+  flex: none;
+  /* Its width comes from its height; a column of stretched children would
+     otherwise pull it as wide as the column. */
+  align-self: center;
+  aspect-ratio: 612 / 895;
+}
+.knight > *,
+.knight-rig > * {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.knight-rig {
+  transform-origin: 50% 96%;
+}
+.knight-plume {
+  transform-origin: 51% 23%;
+}
+.knight-shadow {
+  fill: #5a3a1a;
+  fill-opacity: 0.16;
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+.knight-lid {
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+  transform: scaleY(0);
+  animation: knight-blink 4.5s infinite;
+}
+.knight-tear,
+.knight-puff {
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+}
+@keyframes knight-blink {
+  0%, 90%, 100% { transform: scaleY(0); }
+  93%, 95% { transform: scaleY(1); }
+}
+@keyframes knight-breathe {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(1.012, 0.985); }
+}
+@keyframes knight-sway {
+  0%, 100% { transform: rotate(-2.5deg); }
+  50% { transform: rotate(3deg); }
+}
+@keyframes knight-whip {
+  from { transform: rotate(-4deg); }
+  to { transform: rotate(4.5deg); }
+}
+@keyframes knight-tilt {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+
+.knight-idle .knight-rig { animation: knight-breathe 2.25s ease-in-out infinite; }
+.knight-idle .knight-plume,
+.knight-think .knight-plume,
+.knight-sit .knight-plume { animation: knight-sway 2.25s ease-in-out infinite; }
+
+.knight-happy .knight-rig { animation: knight-bounce 0.75s ease-in-out infinite; }
+.knight-happy .knight-plume { animation: knight-whip 0.375s ease-in-out infinite alternate; }
+@keyframes knight-bounce {
+  0%, 100% { transform: translateY(0) scale(1.02, 0.98); }
+  50% { transform: translateY(-4%) scale(0.99, 1.02); }
+}
+
+.knight-cheer .knight-rig { animation: knight-hop 0.9s var(--ease-pop) infinite; }
+.knight-cheer .knight-plume { animation: knight-whip 0.45s ease-in-out infinite alternate; }
+.knight-cheer .knight-shadow { animation: knight-shrink 0.9s var(--ease-pop) infinite; }
+@keyframes knight-hop {
+  0% { transform: translateY(0) scale(1.06, 0.92); }
+  30% { transform: translateY(-16%) scale(0.96, 1.05); }
+  55% { transform: translateY(0) scale(1.04, 0.95); }
+  75%, 100% { transform: translateY(0) scale(1, 1); }
+}
+@keyframes knight-shrink {
+  0%, 55%, 100% { transform: scale(1); }
+  30% { transform: scale(0.7); opacity: 0.6; }
+}
+
+/* Sad: lids half down, shoulders dropped, the plume hanging, one tear. */
+.knight-sad .knight-lid { animation: none; transform: scaleY(0.52); }
+.knight-sad .knight-rig { animation: knight-slump 2.25s ease-in-out infinite; }
+.knight-sad .knight-plume { transform: rotate(-4deg); animation: knight-droop 2.25s ease-in-out infinite; }
+.knight-sad .knight-tear { animation: knight-tear 1.5s ease-in infinite; }
+@keyframes knight-slump {
+  0%, 100% { transform: translateY(1.5%) scale(1.01, 0.965) rotate(-1.5deg); }
+  50% { transform: translateY(2.2%) scale(1.015, 0.955) rotate(-2.5deg); }
+}
+@keyframes knight-droop {
+  0%, 100% { transform: rotate(-3.5deg); }
+  50% { transform: rotate(-5.5deg); }
+}
+@keyframes knight-tear {
+  0% { transform: translateY(0) scale(0.4); opacity: 0; }
+  15% { transform: translateY(0) scale(1); opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translateY(95px); opacity: 0; }
+}
+
+/* Thinking, standing or sat on a log, with a cloud of dots. */
+.knight-think .knight-rig { animation: knight-tilt 2.25s ease-in-out infinite; }
+.knight-sit .knight-shadow { display: none; }
+.knight-sit .knight-rig {
+  transform: translateY(-2%) scale(1, 0.93);
+  animation: knight-sit 2.25s ease-in-out infinite;
+}
+@keyframes knight-sit {
+  0%, 100% { transform: translateY(-2%) scale(1, 0.93) rotate(-2.5deg); }
+  50% { transform: translateY(-2%) scale(1, 0.93) rotate(2.5deg); }
+}
+.knight-puff { transform-origin: 50% 50%; animation: knight-puff 2.25s ease-in-out infinite; }
+.knight-dot { animation: knight-dot 1.5s infinite; }
+.knight-dot:nth-child(2) { animation-delay: 0.25s; }
+.knight-dot:nth-child(3) { animation-delay: 0.5s; }
+@keyframes knight-puff {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+@keyframes knight-dot {
+  0%, 10% { opacity: 0; }
+  25%, 80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.knight-jump .knight-rig { animation: knight-jump 1.5s ease-in-out infinite; }
+.knight-jump .knight-plume { animation: knight-whip 0.375s ease-in-out infinite alternate; }
+.knight-jump .knight-shadow { animation: knight-jump-shadow 1.5s ease-in-out infinite; }
+@keyframes knight-jump {
+  0% { transform: translateY(0) scale(1, 1); }
+  14% { transform: translateY(0) scale(1.1, 0.86); animation-timing-function: cubic-bezier(0.2, 0.8, 0.4, 1); }
+  40% { transform: translateY(-30%) scale(0.94, 1.08) rotate(-6deg); animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.4); }
+  62% { transform: translateY(0) scale(0.97, 1.04); }
+  70% { transform: translateY(0) scale(1.1, 0.87); }
+  82% { transform: translateY(0) scale(0.98, 1.02); }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+@keyframes knight-jump-shadow {
+  0%, 14%, 62%, 100% { transform: scale(1); opacity: 1; }
+  40% { transform: scale(0.55); opacity: 0.45; }
+}
+
+/* Walking: a waddle there and back, turning round at each end. */
+.knight-walk { animation: knight-trek 4.5s linear infinite; }
+.knight-walk .knight-rig { animation: knight-waddle 0.9s ease-in-out infinite; }
+.knight-walk .knight-plume { animation: knight-whip 0.45s ease-in-out infinite alternate; }
+@keyframes knight-trek {
+  0% { transform: translateX(-32%) scaleX(1); }
+  45% { transform: translateX(32%) scaleX(1); }
+  50% { transform: translateX(32%) scaleX(-1); }
+  95% { transform: translateX(-32%) scaleX(-1); }
+  100% { transform: translateX(-32%) scaleX(1); }
+}
+@keyframes knight-waddle {
+  0%, 100% { transform: rotate(-5deg) translateY(0); }
+  25% { transform: rotate(0) translateY(-3.5%); }
+  50% { transform: rotate(5deg) translateY(0); }
+  75% { transform: rotate(0) translateY(-3.5%); }
+}
+
+/* Asked for less motion: the knight holds its pose. The sad lids and the log
+   are the pose, so they stay; a dot cloud that no longer blinks shows all
+   three dots. */
+@media (prefers-reduced-motion: reduce) {
+  .knight,
+  .knight * {
+    animation: none !important;
+  }
+}
+
 /* --- A gold take ---------------------------------------------------------- */
 .celebrate {
   position: fixed;
@@ -2236,6 +2415,10 @@
   font-size: 26px;
   white-space: nowrap;
   animation: score-land 420ms var(--ease-pop) both;
+}
+/* The knight stands up out of the card rather than being squeezed into it. */
+.celebrate-card .knight {
+  margin: -40px 0 -10px;
 }
 @media (prefers-reduced-motion: reduce) {
   .celebrate-confetti {

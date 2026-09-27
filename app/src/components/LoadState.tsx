@@ -1,4 +1,5 @@
 import { useT } from '../i18n'
+import { Mascot } from './Mascot'
 import { useApp } from '../store/context'
 
 /**
@@ -11,6 +12,7 @@ export function Loading({ label }: { label?: string }) {
   const t = useT()
   return (
     <div className="stack gap-2" style={{ padding: 32, alignItems: 'center' }} role="status">
+      <Mascot whole mood="walk" size={96} />
       <div className="card-meta">{label ?? t('common.loading')}</div>
     </div>
   )
@@ -21,6 +23,7 @@ export function LoadFailure() {
   const t = useT()
   return (
     <div className="stack gap-3" style={{ padding: 32, maxWidth: 420, margin: '0 auto' }}>
+      <Mascot whole mood="sad" size={104} />
       <h2 style={{ margin: 0 }}>{t('common.cantReach')}</h2>
       <div className="card-meta">{error ?? t('common.somethingWrong')}</div>
       <button type="button" className="btn btn-primary" onClick={() => void reload()}>
