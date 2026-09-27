@@ -4,8 +4,21 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content="#201e1d" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f7f0e1" />
+    <!-- The chosen theme before the first paint, so a dark-theme learner never
+         sees a flash of parchment. The same rule as src/lib/theme.ts. -->
+    <script>
+      try {
+        var theme = localStorage.getItem('shadowline.theme')
+        if (theme === 'system')
+          theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        if (theme === 'dark') {
+          document.documentElement.dataset.theme = 'dark'
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#201e1d')
+        }
+      } catch (e) {}
+    </script>
     <link rel="manifest" href="/manifest.webmanifest" />
     <!-- iOS reads neither the manifest's icons nor its display mode. -->
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />

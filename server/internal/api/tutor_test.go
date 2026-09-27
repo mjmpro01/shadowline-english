@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -45,6 +46,8 @@ func (f *router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "data: %s\n\n", raw)
 		w.(http.Flusher).Flush()
 	}
+	// What the answer cost, on the last chunk, as 9router sends it.
+	fmt.Fprint(w, `data: {"choices":[],"usage":{"prompt_tokens":2000,"completion_tokens":40}}`+"\n\n")
 	fmt.Fprint(w, "data: [DONE]\n\n")
 }
 
@@ -65,7 +68,7 @@ func withTutor(t *testing.T, h *harness, limit int) *router {
 	server := httptest.NewServer(fake)
 	t.Cleanup(server.Close)
 	h.srv.Tutor = &tutor.Client{BaseURL: server.URL + "/v1", APIKey: "sk-test", Model: "combo"}
-	h.srv.TutorLimit = &tutor.Limiter{Max: limit, Window: time.Minute}
+	h.srv.TutorLimit = tutor.Limit{Max: limit, Window: time.Minute}
 	return fake
 }
 
@@ -295,6 +298,63 @@ func TestTooManyQuestionsAreTurnedAway(t *testing.T) {
 	if res.StatusCode != http.StatusOK {
 		t.Fatalf("another learner was refused: %d", res.StatusCode)
 	}
+
+	// And it is counted in Postgres, not in this process: a server with a
+	// fresh limit — a restart, or a second replica — still sees the two.
+	h.srv.TutorLimit = tutor.Limit{Max: 2, Window: time.Minute}
+	res = learner.json("POST", "/api/tutor/chat", question("four"))
+	res.Body.Close()
+	if res.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("after a restart: %d, want 429 — the count lived in memory", res.StatusCode)
+	}
+}
+
+// Every question is written down with what it cost, and the console reads
+// the cost back by day and by learner.
+func TestWhatTheTutorCostsIsRecorded(t *testing.T) {
+	h := newHarness(t)
+	withTutor(t, h, 10)
+	learner := h.login("learner@example.com")
+	admin := h.login("admin@example.com")
+
+	ask(t, learner, question("one"))
+	ask(t, learner, question("two"))
+	ask(t, h.login("other@example.com"), question("three"))
+
+	var outcome string
+	var prompt, completion int
+	if err := h.pool.QueryRow(context.Background(), `
+		select outcome, prompt_tokens, completion_tokens from tutor_questions
+		order by id limit 1`).Scan(&outcome, &prompt, &completion); err != nil {
+		t.Fatal(err)
+	}
+	if outcome != "answered" || prompt != 2000 || completion != 40 {
+		t.Fatalf("recorded %s with %d+%d tokens", outcome, prompt, completion)
+	}
+
+	usage := expect[struct {
+		Days []struct {
+			Questions        int   `json:"questions"`
+			Learners         int   `json:"learners"`
+			PromptTokens     int64 `json:"promptTokens"`
+			CompletionTokens int64 `json:"completionTokens"`
+		} `json:"days"`
+		Learners []struct {
+			Email     string `json:"email"`
+			Questions int    `json:"questions"`
+		} `json:"learners"`
+	}](t, admin.do("GET", "/api/admin/tutor/usage", "", nil), http.StatusOK)
+	if len(usage.Days) != 1 || usage.Days[0].Questions != 3 || usage.Days[0].Learners != 2 ||
+		usage.Days[0].PromptTokens != 6000 || usage.Days[0].CompletionTokens != 120 {
+		t.Fatalf("by day: %+v", usage.Days)
+	}
+	if len(usage.Learners) != 2 || usage.Learners[0].Email != "learner@example.com" ||
+		usage.Learners[0].Questions != 2 {
+		t.Fatalf("by learner: %+v", usage.Learners)
+	}
+
+	expectStatus(t, learner.do("GET", "/api/admin/tutor/usage", "", nil), http.StatusForbidden)
+	expectStatus(t, admin.do("GET", "/api/admin/tutor/usage?days=0", "", nil), http.StatusBadRequest)
 }
 
 func TestARouterThatRefusesIsReportedPlainly(t *testing.T) {

@@ -1,4 +1,5 @@
 import { tintOf } from '../lib/score'
+import { iconFor } from '../lib/topics'
 
 /** How much of the line the tile shows. Enough to tell two clips apart at a
  *  glance, short enough to stay large. */
@@ -18,7 +19,17 @@ const WORDS = 7
  * is what makes the grid scannable and the words are what make it useful, and
  * neither costs a byte of storage or a second of anybody's worker.
  */
-export function ClipFace({ id, posterUrl, line }: { id: string; posterUrl: string; line: string }) {
+export function ClipFace({
+  id,
+  posterUrl,
+  line,
+  categories,
+}: {
+  id: string
+  posterUrl: string
+  line: string
+  categories?: string[]
+}) {
   if (posterUrl) {
     return <img className="thumb-poster" src={posterUrl} alt="" loading="lazy" />
   }
@@ -31,6 +42,9 @@ export function ClipFace({ id, posterUrl, line }: { id: string; posterUrl: strin
 
   return (
     <span className="thumb-face" style={{ background: tintOf(id) }}>
+      <span className="thumb-face-icon" aria-hidden="true">
+        {iconFor(categories)}
+      </span>
       {words.length > 0 && (
         <span className="thumb-face-line">
           {words.slice(0, WORDS).join(' ')}

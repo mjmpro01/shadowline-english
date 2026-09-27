@@ -112,7 +112,7 @@ test('a clip published from video reaches the learner with its picture', async (
   await expect(page.getByText(/clips are now in the library/)).toBeVisible({ timeout: 60_000 })
   // The admin is told the picture is still coming, rather than left wondering
   // why the clip they just published has none.
-  await expect(page.getByText(/video is being cut in the background/)).toBeVisible()
+  await expect(page.getByText(/sound and picture are being cut on the server/)).toBeVisible()
 
   // Wait on the cut itself rather than on the screen: the clip reports its own
   // video the moment the cutter records it, and polling the API says whether

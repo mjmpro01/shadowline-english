@@ -91,7 +91,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // and hasVideo flip without a manual reload — the same moment Practice's
   // player picks up the signed URL from its own poll. Only the clips being
   // waited on, not the library: the library is no longer the app's to refresh.
-  const pendingIds = data.videos.filter((video) => video.videoPending).map((video) => video.id)
+  const pendingIds = data.videos
+    .filter((video) => video.videoPending || video.audioPending)
+    .map((video) => video.id)
   const cutsPending = pendingIds.length > 0
   const pendingKey = pendingIds.join(',')
   useEffect(() => {

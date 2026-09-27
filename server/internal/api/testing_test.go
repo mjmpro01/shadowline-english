@@ -140,6 +140,25 @@ func (h *harness) attachDub(t *testing.T, takeID string) {
 
 // attachVideo puts an object where a finished cut would have left one, and
 // records it on the clip the way the cutter does.
+// cutSound stands in for the cutter making a clip's sound, which it does for
+// every clip with a stored source now: the key is written and, when nothing
+// else is owed, the job goes.
+func (h *harness) cutSound(t *testing.T, clipID string) {
+	t.Helper()
+	ctx := context.Background()
+	id, err := uuid.Parse(clipID)
+	if err != nil {
+		t.Fatalf("parse clip id: %v", err)
+	}
+	key := "clip/" + clipID + "/cut.wav"
+	if err := h.blobs.Put(ctx, storage.Clips, key, bytes.NewReader(silentWAV(1.0)), -1, "audio/wav"); err != nil {
+		t.Fatalf("store clip sound: %v", err)
+	}
+	if err := h.store.SetClipAudioKey(ctx, id, key); err != nil {
+		t.Fatalf("record clip sound key: %v", err)
+	}
+}
+
 func (h *harness) attachVideo(t *testing.T, clipID string) {
 	t.Helper()
 	ctx := context.Background()

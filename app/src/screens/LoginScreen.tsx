@@ -28,6 +28,7 @@ const LOGIN_ERRORS: Record<string, MessageKey> = {
   cancelled: 'login.error.cancelled',
   failed: 'login.error.failed',
   server: 'login.error.server',
+  suspended: 'login.error.suspended',
 }
 
 type Mode = 'login' | 'register' | 'forgot'

@@ -499,6 +499,8 @@ func contentTypeFor(key string) string {
 		return "image/png"
 	case ".jpg", ".jpeg":
 		return "image/jpeg"
+	case ".webp":
+		return "image/webp"
 	default:
 		return "application/octet-stream"
 	}
@@ -516,6 +518,8 @@ func extensionFor(contentType string) string {
 		return ".png"
 	case contentType == "image/jpeg":
 		return ".jpg"
+	case contentType == "image/webp":
+		return ".webp"
 	// Sources keep their own extension so ffmpeg can tell what it is opening,
 	// and so a cut video is served back as something a <video> will play.
 	case contentType == "video/mp4":

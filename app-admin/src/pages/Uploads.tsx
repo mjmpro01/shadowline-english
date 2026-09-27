@@ -233,10 +233,10 @@ function Details({ upload }: { upload: Upload }) {
   if (upload.transcribeAttempts > 0) {
     rows.push([t('uploads.attempts'), upload.transcribeAttempts])
   }
-  if (upload.hasVideo) {
-    rows.push([t('uploads.cutsLeft'), upload.cutsLeft])
-    if (upload.cutsFailed > 0) rows.push([t('uploads.cutsFailed'), upload.cutsFailed])
-  }
+  // Every upload's clips are cut now — their sound always, their picture when
+  // there is one — so the cuts are counted for audio too, while there are any.
+  if (upload.hasVideo || upload.cutsLeft > 0) rows.push([t('uploads.cutsLeft'), upload.cutsLeft])
+  if (upload.cutsFailed > 0) rows.push([t('uploads.cutsFailed'), upload.cutsFailed])
   // Worth its own row rather than a footnote: a clip with no sound is kept and
   // measured but never scored, and nothing else says so.
   if (upload.clipsWithoutAudio > 0) {

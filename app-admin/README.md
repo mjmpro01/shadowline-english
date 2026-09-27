@@ -85,11 +85,14 @@ And publishing now has a catch. It did not: any failure left `busy` set, which
 leaves "Saving…" on screen and the Publish button disabled for good, with no way
 back but a reload. That is most of what "publishing does not work" was.
 
-What is still expensive is the audio itself. Each clip goes up as 16-bit WAV at
-the recording's own sample rate — 563 kB for six seconds at 48 kHz — so a batch
-of 400 clips is **220 MB** after the film has already been uploaded once. The
-server has the recording and the cutter already re-cuts the picture from it;
-cutting the audio there too would remove that upload entirely. Not done yet.
+The audio used to be the expensive part: each clip went up as 16-bit WAV — 563 kB
+for six seconds at 48 kHz, so **220 MB** for a batch of 400, after the recording
+had already been uploaded once. It is not sent any more. When the recording is
+on the server, publishing writes the clips and stops; the cutter makes each
+clip's sound from the recording, the same way it makes the picture (see "Clip
+video" in `server/README.md`). The browser still slices and uploads the sound
+only when the recording never reached the server, so those clips are not left
+silent.
 
 ## The cut survives leaving the studio
 

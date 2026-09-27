@@ -53,12 +53,25 @@ export const api = {
   get: <T>(path: string) => request<T>(path),
   del: (path: string) => request<void>(path, { method: 'DELETE' }),
 
-  send: <T>(method: 'POST' | 'PATCH' | 'PUT', path: string, body: unknown) =>
+  send: <T>(method: 'POST' | 'PATCH' | 'PUT' | 'DELETE', path: string, body: unknown) =>
     request<T>(path, {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }),
+
+  /** A response as a file rather than as JSON to read: for something the
+   *  learner saves, like their own data. */
+  async file(path: string): Promise<Blob> {
+    let response: Response
+    try {
+      response = await fetch(API_URL + path, { credentials: 'include' })
+    } catch {
+      throw new ApiError(0, 'Could not reach the server.')
+    }
+    if (!response.ok) throw new ApiError(response.status, await errorMessage(response))
+    return response.blob()
+  },
 
   /** Uploads a recording as the raw request body; there is only ever one file. */
   upload: <T>(method: 'POST' | 'PUT', path: string, blob: Blob) =>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Banners } from '../components/Banners'
 import { useT, type Translate } from '../i18n'
 import { ClipCard } from '../components/ClipCard'
 import { Icon } from '../components/Icon'
@@ -8,6 +9,7 @@ import type { Episode, Playlist, SearchResults } from '../data/types'
 import { searchIsWorthRunning } from '../lib/library'
 import { useDebounced, useRemote } from '../lib/remote'
 import { tintOf } from '../lib/score'
+import { iconFor } from '../lib/topics'
 import { clock } from '../lib/time'
 import { repository } from '../repository'
 
@@ -43,6 +45,8 @@ export function LibraryScreen() {
     <div className="stack gap-6">
       <h1>{t('library.title')}</h1>
 
+      <Banners placement="library" />
+
       <input
         type="search"
         className="input"
@@ -55,13 +59,8 @@ export function LibraryScreen() {
       {categories.length > 0 && query.trim() === '' && (
         <div className="row gap-2 wrap">
           {categories.map((name) => (
-            <button
-              type="button"
-              key={name}
-              className="tag tag-neutral"
-              style={{ cursor: 'pointer', border: 'none' }}
-              onClick={() => setQuery(name)}
-            >
+            <button type="button" key={name} className="topic-chip" onClick={() => setQuery(name)}>
+              <span aria-hidden="true">{iconFor([name])}</span>
               {name}
             </button>
           ))}

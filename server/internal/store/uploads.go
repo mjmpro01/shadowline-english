@@ -185,9 +185,11 @@ const uploadColumns = `
 	-- it finishes and when it gives up.
 	(select count(*)::int from cut_jobs j join clips c on c.id = j.clip_id
 	 where c.source_id = s.id),
-	-- Gave up: should have a picture, has no job waiting, and has no picture.
+	-- Gave up: no job waiting, and missing what the cut should have made — its
+	-- sound always, its picture when the recording has one.
 	(select count(*)::int from clips c
-	 where c.source_id = s.id and s.has_video and c.video_key is null
+	 where c.source_id = s.id
+	   and (c.audio_key is null or (s.has_video and c.video_key is null))
 	   and not exists (select 1 from cut_jobs j where j.clip_id = c.id)),
 	exists (select 1 from transcribe_jobs t where t.source_id = s.id),
 	exists (select 1 from transcripts t where t.source_id = s.id),
@@ -328,10 +330,10 @@ var ErrNotStored = errors.New("the recording itself never arrived")
 // has started something.
 func (s *Store) RetryUpload(ctx context.Context, id uuid.UUID) (transcribe, cuts int, err error) {
 	err = s.inTx(ctx, func(tx pgx.Tx) error {
-		var hasVideo, stored bool
+		var stored bool
 		if err := tx.QueryRow(ctx,
-			`select has_video, upload_state = 'stored' from clip_sources where id = $1`, id).
-			Scan(&hasVideo, &stored); err != nil {
+			`select upload_state = 'stored' from clip_sources where id = $1`, id).
+			Scan(&stored); err != nil {
 			return err
 		}
 		if !stored {
@@ -348,13 +350,11 @@ func (s *Store) RetryUpload(ctx context.Context, id uuid.UUID) (transcribe, cuts
 		}
 		transcribe = int(tag.RowsAffected())
 
-		if !hasVideo {
-			return nil
-		}
 		tag, err = tx.Exec(ctx, `
 			insert into cut_jobs (clip_id)
-			select c.id from clips c
-			where c.source_id = $1 and c.video_key is null
+			select c.id from clips c join clip_sources s on s.id = c.source_id
+			where c.source_id = $1
+			  and (c.audio_key is null or (s.has_video and c.video_key is null))
 			on conflict (clip_id) do nothing`, id)
 		if err != nil {
 			return err

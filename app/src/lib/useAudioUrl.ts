@@ -73,9 +73,11 @@ function useSignedURL(
   return resolved?.id === id ? resolved.value : LOADING
 }
 
-/** The clip's source audio — the thing being shadowed. */
-export function useClipAudio(clipId: string | null): AudioURL {
-  return useSignedURL(clipId, (id) => repository.clipAudioURL(id))
+/** The clip's source audio — the thing being shadowed. Pass `pollWhileNone`
+ *  when the clip reports `audioPending`: its sound is being cut on the server,
+ *  and arrives a few seconds after the clip is published. */
+export function useClipAudio(clipId: string | null, pollWhileNone = false): AudioURL {
+  return useSignedURL(clipId, (id) => repository.clipAudioURL(id), { pollWhileNone })
 }
 
 /** The cut of the original video, when the cutter has produced one.

@@ -1,18 +1,21 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/shadowline/server/internal/auth"
+	"github.com/shadowline/server/internal/store"
 	"github.com/shadowline/server/internal/tutor"
 )
 
@@ -84,25 +87,51 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if s.TutorLimit != nil {
-		if ok, wait := s.TutorLimit.Allow(u.ID, time.Now()); !ok {
-			seconds := int(math.Ceil(wait.Seconds()))
-			w.Header().Set("Retry-After", fmt.Sprint(seconds))
-			fail(w, http.StatusTooManyRequests,
-				fmt.Sprintf("that is a lot of questions at once — try again in %d seconds", seconds))
-			return
-		}
-	}
-
 	var clip *tutor.Clip
 	var practice *tutor.Practice
+	var clipID *uuid.UUID
 	if body.ClipID != "" {
 		id, err := uuid.Parse(body.ClipID)
 		if err != nil {
 			fail(w, http.StatusBadRequest, "clipId is not an id")
 			return
 		}
-		found, err := s.Store.ClipByID(r.Context(), id)
+		clipID = &id
+	}
+
+	// The question is written down before it is asked, and counted against the
+	// learner's allowance in the same step: the row is both the limit and the
+	// record of what the tutor costs.
+	question, ok, wait, err := s.Store.AskTutor(r.Context(),
+		store.Question{UserID: u.ID, ClipID: clipID, Model: s.Tutor.Model},
+		s.TutorLimit.Max, s.TutorLimit.Window)
+	if err != nil {
+		s.failErr(w, err, "record a question to the tutor")
+		return
+	}
+	if !ok {
+		seconds := max(1, int(math.Ceil(wait.Seconds())))
+		w.Header().Set("Retry-After", fmt.Sprint(seconds))
+		fail(w, http.StatusTooManyRequests,
+			fmt.Sprintf("that is a lot of questions at once — try again in %d seconds", seconds))
+		return
+	}
+	// However the answer ends, it is recorded — on a context of its own, since
+	// a learner pressing Stop cancels the request's.
+	outcome := store.TutorFailed
+	var usage tutor.Usage
+	defer func() {
+		var in, out *int
+		if usage.Reported {
+			in, out = &usage.PromptTokens, &usage.CompletionTokens
+		}
+		if err := s.Store.TutorAnswer(context.WithoutCancel(r.Context()), question, outcome, in, out); err != nil {
+			s.Log.Warn("could not record a tutor answer", "error", err)
+		}
+	}()
+
+	if clipID != nil {
+		found, err := s.Store.ClipByID(r.Context(), *clipID)
 		if err != nil {
 			s.failErr(w, err, "get the clip for the tutor")
 			return
@@ -111,7 +140,7 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 		if len(found.Captions) > 0 {
 			clip.Line, clip.IPA = found.Captions[0].Text, found.Captions[0].IPA
 		}
-		done, err := s.Store.PracticeOn(r.Context(), u.ID, id)
+		done, err := s.Store.PracticeOn(r.Context(), u.ID, *clipID)
 		if err != nil {
 			s.failErr(w, err, "read practice for the tutor")
 			return
@@ -152,7 +181,7 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 		return control.Flush()
 	}
 
-	err = s.Tutor.Stream(r.Context(), messages, func(delta string) error {
+	usage, err = s.Tutor.Stream(r.Context(), messages, func(delta string) error {
 		return send(map[string]string{"delta": delta})
 	})
 
@@ -162,8 +191,10 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 			fail(w, http.StatusBadGateway, "the tutor had nothing to say — try asking again")
 			return
 		}
+		outcome = store.TutorAnswered
 		_ = send(map[string]bool{"done": true})
 	case r.Context().Err() != nil:
+		outcome = store.TutorStopped
 		// The learner closed the chat or asked something else. Nothing to say
 		// and nobody to say it to.
 	case !started:
@@ -173,6 +204,48 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 		s.Log.Warn("tutor failed mid-answer", "error", err)
 		_ = send(map[string]string{"error": "the answer was cut off — try asking again"})
 	}
+}
+
+// handleTutorUsage is what the tutor has cost: questions and tokens by day,
+// and the learners asking most, over the last `days` days (30 unless asked).
+//
+// Tokens are what the router reported. It reports nothing for an answer the
+// learner stopped, so those days read low by that much — the question is still
+// counted.
+func (s *Server) handleTutorUsage(w http.ResponseWriter, r *http.Request) {
+	days := 30
+	if raw := r.URL.Query().Get("days"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 1 || n > 366 {
+			fail(w, http.StatusBadRequest, "days is a number from 1 to 366")
+			return
+		}
+		days = n
+	}
+	byDay, byLearner, err := s.Store.TutorUsage(r.Context(), days, 20)
+	if err != nil {
+		s.failErr(w, err, "read the tutor's usage")
+		return
+	}
+	var model string
+	if s.Tutor != nil {
+		model = s.Tutor.Model
+	}
+	if byDay == nil {
+		byDay = []store.TutorDay{}
+	}
+	if byLearner == nil {
+		byLearner = []store.TutorLearner{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"days":     byDay,
+		"learners": byLearner,
+		"model":    model,
+		"limit": map[string]any{
+			"questions":     s.TutorLimit.Max,
+			"windowMinutes": int(s.TutorLimit.Window.Minutes()),
+		},
+	})
 }
 
 // conversation checks what the browser sent and keeps the part the model gets.

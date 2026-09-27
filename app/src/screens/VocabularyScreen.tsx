@@ -118,12 +118,12 @@ export function VocabularyScreen() {
                 <span className={STATUS_TAG[word.status]}>{t(STATUS_LABEL[word.status])}</span>
               </div>
               <div className="row between gap-2">
-                <span className="mono" style={{ fontSize: 13, opacity: 0.6 }}>
+                <span className="mono" style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>
                   {word.ipa}
                 </span>
                 {/* When this card comes round again. A learner who marks a
                     word known should be able to see that the app heard them. */}
-                <span className="card-meta" style={{ fontSize: 11 }}>
+                <span className="card-meta" style={{ fontSize: 13 }}>
                   {Date.parse(word.dueAt) <= now.getTime()
                     ? t('vocab.dueNow')
                     : t('vocab.dueIn', daysUntil(new Date(word.dueAt), now))}
@@ -139,7 +139,7 @@ export function VocabularyScreen() {
                   style={{
                     paddingInline: 0,
                     justifyContent: 'flex-start',
-                    fontSize: 12,
+                    fontSize: 14,
                     textAlign: 'left',
                     whiteSpace: 'normal',
                     height: 'auto',

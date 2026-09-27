@@ -36,8 +36,8 @@ type Server struct {
 	// Tutor answers the learner's chat. Nil when TUTOR_API_KEY is unset, and
 	// the app then leaves the chat out.
 	Tutor *tutor.Client
-	// TutorLimit caps messages per learner; every one is paid for.
-	TutorLimit *tutor.Limiter
+	// TutorLimit caps questions per learner; every one is paid for.
+	TutorLimit tutor.Limit
 	Log        *slog.Logger
 }
 
@@ -125,6 +125,10 @@ func (s *Server) Routes() http.Handler {
 			quick(r)
 
 			r.Get("/tutor", s.handleTutorStatus)
+			r.Get("/banners", s.handleLiveBanners)
+			r.Get("/account/export", s.handleExportAccount)
+			r.Post("/account/password", s.handleChangePassword)
+			r.Delete("/account", s.handleDeleteAccount)
 			r.Get("/playlists", s.handleListPlaylists)
 			r.Get("/playlists/{slug}", s.handleGetPlaylist)
 			r.Get("/episodes/{id}", s.handleGetEpisode)
@@ -170,6 +174,15 @@ func (s *Server) Routes() http.Handler {
 				r.Get("/admin/uploads/{id}", s.handleGetUpload)
 				r.Post("/admin/uploads/{id}/retry", s.handleRetryUpload)
 				r.Get("/admin/uploads/{id}/transcript", s.handleSourceTranscript)
+				r.Get("/admin/tutor/usage", s.handleTutorUsage)
+				r.Get("/admin/users", s.handleListAccounts)
+				r.Patch("/admin/users/{id}", s.handleUpdateAccount)
+				r.Get("/admin/banners", s.handleAllBanners)
+				r.Post("/admin/banners", s.handleCreateBanner)
+				r.Put("/admin/banners/{id}", s.handleUpdateBanner)
+				r.Delete("/admin/banners/{id}", s.handleDeleteBanner)
+				r.Put("/admin/banners/{id}/image", s.handleBannerImage)
+				r.Delete("/admin/banners/{id}/image", s.handleRemoveBannerImage)
 				r.Post("/admin/clips", s.handleCreateClips)
 				r.Put("/admin/clips/{id}/audio", s.handleUploadClipAudio)
 				r.Patch("/admin/clips/{id}", s.handleUpdateClip)

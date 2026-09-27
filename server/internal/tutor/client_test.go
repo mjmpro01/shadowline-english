@@ -10,8 +10,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // fakeRouter answers the way 9router does: an OpenAI-compatible
@@ -38,7 +36,7 @@ func stream(w http.ResponseWriter, pieces ...string) {
 func collect(t *testing.T, c *Client) (string, error) {
 	t.Helper()
 	var got strings.Builder
-	err := c.Stream(context.Background(), []Message{{Role: "user", Content: "hi"}}, func(d string) error {
+	_, err := c.Stream(context.Background(), []Message{{Role: "user", Content: "hi"}}, func(d string) error {
 		got.WriteString(d)
 		return nil
 	})
@@ -70,6 +68,33 @@ func TestStreamSendsWhatTheRouterExpects(t *testing.T) {
 	}
 	if seen.body["max_tokens"] == nil {
 		t.Fatal("no cap on the length of an answer, which is a cap on its cost")
+	}
+	if opts, _ := seen.body["stream_options"].(map[string]any); opts["include_usage"] != true {
+		t.Fatal("the stream was not asked for its token counts, so nothing records what it cost")
+	}
+}
+
+// What the answer cost comes back from the last chunk, where an
+// OpenAI-compatible router puts it — and is marked unreported when it is not.
+func TestTheCostOfAnAnswerIsReadFromTheStream(t *testing.T) {
+	c := fakeRouter(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		fmt.Fprint(w, `data: {"choices":[{"delta":{"content":"hi"}}]}`+"\n\n")
+		fmt.Fprint(w, `data: {"choices":[{"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":2028,"completion_tokens":9}}`+"\n\n")
+		fmt.Fprint(w, "data: [DONE]\n\n")
+	})
+	usage, err := c.Stream(context.Background(), []Message{{Role: "user", Content: "hi"}}, func(string) error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if usage != (Usage{PromptTokens: 2028, CompletionTokens: 9, Reported: true}) {
+		t.Fatalf("usage %+v", usage)
+	}
+
+	quiet := fakeRouter(t, func(w http.ResponseWriter, r *http.Request) { stream(w, "hi") })
+	usage, err = quiet.Stream(context.Background(), []Message{{Role: "user", Content: "hi"}}, func(string) error { return nil })
+	if err != nil || usage.Reported {
+		t.Fatalf("a router that said nothing about cost reported %+v (%v)", usage, err)
 	}
 }
 
@@ -134,10 +159,11 @@ func TestClosingTheChatStopsTheRequest(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() {
-		done <- c.Stream(ctx, []Message{{Role: "user", Content: "hi"}}, func(string) error {
+		_, err := c.Stream(ctx, []Message{{Role: "user", Content: "hi"}}, func(string) error {
 			cancel()
 			return nil
 		})
+		done <- err
 	}()
 	select {
 	case <-done:
@@ -183,35 +209,6 @@ func TestSystemSaysSoWhenThereIsNothingMeasured(t *testing.T) {
 	}
 }
 
-func TestTheLimiterCountsAWindowPerLearner(t *testing.T) {
-	l := &Limiter{Max: 2, Window: time.Minute}
-	one, two := uuid.New(), uuid.New()
-	now := time.Unix(1_000_000, 0)
-
-	for i := 0; i < 2; i++ {
-		if ok, _ := l.Allow(one, now); !ok {
-			t.Fatalf("message %d refused inside the allowance", i+1)
-		}
-	}
-	ok, wait := l.Allow(one, now.Add(10*time.Second))
-	if ok {
-		t.Fatal("a third message inside the window was allowed")
-	}
-	if wait != 50*time.Second {
-		t.Fatalf("told to wait %s, want 50s — until the first message leaves the window", wait)
-	}
-	// Somebody else is not held to it.
-	if ok, _ := l.Allow(two, now); !ok {
-		t.Fatal("one learner's allowance was spent by another")
-	}
-	// And the window moves on.
-	if ok, _ := l.Allow(one, now.Add(61*time.Second)); !ok {
-		t.Fatal("still refused once the window had passed")
-	}
-}
-
-// A bare http.Transport{} ignores HTTPS_PROXY, which is how the tutor failed on a
-// network where everything leaves through a proxy while curl worked.
 func TestTheDefaultClientGoesThroughTheProxy(t *testing.T) {
 	transport, ok := defaultHTTP.Transport.(*http.Transport)
 	if !ok {
@@ -271,10 +268,11 @@ func TestTheStreamReachesTheLearnerAsItArrives(t *testing.T) {
 	got := make(chan string, 2)
 	done := make(chan error, 1)
 	go func() {
-		done <- c.Stream(context.Background(), []Message{{Role: "user", Content: "hi"}}, func(d string) error {
+		_, err := c.Stream(context.Background(), []Message{{Role: "user", Content: "hi"}}, func(d string) error {
 			got <- d
 			return nil
 		})
+		done <- err
 	}()
 	// The first piece has to arrive while the router is still holding the second.
 	select {

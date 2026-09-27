@@ -10,19 +10,22 @@ import (
 	"github.com/shadowline/server/internal/store"
 )
 
-// Profile is what the app shows for the signed-in person. isAdmin comes from the
-// server's ADMIN_EMAILS and is read-only here — the Profile screen used to let
-// anyone switch it on.
+// Profile is what the app shows for the signed-in person. isAdmin is decided on
+// the server (ADMIN_EMAILS, or the console) and is read-only here — the Profile
+// screen used to let anyone switch it on.
 type Profile struct {
 	ID        string  `json:"id"`
 	Name      string  `json:"name"`
 	Email     string  `json:"email"`
 	AvatarURL *string `json:"avatarUrl"`
 	IsAdmin   bool    `json:"isAdmin"`
+	// Passwords is whether this server keeps passwords at all (Keycloak is
+	// set up), so the Profile screen offers to change one only where it can.
+	Passwords bool `json:"passwords"`
 }
 
 func (s *Server) profileOf(ctx context.Context, u store.User) Profile {
-	p := Profile{ID: u.ID.String(), Name: u.Name, Email: u.Email, IsAdmin: u.IsAdmin}
+	p := Profile{ID: u.ID.String(), Name: u.Name, Email: u.Email, IsAdmin: u.IsAdmin, Passwords: s.Users != nil}
 	if u.AvatarKey != nil {
 		// Avatars live in the clips bucket: they are small, server-written and
 		// share the clips bucket's lifecycle rather than a learner's takes.

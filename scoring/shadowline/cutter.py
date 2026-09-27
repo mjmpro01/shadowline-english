@@ -1,6 +1,9 @@
 """The cutting worker.
 
-Cuts each published clip's video out of the recording it was published from.
+Cuts each published clip out of the recording it was published from: its sound
+always, and its video and a still when the recording has a picture. The sound
+used to be cut in the admin's browser and uploaded clip by clip — 220 MB for a
+batch of four hundred, after the recording itself had been sent once already.
 Separate from the scoring worker on purpose: a learner waits on a score, so its
 latency is worth protecting, and a cut is an ffmpeg process that runs for
 seconds while nobody waits on it.
@@ -18,13 +21,14 @@ import sys
 import tempfile
 import time
 import uuid
+from dataclasses import dataclass
 from pathlib import Path
 
 import psycopg
 
 from .cutqueue import CutJob, CutQueue
 from .storage import ObjectMissing, Storage, from_env as storage_from_env
-from .video import CutFailed, cut, ffmpeg_available, has_video_stream, poster
+from .video import CutFailed, cut, cut_audio, ffmpeg_available, has_video_stream, poster
 from . import telemetry
 
 log = logging.getLogger("shadowline.cutter")
@@ -74,36 +78,68 @@ class SourceCache:
         self.key, self.path, self.has_picture = None, None, False
 
 
-def cut_job(job: CutJob, blobs: Storage, sources: SourceCache, workdir: Path) -> tuple[str, str]:
-    """Cuts one clip and stores it. Returns the video and poster keys."""
+@dataclass
+class CutResult:
+    """What one cut produced. A part left None was not needed, or failed — and
+    `problem` says which, when one did."""
+
+    audio_key: str | None = None
+    video_key: str | None = None
+    poster_key: str | None = None
+    problem: str | None = None
+
+
+def cut_job(job: CutJob, blobs: Storage, sources: SourceCache, workdir: Path) -> CutResult:
+    """Cuts one clip and stores what it made.
+
+    The sound and the picture are cut apart and fail apart: a clip whose sound
+    was cut is worth having even if its picture could not be, and the other way
+    round. Only a missing source fails the whole job.
+    """
     try:
         source = sources.fetch(blobs, job.source_key)
     except ObjectMissing as err:
         raise Uncuttable(f"source is missing: {err}") from err
 
-    if not sources.has_picture:
-        raise Uncuttable("the source has no video track")
+    result = CutResult()
+    problems: list[str] = []
 
-    dest = workdir / f"{job.clip_id}.mp4"
-    still = workdir / f"{job.clip_id}.jpg"
-    try:
-        cut(source, job.start, job.end, dest)
-        video_key = f"clip/{job.clip_id}/{uuid.uuid4()}.mp4"
-        blobs.put("clips", video_key, dest, "video/mp4")
+    if job.needs_audio:
+        sound = workdir / f"{job.clip_id}.wav"
+        try:
+            cut_audio(source, job.start, job.end, sound)
+            key = f"clip/{job.clip_id}/{uuid.uuid4()}.wav"
+            blobs.put("clips", key, sound, "audio/wav")
+            result.audio_key = key
+        except CutFailed as err:
+            problems.append(f"sound: {err}")
+        finally:
+            sound.unlink(missing_ok=True)
 
-        # A third of the way in rather than the first frame: a cut often opens
-        # on the tail of a shot change, and the middle of a line is where the
-        # speaker's face actually is.
-        poster(source, job.start + (job.end - job.start) / 3, still)
-        poster_key = f"clip/{job.clip_id}/{uuid.uuid4()}.jpg"
-        blobs.put("clips", poster_key, still, "image/jpeg")
+    if sources.has_picture and job.needs_video:
+        dest = workdir / f"{job.clip_id}.mp4"
+        still = workdir / f"{job.clip_id}.jpg"
+        try:
+            cut(source, job.start, job.end, dest)
+            video_key = f"clip/{job.clip_id}/{uuid.uuid4()}.mp4"
+            blobs.put("clips", video_key, dest, "video/mp4")
 
-        return video_key, poster_key
-    except CutFailed as err:
-        raise Uncuttable(str(err)) from err
-    finally:
-        dest.unlink(missing_ok=True)
-        still.unlink(missing_ok=True)
+            # A third of the way in rather than the first frame: a cut often
+            # opens on the tail of a shot change, and the middle of a line is
+            # where the speaker's face actually is.
+            poster(source, job.start + (job.end - job.start) / 3, still)
+            poster_key = f"clip/{job.clip_id}/{uuid.uuid4()}.jpg"
+            blobs.put("clips", poster_key, still, "image/jpeg")
+            result.video_key, result.poster_key = video_key, poster_key
+        except CutFailed as err:
+            problems.append(f"picture: {err}")
+        finally:
+            dest.unlink(missing_ok=True)
+            still.unlink(missing_ok=True)
+
+    if problems:
+        result.problem = "; ".join(problems)
+    return result
 
 
 def run_once(queue: CutQueue, blobs: Storage, sources: SourceCache, workdir: Path) -> bool:
@@ -118,7 +154,7 @@ def run_once(queue: CutQueue, blobs: Storage, sources: SourceCache, workdir: Pat
         {"job.type": "cut", "clip_id": str(job.clip_id)},
     ) as traced:
         try:
-            video_key, poster_key = cut_job(job, blobs, sources, workdir)
+            result = cut_job(job, blobs, sources, workdir)
         except Uncuttable as err:
             traced["status"] = "rejected"
             # The clip keeps its audio and simply has no picture, which is the state
@@ -132,7 +168,16 @@ def run_once(queue: CutQueue, blobs: Storage, sources: SourceCache, workdir: Pat
             queue.fail(job, "cutting failed")
             return True
 
-        queue.complete(job, video_key, poster_key)
+        if result.problem:
+            # Keep what did come out, and put the job back for the rest — or
+            # give up on it after its attempts, as any failed cut is.
+            traced["status"] = "partial"
+            log.warning("clip %s cut in part: %s", job.clip_id, result.problem)
+            queue.record(job, result.video_key, result.poster_key, result.audio_key)
+            queue.fail(job, result.problem)
+            return True
+
+        queue.complete(job, result.video_key, result.poster_key, result.audio_key)
         log.info("cut clip %s (%.0fms)", job.clip_id, (time.monotonic() - started) * 1000)
         return True
 

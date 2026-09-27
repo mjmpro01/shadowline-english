@@ -126,6 +126,10 @@ export interface Video {
   /** True while the cutter still owes this clip a picture. The player polls
    *  for the video URL in that case rather than giving up after one null. */
   videoPending: boolean
+  /** True while the cutter still owes this clip its sound, which is cut on the
+   *  server a few seconds after publishing. The player asks again until it is
+   *  there; a take recorded meanwhile is scored once it is. */
+  audioPending?: boolean
   /** A still from the clip, for the card. Empty for a clip cut from audio, and
    *  for one whose cut has not finished — both fall back to the play icon. */
   posterUrl: string
@@ -188,6 +192,17 @@ export interface NeedPracticeItem {
   videoId: string
 }
 
+/** An announcement an admin put on a screen. `linkUrl` is a path in the app or
+ *  an https address — the server refuses anything else. */
+export interface Banner {
+  id: string
+  title: string
+  body: string
+  linkUrl: string
+  linkLabel: string
+  imageUrl: string
+}
+
 export interface Profile {
   id: string
   name: string
@@ -196,6 +211,8 @@ export interface Profile {
   avatarUrl: string | null
   /** Decided by the server from ADMIN_EMAILS. The app cannot set it. */
   isAdmin: boolean
+  /** Whether this server keeps passwords (Keycloak), so one can be changed. */
+  passwords?: boolean
 }
 
 export interface AppData {

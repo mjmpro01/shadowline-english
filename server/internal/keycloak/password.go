@@ -216,3 +216,73 @@ func (a *Admin) userinfoName(ctx context.Context, accessToken string) string {
 	}
 	return strings.TrimSpace(info.GivenName + " " + info.FamilyName)
 }
+
+// SetPassword replaces the password of the user with this address. It is the
+// caller's job to have checked the old one: this is the admin API, which asks
+// for none.
+func (a *Admin) SetPassword(ctx context.Context, email, password string) error {
+	if a == nil || a.BaseURL == "" {
+		return fmt.Errorf("keycloak not configured")
+	}
+	id, err := a.findByEmail(ctx, strings.TrimSpace(strings.ToLower(email)))
+	if err != nil {
+		return err
+	}
+	if id == "" {
+		return ErrInvalidCredentials
+	}
+	body, err := json.Marshal(map[string]any{"type": "password", "value": password, "temporary": false})
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut,
+		a.BaseURL+"/admin/realms/"+url.PathEscape(a.Realm)+"/users/"+url.PathEscape(id)+"/reset-password",
+		bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if err := a.authorize(ctx, req); err != nil {
+		return err
+	}
+	resp, err := a.client().Do(req)
+	if err != nil {
+		return fmt.Errorf("set password: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusOK {
+		return nil
+	}
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
+	return fmt.Errorf("set password: %s: %s", resp.Status, bytes.TrimSpace(raw))
+}
+
+// DeleteUser removes the user with this address from Keycloak. One that is not
+// there is already deleted.
+func (a *Admin) DeleteUser(ctx context.Context, email string) error {
+	if a == nil || a.BaseURL == "" {
+		return nil
+	}
+	id, err := a.findByEmail(ctx, strings.TrimSpace(strings.ToLower(email)))
+	if err != nil || id == "" {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete,
+		a.BaseURL+"/admin/realms/"+url.PathEscape(a.Realm)+"/users/"+url.PathEscape(id), nil)
+	if err != nil {
+		return err
+	}
+	if err := a.authorize(ctx, req); err != nil {
+		return err
+	}
+	resp, err := a.client().Do(req)
+	if err != nil {
+		return fmt.Errorf("delete user: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusNotFound {
+		return nil
+	}
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
+	return fmt.Errorf("delete user: %s: %s", resp.Status, bytes.TrimSpace(raw))
+}

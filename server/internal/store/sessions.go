@@ -16,14 +16,14 @@ func (s *Store) CreateSession(ctx context.Context, id string, userID uuid.UUID, 
 	return mapErr(err)
 }
 
+// UserBySession is the signed-in user behind a session id. A suspended
+// account's sessions find nobody, so suspending signs the person out at once
+// rather than when their cookie runs out.
 func (s *Store) UserBySession(ctx context.Context, id string) (User, error) {
-	var u User
-	err := s.pool.QueryRow(ctx, `
-		select u.id, u.email, u.name, u.avatar_key, u.is_admin, u.created_at
+	return scanUser(s.pool.QueryRow(ctx, `
+		select u.id, u.email, u.name, u.avatar_key, u.is_admin, u.created_at, u.suspended_at
 		from sessions s join users u on u.id = s.user_id
-		where s.id = $1 and s.expires_at > now()`,
-		id).Scan(&u.ID, &u.Email, &u.Name, &u.AvatarKey, &u.IsAdmin, &u.CreatedAt)
-	return u, mapErr(err)
+		where s.id = $1 and s.expires_at > now() and u.suspended_at is null`, id))
 }
 
 func (s *Store) DeleteSession(ctx context.Context, id string) error {

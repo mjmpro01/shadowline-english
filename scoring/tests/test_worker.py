@@ -314,3 +314,41 @@ def test_the_word_check_leaves_nothing_behind(tmp_path):
     checker = WordCheck(FakeTranscriber("we were on a break"), tmp_path)
     checker.heard(a_job(), b"pretend audio")
     assert list(tmp_path.iterdir()) == []
+
+
+def clip_of(conn, take_id):
+    return conn.execute("select clip_id from takes where id = %s", (take_id,)).fetchone()[0]
+
+
+def test_a_take_waits_for_its_clips_sound_to_be_cut(db, blobs):
+    """A clip's sound is cut on the server moments after it is published. A
+    take recorded in those moments is scored once the sound is there — not
+    passed over, and not given up on."""
+    store, root = blobs
+    take_id = seed(db, root)
+    clip_id = clip_of(db, take_id)
+    db.execute("update clips set audio_key = null where id = %s", (clip_id,))
+    db.execute("insert into cut_jobs (clip_id) values (%s)", (clip_id,))
+
+    queue = Queue(db)
+    assert queue.claim() is None, "a take was claimed before its clip had a sound"
+    assert take_row(db, take_id)[0] == "pending"
+
+    # The cutter finishes: the sound is there and the job is gone.
+    db.execute("update clips set audio_key = 'clip/one/audio.wav' where id = %s", (clip_id,))
+    db.execute("delete from cut_jobs where clip_id = %s", (clip_id,))
+    assert run_once(queue, store) is True
+    status, score, *_ = take_row(db, take_id)
+    assert status == "scored" and score is not None
+
+
+def test_a_take_whose_clip_never_got_a_sound_is_final_unscored(db, blobs):
+    """The cut gave up: nothing to score against, which is what a take of a
+    clip with no sound has always been — kept, measured, never scored."""
+    store, root = blobs
+    take_id = seed(db, root, clip_audio=None)
+
+    assert Queue(db).claim() is None
+    status, score, *_ = take_row(db, take_id)
+    assert status == "scored" and score is None
+    assert db.execute("select count(*) from scoring_jobs").fetchone()[0] == 0

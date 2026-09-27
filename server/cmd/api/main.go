@@ -120,7 +120,7 @@ func run(log *slog.Logger) error {
 		// Thirty messages in ten minutes is a learner talking through a line in
 		// detail; more than that is somebody holding Enter, and each one is paid
 		// for.
-		srv.TutorLimit = &tutor.Limiter{Max: 30, Window: 10 * time.Minute}
+		srv.TutorLimit = tutor.Limit{Max: 30, Window: 10 * time.Minute}
 		log.Info("tutor enabled", "url", cfg.TutorAPIURL, "model", cfg.TutorModel)
 	} else {
 		log.Info("tutor off — set TUTOR_API_KEY and TUTOR_MODEL to give learners a chat")

@@ -7,6 +7,8 @@ import { parseMarkdown, type Inline } from '../lib/markdown'
 import { askTutor, tutorEnabled, type TutorTurn } from '../lib/tutor'
 import { useClip } from '../lib/useClip'
 import { Icon } from './Icon'
+import { Mascot } from './Mascot'
+import { canSpeak, sayable, speak } from '../lib/speak'
 
 /** A clip's own screens: /library/<id>, and its practice and dub screens. Series
  *  and episode pages are /library/s/… and /library/e/…, which this does not match. */
@@ -130,7 +132,7 @@ export function TutorChat() {
         // a phone not even that — the icon is all there is.
         aria-label={t('tutor.open')}
       >
-        <Icon name="message-square" size={22} />
+        <Mascot mood={busy ? 'think' : 'idle'} size={30} />
         <span className="tutor-launcher-label">{t('tutor.name')}</span>
       </button>
 
@@ -145,34 +147,48 @@ export function TutorChat() {
           }}
         >
           <header className="tutor-head">
-            <div>
+            <Mascot mood={busy ? 'think' : 'happy'} size={40} />
+            <div className="tutor-heading">
               <div className="tutor-title">{t('tutor.name')}</div>
-              {/* Says what the tutor can see, so "this line" is never a guess. */}
-              <div className="tutor-context">
+              {/* Says what the tutor can see, so "this line" is never a guess.
+                  One line, cut short if it must: a long title in full is on
+                  the screen behind, and in the tooltip. */}
+              <div className="tutor-context" title={clip ? clip.title : undefined}>
                 {clip ? t('tutor.about', clip.title) : t('tutor.general')}
               </div>
             </div>
-            <div className="row gap-1">
-              {turns.length > 0 && (
-                <button type="button" className="btn btn-ghost" onClick={restart}>
-                  {t('tutor.restart')}
-                </button>
-              )}
+            {/* Icons, not words: "New chat" in Vietnamese took two lines and
+                pushed the header to three. The name is still there for a
+                screen reader, and as a tooltip. */}
+            {turns.length > 0 && (
               <button
                 type="button"
-                className="btn btn-ghost"
-                aria-label={t('tutor.close')}
-                onClick={() => setOpen(false)}
+                className="tutor-icon-btn"
+                aria-label={t('tutor.restart')}
+                title={t('tutor.restart')}
+                onClick={restart}
               >
-                ✕
+                <Icon name="square-pen" size={18} />
               </button>
-            </div>
+            )}
+            <button
+              type="button"
+              className="tutor-icon-btn"
+              aria-label={t('tutor.close')}
+              title={t('tutor.close')}
+              onClick={() => setOpen(false)}
+            >
+              <Icon name="x" size={18} />
+            </button>
           </header>
 
           <div className="tutor-log" ref={log} aria-live="polite">
             {turns.length === 0 && (
               <div className="stack gap-2">
-                <div className="card-meta">{clip ? t('tutor.introClip') : t('tutor.intro')}</div>
+                <div className="tutor-hello">
+                  <Mascot mood="happy" size={64} />
+                  <div className="tutor-hello-text">{clip ? t('tutor.introClip') : t('tutor.intro')}</div>
+                </div>
                 <div className="stack gap-1">
                   {suggestions.map((key) => (
                     <button
@@ -189,9 +205,16 @@ export function TutorChat() {
             )}
             {turns.map((turn, i) => (
               <div key={i} className={`tutor-turn tutor-${turn.role}`}>
+                {/* The hero beside what it says: a face to talk to, which is
+                    what makes a chat a conversation for a child. */}
+                {turn.role === 'assistant' && (
+                  <span className="tutor-avatar">
+                    <Mascot mood={turn.content ? 'idle' : 'think'} size={28} />
+                  </span>
+                )}
                 {turn.role === 'assistant' ? (
                   turn.content ? (
-                    <Rendered text={turn.content} />
+                    <Rendered text={turn.content} listen={t('tutor.listen')} />
                   ) : (
                     <span className="tutor-thinking">{t('tutor.thinking')}</span>
                   )
@@ -246,7 +269,8 @@ export function TutorChat() {
 }
 
 /** The tutor's answer, from parsed Markdown into elements — never into HTML. */
-function Rendered({ text }: { text: string }) {
+function Rendered({ text, listen }: { text: string; listen: string }) {
+  const inline = (runs: Inline[]) => inlineRuns(runs, canSpeak() ? listen : null)
   return (
     <>
       {parseMarkdown(text).map((block, i) =>
@@ -277,13 +301,31 @@ function Rendered({ text }: { text: string }) {
   )
 }
 
-function inline(runs: Inline[]): ReactNode {
+/** The runs of one line. An English phrase in bold or italics — the tutor's
+ *  examples — is a button that says it, where the browser can speak. */
+function inlineRuns(runs: Inline[], listen: string | null): ReactNode {
+  const say = (text: string, element: ReactNode, key: number) =>
+    listen && sayable(text) ? (
+      <button
+        type="button"
+        key={key}
+        className="tutor-say"
+        title={listen}
+        aria-label={`${listen}: ${text}`}
+        onClick={() => speak(text)}
+      >
+        {element}
+        <Icon name="volume" size={13} />
+      </button>
+    ) : (
+      <Fragment key={key}>{element}</Fragment>
+    )
   return runs.map((run, i) => {
     switch (run.kind) {
       case 'bold':
-        return <strong key={i}>{run.text}</strong>
+        return say(run.text, <strong>{run.text}</strong>, i)
       case 'italic':
-        return <em key={i}>{run.text}</em>
+        return say(run.text, <em>{run.text}</em>, i)
       case 'code':
         return (
           <code key={i} className="mono">

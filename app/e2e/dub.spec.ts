@@ -148,7 +148,7 @@ test('the practice screen shows the clip in its own frame', async ({ page }) => 
 })
 
 // An audio clip has no picture, so the frame carries the clip's own face
-// instead: the tint it is given everywhere else, which is what keeps it looking
+// instead: the tint and topic icon it is given everywhere else, which is what keeps it looking
 // like itself rather than turning into an anonymous box the moment it is
 // opened. No line printed on it — the line is directly below, with every word
 // tappable, and that copy is the useful one.
@@ -163,7 +163,9 @@ test('a clip with no video wears its own tint in the frame', async ({ page }) =>
 
   const face = page.locator('.practice-video .thumb-face')
   await expect(face).toBeVisible()
-  await expect(face).toHaveText('')
+  // The icon of its topic ("daily"), and not the line.
+  await expect(face).toHaveText('🏡')
+  await expect(face.locator('.thumb-face-line')).toHaveCount(0)
   // Still no player, which is the part that matters: there is nothing to play.
   await expect(page.locator('video')).toHaveCount(0)
 })

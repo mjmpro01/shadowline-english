@@ -75,10 +75,14 @@ test('the details say what is left to do, and retry only offers itself when ther
   const row = page.locator('.card', { hasText: 'lesson.wav' })
   await row.getByRole('button', { name: 'Details' }).click()
 
-  await expect(row.getByText('Clips published')).toBeVisible()
-  await expect(row.getByText('4', { exact: true })).toBeVisible()
-  // Audio, so there is no picture to wait for and no cut to count.
+  await expect(row.locator('.row', { hasText: 'Clips published' })).toContainText('4')
+  // The clips' sound is cut on the server now, from the recording, so the
+  // history counts that work until the cutter is through it — and then every
+  // clip has its sound and none is left owing one. (The status itself stays on
+  // its transcript here: there is no speech model in this environment.)
+  await expect(row.getByText('Clips with no audio')).toHaveCount(0, { timeout: 60_000 })
   await expect(row.getByText('Cuts still to do')).toHaveCount(0)
+  await expect(row.getByText('Cuts given up on')).toHaveCount(0)
 
   // With nothing given up, there is nothing to put back — and a button that
   // starts nothing is worse than no button.

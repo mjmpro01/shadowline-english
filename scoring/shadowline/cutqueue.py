@@ -33,6 +33,10 @@ class CutJob:
     content_type: str
     start: float
     end: float
+    # What the clip is still missing. Its sound is cut here now, not uploaded;
+    # a clip published by an older studio arrives with it already.
+    needs_audio: bool = True
+    needs_video: bool = True
 
 
 class CutQueue:
@@ -67,7 +71,9 @@ class CutQueue:
                   and s.id = c.source_id
                 returning cut_jobs.id, cut_jobs.clip_id, cut_jobs.attempts,
                           s.key as source_key, s.content_type,
-                          c.start_seconds, c.end_seconds
+                          c.start_seconds, c.end_seconds,
+                          c.audio_key is null as needs_audio,
+                          c.video_key is null as needs_video
                 """,
                 (row["id"],),
             )
@@ -85,17 +91,31 @@ class CutQueue:
                 content_type=claimed["content_type"],
                 start=claimed["start_seconds"],
                 end=claimed["end_seconds"],
+                needs_audio=claimed["needs_audio"],
+                needs_video=claimed["needs_video"],
             )
 
-    def complete(self, job: CutJob, video_key: str, poster_key: str) -> None:
-        """Record both keys and remove the job at once, so a clip never reads as
-        having a video while its job is still queued."""
-        with self.conn.transaction(), self.conn.cursor() as cur:
-            cur.execute(
-                "update clips set video_key = %s, poster_key = %s where id = %s",
-                (video_key, poster_key, job.clip_id),
-            )
-            cur.execute("delete from cut_jobs where id = %s", (job.id,))
+    def record(self, job: CutJob, video_key: str | None, poster_key: str | None,
+               audio_key: str | None) -> None:
+        """Write down what a cut produced, leaving whatever it did not produce as
+        it was. An uploaded sound is never replaced by a cut one."""
+        self.conn.execute(
+            """
+            update clips set video_key = coalesce(%s, video_key),
+                             poster_key = coalesce(%s, poster_key),
+                             audio_key = coalesce(audio_key, %s)
+            where id = %s
+            """,
+            (video_key, poster_key, audio_key, job.clip_id),
+        )
+
+    def complete(self, job: CutJob, video_key: str | None, poster_key: str | None,
+                 audio_key: str | None = None) -> None:
+        """Record the keys and remove the job at once, so a clip never reads as
+        having its sound or picture while its job is still queued."""
+        with self.conn.transaction():
+            self.record(job, video_key, poster_key, audio_key)
+            self.conn.execute("delete from cut_jobs where id = %s", (job.id,))
 
     def fail(self, job: CutJob, reason: str) -> None:
         """Put the job back, or give up once it has had its attempts.

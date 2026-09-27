@@ -109,6 +109,77 @@ export interface EpisodePatch {
   published?: boolean
 }
 
+/** An announcement on a learner's screen, as `server/internal/store/banners.go`
+ *  keeps it. */
+export interface Banner {
+  id: string
+  title: string
+  body: string
+  linkUrl: string
+  linkLabel: string
+  imageUrl: string
+  placement: BannerPlacement
+  /** The app language it is for, or '' for everybody. */
+  locale: string
+  startsAt: string | null
+  endsAt: string | null
+  enabled: boolean
+  position: number
+  createdAt: string
+  updatedAt: string
+}
+
+export type BannerPlacement = 'dashboard' | 'library'
+
+/** Everything the form writes; the same shape creates and replaces. */
+export type BannerInput = Omit<Banner, 'id' | 'imageUrl' | 'createdAt' | 'updatedAt'>
+
+/** One person, as the console's list shows them. */
+export interface Account {
+  id: string
+  email: string
+  name: string
+  isAdmin: boolean
+  /** Made an admin in the console, as opposed to by ADMIN_EMAILS. */
+  adminGranted: boolean
+  /** In ADMIN_EMAILS: always an admin, and out of the console's reach. */
+  owner: boolean
+  suspendedAt: string | null
+  createdAt: string
+  lastSignedIn: string | null
+  takes: number
+  questions: number
+}
+
+export type AccountFilter = '' | 'admins' | 'suspended'
+
+/** One day of the tutor's use, as `server/internal/store/tutorusage.go` counts it. */
+export interface TutorDay {
+  day: string
+  questions: number
+  learners: number
+  failed: number
+  promptTokens: number
+  completionTokens: number
+}
+
+export interface TutorLearner {
+  userId: string
+  email: string
+  name: string
+  questions: number
+  promptTokens: number
+  completionTokens: number
+  lastAsked: string
+}
+
+export interface TutorUsage {
+  days: TutorDay[]
+  learners: TutorLearner[]
+  model: string
+  limit: { questions: number; windowMinutes: number }
+}
+
 export const repository = {
   async me(): Promise<Profile | null> {
     const { user } = await api.get<{ user: Profile | null }>('/auth/me')
@@ -186,6 +257,47 @@ export const repository = {
 
   upload(id: string) {
     return api.get<{ upload: Upload; clips: Video[] }>(`/api/admin/uploads/${id}`)
+  },
+
+  banners() {
+    return api.get<Banner[]>('/api/admin/banners')
+  },
+
+  createBanner(input: BannerInput) {
+    return api.send<Banner>('POST', '/api/admin/banners', input)
+  },
+
+  updateBanner(id: string, input: BannerInput) {
+    return api.send<Banner>('PUT', `/api/admin/banners/${id}`, input)
+  },
+
+  deleteBanner(id: string) {
+    return api.del(`/api/admin/banners/${id}`)
+  },
+
+  /** Sets a banner's picture, replacing any it had. PNG, JPEG or WebP, 3 MB. */
+  bannerImage(id: string, image: File) {
+    return api.upload<Banner>('PUT', `/api/admin/banners/${id}/image`, image)
+  },
+
+  removeBannerImage(id: string) {
+    return api.del(`/api/admin/banners/${id}/image`)
+  },
+
+  /** Everybody who has signed in, newest first, a page at a time. */
+  accounts(query: string, filter: AccountFilter, limit: number, offset: number) {
+    const params = new URLSearchParams({ q: query, filter, limit: String(limit), offset: String(offset) })
+    return api.get<{ users: Account[]; total: number }>(`/api/admin/users?${params.toString()}`)
+  },
+
+  /** Gives or takes admin rights, or suspends or restores an account. */
+  setAccess(id: string, change: { admin?: boolean; suspended?: boolean }) {
+    return api.send<Account>('PATCH', `/api/admin/users/${id}`, change)
+  },
+
+  /** What the tutor has cost over the last `days` days: by day and by learner. */
+  tutorUsage(days: number) {
+    return api.get<TutorUsage>(`/api/admin/tutor/usage?days=${days}`)
   },
 
   /** Puts the work that gave up back on the queue. Answers with how much, so

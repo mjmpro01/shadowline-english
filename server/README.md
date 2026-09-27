@@ -100,7 +100,7 @@ Three settings have to agree or the round trip breaks:
 | --- | --- |
 | `OAUTH_REDIRECT_URL` | character-for-character one of the authorised redirect URIs |
 | `APP_ORIGIN` | where the React app is actually served — it is both the CORS origin and where the callback sends the browser afterwards |
-| `ADMIN_EMAILS` | the addresses that get the admin console, checked at sign-in |
+| `ADMIN_EMAILS` | the owners: always admins, checked at sign-in. Others are made admins in the console |
 
 When something goes wrong the callback does not answer with an error body: it is
 a browser navigation, and one would leave the learner on this server's origin
@@ -164,8 +164,59 @@ anything a real browser reaches over https is somewhere a stranger can reach
 too. It is a guard, not a guarantee — an http deployment can still be public, so
 never set the flag outside tests.
 
-Admin is decided by `ADMIN_EMAILS` at sign-in, and every admin route re-checks
-it server-side. The app's `RequireAdmin` route only hides the screen.
+Every admin route re-checks admin rights server-side; the app's `RequireAdmin`
+route only hides the screen.
+
+**Who is an admin.** `ADMIN_EMAILS` are the owners: admins at every sign-in,
+whatever else happens, so a deployment cannot lock itself out. Anybody else is
+made an admin, or stops being one, on the console's **Users** page, and that is
+written down (`users.admin_granted`) — sign-ins used to recompute `is_admin`
+from `ADMIN_EMAILS` alone and so took such rights back. `is_admin` is still the
+column requests read, kept equal to "an owner, or granted", and a change takes
+effect on the session the person already has.
+
+The console refuses two changes: your own access (the one mistake nobody could
+then undo from the console) and an owner's (change `ADMIN_EMAILS`).
+
+**Suspending** an account deletes its sessions and stops `UserBySession` finding
+it, so the person is signed out at once; signing in again ends at
+`/login?error=suspended`. Nothing is deleted, and restoring it is one click.
+
+## A learner's own account
+
+The Profile screen's **Your data** card:
+
+- **Download my data** — `GET /api/account/export`, one JSON file: the profile,
+  every take with the line it was of, its scores and links to the recording and
+  dub (signed for 24 hours — the file says so), the vocabulary, and when the
+  tutor was asked (its questions were never stored).
+- **Change password** — `POST /api/account/password`, only where Keycloak is set
+  up (the profile's `passwords` says so). The current password is checked with
+  the same grant that signs in, so a session left open on a shared computer is
+  not enough to lock the owner out; a Google-only account is told to set one
+  with "forgot password".
+- **Delete my account** — `DELETE /api/account` with the account's own address
+  typed to confirm. Rows go first in one transaction (takes, words, sessions,
+  questions all cascade from the user), then the avatar, every recording and
+  dub, and the Keycloak user; a failure after the rows are gone is logged, not
+  reported, since the account is deleted either way. Signing in again later
+  starts a new, empty account.
+
+## Banners
+
+Announcements an admin writes on the console's **Banners** page and a learner
+sees at the top of the dashboard or the library (`GET /api/banners?placement=…
+&locale=…`). One is shown while it is on and inside its window — both ends
+optional, judged by the database's clock so every instance agrees — and when it
+is for the learner's app language or for every language (`vi-VN` counts as
+`vi`). Lower `position` first.
+
+A banner is shown to everybody, so its link is checked on the way in: a path
+inside the app (`/library`, not `//host`) or an `https://` address, and nothing
+else — no `javascript:`, no `http:`. A picture is PNG, JPEG or WebP up to 3 MB,
+stored beside the avatars and signed per request; replacing or deleting one
+deletes the old object. A learner can close a banner, and that is remembered in
+their browser only.
 
 ## Clip video
 
@@ -180,7 +231,16 @@ the way it slices a wav, so the cut happens here:
    `cut_jobs` is written in the same transaction as the clip. There is no moment
    where a clip promises a picture with nothing scheduled to produce one.
 3. The cutter (`python -m shadowline.cutter`) claims a job, runs ffmpeg, stores
-   the mp4 and records `clips.video_key`.
+   the clip's **sound** (mono 16-bit WAV at 48 kHz, `clips.audio_key`) and, when
+   the recording has a picture, the mp4 (`clips.video_key`). Every clip with a
+   stored source gets a job, audio uploads included: the sound used to be cut in
+   the admin's browser and uploaded clip by clip, 220 MB for a batch of 400, and
+   is not any more. The sound and the picture fail apart — whichever came out
+   is kept and the job goes back for the rest — and a sound already uploaded
+   (an older studio, or a recording that never reached the server) is kept.
+   While the sound is owed the clip says `audioPending`; a take recorded
+   meanwhile is queued, and the scorer passes over it until the sound is there
+   (or scores nothing if the cut gives up), instead of keeping it unscored.
 4. `GET /api/clips/{id}/video` answers with a signed URL, or null.
 
 The cutter takes a still in the same run, a third of the way into the clip —
@@ -432,10 +492,18 @@ beside the first's 58 to hold that.
 **It costs money per message, so it is bounded.** The last 20 turns go to the
 model and no more; a question can be 2,000 characters; an answer is capped at 700
 tokens; and a learner gets 30 questions per 10 minutes, after which the answer is
-a 429 with `Retry-After` and the router is not called at all. The limit is in
-memory, which is right for one API instance — a second replica would give each
-learner the allowance twice, and the day there is one it wants to move into
-Postgres.
+a 429 with `Retry-After` and the router is not called at all.
+
+**Every question is written down, and the limit is counted from that.** A row in
+`tutor_questions` per question — who, when, which model, which clip, how it
+ended, and the tokens the router reported on the stream's last chunk (it does
+when asked with `stream_options.include_usage`). The question's text is not
+kept. The limit counts those rows under a lock on the learner's own row, so a
+restart does not reset it and every replica sees the same count; it used to live
+in the API's memory. The console's **Tutor usage** page
+(`GET /api/admin/tutor/usage?days=30`) reads the same rows back by day and by
+learner. An answer the learner stopped never reaches the chunk with the counts,
+so it is a question with no tokens.
 
 **It streams.** Server-sent events: `{"delta": "…"}` per piece, `{"done": true}`
 at the end, `{"error": "…"}` if the model fails part-way. Headers are held back

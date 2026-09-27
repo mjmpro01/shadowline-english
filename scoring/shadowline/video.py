@@ -80,6 +80,51 @@ def cut(source: Path, start: float, end: float, dest: Path) -> None:
         raise CutFailed("ffmpeg produced nothing")
 
 
+# The clip's sound as the studio used to make it in the browser: 16-bit PCM WAV,
+# one channel, at 48 kHz. Kept the same so a clip cut here and one cut before
+# play and score alike; the scorer decodes whatever it is given anyway.
+AUDIO_RATE = 48000
+
+
+def cut_audio(source: Path, start: float, end: float, dest: Path) -> None:
+    """Writes seconds [start, end) of source's sound to dest as mono WAV."""
+    duration = end - start
+    if duration <= 0:
+        raise CutFailed(f"clip has no length: {start} to {end}")
+
+    command = [
+        "ffmpeg",
+        "-nostdin",
+        "-loglevel", "error",
+        "-accurate_seek",
+        "-ss", f"{start:.3f}",
+        "-i", str(source),
+        "-t", f"{duration:.3f}",
+        "-vn",
+        "-ac", "1",
+        "-ar", str(AUDIO_RATE),
+        "-c:a", "pcm_s16le",
+        "-y",
+        str(dest),
+    ]
+    try:
+        done = subprocess.run(
+            command, capture_output=True, timeout=CUT_TIMEOUT_SECONDS, check=False
+        )
+    except subprocess.TimeoutExpired as err:
+        raise CutFailed(f"ffmpeg timed out after {CUT_TIMEOUT_SECONDS}s") from err
+    except FileNotFoundError as err:
+        raise CutFailed("ffmpeg is not installed") from err
+
+    if done.returncode != 0:
+        detail = done.stderr.decode("utf-8", "replace").strip().splitlines()
+        raise CutFailed(detail[-1] if detail else f"ffmpeg exited {done.returncode}")
+    # A WAV header alone is 44 bytes: anything that small has no sound in it,
+    # which is what a source with no audio track produces.
+    if not dest.exists() or dest.stat().st_size <= 44:
+        raise CutFailed("the source has no sound at that point")
+
+
 def has_video_stream(path: Path) -> bool:
     """Whether the file has a picture at all.
 

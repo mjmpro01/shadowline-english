@@ -122,7 +122,7 @@ export function ProgressScreen() {
         <div className="card elev-sm row between gap-3">
           <div className="stack gap-1">
             <div className="card-kicker">{filter === 'All' ? t('progress.scoreToday') : t('progress.metricToday', t(`metric.${filter}`))}</div>
-            <div style={{ fontSize: 13, opacity: 0.75 }}>
+            <div style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>
               {t('progress.oneDay')}
             </div>
           </div>
@@ -153,7 +153,7 @@ export function ProgressScreen() {
             <circle key={dot.day} cx={dot.cx} cy={dot.cy} r="4" fill={colorFor(dot.value)} />
           ))}
         </svg>
-        <div className="row between mono" style={{ marginTop: 2, fontSize: 10, color: 'var(--color-neutral-600)' }}>
+        <div className="row between mono" style={{ marginTop: 2, fontSize: 12, color: 'var(--color-neutral-600)' }}>
           {dots.map((dot) => (
             <span key={dot.day}>{dot.label}</span>
           ))}
@@ -213,7 +213,8 @@ export function ProgressScreen() {
               <ClipFace
                 id={suggested.id}
                 posterUrl={suggested.posterUrl}
-                line={suggested.captions[0]?.text ?? ''}
+                line=""
+                categories={suggested.categories}
               />
             </span>
             <span style={{ minWidth: 0 }}>
@@ -221,7 +222,7 @@ export function ProgressScreen() {
                 {suggested.title}
               </span>
               <span className="card-meta">{suggested.playlist || suggested.source}</span>
-              <span style={{ fontSize: 13, opacity: 0.75, marginTop: 4, display: 'block' }}>
+              <span style={{ fontSize: 14, color: 'var(--color-text-muted)', marginTop: 4, display: 'block' }}>
                 {weakest
                   ? t('progress.workOn', t(`metric.${weakest}`))
                   : practised.has(suggested.id)

@@ -64,7 +64,9 @@ func (s *Server) handleCreateTake(w http.ResponseWriter, r *http.Request) {
 
 	// A clip with no source audio has nothing to score against. The take is
 	// still kept — the app draws its contour — it just never claims a score.
-	take, err := s.Store.CreateTakeWithJob(r.Context(), u.ID, clipID, key, clip.AudioKey != nil)
+	// A clip whose sound is still being cut will have it in moments: the take is
+	// queued, and the scorer waits for the sound rather than giving up on it.
+	take, err := s.Store.CreateTakeWithJob(r.Context(), u.ID, clipID, key, clip.AudioKey != nil || clip.AudioPending)
 	if err != nil {
 		// The row failed but the object is already stored; drop it rather than
 		// leave an object no row will ever point at.

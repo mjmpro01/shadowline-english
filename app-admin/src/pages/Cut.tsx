@@ -80,6 +80,9 @@ export function Cut() {
   const [savedSilent, setSavedSilent] = useState(0)
   /** Whether the batch just published is having its video cut. */
   const [savedVideo, setSavedVideo] = useState(false)
+  // Whether the batch is being cut on the server — its sound, and its picture
+  // when there is one — rather than having gone up already cut.
+  const [savedOnServer, setSavedOnServer] = useState(false)
   const [frames, setFrames] = useState<(string | null)[]>(left?.frames ?? [])
   /** The upload on the server, which the transcript and the cut both hang off.
    *  Null while it is still going up, or if it failed. */
@@ -440,7 +443,13 @@ export function Cut() {
           categories: parseCategories(line.categories),
           start: segment.start,
           end: segment.end,
-          audio: sliceToWav(loaded.samples, loaded.sampleRate, segment.start, segment.end),
+          // Cut on the server when the recording is there: the cutter reads
+          // it for the picture already, and slicing here meant uploading 220 MB
+          // of WAV for a batch of four hundred. Sliced here only when the
+          // recording never made it up, so the clips still have a sound.
+          audio: uploadedId
+            ? undefined
+            : sliceToWav(loaded.samples, loaded.sampleRate, segment.start, segment.end),
         })),
         // Already on the server since the file was opened, so publishing sends
         // an id rather than the recording all over again.
@@ -461,6 +470,7 @@ export function Cut() {
     setSaved(result.published)
     setSavedSilent(result.withoutAudio)
     setSavedVideo(loaded.isVideo)
+    setSavedOnServer(result.cutOnServer)
     setLoaded((previous) => {
       if (previous) URL.revokeObjectURL(previous.url)
       return null
@@ -590,12 +600,7 @@ export function Cut() {
           {savedSilent > 0 && (
             <div className="card-meta">{t('studio.publishedSilent', savedSilent)}</div>
           )}
-          {savedVideo && (
-            <div className="card-meta">
-              Their video is being cut in the background — learners can practise the audio meanwhile,
-              and the picture appears when each cut is done.
-            </div>
-          )}
+          {savedOnServer && <div className="card-meta">{t('studio.cutOnServer', savedVideo)}</div>}
         </div>
       )}
 

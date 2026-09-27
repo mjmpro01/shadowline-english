@@ -61,14 +61,22 @@ export function pointsToNextTier(score: number): number | null {
   return (score >= 50 ? 75 : 50) - score
 }
 
-/** Tints for a clip that has no still of its own.
+/** Faces for a clip that has no still of its own.
  *
- * Six rather than a full spectrum, all dark enough for the app's cream text to
- * sit on them, all within the palette's own world. A generated hue would give
- * a library of cards that clash with each other and with the amber the rest of
- * the app is built from.
+ * Six gradients rather than a generated hue: bright enough to make a grid of
+ * clips something a child wants to tap, deep enough at the bottom for white
+ * type, and all from the forest — honey, moss, lake, berry, dusk and ember —
+ * so they sit with the amber and the menu instead of clashing with them. They
+ * read the same on the light theme and the dark one.
  */
-const TILE_TINTS = ['#3b3326', '#2f3a2d', '#3d2f2b', '#2a323a', '#372e39', '#26363a']
+const TILE_TINTS = [
+  'linear-gradient(155deg, #f7c948 0%, #e08a1e 100%)',
+  'linear-gradient(155deg, #8fd46b 0%, #3f8f47 100%)',
+  'linear-gradient(155deg, #6cc6f0 0%, #2f73c2 100%)',
+  'linear-gradient(155deg, #f59aa8 0%, #d2476a 100%)',
+  'linear-gradient(155deg, #b69cf5 0%, #6c4fc4 100%)',
+  'linear-gradient(155deg, #ffae73 0%, #de5b2b 100%)',
+]
 
 /** Which tint a clip gets. Deterministic, so a clip looks the same every time
  *  it is loaded and different from the one beside it — which is the whole job:

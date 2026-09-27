@@ -104,6 +104,10 @@ func (s *Server) issuePasswordSession(w http.ResponseWriter, r *http.Request, em
 		s.failErr(w, err, "upsert user")
 		return
 	}
+	if user.SuspendedAt != nil {
+		fail(w, http.StatusForbidden, "this account has been suspended")
+		return
+	}
 	if err := s.Sessions.Issue(r.Context(), w, user.ID); err != nil {
 		s.failErr(w, err, "issue session")
 		return

@@ -18,22 +18,32 @@ async function practisePublished(page: import('@playwright/test').Page): Promise
   await page.waitForURL('**/practice')
 }
 
-test('signing in lands on the dashboard', async ({ page }) => {
+// A new learner is given one thing to do, not four tiles of zeros and a
+// leaderboard of nobody.
+test('signing in for the first time lands on a first step', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
-  await expect(page.locator('.stat-tile', { hasText: 'Clips practised' })).toBeVisible()
-  await expect(page.locator('.stat-tile', { hasText: 'Day streak' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Start your journey' })).toBeVisible()
+  await expect(page.locator('.stat-tile')).toHaveCount(0)
 })
 
-// The four invented peers are gone. An app nobody has scored in ranks nobody,
-// rather than showing a plausible crowd.
-test('the leaderboard is empty until someone has a scored take', async ({ page }) => {
-  await expect(page.getByText('Nobody has a scored take yet')).toBeVisible()
+// The four invented peers are gone, and so is the empty board: an app nobody
+// has scored in ranks nobody, and says nothing about it.
+test('the leaderboard is not shown until someone has a scored take', async ({ page }) => {
+  await expect(page.getByText('Leaderboard', { exact: true })).toHaveCount(0)
   await expect(page.getByText('(You)')).toHaveCount(0)
+})
+
+test('the first step leads straight into practising a featured clip', async ({ page }) => {
+  await publishLesson(page)
+  await feature(page, 'Shadow this line 1')
+  await asLearner(page)
+  await page.getByRole('button', { name: 'Practise my first line' }).click()
+  await expect(page).toHaveURL(/\/practice$/)
+  await expect(page.getByRole('button', { name: 'Record', exact: true })).toBeVisible()
 })
 
 test('a scored take puts you on the leaderboard and counts a day of practice', async ({ page }) => {
   const tile = (label: string) => page.locator('.stat-tile', { hasText: label }).locator('.mono')
-  await expect(tile('Takes recorded')).toHaveText('0')
 
   await publishLesson(page)
   await asLearner(page)
@@ -51,7 +61,7 @@ test('a scored take puts you on the leaderboard and counts a day of practice', a
   // The row is the server's, computed from the take that was just scored.
   await expect(tile('Average score')).not.toHaveText('—')
   await expect(page.getByText('(You)')).toBeVisible()
-  await expect(page.getByText('Nobody has a scored take yet')).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Start your journey' })).toHaveCount(0)
 })
 
 // Two learners, two rows, each seeing their own marked. The old dashboard could

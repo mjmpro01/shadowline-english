@@ -24,7 +24,9 @@ export interface NewClip {
   categories: string[]
   start: number
   end: number
-  audio: Blob
+  /** The clip's sound, sliced in the browser — only when the recording is not
+   *  on the server to be cut there. */
+  audio?: Blob
 }
 
 /**
@@ -52,6 +54,9 @@ export interface PublishResult {
    * audio back rather than discovering it from a learner.
    */
   withoutAudio: number
+  /** The server is cutting the batch from its recording: sound always, and
+   *  the picture when there is one. */
+  cutOnServer: boolean
 }
 
 /**
@@ -69,7 +74,7 @@ export async function publishClips(
   // A clip is one line: nothing longer is sent, whatever the studio's UI allowed
   // while the cuts were being adjusted. The server checks too.
   const withinLimit = clips.filter((c) => c.end - c.start <= MAX_CLIP_SECONDS + 0.01)
-  if (withinLimit.length === 0) return { published: 0, withoutAudio: 0 }
+  if (withinLimit.length === 0) return { published: 0, withoutAudio: 0, cutOnServer: false }
 
   // Unnamed clips are numbered across the batch, continuing from whatever the
   // playlist already holds. Asked of the server: it is a fact about the
@@ -105,7 +110,12 @@ export async function publishClips(
     onProgress?.({ stage: 'clips', done: created.length, total: withinLimit.length })
   }
 
-  // Audio goes up per clip, after the ids exist, a few at a time.
+  // With the recording on the server, that is all: the cutter makes each clip's
+  // sound from it, as it makes the picture.
+  if (sourceId) return { published: created.length, withoutAudio: 0, cutOnServer: true }
+
+  // Otherwise the sound sliced here goes up per clip, after the ids exist, a
+  // few at a time.
   //
   // It was every clip at once. The browser only runs six requests to a host
   // anyway, so the rest sat in a queue nothing could see, and one rejection
@@ -113,7 +123,13 @@ export async function publishClips(
   // ends up half in the library with no word about it.
   let done = 0
   let withoutAudio = 0
-  const queue = created.map((clip, index) => ({ id: clip.id, audio: withinLimit[index].audio }))
+  const queue = created.flatMap((clip, index) => {
+    const audio = withinLimit[index].audio
+    return audio ? [{ id: clip.id, audio }] : []
+  })
+  // Any clip with nothing to send is a clip without a sound; counted now,
+  // because the workers below empty the queue as they go.
+  withoutAudio += created.length - queue.length
   const workers = Array.from({ length: Math.min(AUDIO_AT_ONCE, queue.length) }, async () => {
     for (let next = queue.shift(); next; next = queue.shift()) {
       try {
@@ -126,5 +142,5 @@ export async function publishClips(
   })
   await Promise.all(workers)
 
-  return { published: created.length, withoutAudio }
+  return { published: created.length, withoutAudio, cutOnServer: false }
 }

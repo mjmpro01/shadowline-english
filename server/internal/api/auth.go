@@ -18,6 +18,7 @@ const (
 	loginErrCancelled = "cancelled" // the provider says the learner declined
 	loginErrFailed    = "failed"    // the code would not exchange
 	loginErrServer    = "server"    // our fault, and already logged
+	loginErrSuspended = "suspended" // an admin suspended the account
 )
 
 // handleAuthStart sends the browser to Google (or the fake provider).
@@ -118,6 +119,10 @@ func (s *Server) finishAuth(w http.ResponseWriter, r *http.Request, provider aut
 	user, err := s.Store.UpsertUser(r.Context(), identity.Email, identity.Name, s.Cfg.IsAdmin(identity.Email))
 	if err != nil {
 		s.failLogin(w, r, loginErrServer, err, "upsert user")
+		return
+	}
+	if user.SuspendedAt != nil {
+		s.failLogin(w, r, loginErrSuspended, nil, "")
 		return
 	}
 
