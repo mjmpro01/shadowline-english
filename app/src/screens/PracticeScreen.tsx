@@ -7,6 +7,7 @@ import { useT } from '../i18n'
 import { ClipPlayer } from '../components/ClipPlayer'
 import { DubExport } from '../components/DubExport'
 import { Celebrate } from '../components/Celebrate'
+import type { Mood } from '../components/Mascot'
 import { ClipFace } from '../components/ClipFace'
 import { Icon } from '../components/Icon'
 import { ScoreBadge } from '../components/ScoreBadge'
@@ -61,7 +62,7 @@ export function PracticeScreen() {
   // A take that has just landed in gold, for the hero to cheer. Only ever set
   // from a recording made on this screen, so reopening an old take never
   // throws confetti at anybody.
-  const [cheer, setCheer] = useState<string | null>(null)
+  const [cheer, setCheer] = useState<{ message: string; mood: Mood } | null>(null)
   const endCheer = useCallback(() => setCheer(null), [])
   const sourcePlayer = useRef<HTMLMediaElement | null>(null)
   // Stable, so the element is not detached and reattached every render.
@@ -98,7 +99,11 @@ export function PracticeScreen() {
         if (attempt.current === mine) {
           setTake(scored)
           if (scored.score !== null && scored.score >= 75) {
-            setCheer(scored.score >= 90 ? t('practice.cheerTop') : t('practice.cheerGold'))
+            setCheer(
+              scored.score >= 90
+                ? { message: t('practice.cheerTop'), mood: 'jump' }
+                : { message: t('practice.cheerGold'), mood: 'cheer' },
+            )
           }
         }
       } finally {
@@ -179,7 +184,7 @@ export function PracticeScreen() {
 
   return (
     <div className="stack gap-4" style={{ maxWidth: 820 }}>
-      {cheer && <Celebrate message={cheer} onDone={endCheer} />}
+      {cheer && <Celebrate message={cheer.message} mood={cheer.mood} onDone={endCheer} />}
       <div className="row between wrap gap-2">
         <h2 style={{ margin: 0 }}>{video.title}</h2>
         <div className="tag tag-neutral mono">
