@@ -161,6 +161,15 @@ export const vi: Messages = {
   'transcript.uploading': 'Đang gửi bản thu lên máy chủ. Chép lời bắt đầu khi gửi xong.',
   'transcript.uploadFailed':
     'Bản thu chưa tới được máy chủ, nên không có gì để chép lời. Hãy gõ câu thoại, hoặc tải file lên lại.',
+  'transcript.announceFailedWhy': (reason: string) => `Máy chủ không nhận bản thu: ${reason}`,
+  'transcript.sendFailedWhy': (reason: string) => `File chưa gửi xong: ${reason}`,
+  'transcript.resend': 'Gửi lại file',
+  'transcript.hint.api':
+    'API không trả lời. Kiểm tra API có đang chạy (go run ./cmd/api trong server/, hoặc docker compose up -d api).',
+  'transcript.hint.store':
+    'Kho file (MinIO hoặc S3) không nhận file. Kiểm tra nó có đang chạy: docker compose up -d minio',
+  'transcript.hint.tooLarge': 'Bản thu tối đa 2 GB. Hãy cắt ngắn hoặc nén file lại.',
+  'transcript.hint.signIn': 'Phiên đăng nhập đã hết. Đăng nhập lại rồi gửi lại file.',
   'transcript.checking': 'Đang hỏi máy chủ về phần chép lời…',
   'transcript.queued': (ahead: number, waited: string) =>
     ahead === 0

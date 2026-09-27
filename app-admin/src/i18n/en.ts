@@ -167,6 +167,17 @@ export const en = {
     'Sending the recording to the server. Transcription starts once it has landed.',
   'transcript.uploadFailed':
     'The recording never reached the server, so nothing could transcribe it. Type the lines, or load the file again.',
+  'transcript.announceFailedWhy': (reason: string) =>
+    `The server would not take the upload: ${reason}`,
+  'transcript.sendFailedWhy': (reason: string) =>
+    `The file did not finish sending: ${reason}`,
+  'transcript.resend': 'Send the file again',
+  'transcript.hint.api':
+    'The API is not answering. Check that it is running (go run ./cmd/api in server/, or docker compose up -d api).',
+  'transcript.hint.store':
+    'The file store (MinIO or S3) did not take it. Check that it is running: docker compose up -d minio',
+  'transcript.hint.tooLarge': 'Recordings are limited to 2 GB. Cut the file shorter, or compress it.',
+  'transcript.hint.signIn': 'The session has ended. Sign in again, then send the file again.',
   'transcript.checking': 'Asking the server about the transcript…',
   'transcript.queued': (ahead: number, waited: string) =>
     ahead === 0

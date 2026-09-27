@@ -45,12 +45,16 @@ export function TranscriptStatus({
   transcript,
   uploading,
   onRetry,
+  onResend,
 }: {
   transcript: Transcript | null
   /** The recording is still on its way to the server. */
   uploading: boolean
   /** Queues the recording again; absent when there is nothing to retry. */
   onRetry?: () => Promise<void>
+  /** Sends the recording again after it failed to go up; absent when the file
+   *  is no longer at hand. */
+  onResend?: () => Promise<void>
 }) {
   const t = useT()
   const duration = useDuration()
@@ -59,17 +63,29 @@ export function TranscriptStatus({
   const [retrying, setRetrying] = useState(false)
   const [retryError, setRetryError] = useState(false)
 
-  const retry = async () => {
-    if (!onRetry) return
+  const retry = async (action: (() => Promise<void>) | undefined) => {
+    if (!action) return
     setRetrying(true)
     setRetryError(false)
     try {
-      await onRetry()
+      await action()
     } catch {
       setRetryError(true)
     } finally {
       setRetrying(false)
     }
+  }
+
+  /** What to check, for the failures that have a usual cause. */
+  const uploadHint = (reason: string): string | null => {
+    const r = reason.toLowerCase()
+    if (r.includes('could not reach') || r.includes('bad gateway') || r.includes('(502)') || r.includes('(504)'))
+      return t('transcript.hint.api')
+    if (r.includes('file store')) return t('transcript.hint.store')
+    if (r.includes('too large')) return t('transcript.hint.tooLarge')
+    if (r.includes('sign in') || r.includes('signed in') || r.includes('unauthorized'))
+      return t('transcript.hint.signIn')
+    return null
   }
 
   let tone: Tone = 'quiet'
@@ -84,6 +100,13 @@ export function TranscriptStatus({
   } else if (transcript?.uploadFailed) {
     tone = 'bad'
     text = t('transcript.uploadFailed')
+    if (transcript.error) {
+      detail = t(
+        transcript.uploadStep === 'send' ? 'transcript.sendFailedWhy' : 'transcript.announceFailedWhy',
+        transcript.error,
+      )
+      hint = uploadHint(transcript.error)
+    }
   } else if (transcript?.status === 'ready') {
     tone = 'good'
     text = t('transcript.ready', transcript.words.length)
@@ -150,10 +173,21 @@ export function TranscriptStatus({
           type="button"
           className="btn btn-secondary"
           disabled={retrying}
-          onClick={() => void retry()}
+          onClick={() => void retry(onRetry)}
         >
           <Icon name="retry" size={15} />
           {t('transcript.retry')}
+        </button>
+      )}
+      {transcript?.uploadFailed && onResend && (
+        <button
+          type="button"
+          className="btn btn-secondary"
+          disabled={retrying}
+          onClick={() => void retry(onResend)}
+        >
+          <Icon name="upload" size={15} />
+          {t('transcript.resend')}
         </button>
       )}
     </div>

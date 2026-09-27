@@ -133,6 +133,53 @@ export function Cut() {
     transcript,
   ])
 
+  // The file last opened, kept so a recording that failed to go up can be sent
+  // again without choosing it again. Not in the draft: a File cannot be.
+  const [sourceFile, setSourceFile] = useState<{ file: File; seconds: number } | null>(null)
+
+  /**
+   * Sends the recording to the server: the row first, then the bytes.
+   *
+   * A failure keeps the server's own words — a store that is not running, a
+   * file over the limit, a session that has expired — because "it did not get
+   * there" is not something anybody can act on.
+   */
+  const sendSource = (file: File, seconds: number) => {
+    setSourceUploading(true)
+    setTranscript(null)
+    let step: 'announce' | 'send' = 'announce'
+    const upload = repository
+      .createUpload(file, seconds)
+      .then(async (id) => {
+        step = 'send'
+        await repository.sendUpload(id, file)
+        setSourceId(id)
+        setSourceUploading(false)
+        return id
+      })
+      .catch((err: unknown) => {
+        setSourceUploading(false)
+        setTranscript({
+          status: 'failed',
+          language: '',
+          words: [],
+          uploadFailed: true,
+          uploadStep: step,
+          error: err instanceof Error ? err.message : String(err),
+        })
+        return null
+      })
+    sourceUpload.current = upload
+    return upload
+  }
+
+  /** Sends the same file again, as a new upload: the failed one stays in the
+   *  history with its reason. */
+  const resendSource = async () => {
+    if (!sourceFile) return
+    await sendSource(sourceFile.file, sourceFile.seconds)
+  }
+
   const open = async (file: File | undefined) => {
     if (!file) return
     setBusy(t('studio.decoding'))
@@ -190,20 +237,8 @@ export function Cut() {
       //
       // The studio stays interactive throughout; Publish awaits the promise so a
       // quick split-and-publish cannot race past the id.
-      const upload = repository
-        .createUpload(file, samples.length / sampleRate)
-        .then(async (id) => {
-          await repository.sendUpload(id, file)
-          setSourceId(id)
-          setSourceUploading(false)
-          return id
-        })
-        .catch(() => {
-          setSourceUploading(false)
-          setTranscript({ status: 'failed', language: '', words: [], uploadFailed: true })
-          return null
-        })
-      sourceUpload.current = upload
+      setSourceFile({ file, seconds: samples.length / sampleRate })
+      sendSource(file, samples.length / sampleRate)
     } catch {
       URL.revokeObjectURL(url)
       setBusy(null)
@@ -496,6 +531,7 @@ export function Cut() {
     setSourceId(null)
     setSourceUploading(false)
     sourceUpload.current = Promise.resolve(null)
+    setSourceFile(null)
     setTranscript(null)
   }
 
@@ -659,6 +695,7 @@ export function Cut() {
                 transcript={transcript}
                 uploading={sourceUploading}
                 onRetry={sourceId ? retryTranscript : undefined}
+                onResend={sourceFile ? resendSource : undefined}
               />
               {/* Boundaries move after the words arrive, and the lines are not
                   rewritten underneath the admin when they do. This is how that

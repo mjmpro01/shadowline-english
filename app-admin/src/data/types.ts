@@ -47,6 +47,9 @@ export interface Transcript {
   /** Set by the studio, not the server: the recording never reached the
    *  server, so there was nothing to transcribe. */
   uploadFailed?: boolean
+  /** Which request failed when `uploadFailed`: announcing the upload, or
+   *  sending its bytes. */
+  uploadStep?: 'announce' | 'send'
 }
 
 /** A worker's last heartbeat. */

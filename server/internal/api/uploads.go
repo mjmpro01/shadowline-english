@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -99,13 +100,11 @@ func (s *Server) handleUploadFile(w http.ResponseWriter, r *http.Request) {
 	key := "source/" + uuid.NewString() + extensionFor(contentType)
 	if err := s.Storage.Put(r.Context(), storage.Clips, key, body, -1, contentType); err != nil {
 		// Written down rather than only logged: the history is where an admin
-		// looks to find out why their film is not there.
-		reason := "the upload did not finish"
-		status := http.StatusInternalServerError
-		var tooBig *http.MaxBytesError
-		if errors.As(err, &tooBig) {
-			reason = "that recording is too large to upload"
-			status = http.StatusRequestEntityTooLarge
+		// looks to find out why their film is not there, and the studio shows
+		// the same words the moment it happens.
+		status, reason := uploadFailure(r.Context(), err)
+		if status == http.StatusBadGateway {
+			s.Log.Error("store upload", "id", id, "error", err)
 		}
 		// On a context of its own: the request's has usually expired by now,
 		// which is most of what goes wrong here, and writing the reason down with
@@ -114,10 +113,6 @@ func (s *Server) handleUploadFile(w http.ResponseWriter, r *http.Request) {
 		defer cancel()
 		if err := s.Store.UploadFailedWith(note, id, reason); err != nil {
 			s.Log.Warn("could not record a failed upload", "id", id, "error", err)
-		}
-		if status == http.StatusInternalServerError {
-			s.failErr(w, err, "store upload")
-			return
 		}
 		fail(w, status, reason)
 		return
@@ -189,4 +184,22 @@ func (s *Server) handleRetryUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"transcribe": transcribe, "cuts": cuts})
+}
+
+// uploadFailure says why a recording did not reach the file store, in words an
+// admin can act on, and with the status to answer. There are three usual
+// causes and they need three different things done: a file over the limit
+// needs a smaller file, a connection that dropped needs sending again, and a
+// store that refused needs somebody to look at the store — in development,
+// usually MinIO not running.
+func uploadFailure(ctx context.Context, err error) (int, string) {
+	var tooBig *http.MaxBytesError
+	switch {
+	case errors.As(err, &tooBig):
+		return http.StatusRequestEntityTooLarge, "that recording is too large to upload"
+	case ctx.Err() != nil || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, context.Canceled):
+		return http.StatusBadRequest, "the connection dropped before the whole recording arrived"
+	default:
+		return http.StatusBadGateway, "the file store did not accept the recording"
+	}
 }
