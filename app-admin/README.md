@@ -14,9 +14,10 @@ with `npm run dev` running in `../app` too. That server proxies `/admin` here an
 `/api`, `/auth` and `/files` to the API, so in development the two apps share
 one origin just as nginx makes them in production. The console needs that: a
 signed-out visitor is sent to `/login`, which is the learner app's screen, and
-the menu's link from the app is a plain `/admin/`. Opened on :5174 directly,
-the console still works once you are signed in, but signing in from there lands
-on a Vite "did you mean /admin/" page.
+the menu's link from the app is a plain `/admin/`. Opened on :5174 directly it
+works too: anything that is not the console's — `/login`, `/dashboard` — is
+redirected to the app's server (`APP_URL`, default `http://localhost:5173`),
+and the session follows, since a cookie is shared across ports on one host.
 
 The API the proxies talk to in development is `http://localhost:8080`; set
 `ADMIN_API_URL` here (and `VITE_API_URL` in `../app`) to point them somewhere
