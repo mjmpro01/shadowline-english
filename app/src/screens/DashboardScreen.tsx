@@ -57,9 +57,17 @@ export function DashboardScreen() {
 
       {data.takes.length === 0 ? (
         <FirstSteps
-          onStart={() =>
-            navigate(featured[0] ? `/library/${featured[0].id}/practice` : '/library')
-          }
+          onStart={async () => {
+            // Asked for here if the list has not arrived yet: a learner who
+            // presses the button the moment the screen appears used to be
+            // sent to the library instead of into a clip, because the list
+            // was still loading and read as empty.
+            const clips =
+              remote.state === 'ready'
+                ? remote.value
+                : await repository.featuredClips().catch(() => [])
+            navigate(clips[0] ? `/library/${clips[0].id}/practice` : '/library')
+          }}
           onBrowse={() => navigate('/library')}
         />
       ) : (
@@ -222,7 +230,7 @@ export function DashboardScreen() {
  * "0 learners" — the screen of an app nobody uses, shown to the one person who
  * has just arrived to use it.
  */
-function FirstSteps({ onStart, onBrowse }: { onStart: () => void; onBrowse: () => void }) {
+function FirstSteps({ onStart, onBrowse }: { onStart: () => void | Promise<void>; onBrowse: () => void }) {
   const t = useT()
   const steps = [t('dash.stepListen'), t('dash.stepSpeak'), t('dash.stepScore')]
   return (
@@ -244,7 +252,7 @@ function FirstSteps({ onStart, onBrowse }: { onStart: () => void; onBrowse: () =
           ))}
         </ol>
         <div className="row gap-2 wrap">
-          <button type="button" className="btn btn-primary" onClick={onStart}>
+          <button type="button" className="btn btn-primary" onClick={() => void onStart()}>
             <Icon name="mic" size={18} />
             {t('dash.firstStart')}
           </button>
