@@ -52,3 +52,21 @@ func (s *Server) handleTestTranscript(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
+
+// handleTestTranscriptFail makes the transcriber give up on the most recently
+// uploaded source, with the reason given, as it does after its last attempt.
+// Registered only when AUTH_FAKE=1, for the same reason as the route above.
+func (s *Server) handleTestTranscriptFail(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Reason string `json:"reason"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		fail(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := s.Store.FailLatestTranscript(r.Context(), body.Reason); err != nil {
+		s.failErr(w, err, "fail test transcript")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}

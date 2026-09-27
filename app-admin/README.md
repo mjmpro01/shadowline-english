@@ -75,6 +75,22 @@ so getting past `Gate` reaches nothing.
 | `/admin/users` | Accounts: make or unmake an admin, suspend or restore |
 | `/admin/banners` | The banners on the dashboard and the library |
 
+## Is the transcriber running?
+
+The studio says where a recording's transcript is, under the waveform:
+
+- sending it, queued (and how many recordings are ahead), being transcribed (for
+  how long, and which attempt of three), done, or given up — with the reason the
+  worker gave, and a button to queue it again;
+- and in amber, when the wait will not end on its own: no transcriber has ever
+  run here, or the one that did stopped beating. It then says how to start it
+  (`docker compose up -d transcribing`, or `python -m shadowline.transcriber`
+  from `../scoring`).
+
+The worker writes a heartbeat to `worker_heartbeats` every ten seconds, idle or
+busy; forty-five seconds without one counts as not running. The upload history
+shows the same thing as a pill in its header.
+
 ## Publishing a long recording
 
 Publishing is two things: the clip rows, then their audio. The studio says which

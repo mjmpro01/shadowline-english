@@ -191,7 +191,8 @@ const uploadColumns = `
 	 where c.source_id = s.id
 	   and (c.audio_key is null or (s.has_video and c.video_key is null))
 	   and not exists (select 1 from cut_jobs j where j.clip_id = c.id)),
-	exists (select 1 from transcribe_jobs t where t.source_id = s.id),
+	-- A failed job stays, for its reason, and is not work still coming.
+	exists (select 1 from transcribe_jobs t where t.source_id = s.id and t.state <> 'failed'),
 	exists (select 1 from transcripts t where t.source_id = s.id),
 	coalesce((select t.attempts from transcribe_jobs t where t.source_id = s.id), 0),
 	coalesce((select t.error from transcribe_jobs t where t.source_id = s.id), '')`
@@ -215,8 +216,8 @@ func scanUpload(row pgx.Row) (Upload, error) {
 
 // transcriptState reads the same three facts the studio's own transcript
 // endpoint reads, and in the same order: a job still waiting means the words are
-// coming, a transcript with no job means they arrived, and neither means the
-// worker gave up. Nothing is queued until the bytes have landed, so an upload
+// coming, a transcript with no job means they arrived, and neither — no job, or
+// only a failed one kept for its reason — means the worker gave up. Nothing is queued until the bytes have landed, so an upload
 // still in flight reports none rather than a failure.
 func transcriptState(uploadState string, queued, transcribed bool) string {
 	switch {
@@ -323,8 +324,8 @@ var ErrNotStored = errors.New("the recording itself never arrived")
 
 // RetryUpload puts the work that gave up back on the queue.
 //
-// Transcription first: with no transcript and no job the worker has stopped, and
-// one row puts it back. Then the cuts, one job per clip that should have a
+// Transcription first: with no transcript and a failed job (or none at all) the
+// worker has given up, and resetting the job puts it back. Then the cuts, one job per clip that should have a
 // picture and has none. Answers how many of each it queued, because "nothing to
 // retry" is a real outcome and the console should say so rather than implying it
 // has started something.
@@ -340,11 +341,17 @@ func (s *Store) RetryUpload(ctx context.Context, id uuid.UUID) (transcribe, cuts
 			return ErrNotStored
 		}
 
+		// A job the transcriber gave up on is still there, as 'failed', and goes
+		// back to the start of its attempts; a recording from before failed
+		// jobs were kept has none, and gets one.
 		tag, err := tx.Exec(ctx, `
 			insert into transcribe_jobs (source_id)
 			select $1
 			where not exists (select 1 from transcripts where source_id = $1)
-			  and not exists (select 1 from transcribe_jobs where source_id = $1)`, id)
+			on conflict (source_id) do update
+			set state = 'queued', attempts = 0, error = null, locked_at = null,
+			    created_at = now()
+			where transcribe_jobs.state = 'failed'`, id)
 		if err != nil {
 			return err
 		}

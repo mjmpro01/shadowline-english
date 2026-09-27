@@ -1,5 +1,13 @@
 import { api, ApiError } from '../lib/api'
-import type { CaptionLine, Episode, Playlist, Profile, Transcript, Video } from '../data/types'
+import type {
+  CaptionLine,
+  Episode,
+  Playlist,
+  Profile,
+  Transcript,
+  Video,
+  WorkerStatus,
+} from '../data/types'
 
 /**
  * Everything the console asks of the API.
@@ -313,6 +321,11 @@ export const repository = {
   /** The words Whisper found in a recording, or word that they are still coming. */
   sourceTranscript(sourceId: string) {
     return api.get<Transcript>(`/api/admin/uploads/${sourceId}/transcript`)
+  },
+
+  /** Which workers are running, from their heartbeats. */
+  services() {
+    return api.get<{ transcribing: WorkerStatus | null }>('/api/admin/services')
   },
 
   listPlaylists() {

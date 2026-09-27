@@ -23,6 +23,7 @@ import psycopg
 
 from . import ipa
 from . import telemetry
+from .heartbeat import Heartbeat
 from .storage import ObjectMissing, Storage, from_env as storage_from_env
 from .transcribe import TranscribeFailed, Transcriber, WhisperTranscriber
 from .transcribequeue import TranscribeJob, TranscribeQueue
@@ -114,6 +115,9 @@ def main() -> int:
     blobs = storage_from_env()
     transcriber = WhisperTranscriber()
     running = True
+    # Started before the model loads, so the console can tell "starting" from
+    # "not running at all" — loading Whisper can take a minute.
+    heartbeat = Heartbeat(dsn, "transcribing").start()
 
     def stop(*_: object) -> None:
         nonlocal running
@@ -133,7 +137,10 @@ def main() -> int:
                     queue = TranscribeQueue(conn)
                     backoff = 1.0
                     while running:
-                        if not run_once(queue, blobs, transcriber, workdir):
+                        heartbeat.busy = True
+                        worked = run_once(queue, blobs, transcriber, workdir)
+                        heartbeat.busy = False
+                        if not worked:
                             time.sleep(IDLE_SLEEP)
             # Every database error, not just a dropped connection: a worker
             # started beside a server that has not finished migrating finds no
@@ -144,6 +151,7 @@ def main() -> int:
                 log.warning("database not ready (%s) — retrying in %.0fs", err, backoff)
                 time.sleep(backoff)
                 backoff = min(backoff * 2, MAX_BACKOFF)
+    heartbeat.stop()
     return 0
 
 

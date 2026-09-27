@@ -138,9 +138,7 @@ func TestTheStatusFollowsTheWork(t *testing.T) {
 	t.Run("the words are not coming", func(t *testing.T) {
 		id := announce(t, admin, "quiet.mp4", "video/mp4")
 		sendFile(t, admin, id, "video/mp4")
-		// What giving up looks like: the worker deletes the job and writes no
-		// transcript, which is what makes the studio stop promising words.
-		h.dropTranscribeJob(t, id)
+		h.giveUpTranscribing(t, id, "no speech found")
 		if got := statusOf(id); got != "transcribe-failed" {
 			t.Fatalf("status %q, want transcribe-failed", got)
 		}
@@ -302,7 +300,7 @@ func TestRetryQueuesOnlyWhatGaveUp(t *testing.T) {
 		t.Fatalf("retry queued %d transcripts and %d cuts with nothing failed", quiet.Transcribe, quiet.Cuts)
 	}
 
-	h.dropTranscribeJob(t, id)
+	h.giveUpTranscribing(t, id, "no speech found")
 	h.dropCutJobs(t, id)
 
 	again := expect[struct {

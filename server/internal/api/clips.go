@@ -333,6 +333,17 @@ func (s *Server) handleSourceTranscript(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, transcript)
 }
 
+// handleServices says which workers are running, from their heartbeats. Only
+// the transcriber beats so far: it is the one an admin sits and waits for.
+func (s *Server) handleServices(w http.ResponseWriter, r *http.Request) {
+	transcriber, err := s.Store.WorkerStatus(r.Context(), store.TranscriberService)
+	if err != nil {
+		s.failErr(w, err, "read worker heartbeats")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"transcribing": transcriber})
+}
+
 // handleCreateClips takes the studio's whole batch at once. The cuts of one
 // recording belong together — publishing half of them would leave the library in
 // a state the admin never chose.

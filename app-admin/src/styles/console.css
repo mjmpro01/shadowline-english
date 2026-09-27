@@ -620,3 +620,113 @@
   object-fit: cover;
   border-radius: 10px;
 }
+
+/* Where the transcript is: one line that says which part of the wait it is in,
+   and turns amber when the wait will not end on its own. */
+.transcript-status {
+  flex: 1 1 340px;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-divider);
+  background: var(--color-surface);
+  font-size: 14px;
+}
+.transcript-status-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+}
+.transcript-status-text {
+  font-weight: 600;
+}
+.transcript-status-detail {
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+.transcript-status-hint {
+  display: block;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.transcript-status .btn {
+  flex: none;
+  align-self: center;
+}
+.transcript-busy .transcript-status-mark {
+  color: var(--color-accent-ink);
+}
+.transcript-good {
+  border-color: color-mix(in srgb, var(--score-good) 45%, transparent);
+}
+.transcript-good .transcript-status-mark {
+  color: var(--score-good);
+}
+.transcript-warn {
+  border-color: var(--color-accent-400);
+  background: var(--color-accent-100);
+}
+.transcript-warn .transcript-status-mark {
+  color: var(--color-accent-ink);
+}
+.transcript-bad {
+  border-color: color-mix(in srgb, var(--score-attention) 55%, transparent);
+}
+.transcript-bad .transcript-status-mark {
+  color: var(--score-attention);
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2.5px solid currentColor;
+  border-right-color: transparent;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2.4s;
+  }
+}
+
+/* The transcriber's state, as a pill in the upload history's header. */
+.worker-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 2px solid var(--color-divider);
+  background: var(--color-surface);
+  font-size: 13px;
+  font-weight: 600;
+}
+.worker-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--score-attention);
+}
+.worker-online .worker-dot {
+  background: var(--score-good);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--score-good) 25%, transparent);
+}
+.worker-offline {
+  border-color: var(--color-accent-400);
+  background: var(--color-accent-100);
+}

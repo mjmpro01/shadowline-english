@@ -76,6 +76,7 @@ func (s *Server) Routes() http.Handler {
 			// Test-only, and absent entirely from a normal deployment.
 			r.Post("/test/reset", s.handleTestReset)
 			r.Post("/test/transcript", s.handleTestTranscript)
+			r.Post("/test/transcript/fail", s.handleTestTranscriptFail)
 		}
 	})
 
@@ -174,6 +175,7 @@ func (s *Server) Routes() http.Handler {
 				r.Get("/admin/uploads/{id}", s.handleGetUpload)
 				r.Post("/admin/uploads/{id}/retry", s.handleRetryUpload)
 				r.Get("/admin/uploads/{id}/transcript", s.handleSourceTranscript)
+				r.Get("/admin/services", s.handleServices)
 				r.Get("/admin/tutor/usage", s.handleTutorUsage)
 				r.Get("/admin/users", s.handleListAccounts)
 				r.Patch("/admin/users/{id}", s.handleUpdateAccount)
