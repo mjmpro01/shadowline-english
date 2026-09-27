@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { asAdmin, asLearner, startFresh } from './session'
+import { asLearner, startFresh } from './session'
 
 /**
  * The adventure menu: a plank per place you can go, and one of them lit.
@@ -27,13 +27,6 @@ test('a plank per place, and the one you are on is lit', async ({ page }) => {
 
   await page.goto('/progress')
   await expect(planks.filter({ hasText: 'Progress' })).toHaveAttribute('aria-current', 'page')
-})
-
-test('an admin gets a sixth plank', async ({ page }) => {
-  await asAdmin(page)
-  await page.goto('/library')
-  await expect(page.locator('.menu-plank')).toHaveCount(6)
-  await expect(page.locator('.menu-plank').filter({ hasText: 'Clip studio' })).toBeVisible()
 })
 
 test('collapsing keeps every place reachable', async ({ page }) => {

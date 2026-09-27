@@ -22,32 +22,21 @@ const PROFILE: { to: string; label: MessageKey; icon: IconName } = {
 }
 
 /**
- * The console, which is a different build served at /admin/ on this origin.
- *
- * `href` and not a route: the studio left this app. An admin is also somebody
- * who practises, so the plank stays where it was — it is the only one that leads
- * out of the app rather than around it.
- */
-const CONSOLE: { to: string; label: MessageKey; icon: IconName } = {
-  to: '/admin/',
-  label: 'nav.studio',
-  icon: 'scissors',
-}
-
-/**
  * How far each plank hangs off true, in order.
  *
  * Straight from the design, where no two planks are level: a rope ladder nailed
  * up by hand does not come out square, and six identical rectangles would read
- * as a list of buttons with wood printed on them. The angles repeat past the
- * sixth plank, which only happens for an admin.
+ * as a list of buttons with wood printed on them.
+ *
+ * There is no plank for the admin console. It is a separate build at /admin/
+ * that its few users open by address; the learner's menu is for learning.
  */
 const TILTS = ['-1.2deg', '1deg', '-0.8deg', '1.3deg', '-1deg', '0.7deg']
 
 export function AppShell() {
   const t = useT()
   const [collapsed, setCollapsed] = useState(false)
-  const { isAdmin, logout } = useApp()
+  const { logout } = useApp()
   const navigate = useNavigate()
 
   const signOut = () => {
@@ -94,24 +83,6 @@ export function AppShell() {
               </NavLink>
             </li>
           ))}
-          {isAdmin && (
-            <li
-              style={
-                { '--tilt': TILTS[items.length % TILTS.length] } as React.CSSProperties
-              }
-            >
-              {/* An anchor: the console is another build at this origin, and a
-                  router link would look for a route this app no longer has. */}
-              <a href={CONSOLE.to} className="menu-plank" title={t(CONSOLE.label)}>
-                <span className="menu-nail" />
-                <Icon name={CONSOLE.icon} size={26} />
-                <span className="menu-plank-label">
-                  <span className="menu-plank-text">{t(CONSOLE.label)}</span>
-                  <span className="menu-badge">{t('nav.here')}</span>
-                </span>
-              </a>
-            </li>
-          )}
         </ul>
 
         <div className="menu-actions">

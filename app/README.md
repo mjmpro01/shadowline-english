@@ -172,8 +172,9 @@ It was a screen here, behind an admin check. It is a console of its own now, in
 `../app-admin`, served under `/admin/` on this origin — see that README for why,
 and for what was measured before deciding.
 
-What is left in this app is one plank on the menu and one card on the Profile
-screen, both of them plain links out. Nothing here uploads a recording, proposes
+Nothing of it is left in this app, not even a link: an admin opens the console
+by its address, `/admin/`, and the learner's menu stays a menu for learning.
+Nothing here uploads a recording, proposes
 a cut, or writes to `/api/admin/*` any more, and `data.videos` is a cache of the
 clips screens have asked for rather than a library to manage.
 

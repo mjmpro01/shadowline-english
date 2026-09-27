@@ -18,7 +18,6 @@ export const en = {
   'nav.library': 'Library',
   'nav.vocabulary': 'Vocabulary',
   'nav.progress': 'Progress',
-  'nav.studio': 'Clip studio',
   'nav.profile': 'Profile',
   'nav.tagline': 'FOREST QUEST',
   'nav.quest': 'QUEST',
@@ -339,8 +338,6 @@ export const en = {
   'profile.editTitle': 'Edit profile',
   'profile.email': 'Email',
   'profile.avatarHint': 'Drop an image on the avatar, or click it to browse',
-  'profile.studioBody': 'Cut recordings into clips for the library.',
-  'profile.open': 'Open',
 
   // --- studio ---------------------------------------------------------------
   'studio.step1Title': 'Upload a recording.',

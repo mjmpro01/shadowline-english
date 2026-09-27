@@ -9,8 +9,9 @@ import { asAdmin, startFresh } from './session'
  * It used to be a route inside this one behind a switch on the Profile screen
  * that anyone could flip. It is a console at /admin/ on this origin, and the rule
  * is ADMIN_EMAILS on the server — so these check three separate things: that the
- * app offers a learner no way in, that the console itself turns one away, and
- * that the endpoints refuse one who goes straight to them.
+ * app offers nobody a way in (the console is opened by its address), that the
+ * console itself turns a learner away, and that the endpoints refuse one who
+ * goes straight to them.
  */
 
 test('learners cannot add clips of their own', async ({ page }) => {
@@ -18,23 +19,18 @@ test('learners cannot add clips of their own', async ({ page }) => {
   await page.goto('/library')
 
   await expect(page.getByPlaceholder(/Paste a YouTube/)).toHaveCount(0)
-  await expect(page.getByRole('link', { name: 'Clip studio' })).toHaveCount(0)
 
   await practiseFirstClip(page)
   await expect(page.getByRole('button', { name: /source audio/ })).toHaveCount(0)
 })
 
-test('the app offers a learner no way into the console, and an admin one', async ({ page }) => {
-  await startFresh(page)
-
-  await page.goto('/profile')
-  await expect(page.getByText('Clip studio')).toHaveCount(0)
-
+test('the app links nobody to the console, not even an admin', async ({ page }) => {
   await asAdmin(page)
-  // A link and not a route: the console is another build served at this origin,
-  // so the plank leaves the app.
-  const plank = page.getByRole('link', { name: 'Clip studio' })
-  await expect(plank).toHaveAttribute('href', '/admin/')
+  for (const path of ['/library', '/profile']) {
+    await page.goto(path)
+    await expect(page.locator('.menu-plank')).toHaveCount(5)
+    await expect(page.locator('a[href^="/admin"]')).toHaveCount(0)
+  }
 })
 
 test('the console turns away an account that is not an admin', async ({ page }) => {

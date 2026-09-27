@@ -11,7 +11,7 @@ import { applyTheme, storedTheme, THEMES, type Theme } from '../lib/theme'
 import { useApp } from '../store/context'
 
 export function ProfileScreen() {
-  const { data, isAdmin, logout, updateProfile } = useApp()
+  const { data, logout, updateProfile } = useApp()
   const { t, locale, setLocale } = useI18n()
   const navigate = useNavigate()
   const profile = data.profile
@@ -149,20 +149,6 @@ export function ProfileScreen() {
           ))}
         </div>
       </div>
-
-      {isAdmin && (
-        <div className="card elev-sm stack gap-2" style={{ width: '100%', textAlign: 'left' }}>
-          <div className="card-kicker">{t('nav.studio')}</div>
-          <div className="row between gap-3">
-            <span style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>{t('profile.studioBody')}</span>
-            {/* Out of the app: the console is a separate build served at
-                /admin/ on this origin, so this leaves rather than routes. */}
-            <a className="btn btn-primary" style={{ flexShrink: 0 }} href="/admin/">
-              {t('profile.open')}
-            </a>
-          </div>
-        </div>
-      )}
 
       <div className="card elev-sm stack gap-2" style={{ width: '100%', textAlign: 'left' }}>
         <div className="card-kicker">{t('profile.yourData')}</div>

@@ -22,7 +22,6 @@ export const vi: Messages = {
   'nav.library': 'Thư viện',
   'nav.vocabulary': 'Từ vựng',
   'nav.progress': 'Tiến độ',
-  'nav.studio': 'Xưởng cắt clip',
   'nav.profile': 'Hồ sơ',
   'nav.tagline': 'HÀNH TRÌNH RỪNG',
   'nav.quest': 'HÀNH TRÌNH',
@@ -338,8 +337,6 @@ export const vi: Messages = {
   'profile.editTitle': 'Sửa hồ sơ',
   'profile.email': 'Email',
   'profile.avatarHint': 'Thả một ảnh vào chỗ đại diện, hoặc bấm vào để chọn tệp',
-  'profile.studioBody': 'Cắt bản ghi thành clip cho thư viện.',
-  'profile.open': 'Mở',
 
   // --- studio ---------------------------------------------------------------
   'studio.step1Title': 'Tải một bản ghi lên.',
