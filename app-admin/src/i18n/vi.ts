@@ -252,6 +252,7 @@ export const vi: Messages = {
     `${who} sẽ bị đăng xuất khỏi mọi nơi ngay bây giờ và không đăng nhập được cho tới khi được mở khoá. Các lần thu và lịch sử vẫn được giữ.`,
   'users.previous': 'Trước',
   'users.next': 'Sau',
+  'nav.tagline': 'TRANG QUẢN TRỊ',
   'nav.back': 'Về app học',
   'nav.signOut': 'Đăng xuất',
   'tutor.title': 'Mức dùng gia sư',
