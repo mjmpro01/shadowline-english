@@ -40,6 +40,6 @@ export function useSession(): Session {
   return useContext(SessionContext)
 }
 
-/** Where to send somebody who is not signed in. The learner app owns the login
- *  screen, and it lives at the root of the same origin. */
-export const LOGIN_URL = '/login'
+/** Where to send somebody who is not signed in, or who has just signed out:
+ *  the console's own login screen, so signing in comes back to the console. */
+export const LOGIN_URL = '/admin/login'

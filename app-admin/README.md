@@ -68,6 +68,7 @@ so getting past `Gate` reaches nothing.
 
 | Path | What it is |
 | --- | --- |
+| `/admin/login` | The console's own sign-in (Google, or email and password); signing out lands here, and signing in comes back to the console |
 | `/admin/cut` | A recording in, a batch of clips out: waveform, filmstrip, the cut proposal, the lines |
 | `/admin/uploads` | Every recording sent, and how far each one got |
 | `/admin/clips` | The clip manager, paged and searched on the server |

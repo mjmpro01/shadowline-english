@@ -8,11 +8,14 @@ import { Banners } from './pages/Banners'
 import { Tutor } from './pages/Tutor'
 import { Users } from './pages/Users'
 import { Uploads } from './pages/Uploads'
+import { Login } from './pages/Login'
 
 // basename matches vite's `base`: the console is served under /admin/ on the
 // same origin as the learner app, so every route here is really /admin/…
 export const router = createBrowserRouter(
   [
+    // Outside the gate: it is where the gate sends somebody signed out.
+    { path: '/login', element: <Login /> },
     {
       path: '/',
       element: (

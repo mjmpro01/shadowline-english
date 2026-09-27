@@ -730,3 +730,99 @@
   border-color: var(--color-accent-400);
   background: var(--color-accent-100);
 }
+
+/* — the console's own login —
+   The forest from the menu as the whole page, and the sign nailed above a
+   parchment card: the same place as the sidebar, so signing in and working
+   read as one product with the learner app. */
+.console-login {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-6) var(--space-4);
+  background:
+    radial-gradient(120% 60% at 80% 12%, rgba(116, 231, 190, 0.22), transparent 60%),
+    radial-gradient(90% 45% at 10% 90%, rgba(34, 108, 92, 0.5), transparent 70%),
+    linear-gradient(180deg, #123029 0%, #173b35 45%, #10261f 100%);
+}
+.console-login-card {
+  position: relative;
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 56px var(--space-6) var(--space-6);
+  border: 4px solid var(--menu-plank-edge);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--menu-drop);
+}
+.console-login-crest {
+  position: absolute;
+  top: -46px;
+  left: 50%;
+  translate: -50% 0;
+  border-radius: 50%;
+  border: 4px solid var(--menu-plank-edge);
+  background: var(--menu-cream);
+  box-shadow: var(--menu-drop);
+}
+.console-login-sign {
+  margin: 0;
+  height: 64px;
+}
+.console-login-lead {
+  margin: 0;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+.console-login-alert {
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 2px solid color-mix(in srgb, var(--score-attention) 55%, transparent);
+  background: color-mix(in srgb, var(--score-attention) 10%, var(--color-surface));
+  font-size: 14px;
+}
+.console-login-google {
+  gap: 10px;
+}
+.console-login-g {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  color: #4285f4;
+  font-weight: 800;
+  font-size: 14px;
+  box-shadow: 0 0 0 1px var(--color-divider);
+}
+.console-login-or {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+.console-login-or span {
+  flex: 1;
+  height: 1px;
+  background: var(--color-divider);
+}
+.console-login-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: 13px;
+}
+.console-login-foot a {
+  color: var(--color-accent-ink);
+  font-weight: 600;
+}
+.field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
