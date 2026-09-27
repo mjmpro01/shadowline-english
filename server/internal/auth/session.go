@@ -16,6 +16,10 @@ const (
 	// the callback. It is short-lived and dies with the exchange.
 	pkceCookie = "shadowline_pkce"
 	pkceTTL    = 10 * time.Minute
+	// fromCookie remembers which screen a login started from, so the browser
+	// comes back to it: the learner app's login, or the admin console's. It
+	// lives as long as the PKCE verifier it travels beside.
+	fromCookie = "shadowline_login_from"
 )
 
 type ctxKey struct{}
@@ -59,6 +63,26 @@ func (m *Manager) TakePKCE(w http.ResponseWriter, r *http.Request) string {
 	if err != nil {
 		return ""
 	}
+	return c.Value
+}
+
+// SetLoginFrom remembers where a login started; empty forgets it, so one left
+// over from an abandoned console login cannot steer a later app login.
+func (m *Manager) SetLoginFrom(w http.ResponseWriter, from string) {
+	if from == "" {
+		http.SetCookie(w, m.cookie(fromCookie, "", time.Unix(0, 0)))
+		return
+	}
+	http.SetCookie(w, m.cookie(fromCookie, from, time.Now().Add(pkceTTL)))
+}
+
+// TakeLoginFrom reads where the login started and forgets it.
+func (m *Manager) TakeLoginFrom(w http.ResponseWriter, r *http.Request) string {
+	c, err := r.Cookie(fromCookie)
+	if err != nil {
+		return ""
+	}
+	http.SetCookie(w, m.cookie(fromCookie, "", time.Unix(0, 0)))
 	return c.Value
 }
 

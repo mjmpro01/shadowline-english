@@ -15,8 +15,7 @@ export function Gate({ children }: { children: ReactNode }) {
 
   // In an effect rather than during render: leaving the page is the effect of
   // rendering "taking you to the login screen", not part of working out what to
-  // draw. A full navigation and not a router redirect, because the login screen
-  // belongs to the learner app, which is a different build at the root.
+  // draw. A full navigation, so the login screen starts from a clean session.
   useEffect(() => {
     if (signedOut) window.location.href = LOGIN_URL
   }, [signedOut])

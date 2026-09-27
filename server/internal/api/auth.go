@@ -21,6 +21,28 @@ const (
 	loginErrSuspended = "suspended" // an admin suspended the account
 )
 
+// Where a login can start from, and so where it goes back to. A fixed list,
+// never a URL from the request: a login flow that redirects wherever it is told
+// is an open redirect with a real login page in front of it.
+const loginFromAdmin = "admin"
+
+// loginPages says where each starting point lives: its login screen, and the
+// page a finished login lands on.
+func (s *Server) loginPages(from string) (login, home string) {
+	if from == loginFromAdmin {
+		return s.Cfg.AppOrigin + "/admin/login", s.Cfg.AppOrigin + "/admin/"
+	}
+	return s.Cfg.AppOrigin + "/login", s.Cfg.AppOrigin + "/dashboard"
+}
+
+// loginFrom is where this login says it started, if it is somewhere we know.
+func loginFrom(r *http.Request) string {
+	if r.URL.Query().Get("from") == loginFromAdmin {
+		return loginFromAdmin
+	}
+	return ""
+}
+
 // handleAuthStart sends the browser to Google (or the fake provider).
 func (s *Server) handleAuthStart(w http.ResponseWriter, r *http.Request) {
 	s.startAuth(w, r, s.Provider)
@@ -64,18 +86,20 @@ func (s *Server) handleKeycloakCallback(w http.ResponseWriter, r *http.Request) 
 // short-lived cookie rather than into the state parameter, so the value that
 // proves we started the exchange never travels through the provider.
 func (s *Server) startAuth(w http.ResponseWriter, r *http.Request, provider auth.Provider) {
+	from := loginFrom(r)
 	nonce, err := auth.RandomID()
 	if err != nil {
-		s.failLogin(w, r, loginErrServer, err, "generate oauth nonce")
+		s.failLogin(w, r, from, loginErrServer, err, "generate oauth nonce")
 		return
 	}
 	verifier, err := auth.RandomID()
 	if err != nil {
-		s.failLogin(w, r, loginErrServer, err, "generate pkce verifier")
+		s.failLogin(w, r, from, loginErrServer, err, "generate pkce verifier")
 		return
 	}
 
 	s.Sessions.SetPKCE(w, verifier)
+	s.Sessions.SetLoginFrom(w, from)
 	state := s.Signer.SignState(nonce, time.Now().Add(10*time.Minute))
 
 	// Only the fake provider implements EmailChooser, so ?email= is inert
@@ -92,37 +116,41 @@ func (s *Server) startAuth(w http.ResponseWriter, r *http.Request, provider auth
 func (s *Server) finishAuth(w http.ResponseWriter, r *http.Request, provider auth.Provider) {
 	q := r.URL.Query()
 	verifier := s.Sessions.TakePKCE(w, r)
+	from := s.Sessions.TakeLoginFrom(w, r)
+	if from != loginFromAdmin {
+		from = ""
+	}
 
 	// Checked before the state: a learner who pressed "Cancel" at the provider
 	// should be told that, not handed a story about an expired link.
 	if e := q.Get("error"); e != "" {
 		s.Log.Info("oauth provider declined", "error", e)
-		s.failLogin(w, r, loginErrCancelled, nil, "")
+		s.failLogin(w, r, from, loginErrCancelled, nil, "")
 		return
 	}
 	if !s.Signer.VerifyState(q.Get("state")) {
-		s.failLogin(w, r, loginErrExpired, nil, "")
+		s.failLogin(w, r, from, loginErrExpired, nil, "")
 		return
 	}
 	if verifier == "" {
-		s.failLogin(w, r, loginErrBrowser, nil, "")
+		s.failLogin(w, r, from, loginErrBrowser, nil, "")
 		return
 	}
 
 	identity, err := provider.Exchange(r.Context(), q.Get("code"), verifier)
 	if err != nil {
 		s.Log.Warn("oauth exchange failed", "error", err)
-		s.failLogin(w, r, loginErrFailed, nil, "")
+		s.failLogin(w, r, from, loginErrFailed, nil, "")
 		return
 	}
 
 	user, err := s.Store.UpsertUser(r.Context(), identity.Email, identity.Name, s.Cfg.IsAdmin(identity.Email))
 	if err != nil {
-		s.failLogin(w, r, loginErrServer, err, "upsert user")
+		s.failLogin(w, r, from, loginErrServer, err, "upsert user")
 		return
 	}
 	if user.SuspendedAt != nil {
-		s.failLogin(w, r, loginErrSuspended, nil, "")
+		s.failLogin(w, r, from, loginErrSuspended, nil, "")
 		return
 	}
 
@@ -136,26 +164,29 @@ func (s *Server) finishAuth(w http.ResponseWriter, r *http.Request, provider aut
 	}
 
 	if err := s.Sessions.Issue(r.Context(), w, user.ID); err != nil {
-		s.failLogin(w, r, loginErrServer, err, "issue session")
+		s.failLogin(w, r, from, loginErrServer, err, "issue session")
 		return
 	}
 
-	http.Redirect(w, r, s.Cfg.AppOrigin+"/dashboard", http.StatusFound)
+	_, home := s.loginPages(from)
+	http.Redirect(w, r, home, http.StatusFound)
 }
 
-// failLogin sends the browser back to the app's login screen carrying a reason
-// code. Both halves of the destination are ours — AppOrigin comes from the
-// environment and reason is one of the constants above — so nothing the caller
-// sends can steer this redirect somewhere else.
+// failLogin sends the browser back to the login screen it started from,
+// carrying a reason code. Every part of the destination is ours — AppOrigin
+// comes from the environment, the path from loginPages and the reason is one of
+// the constants above — so nothing the caller sends can steer this redirect
+// somewhere else.
 //
 // err is logged and never shown: the codes are deliberately coarse, because a
 // login screen that explains precisely which check failed explains it to
 // whoever is probing it too.
-func (s *Server) failLogin(w http.ResponseWriter, r *http.Request, reason string, err error, action string) {
+func (s *Server) failLogin(w http.ResponseWriter, r *http.Request, from, reason string, err error, action string) {
 	if err != nil {
 		s.Log.Error(action, "error", err)
 	}
-	http.Redirect(w, r, s.Cfg.AppOrigin+"/login?error="+url.QueryEscape(reason), http.StatusFound)
+	login, _ := s.loginPages(from)
+	http.Redirect(w, r, login+"?error="+url.QueryEscape(reason), http.StatusFound)
 }
 
 func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
