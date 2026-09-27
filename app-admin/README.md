@@ -6,11 +6,22 @@ the same origin.
 
 ```bash
 npm install
-npm run dev          # http://localhost:5174/admin/
+npm run dev          # the console's own server, on :5174
 ```
 
-The API it talks to in development is `http://localhost:8080`; set
-`ADMIN_API_URL` to point the dev proxy somewhere else.
+Open it through the learner app's dev server, at **http://localhost:5173/admin/**,
+with `npm run dev` running in `../app` too. That server proxies `/admin` here and
+`/api`, `/auth` and `/files` to the API, so in development the two apps share
+one origin just as nginx makes them in production. The console needs that: a
+signed-out visitor is sent to `/login`, which is the learner app's screen, and
+the menu's link from the app is a plain `/admin/`. Opened on :5174 directly,
+the console still works once you are signed in, but signing in from there lands
+on a Vite "did you mean /admin/" page.
+
+The API the proxies talk to in development is `http://localhost:8080`; set
+`ADMIN_API_URL` here (and `VITE_API_URL` in `../app`) to point them somewhere
+else. The app finds this server on `ADMIN_PORT`, or `CONSOLE_URL` if it is on
+another host.
 
 ## Why a second app rather than a section of the first
 
@@ -60,6 +71,9 @@ so getting past `Gate` reaches nothing.
 | `/admin/uploads` | Every recording sent, and how far each one got |
 | `/admin/clips` | The clip manager, paged and searched on the server |
 | `/admin/series` | Series and their episodes: names, order, the hot badge, deletions |
+| `/admin/tutor` | Questions put to the tutor: who asked, how many, what it cost |
+| `/admin/users` | Accounts: make or unmake an admin, suspend or restore |
+| `/admin/banners` | The banners on the dashboard and the library |
 
 ## Publishing a long recording
 
