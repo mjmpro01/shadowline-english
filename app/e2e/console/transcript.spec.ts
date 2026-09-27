@@ -155,3 +155,28 @@ test('the upload history shows whether the transcriber is running', async ({ pag
   await page.goto('/admin/uploads')
   await expect(page.locator('.worker-badge')).toHaveText('Transcriber has never run')
 })
+
+test('a recording that did not reach the server says why, and can be sent again', async ({ page }) => {
+  // The file store refusing the bytes, as the server now words it.
+  await page.route(/\/api\/admin\/uploads\/[^/]+\/file$/, (route) =>
+    route.fulfill({
+      status: 502,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: 'the file store did not accept the recording' }),
+    }),
+  )
+  await page.locator('input[type=file]').setInputFiles(CLIP)
+  await expect(page.locator('.waveform')).toBeVisible({ timeout: 30_000 })
+
+  const status = page.locator('.transcript-status')
+  await expect(status).toContainText('The recording never reached the server', { timeout: 30_000 })
+  await expect(status).toContainText(
+    'The file did not finish sending: the file store did not accept the recording',
+  )
+  await expect(status).toContainText('docker compose up -d minio')
+
+  // With the store back, the same file goes up again without choosing it again.
+  await page.unroute(/\/api\/admin\/uploads\/[^/]+\/file$/)
+  await status.getByRole('button', { name: 'Send the file again' }).click()
+  await expect(status).toContainText('Queued', { timeout: 30_000 })
+})
