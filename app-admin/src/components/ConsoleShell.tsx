@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useT } from '../i18n'
 import type { MessageKey } from '../i18n/en'
@@ -8,10 +9,14 @@ import { repository } from '../repository'
 /**
  * The console's frame: a sidebar of sections and the page beside it.
  *
- * Deliberately not the learner app's shell. That one is a rope ladder nailed to
- * a tree, which is right for somebody practising English on a phone and wrong
- * for somebody working through four hundred clips at a desk.
+ * The learner app's menu, so the two read as one product: the forest, the tree,
+ * the rope ladder and a plank per place. Smaller planks than the app's, because
+ * there are seven of them and the console is worked at a desk, and no collapsed
+ * rail — the pages here want width less than a phone does.
  */
+
+/** How far each plank hangs off true, as in the learner app's menu. */
+const TILTS = ['-1.2deg', '1deg', '-0.8deg', '1.3deg', '-1deg', '0.7deg', '-0.6deg']
 
 interface Section {
   to: string
@@ -42,37 +47,50 @@ export function ConsoleShell() {
 
   return (
     <div className="console">
-      <nav className="console-rail">
-        <div className="console-brand">
-          <span className="console-brand-mark">SL</span>
-          <span>Console</span>
+      <nav className="console-rail" aria-label="Console">
+        {/* Decoration only: a screen reader hears a list of links. */}
+        <div className="menu-scene" aria-hidden="true">
+          <span className="menu-forest" />
+          <span className="menu-trunk" />
+          <span className="menu-rings" />
+          <span className="menu-rope menu-rope-left" />
+          <span className="menu-rope menu-rope-right" />
+          <span className="menu-firefly menu-firefly-high" />
+          <span className="menu-firefly menu-firefly-low" />
         </div>
 
-        <ul className="console-nav">
-          {SECTIONS.map((section) => (
-            <li key={section.to}>
-              <NavLink to={section.to} className="console-link">
-                <Icon name={section.icon} size={16} />
-                <span>{t(section.label)}</span>
+        <div className="menu-sign">
+          <span className="menu-sign-title">SHADOWLINE</span>
+          <span className="menu-sign-tagline">{t('nav.tagline')}</span>
+        </div>
+
+        <ul className="menu-planks">
+          {SECTIONS.map((section, i) => (
+            <li key={section.to} style={{ '--tilt': TILTS[i % TILTS.length] } as CSSProperties}>
+              <NavLink to={section.to} className="menu-plank">
+                <span className="menu-nail" />
+                <Icon name={section.icon} size={20} />
+                <span className="menu-plank-text">{t(section.label)}</span>
               </NavLink>
             </li>
           ))}
         </ul>
 
-        <div className="console-foot">
-          {/* Out of the console and back to the app: one link, because an admin
-              is also somebody who practises, and the two live on one origin. */}
-          <a className="console-link" href="/dashboard">
-            <Icon name="house-plus" size={16} />
-            <span>{t('nav.back')}</span>
+        <div className="menu-who">
+          <div className="menu-who-name">{user?.name}</div>
+          <div className="menu-who-mail">{user?.email}</div>
+        </div>
+
+        <div className="menu-actions">
+          {/* Out of the console and back to the app: an admin is also somebody
+              who practises, and the two live on one origin. */}
+          <a className="menu-key" href="/dashboard" title={t('nav.back')}>
+            <Icon name="house-plus" size={18} />
+            <span className="menu-key-label">{t('nav.back')}</span>
           </a>
-          <div className="console-who">
-            <div className="console-who-name">{user?.name}</div>
-            <div className="console-who-mail">{user?.email}</div>
-          </div>
-          <button type="button" className="btn btn-secondary btn-block" onClick={signOut}>
-            <Icon name="log-out" size={15} />
-            {t('nav.signOut')}
+          <button type="button" className="menu-key" onClick={signOut} title={t('nav.signOut')}>
+            <Icon name="log-out" size={18} />
+            <span className="menu-key-label">{t('nav.signOut')}</span>
           </button>
         </div>
       </nav>

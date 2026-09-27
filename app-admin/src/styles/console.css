@@ -1,10 +1,9 @@
 /* The console's own styles.
  *
- * `tokens.css` and `components.css` are shared with the learner app — the
- * palette, the buttons, the cards, the dialog. What is not shared is the shell:
- * the learner's is a rope ladder nailed to a tree, which is right for somebody
- * practising on a phone and wrong for somebody working through four hundred
- * clips at a desk.
+ * `tokens.css` and `components.css` are copies of the learner app's — the
+ * palette (light by default, dark when the learner app is set to it), the
+ * buttons, the cards, the dialog — so the two look like one product. Keep them
+ * in step with ../app/src/styles.
  *
  * Everything below the console block is the studio, moved here with the screens
  * it belongs to.
@@ -14,104 +13,302 @@
   font-family: var(--font-mono);
 }
 
-/* — the frame — */
+/* — the frame —
+   The learner app's adventure menu (app/src/styles/app.css), so the console
+   reads as the same product: a lit forest, a tree with a rope ladder nailed to
+   it, and a plank per section. Narrower planks and tighter spacing than the
+   app's, because there are seven sections and a desk screen to share. */
 
-.console {
-  display: grid;
-  grid-template-columns: 232px 1fr;
+#root {
   min-height: 100vh;
 }
 
-.console-rail {
+.console {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-  padding: var(--space-4);
-  border-right: 1px solid var(--color-divider);
-  background: var(--color-surface);
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  overflow-y: auto;
-}
-
-.console-brand {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-family: var(--font-heading);
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.console-brand-mark {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: var(--color-accent);
-  color: var(--color-bg);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.console-nav {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.console-link {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 9px 10px;
-  border-radius: 8px;
-  color: var(--color-neutral-300);
-  text-decoration: none;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.console-link:hover {
-  background: var(--color-neutral-800);
+  align-items: flex-start;
+  min-height: 100vh;
+  background: var(--color-bg);
   color: var(--color-text);
 }
 
-/* Where you are. One filled row, so the eye finds it without reading. */
-.console-link[aria-current='page'] {
-  background: var(--color-accent-200);
-  color: var(--color-accent-700);
-}
+.console-rail {
+  --menu-pad: 18px;
+  --menu-strip: 40px;
+  --menu-rope-left: 33px;
+  --menu-rope-right: 196px;
+  --menu-trunk: 70%;
 
-/* Pinned to the bottom: the account and the two ways out are not navigation. */
-.console-foot {
-  margin-top: auto;
+  position: sticky;
+  top: 12px;
+  height: calc(100vh - 24px);
+  margin: 12px 0 12px 12px;
+  flex-shrink: 0;
+  width: 276px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--color-divider);
+  gap: var(--space-3);
+  padding: 20px var(--menu-pad) 18px;
+  border-radius: var(--radius-lg);
+  background: var(--menu-forest);
+  overflow-y: auto;
+  z-index: 20;
 }
 
-.console-who-name {
+.menu-scene {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  pointer-events: none;
+}
+.menu-forest {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 60% at 80% 12%, rgba(116, 231, 190, 0.22), transparent 60%),
+    radial-gradient(90% 45% at 95% 78%, rgba(34, 108, 92, 0.5), transparent 70%),
+    linear-gradient(180deg, #123029 0%, #173b35 45%, #10261f 100%);
+}
+.menu-trunk {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--menu-trunk);
+  background: linear-gradient(90deg, #3a2418 0%, #684126 55%, #9a6840 100%);
+  border-top-right-radius: 110px;
+  border-bottom-right-radius: 88px;
+}
+.menu-rings {
+  position: absolute;
+  left: -14%;
+  top: 10%;
+  width: 96%;
+  height: 80%;
+  border: 2px solid rgba(58, 36, 24, 0.4);
+  border-radius: 50%;
+}
+.menu-rope {
+  position: absolute;
+  top: 90px;
+  bottom: 200px;
+  width: 7px;
+  border-radius: 999px;
+  background: var(--menu-rope);
+  border: 2px solid var(--menu-bark-dark);
+}
+.menu-rope-left {
+  left: var(--menu-rope-left);
+  rotate: 2deg;
+}
+.menu-rope-right {
+  left: var(--menu-rope-right);
+  rotate: -2deg;
+}
+.menu-firefly {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff3bd;
+  box-shadow: 0 0 12px 4px rgba(255, 224, 130, 0.65);
+  animation: firefly 5.5s ease-in-out infinite;
+}
+.menu-firefly-high {
+  right: 14px;
+  top: 140px;
+  width: 7px;
+  height: 7px;
+}
+.menu-firefly-low {
+  right: 20px;
+  top: 60%;
+  width: 5px;
+  height: 5px;
+  animation-delay: -2.6s;
+}
+@keyframes firefly {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translate(0, 0);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-6px, -10px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .menu-firefly {
+    animation: none;
+    opacity: 0.8;
+  }
+}
+
+/* The sign nailed above the ladder. */
+.menu-sign {
+  position: relative;
+  flex-shrink: 0;
+  margin-right: var(--menu-strip);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 72px;
+  border: 4px solid var(--menu-plank-edge);
+  border-radius: 20px;
+  background: var(--menu-cream);
+  box-shadow: var(--menu-drop);
+}
+.menu-sign-title {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 22px;
+  line-height: 1;
+  color: var(--menu-forest);
+}
+.menu-sign-tagline {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--menu-bark-mid);
+  white-space: nowrap;
+}
+
+/* The planks. */
+.menu-planks {
+  position: relative;
+  margin: var(--space-2) var(--menu-strip) 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1.6vh, 18px);
+}
+.menu-planks li {
+  display: flex;
+}
+.menu-plank {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  padding: 0 14px;
+  text-decoration: none;
+  color: var(--menu-ink);
+  background: var(--menu-plank);
+  border: 3px solid var(--menu-plank-edge);
+  border-radius: 12px 17px 10px 16px;
+  box-shadow: var(--menu-drop);
+  rotate: var(--tilt);
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 16px;
+  transition:
+    translate 90ms ease-out,
+    rotate 120ms ease-out;
+}
+.menu-plank:hover {
+  rotate: 0deg;
+  translate: 0 -1px;
+}
+.menu-plank:active {
+  translate: 0 2px;
+}
+.menu-plank svg {
+  flex-shrink: 0;
+}
+.menu-plank-text {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.menu-nail {
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 30%, #fff1c9, #8b5128 70%);
+  box-shadow: inset 0 -1px 1px rgba(27, 18, 10, 0.5);
+}
+/* Where you are: the one green thing in a brown menu. */
+.menu-plank[aria-current='page'] {
+  background: var(--menu-here);
+  border-color: var(--menu-here-edge);
+  box-shadow: var(--menu-glow), var(--menu-drop);
+}
+.menu-plank[aria-current='page'] .menu-nail {
+  background: radial-gradient(circle at 32% 30%, #fffdf0, #2f7f66 70%);
+}
+
+/* Who is signed in, chalked on the trunk above the two keys. */
+.menu-who {
+  position: relative;
+  margin-top: auto;
+  padding: 0 4px;
+  color: var(--menu-cream);
+}
+.menu-who-name {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
 }
-
-.console-who-mail {
+.menu-who-mail {
   font-size: 12px;
-  opacity: 0.6;
+  opacity: 0.75;
   overflow-wrap: anywhere;
 }
 
+/* The two keys at the foot of the tree, one above the other: side by side
+   "Back to the app" is cut short in either language. */
+.menu-actions {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.menu-key {
+  flex: none;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 44px;
+  padding: 0 8px;
+  border: 2px solid var(--menu-rope);
+  border-radius: 14px;
+  background: var(--menu-bark-dark);
+  color: var(--menu-cream);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    translate 90ms ease-out,
+    background 120ms ease-out;
+}
+.menu-key:hover {
+  translate: 0 -1px;
+  background: #4a2f1e;
+}
+.menu-key:active {
+  translate: 0 2px;
+}
+.menu-key svg {
+  flex-shrink: 0;
+}
+.menu-key-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .console-page {
-  padding: var(--space-6);
+  flex: 1;
+  min-width: 0;
   max-width: 1180px;
+  padding: var(--space-8) var(--space-6) 60px;
 }
 
 /* Signed out, not an admin, or the server did not answer: one centred column,
@@ -124,38 +321,57 @@
 }
 
 .console-notice p {
-  opacity: 0.75;
+  color: var(--color-text-muted);
 }
 
-/* A console is a desk tool, but a phone still has to be able to open it. */
+/* A console is a desk tool, but a phone still has to be able to open it: the
+   menu becomes a board across the top, with the planks laid in rows. */
 @media (max-width: 860px) {
   .console {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .console-rail {
-    position: static;
+    position: relative;
+    top: 0;
     height: auto;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    border-right: 0;
-    border-bottom: 1px solid var(--color-divider);
-    gap: var(--space-3);
+    width: auto;
+    margin: 12px 12px 0;
+    overflow: visible;
   }
 
-  .console-nav {
+  .menu-trunk,
+  .menu-rings,
+  .menu-rope,
+  .menu-firefly {
+    display: none;
+  }
+
+  .menu-sign {
+    margin-right: 0;
+  }
+
+  .menu-planks {
+    margin-right: 0;
     flex-direction: row;
     flex-wrap: wrap;
   }
 
-  .console-foot {
-    margin: 0;
-    border-top: 0;
-    padding-top: 0;
+  .menu-planks li {
+    flex: 1 1 140px;
+  }
+
+  .menu-who {
+    margin-top: var(--space-2);
+  }
+
+  .menu-actions {
     flex-direction: row;
-    align-items: center;
-    gap: var(--space-3);
+  }
+
+  .menu-key {
+    flex: 1;
   }
 
   .console-page {
@@ -173,6 +389,10 @@
 }
 
 .tag-good {
+  background: var(--color-accent-2-200);
+  color: var(--color-accent-2-800);
+}
+:root[data-theme='dark'] .tag-good {
   background: var(--color-accent-2-900);
   color: var(--color-accent-2-300);
 }
@@ -358,7 +578,7 @@
 }
 .studio-steps ::marker,
 .studio-steps > li::marker {
-  color: var(--color-accent);
+  color: var(--color-accent-ink);
   font-family: var(--font-mono);
 }
 .studio-steps b {

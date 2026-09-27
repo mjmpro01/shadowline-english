@@ -7,6 +7,9 @@ import './styles/console.css'
 import { router } from './router'
 import { I18nProvider } from './i18n/I18nProvider'
 import { SessionProvider } from './session'
+import { startTheme } from './lib/theme'
+
+startTheme()
 
 // No service worker. The learner app registers one because it is installable on
 // a phone; a console is opened at a desk, and a cache that hands back yesterday's

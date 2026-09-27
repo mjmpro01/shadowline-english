@@ -260,6 +260,7 @@ export const en = {
     `${who} is signed out everywhere now and cannot sign in until the account is restored. Their takes and history stay.`,
   'users.previous': 'Previous',
   'users.next': 'Next',
+  'nav.tagline': 'ADMIN CONSOLE',
   'nav.back': 'Back to the app',
   'nav.signOut': 'Sign out',
   // --- tutor usage ----------------------------------------------------------
