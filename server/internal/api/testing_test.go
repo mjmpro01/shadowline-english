@@ -444,13 +444,48 @@ func silentWAV(seconds float64) []byte {
 	return b.Bytes()
 }
 
-// dropTranscribeJob is what giving up looks like: the worker deletes the job and
-// writes no transcript, which is what makes the studio stop promising words.
+// giveUpTranscribing is what the transcriber does after its last attempt: the
+// job stays, marked failed and carrying the reason, and no transcript is
+// written. That is what makes the studio stop promising words and say why.
+func (h *harness) giveUpTranscribing(t *testing.T, sourceID, reason string) {
+	t.Helper()
+	if _, err := h.pool.Exec(context.Background(), `
+		update transcribe_jobs
+		set state = 'failed', attempts = 3, error = $2, locked_at = null
+		where source_id = $1`, sourceID, reason); err != nil {
+		t.Fatalf("give up transcribing %s: %v", sourceID, err)
+	}
+}
+
+// dropTranscribeJob is giving up as the transcriber did before failed jobs were
+// kept: no job and no transcript, and no reason left anywhere.
 func (h *harness) dropTranscribeJob(t *testing.T, sourceID string) {
 	t.Helper()
 	if _, err := h.pool.Exec(context.Background(),
 		`delete from transcribe_jobs where source_id = $1`, sourceID); err != nil {
 		t.Fatalf("drop the transcribe job for %s: %v", sourceID, err)
+	}
+}
+
+// startTranscribing is the transcriber claiming a source's job.
+func (h *harness) startTranscribing(t *testing.T, sourceID string) {
+	t.Helper()
+	if _, err := h.pool.Exec(context.Background(), `
+		update transcribe_jobs set state = 'running', attempts = attempts + 1, locked_at = now()
+		where source_id = $1`, sourceID); err != nil {
+		t.Fatalf("start transcribing %s: %v", sourceID, err)
+	}
+}
+
+// transcriberBeat is the transcriber's heartbeat, as seen `ago` in the past.
+func (h *harness) transcriberBeat(t *testing.T, ago time.Duration, busy bool) {
+	t.Helper()
+	if _, err := h.pool.Exec(context.Background(), `
+		insert into worker_heartbeats (service, seen_at, busy)
+		values ('transcribing', now() - $1::interval, $2)
+		on conflict (service) do update set seen_at = excluded.seen_at, busy = excluded.busy`,
+		fmt.Sprintf("%d seconds", int(ago.Seconds())), busy); err != nil {
+		t.Fatalf("write a transcriber heartbeat: %v", err)
 	}
 }
 

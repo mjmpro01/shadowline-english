@@ -135,9 +135,6 @@ export const vi: Messages = {
   'studio.batchCategories': 'Thể loại cho cả đợt',
   'studio.batchCategoriesHint': 'phỏng vấn, hội thoại hằng ngày',
   'studio.applyToAll': 'Áp dụng cho mọi clip',
-  'studio.listening': 'Đang nghe ra từng chữ…',
-  'studio.transcribing':
-    'Đang chép lời — các câu sẽ tự điền khi xong. Bạn cứ cắt tiếp trong lúc đó.',
   'studio.published': 'Đã đăng',
   'studio.publishedBody': (n: number) => `${n} clip đã vào thư viện.`,
   'studio.publishedSilent': (n: number) =>
@@ -160,7 +157,43 @@ export const vi: Messages = {
   'studio.saving': 'Đang lưu…',
   'studio.featured': 'Đang nổi bật',
   'studio.feature': 'Cho nổi bật',
-  'studio.noTranscript': 'Không chép lời được, nên phần câu thoại bạn tự gõ nhé.',
+  // --- trạng thái chép lời -----------------------------------------------------
+  'transcript.uploading': 'Đang gửi bản thu lên máy chủ. Chép lời bắt đầu khi gửi xong.',
+  'transcript.uploadFailed':
+    'Bản thu chưa tới được máy chủ, nên không có gì để chép lời. Hãy gõ câu thoại, hoặc tải file lên lại.',
+  'transcript.checking': 'Đang hỏi máy chủ về phần chép lời…',
+  'transcript.queued': (ahead: number, waited: string) =>
+    ahead === 0
+      ? `Đang xếp hàng, sắp tới lượt · đã chờ ${waited}`
+      : `Đang xếp hàng · ${ahead} bản thu phía trước · đã chờ ${waited}`,
+  'transcript.running': (elapsed: string, attempt: number, max: number) =>
+    `Đang chép lời · đã chạy ${elapsed} · lần thử ${attempt}/${max}`,
+  'transcript.lastError': (reason: string) => `Lần thử trước bị lỗi: ${reason}`,
+  'transcript.neverSeen':
+    'Chưa có máy chép lời nào chạy ở đây. Bản thu đã vào hàng đợi nhưng không có ai nhận — hãy khởi động service transcribing.',
+  'transcript.offline': (ago: string) =>
+    `Máy chép lời đã ngừng từ ${ago} trước. Bản thu vẫn trong hàng đợi và sẽ được nhận ngay khi service chạy lại.`,
+  'transcript.offlineRunning': (ago: string) =>
+    `Máy chép lời im lặng từ ${ago} trước, giữa lúc đang chép bản thu này. Việc sẽ được nhận lại khi service chạy lại.`,
+  'transcript.howToStart':
+    'docker compose up -d transcribing — hoặc trong scoring/: python -m shadowline.transcriber',
+  'transcript.ready': (words: number) =>
+    `Đã chép ${words} từ. Các câu trống đã được điền — hãy kiểm tra lại.`,
+  'transcript.failed': (attempts: number, reason: string) =>
+    `Chép lời thất bại sau ${attempts} lần thử: ${reason}`,
+  'transcript.failedNoReason': 'Chép lời thất bại, và lý do không được lưu lại.',
+  'transcript.typeMeanwhile': 'Bạn vẫn gõ câu thoại bằng tay được.',
+  'transcript.retry': 'Chép lời lại',
+  'transcript.retryFailed': 'Không đưa lại vào hàng đợi được.',
+  'transcript.worker.online': (busy: boolean) =>
+    busy ? 'Máy chép lời đang chạy · đang làm việc' : 'Máy chép lời đang chạy · đang rảnh',
+  'transcript.worker.offline': (ago: string) =>
+    `Máy chép lời không chạy · thấy lần cuối ${ago} trước`,
+  'transcript.worker.never': 'Máy chép lời chưa từng chạy',
+  'time.seconds': (n: number) => `${n} giây`,
+  'time.minutes': (n: number) => `${n} phút`,
+  'time.hours': (n: number) => `${n} giờ`,
+  'time.days': (n: number) => `${n} ngày`,
   'studio.nameOptional': 'Tên (không bắt buộc)',
   'studio.namedWhenPublished': 'Đặt tên khi đăng',
 

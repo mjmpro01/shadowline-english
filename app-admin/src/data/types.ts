@@ -32,6 +32,30 @@ export interface Transcript {
   status: 'pending' | 'ready' | 'failed'
   language: string
   words: TranscriptWord[]
+  /** While pending: waiting for the transcriber, or being transcribed. */
+  stage?: 'queued' | 'running'
+  /** Recordings queued before this one and still waiting. */
+  ahead?: number
+  attempts?: number
+  maxAttempts?: number
+  /** Why the last attempt failed — on a failed transcript, why it gave up. */
+  error?: string
+  queuedAt?: string
+  startedAt?: string
+  /** The transcriber's last heartbeat; null when it has never run. */
+  transcriber?: WorkerStatus | null
+  /** Set by the studio, not the server: the recording never reached the
+   *  server, so there was nothing to transcribe. */
+  uploadFailed?: boolean
+}
+
+/** A worker's last heartbeat. */
+export interface WorkerStatus {
+  seenAt: string
+  /** Working on something at that beat, rather than waiting for work. */
+  busy: boolean
+  /** Beat within the last 45 seconds. */
+  online: boolean
 }
 
 /** A series: Friends, a lecture course, a channel. */

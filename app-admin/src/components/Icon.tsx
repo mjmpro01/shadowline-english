@@ -166,6 +166,19 @@ const PATHS: Record<string, React.ReactNode> = {
       <line x1="8.12" y1="8.12" x2="12" y2="12" />
     </>
   ),
+  alert: (
+    <>
+      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+      <line x1="12" y1="9" x2="12" y2="13" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </>
+  ),
+  retry: (
+    <>
+      <polyline points="1 4 1 10 7 10" />
+      <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+    </>
+  ),
 }
 
 export type IconName = keyof typeof PATHS

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { useT } from '../i18n'
 import { Icon } from '../components/Icon'
 import { Loading } from '../components/LoadState'
+import { TranscriberBadge } from '../components/TranscriptStatus'
+import type { WorkerStatus } from '../data/types'
 import { ApiError } from '../lib/api'
 import { useDebounced } from '../lib/remote'
 import { clock } from '../lib/time'
@@ -48,9 +50,18 @@ export function Uploads() {
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
+  // The transcriber's last heartbeat: null when it has never run, undefined
+  // until the server has answered.
+  const [transcriber, setTranscriber] = useState<WorkerStatus | null | undefined>(undefined)
 
   const load = useCallback(
     async (at: number) => {
+      // Beside the page rather than in front of it: an answer about the
+      // transcriber is worth having, and not worth an empty history if it fails.
+      void repository.services().then(
+        (services) => setTranscriber(services.transcribing),
+        () => setTranscriber(undefined),
+      )
       try {
         setPage(await repository.uploads(settled, state, PAGE, at))
         setError(null)
@@ -102,11 +113,14 @@ export function Uploads() {
 
   return (
     <div className="stack gap-3">
-      <div>
-        <h1 style={{ marginBottom: 2 }}>{t('uploads.title')}</h1>
-        <div className="card-meta">
-          {page === null ? '—' : t('uploads.count', page.total)}
+      <div className="row between wrap gap-2" style={{ alignItems: 'flex-start' }}>
+        <div>
+          <h1 style={{ marginBottom: 2 }}>{t('uploads.title')}</h1>
+          <div className="card-meta">
+            {page === null ? '—' : t('uploads.count', page.total)}
+          </div>
         </div>
+        <TranscriberBadge worker={transcriber} />
       </div>
 
       <div className="row gap-2 wrap">

@@ -94,13 +94,21 @@ class TranscribeQueue:
     def fail(self, job: TranscribeJob, reason: str) -> None:
         """Put the job back, or give up once it has had its attempts.
 
-        Giving up deletes the job, which is what makes the studio stop saying
-        the words are coming: with no transcript and no job, the source reports
-        failed and the admin types the lines as they always did.
+        Giving up marks the job 'failed' and keeps it, with the reason: that is
+        what makes the studio stop saying the words are coming, and what lets
+        it say why. A failed job is never claimed again; a retry from the
+        console puts it back to 'queued'.
         """
         with self.conn.transaction(), self.conn.cursor() as cur:
             if job.attempts >= MAX_ATTEMPTS:
-                cur.execute("delete from transcribe_jobs where id = %s", (job.id,))
+                cur.execute(
+                    """
+                    update transcribe_jobs
+                    set state = 'failed', locked_at = null, error = %s
+                    where id = %s
+                    """,
+                    (reason[:500], job.id),
+                )
             else:
                 cur.execute(
                     """

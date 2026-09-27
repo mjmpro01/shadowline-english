@@ -140,9 +140,6 @@ export const en = {
   'studio.batchCategories': 'Categories for the batch',
   'studio.batchCategoriesHint': 'interview, daily conversation',
   'studio.applyToAll': 'Apply to all clips',
-  'studio.listening': 'Listening for the words…',
-  'studio.transcribing':
-    'Transcribing — the lines fill themselves in when it finishes. Keep cutting meanwhile.',
   'studio.published': 'Published',
   'studio.publishedBody': (n: number) => `${n} clips are now in the library.`,
   'studio.publishedSilent': (n: number) =>
@@ -165,7 +162,43 @@ export const en = {
   'studio.saving': 'Saving…',
   'studio.featured': 'Featured',
   'studio.feature': 'Feature',
-  'studio.noTranscript': 'The words could not be transcribed, so the lines are yours to type.',
+  // --- transcription status --------------------------------------------------
+  'transcript.uploading':
+    'Sending the recording to the server. Transcription starts once it has landed.',
+  'transcript.uploadFailed':
+    'The recording never reached the server, so nothing could transcribe it. Type the lines, or load the file again.',
+  'transcript.checking': 'Asking the server about the transcript…',
+  'transcript.queued': (ahead: number, waited: string) =>
+    ahead === 0
+      ? `Queued, next in line · waiting ${waited}`
+      : `Queued · ${ahead} recording${ahead === 1 ? '' : 's'} ahead · waiting ${waited}`,
+  'transcript.running': (elapsed: string, attempt: number, max: number) =>
+    `Transcribing · ${elapsed} so far · attempt ${attempt} of ${max}`,
+  'transcript.lastError': (reason: string) => `The attempt before this one failed: ${reason}`,
+  'transcript.neverSeen':
+    'No transcriber has run here yet. The recording is queued, but nothing is reading the queue — start the transcribing service.',
+  'transcript.offline': (ago: string) =>
+    `The transcriber stopped ${ago} ago. The recording is still queued and is picked up as soon as the service runs again.`,
+  'transcript.offlineRunning': (ago: string) =>
+    `The transcriber went quiet ${ago} ago, in the middle of this recording. It is picked up again once the service is back.`,
+  'transcript.howToStart':
+    'docker compose up -d transcribing — or from scoring/: python -m shadowline.transcriber',
+  'transcript.ready': (words: number) =>
+    `Transcribed ${words} words. Empty lines have been filled in — check them.`,
+  'transcript.failed': (attempts: number, reason: string) =>
+    `Transcription gave up after ${attempts} attempt${attempts === 1 ? '' : 's'}: ${reason}`,
+  'transcript.failedNoReason': 'Transcription gave up, and the reason was not kept.',
+  'transcript.typeMeanwhile': 'The lines can still be typed by hand.',
+  'transcript.retry': 'Transcribe again',
+  'transcript.retryFailed': 'Could not queue it again.',
+  'transcript.worker.online': (busy: boolean) =>
+    busy ? 'Transcriber running · working' : 'Transcriber running · idle',
+  'transcript.worker.offline': (ago: string) => `Transcriber not running · last seen ${ago} ago`,
+  'transcript.worker.never': 'Transcriber has never run',
+  'time.seconds': (n: number) => `${n}s`,
+  'time.minutes': (n: number) => `${n} min`,
+  'time.hours': (n: number) => `${n} h`,
+  'time.days': (n: number) => `${n} day${n === 1 ? '' : 's'}`,
   'studio.nameOptional': 'Name (optional)',
   'studio.namedWhenPublished': 'Named when published',
 

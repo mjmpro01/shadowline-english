@@ -5,6 +5,7 @@ import { Icon } from '../components/Icon'
 import { ThumbnailStrip } from '../components/ThumbnailStrip'
 import { WaveformEditor } from '../components/WaveformEditor'
 import { MAX_CLIP_SECONDS, type Transcript } from '../data/types'
+import { TranscriptStatus } from '../components/TranscriptStatus'
 import { publishClips, type PublishProgress } from '../lib/publish'
 import { looksLikeVideo } from '../lib/media'
 import { decodeFile, peaks as computePeaks } from '../lib/audio/decode'
@@ -92,6 +93,9 @@ export function Cut() {
   const sourceUpload = useRef<Promise<string | null>>(left?.upload ?? Promise.resolve(null))
   const [sourceUploading, setSourceUploading] = useState(left?.sourceUploading ?? false)
   const [transcript, setTranscript] = useState<Transcript | null>(left?.transcript ?? null)
+  // Bumped by a retry, so the transcript is asked for again after it had
+  // stopped at a failure.
+  const [askAgain, setAskAgain] = useState(0)
   /** The recording whose filmstrip has already been walked. */
   const walked = useRef<string | null>(left?.walked ?? null)
 
@@ -196,7 +200,7 @@ export function Cut() {
         })
         .catch(() => {
           setSourceUploading(false)
-          setTranscript({ status: 'failed', language: '', words: [] })
+          setTranscript({ status: 'failed', language: '', words: [], uploadFailed: true })
           return null
         })
       sourceUpload.current = upload
@@ -303,7 +307,17 @@ export function Cut() {
       active = false
       clearTimeout(timer)
     }
-  }, [sourceId])
+    // `askAgain` is in the list only so that a retry, which bumps it, starts
+    // the asking over after it had stopped at a failure.
+  }, [sourceId, askAgain])
+
+  /** Queues a recording the transcriber gave up on, and starts asking again. */
+  const retryTranscript = async () => {
+    if (!sourceId) return
+    await repository.retryUpload(sourceId)
+    setTranscript(null)
+    setAskAgain((n) => n + 1)
+  }
 
   /**
    * Writes the transcript into the clips, leaving alone anything already typed.
@@ -641,15 +655,11 @@ export function Cut() {
             </div>
 
             <div className="row between wrap gap-2">
-              <div className="card-meta">
-                {transcript === null && t('studio.listening')}
-                {transcript?.status === 'pending' &&
-                  t('studio.transcribing')}
-                {transcript?.status === 'ready' &&
-                  `Transcribed ${transcript.words.length} words. Empty lines have been filled in — check them.`}
-                {transcript?.status === 'failed' &&
-                  t('studio.noTranscript')}
-              </div>
+              <TranscriptStatus
+                transcript={transcript}
+                uploading={sourceUploading}
+                onRetry={sourceId ? retryTranscript : undefined}
+              />
               {/* Boundaries move after the words arrive, and the lines are not
                   rewritten underneath the admin when they do. This is how that
                   is asked for on purpose — and it still leaves typed lines

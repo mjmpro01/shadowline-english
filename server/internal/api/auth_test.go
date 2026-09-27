@@ -179,7 +179,7 @@ func TestTheTestOnlyRoutesAreAbsentWithoutTheFakeProvider(t *testing.T) {
 
 	real := newHarness(t)
 	real.withRealProvider()
-	for _, route := range []string{"/test/reset", "/test/transcript"} {
+	for _, route := range []string{"/test/reset", "/test/transcript", "/test/transcript/fail"} {
 		expectStatus(t, real.anonymous().json("POST", route, nil), http.StatusNotFound)
 	}
 }

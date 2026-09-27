@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -44,36 +45,126 @@ type Word struct {
 
 // Transcript is what the studio polls for. Pending is the ordinary first
 // answer: transcribing an hour takes minutes, and the screen says so rather
-// than looking broken.
+// than looking broken — and says which part of the wait it is in, so a queue
+// nothing is reading looks different from a model that is busy.
 type Transcript struct {
 	Status   string `json:"status"` // "pending", "ready" or "failed"
 	Language string `json:"language"`
 	Words    []Word `json:"words"`
+
+	// Stage is "queued" or "running" while pending, and empty otherwise.
+	Stage string `json:"stage,omitempty"`
+	// Ahead is how many recordings were queued before this one and are still
+	// waiting, while it is queued.
+	Ahead int `json:"ahead"`
+	// Attempts the transcriber has made, out of MaxTranscribeAttempts.
+	Attempts    int `json:"attempts"`
+	MaxAttempts int `json:"maxAttempts"`
+	// Error is why the last attempt failed: on a failed transcript, why it gave
+	// up; on a pending one, why the attempt before this one did not work.
+	Error string `json:"error,omitempty"`
+	// QueuedAt is when the recording landed and was queued; StartedAt when the
+	// attempt now running began.
+	QueuedAt  *time.Time `json:"queuedAt,omitempty"`
+	StartedAt *time.Time `json:"startedAt,omitempty"`
+	// Transcriber is whether the worker is running, from its heartbeat. Nil
+	// when it has never been seen at all.
+	Transcriber *Worker `json:"transcriber"`
+}
+
+// MaxTranscribeAttempts is how many times the transcriber tries a recording
+// before giving up. It is the worker's MAX_ATTEMPTS, in
+// scoring/shadowline/transcribequeue.py, and has to stay the same.
+const MaxTranscribeAttempts = 3
+
+// TranscriberService is the name the transcription worker beats under.
+const TranscriberService = "transcribing"
+
+// Worker is a worker's last heartbeat.
+type Worker struct {
+	SeenAt time.Time `json:"seenAt"`
+	// Busy is whether it was working on something at that beat.
+	Busy bool `json:"busy"`
+	// Online is whether the beat is recent: a worker beats every ten seconds,
+	// so three missed beats and a little more means it has stopped.
+	Online bool `json:"online"`
+}
+
+// workerSilentAfter is how long without a heartbeat before a worker counts as
+// not running.
+const workerSilentAfter = "45 seconds"
+
+// WorkerStatus is a service's last heartbeat, or nil if it has never beaten.
+func (s *Store) WorkerStatus(ctx context.Context, service string) (*Worker, error) {
+	var w Worker
+	err := s.pool.QueryRow(ctx, `
+		select seen_at, busy, seen_at > now() - $2::interval
+		from worker_heartbeats where service = $1`, service, workerSilentAfter).
+		Scan(&w.SeenAt, &w.Busy, &w.Online)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &w, nil
 }
 
 func (s *Store) TranscriptBySource(ctx context.Context, id uuid.UUID) (Transcript, error) {
-	out := Transcript{Words: []Word{}}
+	out := Transcript{Words: []Word{}, MaxAttempts: MaxTranscribeAttempts}
+
+	// The transcript and the job in one statement, so both come from the same
+	// moment. Read one after the other, a transcriber finishing in between —
+	// writing the words and deleting the job — reads as neither, which is
+	// "failed", and the studio stops asking for words that have just arrived.
 	var raw []byte
-	err := s.pool.QueryRow(ctx,
-		`select words, language from transcripts where source_id = $1`, id).Scan(&raw, &out.Language)
-	if err == nil {
+	var language, state, errText *string
+	var attempts *int
+	var ahead int
+	var queuedAt, startedAt *time.Time
+	err := s.pool.QueryRow(ctx, `
+		select t.words, t.language, j.state, j.attempts, j.error, j.created_at, j.locked_at,
+		       (select count(*)::int from transcribe_jobs a
+		        where a.state = 'queued' and a.created_at < j.created_at)
+		from (select $1::uuid as id) src
+		left join transcripts t on t.source_id = src.id
+		left join transcribe_jobs j on j.source_id = src.id`, id).
+		Scan(&raw, &language, &state, &attempts, &errText, &queuedAt, &startedAt, &ahead)
+	if err != nil {
+		return out, err
+	}
+	if raw != nil {
 		out.Status = "ready"
+		if language != nil {
+			out.Language = *language
+		}
 		return out, json.Unmarshal(raw, &out.Words)
 	}
-	if !errors.Is(err, pgx.ErrNoRows) {
+
+	if out.Transcriber, err = s.WorkerStatus(ctx, TranscriberService); err != nil {
 		return out, err
 	}
 
-	// No transcript yet: either one is still coming, or every attempt is spent
-	// and none ever will be. The studio shows different words for each.
-	var queued bool
-	if err := s.pool.QueryRow(ctx,
-		`select exists (select 1 from transcribe_jobs where source_id = $1)`, id).Scan(&queued); err != nil {
-		return out, err
+	// No transcript yet: one is still coming, or the transcriber gave up (a
+	// failed job, kept for its reason), or — from before failed jobs were kept —
+	// there is no job at all and the reason is lost.
+	if state == nil {
+		out.Status = "failed"
+		return out, nil
 	}
-	out.Status = "failed"
-	if queued {
-		out.Status = "pending"
+	out.Attempts = *attempts
+	if errText != nil {
+		out.Error = *errText
+	}
+	out.QueuedAt = queuedAt
+	switch *state {
+	case "failed":
+		out.Status = "failed"
+	case "running":
+		out.Status, out.Stage, out.StartedAt = "pending", "running", startedAt
+	default:
+		// Only meaningful while this one is waiting in the queue too.
+		out.Status, out.Stage, out.Ahead = "pending", "queued", ahead
 	}
 	return out, nil
 }
@@ -136,4 +227,23 @@ func (s *Store) StoreLatestTranscript(ctx context.Context, language string, word
 		_, err = tx.Exec(ctx, `delete from transcribe_jobs where source_id = $1`, id)
 		return err
 	})
+}
+
+// FailLatestTranscript marks the newest source's transcription job as given up,
+// with a reason, which is what the transcriber does after its last attempt.
+//
+// For the browser tests only, like StoreLatestTranscript.
+func (s *Store) FailLatestTranscript(ctx context.Context, reason string) error {
+	tag, err := s.pool.Exec(ctx, `
+		update transcribe_jobs
+		set state = 'failed', attempts = $1, error = $2, locked_at = null
+		where source_id = (select id from clip_sources order by created_at desc limit 1)`,
+		MaxTranscribeAttempts, reason)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
 }

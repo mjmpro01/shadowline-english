@@ -37,7 +37,7 @@ async function upload(page: import('@playwright/test').Page) {
   await expect(page.locator('.waveform')).toBeVisible({ timeout: 30_000 })
   // The recording goes up in the background; the transcript cannot be stored
   // against it until it is there.
-  await expect(page.getByText(/Transcribing|Listening for the words/)).toBeVisible()
+  await expect(page.locator('.transcript-status')).toBeVisible()
 }
 
 async function deliverTranscript(page: import('@playwright/test').Page, words = WORDS) {
@@ -111,4 +111,47 @@ test('the published clips carry the transcribed line', async ({ page }) => {
   await page.goto(`${APP_URL}/library`)
   await page.getByLabel('Search the library').fill('One step')
   await expect(page.getByText('One step').first()).toBeVisible()
+})
+
+// No transcriber runs in these tests, which is exactly the case worth a
+// warning: the recording is queued and nothing is reading the queue.
+test('a queue nothing is reading says so, and how to start the transcriber', async ({ page }) => {
+  await upload(page)
+
+  const status = page.locator('.transcript-status')
+  await expect(status).toContainText('Queued', { timeout: 30_000 })
+  await expect(status).toContainText('No transcriber has run here yet')
+  await expect(status).toContainText('docker compose up -d transcribing')
+})
+
+test('a transcript the worker gave up on says why, and can be tried again', async ({ page }) => {
+  await upload(page)
+  await expect
+    .poll(
+      async () =>
+        (
+          await page.request.post(`${API_URL}/test/transcript/fail`, {
+            data: { reason: 'source is missing: clips/source/x.webm' },
+          })
+        ).status(),
+      { timeout: 30_000 },
+    )
+    .toBe(200)
+
+  const status = page.locator('.transcript-status')
+  await expect(status).toContainText(
+    'Transcription gave up after 3 attempts: source is missing: clips/source/x.webm',
+    { timeout: 30_000 },
+  )
+  await expect(status).toContainText('The lines can still be typed by hand.')
+
+  await status.getByRole('button', { name: 'Transcribe again' }).click()
+  // Back in the queue, from the first attempt, with the old reason gone.
+  await expect(status).toContainText('Queued', { timeout: 30_000 })
+  await expect(status).not.toContainText('gave up')
+})
+
+test('the upload history shows whether the transcriber is running', async ({ page }) => {
+  await page.goto('/admin/uploads')
+  await expect(page.locator('.worker-badge')).toHaveText('Transcriber has never run')
 })

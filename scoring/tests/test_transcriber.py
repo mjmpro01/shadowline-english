@@ -115,9 +115,35 @@ def test_a_recording_that_cannot_be_transcribed_is_given_up_on(db, blobs, tmp_pa
         assert run_once(queue, store, transcriber, tmp_path) is True
 
     assert transcript(db, source_id) is None
-    assert db.execute("select count(*) from transcribe_jobs").fetchone()[0] == 0
+    # Kept, as failed and with the reason, so the studio can say why rather
+    # than only that it did not work.
+    state, error = db.execute("select state, error from transcribe_jobs").fetchone()
+    assert state == "failed"
+    assert error == "no speech found"
     # The source row itself survives, because its clips still point at it.
     assert db.execute("select count(*) from clip_sources").fetchone()[0] == 1
+
+
+def test_a_job_given_up_on_is_never_claimed_again(db, blobs, tmp_path):
+    store, root = blobs
+    seed(db, root)
+    queue, transcriber = TranscribeQueue(db), FakeTranscriber(fails=True)
+    for _ in range(MAX_ATTEMPTS):
+        run_once(queue, store, transcriber, tmp_path)
+
+    assert run_once(queue, store, transcriber, tmp_path) is False
+    assert transcriber.calls == MAX_ATTEMPTS
+
+
+def test_an_attempt_that_will_be_retried_keeps_its_reason(db, blobs, tmp_path):
+    store, root = blobs
+    seed(db, root)
+    run_once(TranscribeQueue(db), store, FakeTranscriber(fails=True), tmp_path)
+
+    state, attempts, error = db.execute(
+        "select state, attempts, error from transcribe_jobs"
+    ).fetchone()
+    assert (state, attempts, error) == ("queued", 1, "no speech found")
 
 
 def test_a_missing_recording_stops_being_retried(db, blobs, tmp_path):
@@ -130,6 +156,8 @@ def test_a_missing_recording_stops_being_retried(db, blobs, tmp_path):
 
     assert transcript(db, source_id) is None
     assert transcriber.calls == 0, "a missing file should never reach the model"
+    error = db.execute("select error from transcribe_jobs").fetchone()[0]
+    assert error.startswith("source is missing")
 
 
 def test_one_recording_is_transcribed_once_for_all_of_its_clips(db, blobs, tmp_path):
