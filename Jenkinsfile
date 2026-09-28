@@ -116,6 +116,12 @@ pipeline {
             rsync -a --delete app-admin/dist/ "$ROOT/app-admin/dist/"
           fi
 
+          # Which commit this is, baked into every image so the console's System
+          # page can show each part's version. Asked here, in the workspace: the
+          # deploy tree has no .git.
+          SHADOWLINE_VERSION="$(git rev-parse HEAD | cut -c1-7)"
+          export SHADOWLINE_VERSION
+
           cd "$COMPOSE_DIR"
           docker compose up -d --build
         '''

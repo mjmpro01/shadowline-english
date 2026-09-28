@@ -59,7 +59,20 @@ export interface WorkerStatus {
   busy: boolean
   /** Beat within the last 45 seconds. */
   online: boolean
+  /** The code it runs, as it reported it; empty from a worker too old to. */
+  version?: string
+  /** When the process started. */
+  startedAt?: string | null
 }
+
+/** Every worker that beats, by the name it beats under. */
+export type WorkerService = 'transcribing' | 'cutting' | 'scoring' | 'dubbing' | 'glossing'
+
+/** Which code every part runs, and which workers are alive. */
+export type Services = { api: { version: string; startedAt: string } } & Record<
+  WorkerService,
+  WorkerStatus | null
+>
 
 /** A series: Friends, a lecture course, a channel. */
 export interface Playlist {

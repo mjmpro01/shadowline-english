@@ -20,4 +20,8 @@ ARG WHISPER_MODEL=small.en
 ENV WHISPER_MODEL=${WHISPER_MODEL} \
     HF_HOME=/home/worker/.cache/huggingface
 RUN python -c "from faster_whisper import WhisperModel; WhisperModel('${WHISPER_MODEL}', device='cpu', compute_type='int8')"
+# Which code this image is, for the console's System page. Last, so a new
+# commit does not throw away the Whisper layer above it.
+ARG SHADOWLINE_VERSION=
+ENV SHADOWLINE_VERSION=${SHADOWLINE_VERSION}
 ENTRYPOINT ["python", "-m", "shadowline.worker"]

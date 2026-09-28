@@ -85,6 +85,9 @@ services:
   api:
     build:
       context: .
+      args:
+        # Which code the image is, for the console's System page.
+        SHADOWLINE_VERSION: ${SHADOWLINE_VERSION:-}
     env_file: .env
     environment:
       ADDR: ":8080"
@@ -118,6 +121,7 @@ services:
       context: ..
       dockerfile: app/Dockerfile
       args:
+        SHADOWLINE_VERSION: ${SHADOWLINE_VERSION:-}
         VITE_API_URL: ${VITE_API_URL:-}
     ports:
       - "${WEB_PORT:-8088}:80"
@@ -130,6 +134,9 @@ services:
   seed:
     build:
       context: .
+      args:
+        # Which code the image is, for the console's System page.
+        SHADOWLINE_VERSION: ${SHADOWLINE_VERSION:-}
     env_file: .env
     entrypoint: ["/usr/local/bin/seed"]
     restart: "no"
@@ -140,6 +147,9 @@ services:
   scoring:
     build:
       context: ../scoring
+      args:
+        # Which code the image is, for the console's System page.
+        SHADOWLINE_VERSION: ${SHADOWLINE_VERSION:-}
     env_file: .env
     environment:
       OTEL_SERVICE_NAME: shadowline-scoring
@@ -162,6 +172,9 @@ services:
   cutting:
     build:
       context: ../scoring
+      args:
+        # Which code the image is, for the console's System page.
+        SHADOWLINE_VERSION: ${SHADOWLINE_VERSION:-}
     entrypoint: ["python", "-m", "shadowline.cutter"]
     env_file: .env
     environment:
@@ -182,6 +195,9 @@ services:
   dubbing:
     build:
       context: ../scoring
+      args:
+        # Which code the image is, for the console's System page.
+        SHADOWLINE_VERSION: ${SHADOWLINE_VERSION:-}
     entrypoint: ["python", "-m", "shadowline.dubber"]
     env_file: .env
     environment:
@@ -202,6 +218,9 @@ services:
   transcribing:
     build:
       context: ../scoring
+      args:
+        # Which code the image is, for the console's System page.
+        SHADOWLINE_VERSION: ${SHADOWLINE_VERSION:-}
     entrypoint: ["python", "-m", "shadowline.transcriber"]
     env_file: .env
     environment:
@@ -227,6 +246,9 @@ services:
   glossing:
     build:
       context: ../scoring
+      args:
+        # Which code the image is, for the console's System page.
+        SHADOWLINE_VERSION: ${SHADOWLINE_VERSION:-}
     entrypoint: ["python", "-m", "shadowline.glosser"]
     env_file: .env
     environment:

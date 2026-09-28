@@ -9,6 +9,7 @@ import { Tutor } from './pages/Tutor'
 import { Users } from './pages/Users'
 import { Uploads } from './pages/Uploads'
 import { Login } from './pages/Login'
+import { System } from './pages/System'
 
 // basename matches vite's `base`: the console is served under /admin/ on the
 // same origin as the learner app, so every route here is really /admin/…
@@ -32,6 +33,7 @@ export const router = createBrowserRouter(
         { path: 'tutor', element: <Tutor /> },
         { path: 'users', element: <Users /> },
         { path: 'banners', element: <Banners /> },
+        { path: 'system', element: <System /> },
         { path: '*', element: <Navigate to="/cut" replace /> },
       ],
     },

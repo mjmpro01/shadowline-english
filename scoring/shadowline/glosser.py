@@ -25,6 +25,7 @@ from .dictionary import LearnersDictionary
 from .gloss import ClaudeGlosser, Glosser, GlossFailed, gloss
 from .glossqueue import GlossQueue
 from . import telemetry
+from .heartbeat import Heartbeat
 
 log = logging.getLogger("shadowline.glosser")
 
@@ -121,6 +122,8 @@ def main() -> int:
 
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
+    # So the console can show this worker is running, and which code it runs.
+    heartbeat = Heartbeat(dsn, "glossing").start()
 
     log.info("glosser ready")
     backoff = 1.0
@@ -130,7 +133,10 @@ def main() -> int:
                 queue = GlossQueue(conn)
                 backoff = 1.0
                 while running:
-                    if not run_once(queue, sources):
+                    heartbeat.busy = True
+                    worked = run_once(queue, sources)
+                    heartbeat.busy = False
+                    if not worked:
                         time.sleep(IDLE_SLEEP)
         # Every database error, not just a dropped connection: a worker started
         # beside a server still migrating finds no table yet, and dying there
@@ -141,6 +147,7 @@ def main() -> int:
             log.warning("database not ready (%s) — retrying in %.0fs", err, backoff)
             time.sleep(backoff)
             backoff = min(backoff * 2, MAX_BACKOFF)
+    heartbeat.stop()
     return 0
 
 

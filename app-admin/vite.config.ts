@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import react from '@vitejs/plugin-react'
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 
@@ -33,6 +34,27 @@ function learnerAppRedirect(appUrl: string): Plugin {
   }
 }
 
+/**
+ * Which code this console is built from, baked into the bundle.
+ *
+ * The same rule as the server (internal/version) and the workers
+ * (shadowline/version.py), so the three compare: SHADOWLINE_VERSION when the
+ * deployment sets it, else the checkout's commit (seven characters, "-dirty"
+ * with changes to tracked files), else "unknown".
+ */
+function consoleVersion(env: Record<string, string | undefined>): string {
+  const pinned = env.SHADOWLINE_VERSION?.trim()
+  if (pinned) return pinned
+  try {
+    const git = (...args: string[]) => execFileSync('git', args, { encoding: 'utf8' }).trim()
+    const commit = git('rev-parse', '--short=7', 'HEAD')
+    const dirty = git('status', '--porcelain', '--untracked-files=no') !== ''
+    return dirty ? `${commit}-dirty` : commit
+  } catch {
+    return 'unknown'
+  }
+}
+
 export default defineConfig(({ mode }) => {
   // The shell's variables and this folder's .env files alike: Vite reads .env
   // for the app it builds, not for its own config, so without this an
@@ -45,6 +67,10 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react(), learnerAppRedirect(APP)],
+    define: {
+      __SHADOWLINE_VERSION__: JSON.stringify(consoleVersion(env)),
+      __SHADOWLINE_BUILT_AT__: JSON.stringify(new Date().toISOString()),
+    },
     // Served under /admin/ on the same host as the learner app: the session
     // cookie has no Domain and the API allows exactly one CORS origin, so sharing
     // the origin is what makes signing in work with no server change at all.

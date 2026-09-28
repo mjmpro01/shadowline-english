@@ -14,8 +14,11 @@ from __future__ import annotations
 
 import logging
 import threading
+from datetime import datetime, timezone
 
 import psycopg
+
+from . import version
 
 log = logging.getLogger("shadowline.heartbeat")
 
@@ -24,15 +27,24 @@ log = logging.getLogger("shadowline.heartbeat")
 EVERY = 10.0
 
 
-def beat(conn: psycopg.Connection, service: str, busy: bool) -> None:
-    """Writes one heartbeat. Separate from the thread so a test can call it."""
+def beat(
+    conn: psycopg.Connection,
+    service: str,
+    busy: bool,
+    version: str = "",
+    started_at: datetime | None = None,
+) -> None:
+    """Writes one heartbeat: alive, busy or not, which code, and since when.
+    Separate from the thread so a test can call it."""
     conn.execute(
         """
-        insert into worker_heartbeats (service, seen_at, busy)
-        values (%s, now(), %s)
-        on conflict (service) do update set seen_at = now(), busy = excluded.busy
+        insert into worker_heartbeats (service, seen_at, busy, version, started_at)
+        values (%s, now(), %s, %s, %s)
+        on conflict (service) do update
+        set seen_at = now(), busy = excluded.busy,
+            version = excluded.version, started_at = excluded.started_at
         """,
-        (service, busy),
+        (service, busy, version, started_at),
     )
 
 
@@ -43,6 +55,8 @@ class Heartbeat:
         self.dsn = dsn
         self.service = service
         self.busy = False
+        self.version = version.current()
+        self.started_at = datetime.now(timezone.utc)
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._run, name=f"{service}-heartbeat", daemon=True)
 
@@ -59,7 +73,7 @@ class Heartbeat:
             try:
                 with psycopg.connect(self.dsn, autocommit=True) as conn:
                     while not self._stop.is_set():
-                        beat(conn, self.service, self.busy)
+                        beat(conn, self.service, self.busy, self.version, self.started_at)
                         self._stop.wait(EVERY)
             # Never fatal: a worker that cannot report itself can still work.
             # The table may not exist yet beside a server still migrating.
