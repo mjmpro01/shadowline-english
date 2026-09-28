@@ -92,6 +92,33 @@ test('a published clip scores takes against its own audio', async ({ page }) => 
   await expect(page.getByText('semitones from the source')).toBeVisible()
 })
 
+test('the take stays on the strip beside the clip, and a line follows the clip as it plays', async ({ page }) => {
+  await publishLesson(page)
+  await asLearner(page)
+  await practise(page, LINE(1))
+
+  const guide = page.locator('.wave-frame-guide')
+  await expect(guide.locator('svg')).toBeVisible({ timeout: 20_000 })
+  // Nothing recorded yet, nothing playing: the clip's wave alone.
+  await expect(page.getByTestId('guide-you')).toHaveCount(0)
+  await expect(page.getByTestId('guide-playhead')).toHaveCount(0)
+
+  await recordOnce(page, 'Record')
+  // The take's wave used to vanish the moment recording stopped, which left
+  // nothing to compare the clip's against.
+  await expect(page.getByRole('button', { name: 'Re-record', exact: true })).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByTestId('guide-you')).toBeVisible()
+
+  // Playing the clip runs a line along its wave, and moves it.
+  await page.getByRole('button', { name: /clip again/ }).click()
+  const head = page.getByTestId('guide-playhead')
+  // Attached rather than visible: a vertical line has no width, and Playwright
+  // counts a zero-width box as hidden.
+  await expect(head).toBeAttached({ timeout: 10_000 })
+  const first = Number(await head.getAttribute('x1'))
+  await expect.poll(async () => Number(await head.getAttribute('x1')), { timeout: 10_000 }).toBeGreaterThan(first)
+})
+
 test('each clip is scored against its own audio, not the last one seen', async ({ page }) => {
   await publishLesson(page)
   await asLearner(page)
