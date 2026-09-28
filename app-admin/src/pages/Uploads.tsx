@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useT } from '../i18n'
 import { Icon } from '../components/Icon'
 import { Loading } from '../components/LoadState'
-import { TranscriberBadge } from '../components/TranscriptStatus'
+import { WorkerBadge } from '../components/TranscriptStatus'
 import type { WorkerStatus } from '../data/types'
 import { ApiError } from '../lib/api'
 import { useDebounced } from '../lib/remote'
@@ -50,17 +50,24 @@ export function Uploads() {
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
-  // The transcriber's last heartbeat: null when it has never run, undefined
+  // The workers' last heartbeats: null when one has never run, undefined
   // until the server has answered.
   const [transcriber, setTranscriber] = useState<WorkerStatus | null | undefined>(undefined)
+  const [cutter, setCutter] = useState<WorkerStatus | null | undefined>(undefined)
 
   const load = useCallback(
     async (at: number) => {
       // Beside the page rather than in front of it: an answer about the
       // transcriber is worth having, and not worth an empty history if it fails.
       void repository.services().then(
-        (services) => setTranscriber(services.transcribing),
-        () => setTranscriber(undefined),
+        (services) => {
+          setTranscriber(services.transcribing)
+          setCutter(services.cutting)
+        },
+        () => {
+          setTranscriber(undefined)
+          setCutter(undefined)
+        },
       )
       try {
         setPage(await repository.uploads(settled, state, PAGE, at))
@@ -120,8 +127,18 @@ export function Uploads() {
             {page === null ? '—' : t('uploads.count', page.total)}
           </div>
         </div>
-        <TranscriberBadge worker={transcriber} />
+        <div className="stack gap-1" style={{ alignItems: 'flex-end' }}>
+          <WorkerBadge service="transcribing" worker={transcriber} />
+          <WorkerBadge service="cutting" worker={cutter} />
+        </div>
       </div>
+      {/* Never heard from, and clips that should have sound have none: the
+          cutter running is one from before it beat, which cut only pictures. */}
+      {cutter === null && (
+        <div className="series-hint series-hint-warn" role="status">
+          {t('worker.cutting.neverHint')}
+        </div>
+      )}
 
       <div className="row gap-2 wrap">
         <input

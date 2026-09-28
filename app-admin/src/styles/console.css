@@ -943,3 +943,9 @@ video.clip-preview-media {
   background: var(--color-accent-100);
   color: var(--color-text);
 }
+
+/* Something missing that a learner will notice: no sound to score against. */
+.tag-bad {
+  background: color-mix(in srgb, var(--score-attention) 16%, var(--color-surface));
+  color: var(--score-attention);
+}

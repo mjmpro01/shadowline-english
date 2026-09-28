@@ -346,6 +346,13 @@ export const en = {
   'preview.soundCutting': 'Sound being cut',
   'preview.soundOnly': 'Sound only',
   'series.noClips': 'No clips in this episode.',
+  'worker.cutting.online': (busy: boolean) =>
+    busy ? 'Cutter running · working' : 'Cutter running · idle',
+  'worker.cutting.offline': (ago: string) => `Cutter not running · last seen ${ago} ago`,
+  'worker.cutting.never': 'Cutter has never reported in',
+  'worker.cutting.neverHint':
+    'No cutter has reported in. Without one, published clips get neither picture nor sound. If clips have their picture but no sound, the cutter running is an old one that cut only pictures: rebuild and restart it (docker compose up -d --build cutting, or restart python -m shadowline.cutter), and the clips missing sound are cut again.',
+  'preview.missingSound': 'No original sound',
   'nav.tagline': 'ADMIN CONSOLE',
   'nav.back': 'Back to the app',
   'nav.signOut': 'Sign out',

@@ -336,6 +336,13 @@ export const vi: Messages = {
   'preview.soundCutting': 'Đang cắt âm thanh',
   'preview.soundOnly': 'Chỉ có âm thanh',
   'series.noClips': 'Tập này chưa có clip nào.',
+  'worker.cutting.online': (busy: boolean) =>
+    busy ? 'Máy cắt đang chạy · đang làm việc' : 'Máy cắt đang chạy · đang rảnh',
+  'worker.cutting.offline': (ago: string) => `Máy cắt không chạy · thấy lần cuối ${ago} trước`,
+  'worker.cutting.never': 'Máy cắt chưa từng báo tín hiệu',
+  'worker.cutting.neverHint':
+    'Chưa có máy cắt nào báo tín hiệu. Không có máy cắt thì clip đăng lên sẽ không có hình lẫn âm thanh. Nếu clip có hình mà thiếu âm thanh, máy cắt đang chạy là bản cũ chỉ cắt hình: hãy build lại và khởi động lại nó (docker compose up -d --build cutting, hoặc chạy lại python -m shadowline.cutter), các clip thiếu âm thanh sẽ được cắt lại.',
+  'preview.missingSound': 'Thiếu âm thanh gốc',
   'nav.tagline': 'TRANG QUẢN TRỊ',
   'nav.back': 'Về app học',
   'nav.signOut': 'Đăng xuất',

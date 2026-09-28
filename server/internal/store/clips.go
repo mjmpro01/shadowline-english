@@ -44,6 +44,10 @@ type Clip struct {
 	// too now: none yet, and a cut still owed. Takes recorded meanwhile wait
 	// for it to be scored rather than being kept unscored.
 	AudioPending bool `json:"audioPending"`
+	// HasAudio is whether the clip has its original sound: what a take is
+	// scored against. Without it the practice screen says there is nothing to
+	// compare with, and the console flags the clip.
+	HasAudio bool `json:"hasAudio"`
 	// Where in its source this clip was cut from, which the cutter needs long
 	// after the browser that chose the boundaries has gone — and, since the
 	// library became a tree, which episode the app goes back up to.
@@ -90,6 +94,7 @@ func scanClip(row pgx.Row) (Clip, error) {
 		return c, mapErr(err)
 	}
 	c.HasVideo = c.VideoKey != nil
+	c.HasAudio = c.AudioKey != nil
 	if err := json.Unmarshal(captions, &c.Captions); err != nil {
 		return c, err
 	}

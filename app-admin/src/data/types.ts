@@ -110,6 +110,8 @@ export interface Video {
   createdAt: string
   /** Its sound is still being cut from the recording. */
   audioPending?: boolean
+  /** It has its original sound, which takes are scored against. */
+  hasAudio?: boolean
 }
 
 /** Who is signed in. `isAdmin` is decided by the server from ADMIN_EMAILS and

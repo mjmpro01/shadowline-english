@@ -325,7 +325,9 @@ export const repository = {
 
   /** Which workers are running, from their heartbeats. */
   services() {
-    return api.get<{ transcribing: WorkerStatus | null }>('/api/admin/services')
+    return api.get<{ transcribing: WorkerStatus | null; cutting: WorkerStatus | null }>(
+      '/api/admin/services',
+    )
   },
 
   listPlaylists() {
