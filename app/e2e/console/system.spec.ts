@@ -40,3 +40,27 @@ test('the menu shows the console version and leads to the System page', async ({
   await expect(page).toHaveURL(/\/admin\/system$/)
   await expect(page.getByRole('heading', { name: 'System' })).toBeVisible()
 })
+
+test('an API from before versions says so, rather than taking the page down', async ({ page }) => {
+  // What an API left running from before versions answers: two workers, no
+  // version of its own. The console built after it used to crash on this.
+  const seenAt = new Date().toISOString()
+  await page.route('**/api/admin/services', (route) =>
+    route.fulfill({
+      json: {
+        transcribing: null,
+        cutting: { service: 'cutting', seenAt, busy: false, online: true },
+      },
+    }),
+  )
+  await page.goto('/admin/system')
+  const row = (name: string) => page.locator('tr', { has: page.getByRole('cell', { name, exact: true }) })
+
+  await expect(page.getByRole('status').filter({ hasText: 'Restart it on the current code first' })).toBeVisible()
+  await expect(row('API server')).toContainText('Version unknown (old)')
+  await expect(row('Cutter')).toContainText('Version unknown (old)')
+  await expect(row('Transcriber')).toContainText('Never reported in')
+  await expect(row('Scorer')).toContainText('Not asked by this API')
+  // And the menu marks it, on every page.
+  await expect(page.locator('.menu-version')).toHaveAttribute('data-behind', 'true')
+})
