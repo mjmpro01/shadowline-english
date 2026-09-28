@@ -108,6 +108,8 @@ export interface Video {
   episodeId: string | null
   playlistId: string | null
   createdAt: string
+  /** Its sound is still being cut from the recording. */
+  audioPending?: boolean
 }
 
 /** Who is signed in. `isAdmin` is decided by the server from ADMIN_EMAILS and

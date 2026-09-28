@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useT } from '../i18n'
+import { ClipPreview } from '../components/ClipPreview'
 import { ConfirmDelete } from '../components/ConfirmDelete'
 import { Icon } from '../components/Icon'
 import { Loading } from '../components/LoadState'
 import { SavedField } from '../components/SavedField'
-import type { Episode, Playlist } from '../data/types'
+import type { Episode, Playlist, Video } from '../data/types'
 import { ApiError } from '../lib/api'
 import { clock } from '../lib/time'
 import { repository } from '../repository'
@@ -168,6 +169,9 @@ function Episodes({
   const t = useT()
   const [episodes, setEpisodes] = useState<Episode[] | null>(null)
   const [dropping, setDropping] = useState<Episode | null>(null)
+  // The episode whose clips are open for a look, one at a time: an episode can
+  // hold hundreds, and two lists of them open at once is a page nobody reads.
+  const [looking, setLooking] = useState<string | null>(null)
 
   const reload = useCallback(async () => {
     const page = await repository.playlist(playlist.slug)
@@ -228,6 +232,15 @@ function Episodes({
                 void repository.updateEpisode(episode.id, { position }).then(after)
               }}
             />
+            <button
+              type="button"
+              className="btn btn-secondary"
+              aria-expanded={looking === episode.id}
+              onClick={() => setLooking((open) => (open === episode.id ? null : episode.id))}
+            >
+              <Icon name={looking === episode.id ? 'chevron-left' : 'chevron-right'} size={14} />
+              {looking === episode.id ? t('preview.hide') : t('preview.show', episode.clips)}
+            </button>
             <button type="button" className="btn btn-danger" onClick={() => setDropping(episode)}>
               {t('studio.deleteEpisode')}
             </button>
@@ -248,8 +261,52 @@ function Episodes({
               </select>
             </label>
           </div>
+          {looking === episode.id && <EpisodeClips episodeId={episode.id} />}
         </div>
       ))}
+    </div>
+  )
+}
+
+/**
+ * An episode's clips as the learner app shows them, in the order they were
+ * spoken, so an admin can see what a learner will see before a learner does:
+ * the face each clip wears, its line, its length, and whether its sound and
+ * picture have been cut yet.
+ */
+function EpisodeClips({ episodeId }: { episodeId: string }) {
+  const t = useT()
+  const [clips, setClips] = useState<Video[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    repository
+      .episode(episodeId)
+      .then((page) => active && setClips(page.clips))
+      .catch((err: unknown) => active && setError(err instanceof Error ? err.message : String(err)))
+    return () => {
+      active = false
+    }
+  }, [episodeId])
+
+  if (error) return <div className="card-meta">{error}</div>
+  if (clips === null) return <Loading />
+  if (clips.length === 0) return <div className="card-meta">{t('series.noClips')}</div>
+
+  return (
+    <div className="stack gap-2">
+      <div className="row between wrap gap-2">
+        <span className="card-meta">{t('preview.asInApp')}</span>
+        <a className="btn btn-ghost" href={`/library/e/${episodeId}`} target="_blank" rel="noreferrer">
+          {t('preview.openEpisode')}
+        </a>
+      </div>
+      <div className="clip-preview-grid">
+        {clips.map((clip, index) => (
+          <ClipPreview key={clip.id} clip={clip} index={index} />
+        ))}
+      </div>
     </div>
   )
 }
