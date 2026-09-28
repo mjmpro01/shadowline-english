@@ -101,3 +101,28 @@ test('a series with clips in it is not deleted by accident', async ({ page }) =>
 
   await expect(page.locator('.card').filter({ hasText: '/lesson-one' })).toHaveCount(0)
 })
+
+test("an admin sees an episode's clips as a learner will, and can play one", async ({ page }) => {
+  await asAdmin(page)
+  await page.goto('/admin/series')
+
+  const card = page.locator('.card').filter({ hasText: '/lesson-one' })
+  await card.getByRole('button', { name: /episode/ }).click()
+  await card.getByRole('button', { name: /See its \d+ clips?/ }).click()
+
+  const clips = card.locator('.clip-preview')
+  await expect(clips.first()).toBeVisible()
+  // In the order they were spoken, each wearing the face the app gives it.
+  await expect(clips.first()).toContainText('Shadow this line 1')
+  await expect(clips.first().locator('.thumb-face, .thumb-poster')).toHaveCount(1)
+  await expect(clips.first().getByRole('link', { name: 'Open in the app' })).toHaveAttribute(
+    'href',
+    /\/library\/[^/]+\/practice$/,
+  )
+
+  await clips.first().getByRole('button', { name: 'Play' }).click()
+  await expect(clips.first().locator('audio, video')).toHaveCount(1)
+
+  await card.getByRole('button', { name: 'Hide the clips' }).click()
+  await expect(card.locator('.clip-preview')).toHaveCount(0)
+})

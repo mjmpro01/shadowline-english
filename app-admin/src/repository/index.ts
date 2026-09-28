@@ -336,6 +336,24 @@ export const repository = {
     return api.get<PlaylistPage>(`/api/playlists/${encodeURIComponent(slug)}`)
   },
 
+  /** One episode and its clips, in the order they were spoken — what the
+   *  learner app's episode screen shows. */
+  episode(id: string) {
+    return api.get<{ episode: Episode; clips: Video[]; playlist: Playlist | null }>(
+      `/api/episodes/${id}`,
+    )
+  },
+
+  /** A signed URL for a clip's sound, or null when it has none. */
+  clipAudio(id: string) {
+    return api.get<{ url: string | null }>(`/api/clips/${id}/audio`)
+  },
+
+  /** A signed URL for a clip's picture, or null when it has none yet. */
+  clipVideo(id: string) {
+    return api.get<{ url: string | null }>(`/api/clips/${id}/video`)
+  },
+
   updatePlaylist(id: string, patch: PlaylistPatch) {
     return api.send<Playlist>('PATCH', `/api/admin/playlists/${id}`, patch)
   },

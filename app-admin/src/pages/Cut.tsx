@@ -4,8 +4,9 @@ import { useT } from '../i18n'
 import { Icon } from '../components/Icon'
 import { ThumbnailStrip } from '../components/ThumbnailStrip'
 import { WaveformEditor } from '../components/WaveformEditor'
-import { MAX_CLIP_SECONDS, type Transcript } from '../data/types'
+import { MAX_CLIP_SECONDS, type Playlist, type Transcript } from '../data/types'
 import { TranscriptStatus } from '../components/TranscriptStatus'
+import { matchSeries, type SeriesMatch } from '../lib/seriesName'
 import { publishClips, type PublishProgress } from '../lib/publish'
 import { looksLikeVideo } from '../lib/media'
 import { decodeFile, peaks as computePeaks } from '../lib/audio/decode'
@@ -538,6 +539,23 @@ export function Cut() {
   // Where the numbering starts, asked of the server: it is a fact about the
   // playlist, and the app no longer holds the playlist. Falls back to 1 while
   // the answer is in flight, which is what an empty playlist would say anyway.
+  // Every series there is, so the name field can offer them and say whether the
+  // one typed joins a series, starts one, or is probably a typo for one.
+  const seriesRemote = useRemote('series', () => repository.listPlaylists())
+  const seriesList = seriesRemote.state === 'ready' ? seriesRemote.value : []
+  const seriesMatch = matchSeries(playlist, seriesList)
+
+  // The same file published before: a second publish makes a second episode of
+  // the same lines, which is how one recording ends up in the library twice.
+  const loadedName = loaded?.name ?? ''
+  const earlier = useRemote(loadedName, (name) =>
+    name ? repository.uploads(name, '', 10, 0) : Promise.resolve({ uploads: [], total: 0 }),
+  )
+  const publishedBefore =
+    earlier.state === 'ready'
+      ? earlier.value.uploads.find((u) => u.name === loadedName && u.published && u.id !== sourceId)
+      : undefined
+
   const numberFrom = useRemote(playlist.trim() || loaded?.name || '', (name) =>
     repository.nextClipNumber(name),
   )
@@ -662,9 +680,19 @@ export function Cut() {
               <input
                 id="playlist"
                 className="input"
+                list="series-names"
                 placeholder={t('studio.playlistHint')}
                 value={playlist}
                 onChange={(e) => setPlaylist(e.target.value)}
+              />
+              <datalist id="series-names">
+                {seriesList.map((series) => (
+                  <option key={series.id} value={series.title} />
+                ))}
+              </datalist>
+              <SeriesHint
+                match={seriesMatch}
+                onUse={(title) => setPlaylist(title)}
               />
             </div>
             <div className="field" style={{ flex: '1 1 220px' }}>
@@ -681,6 +709,16 @@ export function Cut() {
               {t('studio.applyToAll')}
             </button>
           </div>
+
+          {publishedBefore && (
+            <div className="series-hint series-hint-warn" role="status">
+              {t(
+                'studio.publishedBefore',
+                publishedBefore.playlistTitle || '—',
+                new Date(publishedBefore.createdAt).toLocaleDateString(),
+              )}
+            </div>
+          )}
 
           <div className="stack gap-2">
             <div className="row between wrap gap-2">
@@ -892,4 +930,34 @@ export function Cut() {
       <audio ref={player} hidden />
     </div>
   )
+}
+
+/** What the series name will do, under the field that sets it. */
+function SeriesHint({
+  match,
+  onUse,
+}: {
+  match: SeriesMatch<Playlist>
+  onUse: (title: string) => void
+}) {
+  const t = useT()
+  if (match.kind === 'empty') return null
+  if (match.kind === 'existing') {
+    return (
+      <div className="series-hint">
+        {t('studio.seriesJoins', match.series.title, match.series.episodes)}
+      </div>
+    )
+  }
+  if (match.kind === 'similar') {
+    return (
+      <div className="series-hint series-hint-warn" role="status">
+        <span>{t('studio.seriesTypo', match.series.title)}</span>
+        <button type="button" className="btn btn-secondary" onClick={() => onUse(match.series.title)}>
+          {t('studio.seriesUse', match.series.title)}
+        </button>
+      </div>
+    )
+  }
+  return <div className="series-hint">{t('studio.seriesNew')}</div>
 }

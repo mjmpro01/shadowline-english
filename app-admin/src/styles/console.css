@@ -826,3 +826,120 @@
   font-weight: 600;
   color: var(--color-text-muted);
 }
+
+/* — an episode's clips, as the learner app draws them —
+   The face rules are the app's own (app/src/styles/app.css, "thumb"), so the
+   preview is the card a learner sees rather than an approximation of it. */
+.clip-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-3);
+}
+.clip-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+}
+.clip-preview-thumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  border-radius: var(--radius-md);
+  background: var(--color-accent-100);
+  overflow: hidden;
+}
+.clip-preview-index {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+}
+.clip-preview-media {
+  width: 100%;
+  border-radius: var(--radius-sm);
+}
+video.clip-preview-media {
+  max-height: 260px;
+  background: #000;
+}
+.clip-preview .card-title {
+  font-size: 15px;
+}
+.clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.thumb-poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.thumb-tag {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+}
+.thumb-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  padding: var(--space-3);
+  padding-bottom: 38px;
+  container-type: size;
+}
+.thumb-face::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 85% 12%, rgba(255, 255, 255, 0.28) 0 18%, transparent 19%),
+    radial-gradient(circle at 12% 88%, rgba(255, 255, 255, 0.16) 0 26%, transparent 27%);
+  pointer-events: none;
+}
+.thumb-face-icon {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  font-size: 34px;
+  line-height: 1;
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.18));
+}
+.thumb-face-line {
+  position: relative;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 19px;
+  line-height: 1.2;
+  color: #fff;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.22);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+}
+
+/* What the series name will do, under the field. Amber when it is probably
+   not what the admin meant. */
+.series-hint {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+.series-hint-warn {
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-accent-400);
+  background: var(--color-accent-100);
+  color: var(--color-text);
+}
