@@ -47,3 +47,40 @@ def test_the_thread_beats_as_soon_as_it_starts(db):
         assert seen(db, "transcribing") is not None
     finally:
         heartbeat.stop()
+
+
+def test_a_beat_carries_the_version_and_when_the_worker_started(db):
+    from datetime import datetime, timezone
+
+    started = datetime(2026, 9, 28, 10, 0, tzinfo=timezone.utc)
+    beat(db, "cutting", False, "abc1234", started)
+    version, started_at = db.execute(
+        "select version, started_at from worker_heartbeats where service = 'cutting'"
+    ).fetchone()
+    assert version == "abc1234"
+    assert started_at == started
+
+
+def test_the_version_is_the_pinned_one_when_the_deployment_sets_it(monkeypatch):
+    from shadowline import version
+
+    version.current.cache_clear()
+    monkeypatch.setenv("SHADOWLINE_VERSION", "deadbee")
+    try:
+        assert version.current() == "deadbee"
+    finally:
+        version.current.cache_clear()
+
+
+def test_the_version_is_the_checkouts_commit_otherwise(monkeypatch):
+    import re
+
+    from shadowline import version
+
+    version.current.cache_clear()
+    monkeypatch.delenv("SHADOWLINE_VERSION", raising=False)
+    try:
+        # Seven hex characters, maybe marked dirty — or unknown with no git.
+        assert re.fullmatch(r"[0-9a-f]{7}(-dirty)?|unknown", version.current())
+    finally:
+        version.current.cache_clear()

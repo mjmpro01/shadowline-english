@@ -949,3 +949,23 @@ video.clip-preview-media {
   background: color-mix(in srgb, var(--score-attention) 16%, var(--color-surface));
   color: var(--score-attention);
 }
+
+/* The console's version, chalked under the account, and amber when some part
+   runs other code or is not running. */
+.menu-version {
+  display: inline-block;
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--menu-cream);
+  opacity: 0.75;
+  text-decoration: underline dotted;
+}
+.menu-version[data-behind] {
+  opacity: 1;
+  color: #ffd27a;
+  font-weight: 700;
+}
+.menu-version[aria-current='page'] {
+  opacity: 1;
+}

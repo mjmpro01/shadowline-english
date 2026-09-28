@@ -21,6 +21,7 @@ import (
 	"github.com/shadowline/server/internal/store"
 	"github.com/shadowline/server/internal/telemetry"
 	"github.com/shadowline/server/internal/tutor"
+	"github.com/shadowline/server/internal/version"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -140,7 +141,7 @@ func run(log *slog.Logger) error {
 
 	errs := make(chan error, 1)
 	go func() {
-		log.Info("listening", "addr", cfg.Addr, "app_origin", cfg.AppOrigin)
+		log.Info("listening", "addr", cfg.Addr, "app_origin", cfg.AppOrigin, "version", version.Current())
 		if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errs <- err
 		}

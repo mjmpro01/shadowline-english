@@ -25,6 +25,7 @@ from .dubqueue import DubJob, DubQueue
 from .storage import ObjectMissing, Storage, from_env as storage_from_env
 from .video import CutFailed, dub, ffmpeg_available
 from . import telemetry
+from .heartbeat import Heartbeat
 
 log = logging.getLogger("shadowline.dubber")
 
@@ -114,6 +115,8 @@ def main() -> int:
 
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
+    # So the console can show this worker is running, and which code it runs.
+    heartbeat = Heartbeat(dsn, "dubbing").start()
 
     with tempfile.TemporaryDirectory(prefix="shadowline-dubber-") as tmp:
         workdir = Path(tmp)
@@ -125,7 +128,10 @@ def main() -> int:
                     queue = DubQueue(conn)
                     backoff = 1.0
                     while running:
-                        if not run_once(queue, blobs, workdir):
+                        heartbeat.busy = True
+                        worked = run_once(queue, blobs, workdir)
+                        heartbeat.busy = False
+                        if not worked:
                             time.sleep(IDLE_SLEEP)
             # Every database error, not just a dropped connection: a worker
             # started beside a server still migrating finds no table yet, and
@@ -136,6 +142,7 @@ def main() -> int:
                 log.warning("database not ready (%s) — retrying in %.0fs", err, backoff)
                 time.sleep(backoff)
                 backoff = min(backoff * 2, MAX_BACKOFF)
+    heartbeat.stop()
     return 0
 
 

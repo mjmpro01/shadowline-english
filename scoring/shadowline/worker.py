@@ -29,6 +29,7 @@ from .queue import Job, Queue
 from .storage import ObjectMissing, Storage, from_env as storage_from_env
 from .transcribe import Transcriber, WhisperTranscriber
 from . import telemetry
+from .heartbeat import Heartbeat
 
 log = logging.getLogger("shadowline.worker")
 
@@ -184,6 +185,11 @@ def main() -> int:
         log.error("DATABASE_URL is required")
         return 1
 
+    # So the console can show this worker is running, and which code it runs.
+    # Started before the model loads, which can take a minute, so "starting"
+    # does not read as "not running".
+    heartbeat = Heartbeat(dsn, "scoring").start()
+
     blobs = storage_from_env()
     # The same Whisper the cutter uses, loaded here rather than on the first
     # take: a learner watching "measuring your pitch…" should not be waiting on
@@ -224,7 +230,10 @@ def main() -> int:
                     queue = Queue(conn)
                     backoff = 1.0
                     while running:
-                        if not run_once(queue, blobs, checker):
+                        heartbeat.busy = True
+                        worked = run_once(queue, blobs, checker)
+                        heartbeat.busy = False
+                        if not worked:
                             time.sleep(IDLE_SLEEP)
         # Every database error, not just a dropped connection. A restart, a lost
         # connection, or a schema that is not there yet should all be waited
@@ -237,6 +246,7 @@ def main() -> int:
                 log.warning("database not ready (%s) — retrying in %.0fs", err, backoff)
                 time.sleep(backoff)
                 backoff = min(backoff * 2, MAX_BACKOFF)
+    heartbeat.stop()
     return 0
 
 

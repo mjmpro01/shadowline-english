@@ -4,9 +4,9 @@ import type {
   Episode,
   Playlist,
   Profile,
+  Services,
   Transcript,
   Video,
-  WorkerStatus,
 } from '../data/types'
 
 /**
@@ -325,12 +325,12 @@ export const repository = {
     return api.get<Transcript>(`/api/admin/uploads/${sourceId}/transcript`)
   },
 
-  /** Which workers are running, from their heartbeats. */
+  /** Which workers are running, from their heartbeats, and which code every
+   *  part runs. */
   services() {
-    return api.get<{ transcribing: WorkerStatus | null; cutting: WorkerStatus | null }>(
-      '/api/admin/services',
-    )
+    return api.get<Services>('/api/admin/services')
   },
+
 
   listPlaylists() {
     return api.get<Playlist[]>('/api/playlists')

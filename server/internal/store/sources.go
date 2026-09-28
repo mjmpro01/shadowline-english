@@ -80,6 +80,10 @@ const MaxTranscribeAttempts = 3
 // TranscriberService is the name the transcription worker beats under.
 const TranscriberService = "transcribing"
 
+// WorkerServices are every worker that beats, in the order the console lists
+// them: the ones an admin waits on first.
+var WorkerServices = []string{TranscriberService, CutterService, "scoring", "dubbing", "glossing"}
+
 // CutterService is the name the cutting worker beats under. A cutter from
 // before it beat is also the one that cut only pictures, so "never seen" beside
 // clips that have pictures is how an old cutter shows itself.
@@ -93,6 +97,10 @@ type Worker struct {
 	// Online is whether the beat is recent: a worker beats every ten seconds,
 	// so three missed beats and a little more means it has stopped.
 	Online bool `json:"online"`
+	// Version is the code it runs, as it reported it; empty for a worker from
+	// before workers reported one. StartedAt is when that process started.
+	Version   string     `json:"version"`
+	StartedAt *time.Time `json:"startedAt"`
 }
 
 // workerSilentAfter is how long without a heartbeat before a worker counts as
@@ -103,9 +111,9 @@ const workerSilentAfter = "45 seconds"
 func (s *Store) WorkerStatus(ctx context.Context, service string) (*Worker, error) {
 	var w Worker
 	err := s.pool.QueryRow(ctx, `
-		select seen_at, busy, seen_at > now() - $2::interval
+		select seen_at, busy, seen_at > now() - $2::interval, version, started_at
 		from worker_heartbeats where service = $1`, service, workerSilentAfter).
-		Scan(&w.SeenAt, &w.Busy, &w.Online)
+		Scan(&w.SeenAt, &w.Busy, &w.Online, &w.Version, &w.StartedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}

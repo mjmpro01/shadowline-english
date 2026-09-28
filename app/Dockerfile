@@ -24,6 +24,10 @@ WORKDIR /src
 COPY app-admin/package.json app-admin/package-lock.json ./
 RUN npm ci
 COPY app-admin/ ./
+# Baked into the console so its System page can say which code it is; there
+# is no .git in this build to ask.
+ARG SHADOWLINE_VERSION=
+ENV SHADOWLINE_VERSION=${SHADOWLINE_VERSION}
 RUN npm run build
 
 FROM nginx:1.27-alpine

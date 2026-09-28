@@ -17,6 +17,7 @@ import (
 	"github.com/shadowline/server/internal/auth"
 	"github.com/shadowline/server/internal/storage"
 	"github.com/shadowline/server/internal/store"
+	"github.com/shadowline/server/internal/version"
 )
 
 // maxAudioBytes caps an upload. A six-second clip is well under a megabyte;
@@ -333,12 +334,14 @@ func (s *Server) handleSourceTranscript(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, transcript)
 }
 
-// handleServices says which workers are running, from their heartbeats: the
-// transcriber, which an admin sits and waits for, and the cutter, without which
-// a published clip has neither its picture nor its sound.
+// handleServices says which workers are running, from their heartbeats, and
+// which code every part runs — this API included — so one left behind a pull
+// shows as the one whose version differs.
 func (s *Server) handleServices(w http.ResponseWriter, r *http.Request) {
-	out := map[string]any{}
-	for _, service := range []string{store.TranscriberService, store.CutterService} {
+	out := map[string]any{
+		"api": map[string]any{"version": version.Current(), "startedAt": version.Started},
+	}
+	for _, service := range store.WorkerServices {
 		worker, err := s.Store.WorkerStatus(r.Context(), service)
 		if err != nil {
 			s.failErr(w, err, "read worker heartbeats")
