@@ -45,7 +45,9 @@ func (s *Store) EnqueueCut(ctx context.Context, tx pgx.Tx, clipID uuid.UUID) (qu
 		job as (
 			insert into cut_jobs (clip_id)
 			select $1 from source
-			on conflict (clip_id) do nothing
+			on conflict (clip_id) do update
+			set state = 'queued', attempts = 0, error = null, locked_at = null
+			where cut_jobs.state = 'failed'
 			returning 1)
 		select exists (select 1 from job), coalesce((select has_video from source), false)`,
 		clipID).Scan(&queued, &picture)

@@ -48,6 +48,8 @@ export interface Upload {
   clipsWithoutAudio: number
   cutsLeft: number
   cutsFailed: number
+  /** Why the cutter gave up, when it kept a reason. */
+  cutError: string
   transcript: 'none' | 'pending' | 'ready' | 'failed'
   transcribeAttempts: number
   transcribeError: string

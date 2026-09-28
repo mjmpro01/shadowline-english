@@ -489,6 +489,17 @@ func (h *harness) transcriberBeat(t *testing.T, ago time.Duration, busy bool) {
 	}
 }
 
+// giveUpCutting is what the cutter does after its last attempt on every clip
+// of a recording: the job stays, marked failed and carrying the reason.
+func (h *harness) giveUpCutting(t *testing.T, sourceID, reason string) {
+	t.Helper()
+	if _, err := h.pool.Exec(context.Background(), `
+		update cut_jobs set state = 'failed', attempts = 3, error = $2, locked_at = null
+		where clip_id in (select id from clips where source_id = $1)`, sourceID, reason); err != nil {
+		t.Fatalf("give up cutting %s: %v", sourceID, err)
+	}
+}
+
 // dropCutJobs is the cutter giving up on every clip of a recording. It costs
 // them their picture and nothing else: video_key stays null, which every screen
 // already copes with because that is what an audio upload looks like.

@@ -63,9 +63,9 @@ type Clip struct {
 	CreatedAt    time.Time `json:"createdAt"`
 }
 
-// video_pending is derived: no picture yet, and a cut still owed. The job row
-// is what "still owed" means — EnqueueCut writes one only for a source that
-// has a picture, and the cutter deletes it whether it succeeds or gives up.
+// video_pending is derived: no picture yet, and a cut still owed. A job row
+// not given up on is what "still owed" means — the cutter deletes the job when
+// it succeeds, and marks it 'failed', keeping the reason, when it gives up.
 //
 // It used to ask the source whether it had a picture instead, which answers a
 // different question: a cut that failed its last attempt left the job gone and
@@ -75,12 +75,12 @@ const clipColumns = `id, title, source, playlist, categories, featured, timestam
 	duration_seconds, summary, captions, audio_key, video_key, poster_key,
 	source_id, playlist_id, start_seconds, end_seconds, created_at,
 	(video_key is null and exists (
-		select 1 from cut_jobs j where j.clip_id = clips.id
+		select 1 from cut_jobs j where j.clip_id = clips.id and j.state <> 'failed'
 	) and exists (
 		select 1 from clip_sources s where s.id = clips.source_id and s.has_video
 	)),
 	(audio_key is null and exists (
-		select 1 from cut_jobs j where j.clip_id = clips.id
+		select 1 from cut_jobs j where j.clip_id = clips.id and j.state <> 'failed'
 	))`
 
 func scanClip(row pgx.Row) (Clip, error) {

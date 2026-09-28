@@ -71,7 +71,8 @@ class Queue:
                 where ((j.state = 'queued')
                        or (j.state = 'running' and j.locked_at < now() - %s::interval))
                   and not (c.audio_key is null
-                           and exists (select 1 from cut_jobs k where k.clip_id = c.id))
+                           and exists (select 1 from cut_jobs k
+                                       where k.clip_id = c.id and k.state <> 'failed'))
                 order by j.created_at
                 for update of j skip locked
                 limit 1
