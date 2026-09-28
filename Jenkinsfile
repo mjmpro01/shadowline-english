@@ -54,6 +54,9 @@ pipeline {
         dir('app-admin') {
           sh 'npm ci'
           sh 'npm run lint'
+          // The tests too, which `build` leaves out: one reads the learner
+          // app's source, and the console's Docker build has only its own.
+          sh 'npm run typecheck'
           sh 'npm test'
           sh 'npm run build'
         }
