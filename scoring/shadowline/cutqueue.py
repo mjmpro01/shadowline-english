@@ -120,13 +120,23 @@ class CutQueue:
     def fail(self, job: CutJob, reason: str) -> None:
         """Put the job back, or give up once it has had its attempts.
 
-        Giving up costs the clip its picture and nothing else: video_key stays
-        null, and every screen already handles a clip that has no video, because
-        that is what every audio upload is.
+        Giving up costs the clip what could not be cut and nothing else. The
+        job stays, marked 'failed' with the reason, so the upload history can
+        say why — deleting it took the reason with it, and a clip with no sound
+        looked the same whether ffmpeg had refused it or no cutter had tried. A
+        failed job is never claimed again; a retry from the console puts it
+        back to 'queued'.
         """
         with self.conn.transaction(), self.conn.cursor() as cur:
             if job.attempts >= MAX_ATTEMPTS:
-                cur.execute("delete from cut_jobs where id = %s", (job.id,))
+                cur.execute(
+                    """
+                    update cut_jobs
+                    set state = 'failed', locked_at = null, error = %s
+                    where id = %s
+                    """,
+                    (reason[:500], job.id),
+                )
             else:
                 cur.execute(
                     """

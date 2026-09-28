@@ -285,6 +285,15 @@ function Details({ upload }: { upload: Upload }) {
       {upload.transcribeError !== '' && (
         <div className="card-meta">{upload.transcribeError}</div>
       )}
+      {/* Why the cuts were given up on, in the cutter's words. None kept means
+          they were given up on by a cutter from before reasons were kept — or
+          by one too old to cut sound at all, which is the usual reason clips
+          have their picture and no sound. */}
+      {upload.cutsFailed > 0 && (
+        <div className="card-meta">
+          {upload.cutError ? t('uploads.cutError', upload.cutError) : t('uploads.cutErrorUnknown')}
+        </div>
+      )}
     </div>
   )
 }

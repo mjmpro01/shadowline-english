@@ -9,7 +9,6 @@ import shutil
 import subprocess
 from pathlib import Path
 
-import pytest
 
 from shadowline.queue import MAX_ATTEMPTS, Job, Queue
 from shadowline.transcribe import TranscribeFailed, Transcription, Word
@@ -340,6 +339,24 @@ def test_a_take_waits_for_its_clips_sound_to_be_cut(db, blobs):
     assert run_once(queue, store) is True
     status, score, *_ = take_row(db, take_id)
     assert status == "scored" and score is not None
+
+
+def test_a_cut_given_up_on_does_not_hold_a_take_back(db, blobs):
+    """A failed cut job stays for its reason, but it is not work still coming:
+    the take is settled as unscored rather than waiting for ever."""
+    store, root = blobs
+    take_id = seed(db, root)
+    clip_id = clip_of(db, take_id)
+    db.execute("update clips set audio_key = null where id = %s", (clip_id,))
+    db.execute(
+        "insert into cut_jobs (clip_id, state, attempts, error) values (%s, 'failed', 3, 'sound: x')",
+        (clip_id,),
+    )
+
+    # Settled on the spot, as a take of a clip with no sound always is.
+    assert Queue(db).claim() is None
+    status, score, *_ = take_row(db, take_id)
+    assert status == "scored" and score is None
 
 
 def test_a_take_whose_clip_never_got_a_sound_is_final_unscored(db, blobs):

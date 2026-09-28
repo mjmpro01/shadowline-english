@@ -353,6 +353,9 @@ export const en = {
   'worker.cutting.neverHint':
     'No cutter has reported in. Without one, published clips get neither picture nor sound. If clips have their picture but no sound, the cutter running is an old one that cut only pictures: rebuild and restart it (docker compose up -d --build cutting, or restart python -m shadowline.cutter), and the clips missing sound are cut again.',
   'preview.missingSound': 'No original sound',
+  'uploads.cutError': (reason: string) => `Why the cutter gave up: ${reason}`,
+  'uploads.cutErrorUnknown':
+    'No reason was kept for these cuts. Clips with a picture and no sound usually mean an old cutter that cut only pictures: restart the cutter on the current code, then press Try again.',
   'nav.tagline': 'ADMIN CONSOLE',
   'nav.back': 'Back to the app',
   'nav.signOut': 'Sign out',

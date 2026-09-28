@@ -183,7 +183,20 @@ def test_a_missing_source_stops_being_retried(db, blobs, tmp_path):
         assert run_once(queue, store, cache, tmp_path) is True
 
     assert video_key(db, clip_id) is None
-    assert db.execute("select count(*) from cut_jobs").fetchone()[0] == 0
+    # Kept, as failed and with the reason, so the upload history can say why.
+    state, error = db.execute("select state, error from cut_jobs").fetchone()
+    assert state == "failed"
+    assert error.startswith("source is missing")
+
+
+def test_a_job_given_up_on_is_never_claimed_again(db, blobs, tmp_path):
+    store, root = blobs
+    seed(db, root, source="missing")
+    queue, cache = CutQueue(db), SourceCache(tmp_path)
+    for _ in range(MAX_ATTEMPTS):
+        run_once(queue, store, cache, tmp_path)
+
+    assert run_once(queue, store, cache, tmp_path) is False
 
 
 def test_a_clip_that_cannot_be_cut_keeps_its_audio(db, blobs, tmp_path):

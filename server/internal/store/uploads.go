@@ -50,6 +50,9 @@ type Upload struct {
 	// CutsFailed is clips that should have a picture, have no job left, and have
 	// no picture: the cutter gave up on them.
 	CutsFailed int `json:"cutsFailed"`
+	// CutError is why the cutter gave up, when it kept a reason: each distinct
+	// one, joined.
+	CutError string `json:"cutError"`
 	// Transcript is 'none', 'pending', 'ready' or 'failed'.
 	Transcript string `json:"transcript"`
 	// TranscribeAttempts is how many times the worker has tried, which is what
@@ -181,16 +184,22 @@ const uploadColumns = `
 	s.playlist_id, coalesce(p.title, ''),
 	(select count(*)::int from clips c where c.source_id = s.id),
 	(select count(*)::int from clips c where c.source_id = s.id and c.audio_key is null),
-	-- A job row exists only while there is work left: the cutter deletes it when
-	-- it finishes and when it gives up.
+	-- Work left: a job not given up on. The cutter deletes a job when it
+	-- finishes, and marks it failed, keeping the reason, when it gives up.
 	(select count(*)::int from cut_jobs j join clips c on c.id = j.clip_id
-	 where c.source_id = s.id),
-	-- Gave up: no job waiting, and missing what the cut should have made — its
-	-- sound always, its picture when the recording has one.
+	 where c.source_id = s.id and j.state <> 'failed'),
+	-- Gave up: no job still working on it, and missing what the cut should
+	-- have made — its sound always, its picture when the recording has one.
 	(select count(*)::int from clips c
 	 where c.source_id = s.id
 	   and (c.audio_key is null or (s.has_video and c.video_key is null))
-	   and not exists (select 1 from cut_jobs j where j.clip_id = c.id)),
+	   and not exists (select 1 from cut_jobs j where j.clip_id = c.id and j.state <> 'failed')),
+	-- Why, when the cutter said: each distinct reason once. Empty for a cut
+	-- given up on before reasons were kept, or never tried by a cutter that
+	-- could cut sound at all.
+	coalesce((select string_agg(distinct j.error, ' · ') from cut_jobs j
+	          join clips c on c.id = j.clip_id
+	          where c.source_id = s.id and j.state = 'failed' and j.error is not null), ''),
 	-- A failed job stays, for its reason, and is not work still coming.
 	exists (select 1 from transcribe_jobs t where t.source_id = s.id and t.state <> 'failed'),
 	exists (select 1 from transcripts t where t.source_id = s.id),
@@ -204,7 +213,7 @@ func scanUpload(row pgx.Row) (Upload, error) {
 		&u.ID, &u.Name, &u.Title, &u.HasVideo, &u.Bytes, &u.Seconds,
 		&u.UploadState, &u.Error, &u.Published, &u.CreatedAt,
 		&u.PlaylistID, &u.PlaylistTitle,
-		&u.Clips, &u.ClipsWithoutAudio, &u.CutsLeft, &u.CutsFailed,
+		&u.Clips, &u.ClipsWithoutAudio, &u.CutsLeft, &u.CutsFailed, &u.CutError,
 		&queued, &transcribed, &u.TranscribeAttempts, &u.TranscribeError,
 	); err != nil {
 		return Upload{}, err
@@ -362,7 +371,10 @@ func (s *Store) RetryUpload(ctx context.Context, id uuid.UUID) (transcribe, cuts
 			select c.id from clips c join clip_sources s on s.id = c.source_id
 			where c.source_id = $1
 			  and (c.audio_key is null or (s.has_video and c.video_key is null))
-			on conflict (clip_id) do nothing`, id)
+			on conflict (clip_id) do update
+			set state = 'queued', attempts = 0, error = null, locked_at = null,
+			    created_at = now()
+			where cut_jobs.state = 'failed'`, id)
 		if err != nil {
 			return err
 		}

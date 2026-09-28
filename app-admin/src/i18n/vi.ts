@@ -343,6 +343,9 @@ export const vi: Messages = {
   'worker.cutting.neverHint':
     'Chưa có máy cắt nào báo tín hiệu. Không có máy cắt thì clip đăng lên sẽ không có hình lẫn âm thanh. Nếu clip có hình mà thiếu âm thanh, máy cắt đang chạy là bản cũ chỉ cắt hình: hãy build lại và khởi động lại nó (docker compose up -d --build cutting, hoặc chạy lại python -m shadowline.cutter), các clip thiếu âm thanh sẽ được cắt lại.',
   'preview.missingSound': 'Thiếu âm thanh gốc',
+  'uploads.cutError': (reason: string) => `Lý do máy cắt bỏ cuộc: ${reason}`,
+  'uploads.cutErrorUnknown':
+    'Không có lý do nào được lưu cho các lần cắt này. Clip có hình mà thiếu âm thanh thường là do máy cắt bản cũ chỉ cắt hình: hãy khởi động lại máy cắt bằng code mới rồi bấm Thử lại.',
   'nav.tagline': 'TRANG QUẢN TRỊ',
   'nav.back': 'Về app học',
   'nav.signOut': 'Đăng xuất',
