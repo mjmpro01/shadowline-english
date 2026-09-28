@@ -42,6 +42,19 @@ test('the first step leads straight into practising a featured clip', async ({ p
   await expect(page.getByRole('button', { name: 'Record', exact: true })).toBeVisible()
 })
 
+// Pressed before the featured clips have arrived, it still goes into a clip:
+// it used to read the list that was still loading as empty and send the
+// learner to the library instead.
+test('the first step waits for the featured clips rather than giving up on them', async ({ page }) => {
+  await page.route(/\/api\/clips\/featured/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+    await route.continue()
+  })
+  await asLearner(page)
+  await page.getByRole('button', { name: 'Practise my first line' }).click()
+  await expect(page).toHaveURL(/\/practice$/, { timeout: 10_000 })
+})
+
 test('a scored take puts you on the leaderboard and counts a day of practice', async ({ page }) => {
   const tile = (label: string) => page.locator('.stat-tile', { hasText: label }).locator('.mono')
 
