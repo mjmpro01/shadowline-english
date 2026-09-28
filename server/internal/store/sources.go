@@ -80,6 +80,11 @@ const MaxTranscribeAttempts = 3
 // TranscriberService is the name the transcription worker beats under.
 const TranscriberService = "transcribing"
 
+// CutterService is the name the cutting worker beats under. A cutter from
+// before it beat is also the one that cut only pictures, so "never seen" beside
+// clips that have pictures is how an old cutter shows itself.
+const CutterService = "cutting"
+
 // Worker is a worker's last heartbeat.
 type Worker struct {
 	SeenAt time.Time `json:"seenAt"`

@@ -333,15 +333,20 @@ func (s *Server) handleSourceTranscript(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, transcript)
 }
 
-// handleServices says which workers are running, from their heartbeats. Only
-// the transcriber beats so far: it is the one an admin sits and waits for.
+// handleServices says which workers are running, from their heartbeats: the
+// transcriber, which an admin sits and waits for, and the cutter, without which
+// a published clip has neither its picture nor its sound.
 func (s *Server) handleServices(w http.ResponseWriter, r *http.Request) {
-	transcriber, err := s.Store.WorkerStatus(r.Context(), store.TranscriberService)
-	if err != nil {
-		s.failErr(w, err, "read worker heartbeats")
-		return
+	out := map[string]any{}
+	for _, service := range []string{store.TranscriberService, store.CutterService} {
+		worker, err := s.Store.WorkerStatus(r.Context(), service)
+		if err != nil {
+			s.failErr(w, err, "read worker heartbeats")
+			return
+		}
+		out[service] = worker
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"transcribing": transcriber})
+	writeJSON(w, http.StatusOK, out)
 }
 
 // handleCreateClips takes the studio's whole batch at once. The cuts of one

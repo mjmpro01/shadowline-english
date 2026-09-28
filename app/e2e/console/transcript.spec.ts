@@ -151,9 +151,14 @@ test('a transcript the worker gave up on says why, and can be tried again', asyn
   await expect(status).not.toContainText('gave up')
 })
 
-test('the upload history shows whether the transcriber is running', async ({ page }) => {
+test('the upload history shows whether the transcriber and the cutter are running', async ({ page }) => {
   await page.goto('/admin/uploads')
-  await expect(page.locator('.worker-badge')).toHaveText('Transcriber has never run')
+  const badges = page.locator('.worker-badge')
+  await expect(badges.filter({ hasText: 'Transcriber' })).toHaveText('Transcriber has never run')
+  // The test stack runs a real cutter, and it beats: so no warning about one
+  // that is missing or too old.
+  await expect(badges.filter({ hasText: 'Cutter' })).toHaveText(/Cutter running/, { timeout: 20_000 })
+  await expect(page.getByText(/rebuild and restart it/)).toHaveCount(0)
 })
 
 test('a recording that did not reach the server says why, and can be sent again', async ({ page }) => {

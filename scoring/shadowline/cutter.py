@@ -30,6 +30,7 @@ from .cutqueue import CutJob, CutQueue
 from .storage import ObjectMissing, Storage, from_env as storage_from_env
 from .video import CutFailed, cut, cut_audio, ffmpeg_available, has_video_stream, poster
 from . import telemetry
+from .heartbeat import Heartbeat
 
 log = logging.getLogger("shadowline.cutter")
 
@@ -205,6 +206,10 @@ def main() -> int:
 
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
+    # So the console can tell a cutter that is running from one that is not —
+    # and from one too old to beat at all, which is the one that cut only
+    # pictures and left clips with no sound.
+    heartbeat = Heartbeat(dsn, "cutting").start()
 
     with tempfile.TemporaryDirectory(prefix="shadowline-cutter-") as tmp:
         workdir = Path(tmp)
@@ -220,7 +225,10 @@ def main() -> int:
                     queue = CutQueue(conn)
                     backoff = 1.0
                     while running:
-                        if not run_once(queue, blobs, sources, workdir):
+                        heartbeat.busy = True
+                        worked = run_once(queue, blobs, sources, workdir)
+                        heartbeat.busy = False
+                        if not worked:
                             time.sleep(IDLE_SLEEP)
             # Every database error, not just a dropped connection. A worker
             # started beside a server that has not finished migrating finds no
@@ -232,6 +240,7 @@ def main() -> int:
                 log.warning("database not ready (%s) — retrying in %.0fs", err, backoff)
                 time.sleep(backoff)
                 backoff = min(backoff * 2, MAX_BACKOFF)
+    heartbeat.stop()
     return 0
 
 

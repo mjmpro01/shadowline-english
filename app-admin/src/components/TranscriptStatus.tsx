@@ -194,21 +194,28 @@ export function TranscriptStatus({
   )
 }
 
-/** The transcriber's state in one line, for the upload history's header. */
-export function TranscriberBadge({ worker }: { worker: WorkerStatus | null | undefined }) {
+/** A worker's state in one line, for the upload history's header. */
+export function WorkerBadge({
+  service,
+  worker,
+}: {
+  service: 'transcribing' | 'cutting'
+  worker: WorkerStatus | null | undefined
+}) {
   const t = useT()
   const duration = useDuration()
   const now = useNow(true)
   if (worker === undefined) return null
   const online = worker?.online ?? false
+  const prefix = service === 'cutting' ? 'worker.cutting' : 'transcript.worker'
   return (
     <span className={`worker-badge ${online ? 'worker-online' : 'worker-offline'}`}>
       <span className="worker-dot" aria-hidden="true" />
       {worker === null
-        ? t('transcript.worker.never')
+        ? t(`${prefix}.never`)
         : online
-          ? t('transcript.worker.online', worker.busy)
-          : t('transcript.worker.offline', duration(secondsBetween(worker.seenAt, now)))}
+          ? t(`${prefix}.online`, worker.busy)
+          : t(`${prefix}.offline`, duration(secondsBetween(worker.seenAt, now)))}
     </span>
   )
 }

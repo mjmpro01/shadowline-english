@@ -97,9 +97,16 @@ func TestATranscriberThatStoppedBeatingIsOffline(t *testing.T) {
 		Transcribing *struct {
 			Online bool `json:"online"`
 		} `json:"transcribing"`
+		Cutting *struct {
+			Online bool `json:"online"`
+		} `json:"cutting"`
 	}](t, admin.do("GET", "/api/admin/services", "", nil), http.StatusOK)
 	if services.Transcribing == nil || services.Transcribing.Online {
 		t.Fatalf("services said %+v, want the transcriber offline", services.Transcribing)
+	}
+	// A cutter that has never beaten is reported as such, not as offline.
+	if services.Cutting != nil {
+		t.Fatalf("a cutter that never beat reported %+v", services.Cutting)
 	}
 }
 

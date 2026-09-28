@@ -78,6 +78,11 @@ export function ClipPreview({ clip, index }: { clip: Video; index: number }) {
           <span className="tag tag-neutral">{t('preview.soundOnly')}</span>
         )}
         {clip.audioPending && <span className="tag tag-neutral">{t('preview.soundCutting')}</span>}
+        {/* No sound and none coming: a learner's takes on it can never be
+            scored. The Upload history's retry, or a current cutter, fixes it. */}
+        {clip.hasAudio === false && !clip.audioPending && (
+          <span className="tag tag-bad">{t('preview.missingSound')}</span>
+        )}
       </div>
 
       {media && media !== 'none' && media.kind === 'video' && (
