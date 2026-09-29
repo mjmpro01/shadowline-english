@@ -119,13 +119,14 @@ function VersionLink() {
       .services()
       .then((services) => {
         if (!active) return
-        const reference = services.api.version
+        const reference = services.api?.version
         // Anything the System page would mark: a part on other code, or a
         // worker not running — an old one that never reports in included,
-        // which is exactly how the cutter that cut only pictures looked.
+        // which is exactly how the cutter that cut only pictures looked. An
+        // API too old to say which code it runs is behind by definition.
         const workerOff = WORKER_SERVICES.some((service) => {
           const worker = services[service]
-          return worker === null || !worker.online || !sameCode(worker.version, reference)
+          return !worker || !worker.online || !sameCode(worker.version, reference)
         })
         setBehind(workerOff || !sameCode(CONSOLE_VERSION, reference))
       })

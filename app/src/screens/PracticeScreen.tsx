@@ -30,6 +30,7 @@ import { useClipPitch } from '../lib/useClipPitch'
 import { useDub } from '../lib/useDub'
 import { SOURCE_LABEL, useGloss } from '../lib/useGloss'
 import { useRecorder } from '../lib/useRecorder'
+import { usePlayhead } from '../lib/usePlayhead'
 import { normalizeWord } from '../lib/text'
 import { useApp } from '../store/context'
 
@@ -65,10 +66,16 @@ export function PracticeScreen() {
   const [cheer, setCheer] = useState<{ message: string; mood: Mood } | null>(null)
   const endCheer = useCallback(() => setCheer(null), [])
   const sourcePlayer = useRef<HTMLMediaElement | null>(null)
+  // Also held as state, for the playhead to follow the element it is given.
+  const [sourceElement, setSourceElement] = useState<HTMLMediaElement | null>(null)
   // Stable, so the element is not detached and reattached every render.
   const attachSource = useCallback((element: HTMLMediaElement | null) => {
     sourcePlayer.current = element
+    setSourceElement(element)
   }, [])
+  // Where the clip is while it plays, so the strip under it shows which part
+  // of the purple wave is being heard.
+  const clipTime = usePlayhead(sourceElement)
   // Bumped whenever the screen stops caring about the take being scored — a new
   // recording, a reset, the next line. Scoring is a poll that runs for seconds,
   // so without this the take that finishes last wins rather than the take the
@@ -145,13 +152,22 @@ export function PracticeScreen() {
     (guideReady ? video.durationSeconds || clipPitch.duration : recordLimit) || recordLimit
   const sourceWave = guideReady ? envelopePath(clipPitch.envelope, guideDuration) : ''
   // Live levels span 0..elapsed — not the full clip — or the cyan blob stretches
-  // across empty time and looks like a second purple wave.
+  // across empty time and looks like a second purple wave. Kept once the take
+  // stops, on the same axis as the clip's, so the two can be compared: it used
+  // to vanish the moment recording ended, leaving nothing to compare against.
+  // A new take, a reset and the next line all clear the levels.
   const youWave =
-    recording && recorder.levels.length > 1 && recorder.elapsed > 0.05
+    recorder.levels.length > 1 && recorder.elapsed > 0.05
       ? envelopePath(recorder.levels, guideDuration, recorder.elapsed)
       : ''
+  // The line runs with the take while recording, and with the clip while it
+  // plays, so either can be followed along the purple wave.
   const headX =
-    recording && recorder.status === 'recording' ? guideX(recorder.elapsed, guideDuration) : null
+    recording && recorder.status === 'recording'
+      ? guideX(recorder.elapsed, guideDuration)
+      : clipTime !== null
+        ? guideX(clipTime, guideDuration)
+        : null
 
   const tapWord = async (raw: string) => {
     const result = await toggleVocabWord(raw, video.id)
@@ -295,9 +311,10 @@ export function PracticeScreen() {
                 {/* Source amplitude only — peaks = where to push. A pitch line
                     on top of this filled the strip with two purple shapes. */}
                 {sourceWave && <path d={sourceWave} fill={SOURCE_PURPLE_FILL} stroke="none" />}
-                {youWave && <path d={youWave} fill={YOU_CYAN_FILL} stroke="none" />}
+                {youWave && <path data-testid="guide-you" d={youWave} fill={YOU_CYAN_FILL} stroke="none" />}
                 {headX !== null && (
                   <line
+                    data-testid="guide-playhead"
                     x1={headX}
                     y1={GUIDE_VIEW.PAD_T}
                     x2={headX}

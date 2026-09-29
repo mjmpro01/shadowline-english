@@ -327,8 +327,9 @@ export const repository = {
 
   /** Which workers are running, from their heartbeats, and which code every
    *  part runs. */
-  services() {
-    return api.get<Services>('/api/admin/services')
+  async services(): Promise<Services> {
+    const services = await api.get<Partial<Services>>('/api/admin/services')
+    return { ...services, api: services.api ?? null }
   },
 
 

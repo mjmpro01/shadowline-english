@@ -68,10 +68,14 @@ export interface WorkerStatus {
 /** Every worker that beats, by the name it beats under. */
 export type WorkerService = 'transcribing' | 'cutting' | 'scoring' | 'dubbing' | 'glossing'
 
-/** Which code every part runs, and which workers are alive. */
-export type Services = { api: { version: string; startedAt: string } } & Record<
-  WorkerService,
-  WorkerStatus | null
+/** Which code every part runs, and which workers are alive.
+ *
+ *  `api` is null, and a worker absent, when the API was built before it
+ *  reported them: an API left running from before a pull is the very thing
+ *  this answer is for, so it has to read from one. A worker that is present
+ *  but null has never beaten. */
+export type Services = { api: { version: string; startedAt: string } | null } & Partial<
+  Record<WorkerService, WorkerStatus | null>
 >
 
 /** A series: Friends, a lecture course, a channel. */

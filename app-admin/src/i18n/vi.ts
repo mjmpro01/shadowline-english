@@ -354,6 +354,8 @@ export const vi: Messages = {
   'system.link': (version: string) => `Phiên bản ${version}`,
   'system.linkBehind': (version: string) => `Phiên bản ${version} · kiểm tra hệ thống`,
   'system.allSame': (version: string) => `Mọi thành phần đang chạy cùng một phiên bản: ${version}.`,
+  'system.apiOld':
+    'Máy chủ API đang chạy code cũ, từ trước khi nó báo được phiên bản. Hãy khởi động lại API bằng code mới trước, rồi bấm Kiểm tra lại.',
   'system.someBehind': (n: number, version: string) =>
     `${n} thành phần không chạy cùng phiên bản với API (${version}), hoặc không chạy. Hãy khởi động lại bằng code mới.`,
   'system.part': 'Thành phần',
@@ -372,12 +374,18 @@ export const vi: Messages = {
   'system.health.unknown': 'Không rõ phiên bản (bản cũ)',
   'system.health.offline': 'Không chạy',
   'system.health.never': 'Chưa từng báo tín hiệu',
+  'system.health.unreported': 'API bản cũ chưa hỏi đến',
   'system.howTitle': 'Cách cập nhật một thành phần',
   'system.howBody':
     'Kéo code mới về, rồi khởi động lại thành phần đó — process đang chạy giữ nguyên code lúc nó khởi động. Dùng Docker thì build lại và khởi động lại tất cả; khi chạy dev thì dừng rồi chạy lại lệnh của nó.',
   'system.howDev':
     'go run ./cmd/api · python -m shadowline.cutter (hoặc .transcriber, .worker, .dubber, .glosser) · npm run dev',
   'nav.tagline': 'TRANG QUẢN TRỊ',
+  'pageError.title': 'Trang này gặp lỗi',
+  'pageError.body':
+    'Có phần trên trang bị lỗi. Nếu trang quản trị vừa được cập nhật, có thể API hoặc một worker vẫn chạy code cũ: trang Hệ thống sẽ cho biết phần nào.',
+  'pageError.reload': 'Tải lại',
+  'pageError.system': 'Mở trang Hệ thống',
   'nav.back': 'Về app học',
   'nav.signOut': 'Đăng xuất',
   'tutor.title': 'Mức dùng gia sư',

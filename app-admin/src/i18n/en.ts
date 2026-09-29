@@ -364,6 +364,8 @@ export const en = {
   'system.link': (version: string) => `Version ${version}`,
   'system.linkBehind': (version: string) => `Version ${version} · check the system`,
   'system.allSame': (version: string) => `Every part is running the same code: ${version}.`,
+  'system.apiOld':
+    'The API server is running code from before it could say which version it is. Restart it on the current code first, then check again.',
   'system.someBehind': (n: number, version: string) =>
     `${n} part${n === 1 ? ' is' : 's are'} not on the API's code (${version}), or not running. Restart ${n === 1 ? 'it' : 'them'} on the current code.`,
   'system.part': 'Part',
@@ -382,6 +384,7 @@ export const en = {
   'system.health.unknown': 'Version unknown (old)',
   'system.health.offline': 'Not running',
   'system.health.never': 'Never reported in',
+  'system.health.unreported': 'Not asked by this API',
   'system.howTitle': 'How to bring a part up to date',
   'system.howBody':
     'Pull the current code, then restart the part — a running process keeps the code it started with. With Docker, rebuild and restart everything; in development, stop and start its command.',
@@ -389,6 +392,11 @@ export const en = {
     'go run ./cmd/api · python -m shadowline.cutter (or .transcriber, .worker, .dubber, .glosser) · npm run dev',
   'nav.tagline': 'ADMIN CONSOLE',
   'nav.back': 'Back to the app',
+  'pageError.title': 'This page stopped working',
+  'pageError.body':
+    'Something on it failed. If the console was just updated, the API or a worker may still be on older code: the System page says which.',
+  'pageError.reload': 'Reload',
+  'pageError.system': 'Open System',
   'nav.signOut': 'Sign out',
   // --- tutor usage ----------------------------------------------------------
   'tutor.title': 'Tutor usage',

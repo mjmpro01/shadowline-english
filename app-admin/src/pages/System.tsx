@@ -15,7 +15,7 @@ const WORKERS: { service: WorkerService; label: MessageKey }[] = [
   { service: 'glossing', label: 'system.glossing' },
 ]
 
-type Health = 'same' | 'different' | 'unknown' | 'offline' | 'never'
+type Health = 'same' | 'different' | 'unknown' | 'offline' | 'never' | 'unreported'
 
 interface Part {
   name: string
@@ -52,7 +52,10 @@ export function System() {
     void load()
   }, [load])
 
-  const reference = services?.api.version ?? ''
+  const reference = services?.api?.version ?? ''
+  // The API is from before it said which code it runs: nothing can be held
+  // against it, and restarting it is the first thing to do.
+  const apiOld = services !== null && services.api === null
 
   const parts: Part[] = services
     ? [
@@ -64,9 +67,9 @@ export function System() {
         },
         {
           name: t('system.api'),
-          version: services.api.version,
-          startedAt: services.api.startedAt,
-          health: isKnown(services.api.version) ? 'same' : 'unknown',
+          version: services.api?.version ?? '',
+          startedAt: services.api?.startedAt ?? null,
+          health: isKnown(services.api?.version) ? 'same' : 'unknown',
         },
         ...WORKERS.map(({ service, label }) => workerPart(t(label), services[service], reference)),
       ]
@@ -89,9 +92,11 @@ export function System() {
 
       {services && (
         <div className={`series-hint ${behind.length ? 'series-hint-warn' : ''}`} role="status">
-          {behind.length === 0
-            ? t('system.allSame', reference)
-            : t('system.someBehind', behind.length, reference || '—')}
+          {apiOld
+            ? t('system.apiOld')
+            : behind.length === 0
+              ? t('system.allSame', reference)
+              : t('system.someBehind', behind.length, reference || '—')}
         </div>
       )}
 
@@ -143,6 +148,7 @@ const TAG: Record<Health, string> = {
   unknown: 'tag-warn',
   offline: 'tag-bad',
   never: 'tag-neutral',
+  unreported: 'tag-neutral',
 }
 
 function versionHealth(version: string | undefined, reference: string): Health {
@@ -150,7 +156,8 @@ function versionHealth(version: string | undefined, reference: string): Health {
   return sameCode(version, reference) ? 'same' : 'different'
 }
 
-function workerPart(name: string, worker: WorkerStatus | null, reference: string): Part {
+function workerPart(name: string, worker: WorkerStatus | null | undefined, reference: string): Part {
+  if (worker === undefined) return { name, version: '', startedAt: null, health: 'unreported' }
   if (worker === null) return { name, version: '', startedAt: null, health: 'never' }
   const version = worker.version ?? ''
   return {
