@@ -413,6 +413,77 @@ export const en = {
   'common.retry': 'Try again',
   'common.noSuchClip': 'That clip is not in the library.',
   'common.backToLibrary': 'Back to the library',
+
+  // --- guide ----------------------------------------------------------------
+  'nav.guide': 'Guide',
+  'dash.firstGuide': 'How it works',
+  'practice.howTo': 'Not sure how this works? Read the guide',
+  'profile.help': 'Help',
+  'profile.helpBody': 'The steps of practising a line, what the score means, and what to do when the microphone or a clip misbehaves.',
+  'guide.title': 'How to use Shadowline',
+  'guide.lead':
+    'Shadowline helps you speak English more naturally by shadowing real lines: listen, say it straight after, then compare your voice with the original. A line takes less than a minute.',
+  'guide.contents': 'Contents',
+  'guide.practiceTitle': 'Practise a line in 5 steps',
+  'guide.practiceIntro': 'This is what you will do most. Once through and it is familiar.',
+  'guide.pick.title': 'Pick a clip',
+  'guide.pick.body':
+    'In the Library, open a series and then an episode, or type into the search box. Press Practice on a clip to start.',
+  'guide.listen.title': 'Listen first',
+  'guide.listen.body':
+    'Play the clip once or twice before you speak. Notice where the voice rises and falls, what it stresses and where it pauses. The IPA line under the caption shows how to say it, and tapping a word saves it to your Vocabulary.',
+  'guide.record.title': 'Record yourself',
+  'guide.record.body':
+    'Press Record and start speaking straight away. It stops on its own at the length of the line, or press Stop. The first time, your browser asks to use the microphone: allow it.',
+  'guide.waveLabel': 'The practice strip: the original in purple, you in cyan, and a red line that moves',
+  'guide.wavePurple': 'Purple — the original. Where it is tall is where to push.',
+  'guide.waveCyan': 'Cyan — your voice. It grows as you speak and stays afterwards to compare.',
+  'guide.waveRed': 'Red line — where the recording is, or where the clip is while it plays.',
+  'guide.score.title': 'Read your score',
+  'guide.score.body':
+    'A few seconds later you get a pitch-match score out of 100: how closely your voice rises and falls with the original. Under the line it says how many words were heard, and marks the ones that were not clear. See analysis breaks it down into intonation, rhythm, stress and variation. Not happy? Re-record — every take is kept.',
+  'guide.tierBronze': (name: string) => `${name}: under 50`,
+  'guide.tierSilver': (name: string) => `${name}: 50–74`,
+  'guide.tierGold': (name: string) => `${name}: 75 and up`,
+  'guide.next.title': 'Move on',
+  'guide.next.body':
+    'A clip can have several lines — the counter at the top says which one you are on. Press Next line for the next.',
+  'guide.moreTitle': 'Once you have practised',
+  'guide.words.title': 'Your words',
+  'guide.words.body':
+    'Words you tap while practising land in Vocabulary with their meaning and pronunciation. Memory practice goes through them as cards: say the word aloud, reveal the meaning, then mark it as known or still learning. Words come back when they are due.',
+  'guide.dub.title': 'Hear yourself in the scene',
+  'guide.dub.body':
+    'After a take, Dub review plays the clip with your voice in place of the original, so you can hear how well you fit. Save dub downloads it as a video.',
+  'guide.progress.title': 'Watch yourself improve',
+  'guide.progress.body':
+    'Progress charts your average score over time, shows which skill needs work, and lines up your weakest lines to try again.',
+  'guide.tipsTitle': 'Tips for a better score',
+  'guide.tip.quiet': 'Find somewhere quiet and speak up, clearly, as if you were really talking to someone.',
+  'guide.tip.headphones': 'Wear headphones while the clip plays, so the microphone does not pick up the speaker.',
+  'guide.tip.listenFirst': 'Hear the line two or three times before recording. Copy the tune, not just the words.',
+  'guide.tip.tune': 'Watch the purple wave: where it is tall, stress it. Try to make your cyan wave rise in the same places.',
+  'guide.tip.tutor': (button: string) =>
+    `If you see a “${button}” button, the tutor can answer questions about the line you are on: what it means, how it is used, how to say it.`,
+  'guide.helpTitle': 'Something not working?',
+  'guide.faq.mic.q': 'Record does not record anything',
+  'guide.faq.mic.a': (button: string) =>
+    `Your browser may be blocking the microphone. Click the lock icon beside the address, allow the microphone, press “${button}” and try again. If it still will not, try an up-to-date Chrome or Safari.`,
+  'guide.faq.noOriginal.q': 'The clip says it has no original recording',
+  'guide.faq.noOriginal.a':
+    'There is no original sound to compare with yet, so your take is kept but not scored. Pick another clip; this one gets its sound once it has finished processing.',
+  'guide.faq.tooShort.q': 'It stopped recording before I finished',
+  'guide.faq.tooShort.a': (button: string) =>
+    `It records for as long as the original line, so you keep pace with the speaker. Listen again, start speaking the moment you press record, then “${button}”.`,
+  'guide.faq.score.q': 'My score has not appeared',
+  'guide.faq.score.a':
+    'Scoring takes a few seconds, and a new take cannot start until it is done. Wait for the score, then record again.',
+  'guide.faq.words.q': 'Why are some words marked?',
+  'guide.faq.words.a':
+    'Those are words that were not clear in your take — not necessarily words you said wrong. Say them a little slower and clearer, and record again.',
+  'guide.readyTitle': 'Ready?',
+  'guide.readyBody': 'Pick a clip you like and practise your first line.',
+  'guide.readyGo': 'Go to the Library',
 } as const
 
 /** Every key the app can ask for. Other locales are checked against this. */

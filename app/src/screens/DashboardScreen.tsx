@@ -69,6 +69,7 @@ export function DashboardScreen() {
             navigate(clips[0] ? `/library/${clips[0].id}/practice` : '/library')
           }}
           onBrowse={() => navigate('/library')}
+          onGuide={() => navigate('/guide')}
         />
       ) : (
       <div className="grid-scores">
@@ -230,7 +231,15 @@ export function DashboardScreen() {
  * "0 learners" — the screen of an app nobody uses, shown to the one person who
  * has just arrived to use it.
  */
-function FirstSteps({ onStart, onBrowse }: { onStart: () => void | Promise<void>; onBrowse: () => void }) {
+function FirstSteps({
+  onStart,
+  onBrowse,
+  onGuide,
+}: {
+  onStart: () => void | Promise<void>
+  onBrowse: () => void
+  onGuide: () => void
+}) {
   const t = useT()
   const steps = [t('dash.stepListen'), t('dash.stepSpeak'), t('dash.stepScore')]
   return (
@@ -258,6 +267,10 @@ function FirstSteps({ onStart, onBrowse }: { onStart: () => void | Promise<void>
           </button>
           <button type="button" className="btn btn-secondary" onClick={onBrowse}>
             {t('dash.firstBrowse')}
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={onGuide}>
+            <Icon name="circle-help" size={18} />
+            {t('dash.firstGuide')}
           </button>
         </div>
       </div>

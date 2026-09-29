@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { ApiError } from '../lib/api'
 import { useRemote } from '../lib/remote'
 import { repository } from '../repository'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { AvatarSlot } from '../components/AvatarSlot'
 import { Dialog } from '../components/Dialog'
 import { Icon } from '../components/Icon'
@@ -147,6 +147,17 @@ export function ProfileScreen() {
               {t(`profile.theme.${one}`)}
             </button>
           ))}
+        </div>
+      </div>
+
+      <div className="card elev-sm stack gap-2" style={{ width: '100%', textAlign: 'left' }}>
+        <div className="card-kicker">{t('profile.help')}</div>
+        <span style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>{t('profile.helpBody')}</span>
+        <div className="row gap-2 wrap">
+          <Link className="btn btn-secondary" to="/guide">
+            <Icon name="circle-help" size={16} />
+            {t('guide.title')}
+          </Link>
         </div>
       </div>
 

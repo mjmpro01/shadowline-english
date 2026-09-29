@@ -18,7 +18,8 @@ test('a plank per place, and the one you are on is lit', async ({ page }) => {
   await page.goto('/library')
 
   const planks = page.locator('.menu-plank')
-  await expect(planks).toHaveCount(5)
+  // Dashboard, Library, Vocabulary, Progress, Guide, Profile.
+  await expect(planks).toHaveCount(6)
   await expect(planks.filter({ hasText: 'Library' })).toHaveAttribute('aria-current', 'page')
   await expect(planks.filter({ hasText: 'Library' }).getByText('HERE')).toBeVisible()
 

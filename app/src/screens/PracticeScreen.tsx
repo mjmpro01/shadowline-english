@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useClip } from '../lib/useClip'
 import { CaptionLine } from '../components/CaptionLine'
 import { heardCount, heardIn } from '../lib/words'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useT } from '../i18n'
 import { ClipPlayer } from '../components/ClipPlayer'
 import { DubExport } from '../components/DubExport'
@@ -346,6 +346,12 @@ export function PracticeScreen() {
               </div>
             </div>
           )}
+          {/* Quiet, and under the strip it explains: the one part of this
+              screen a first-timer cannot read off the buttons. */}
+          <Link className="practice-howto" to="/guide#practice">
+            <Icon name="circle-help" size={14} />
+            {t('practice.howTo')}
+          </Link>
 
           {recording && (
             <div className="row gap-2" style={{ justifyContent: 'center', fontSize: 14 }}>

@@ -15,6 +15,15 @@ const TABS: { to: string; label: MessageKey; icon: IconName }[] = [
   { to: '/progress', label: 'nav.progress', icon: 'chart-line' },
 ]
 
+/** In the side menu, where there is room for a sixth plank; the tab bar on a
+ *  phone is full, so there the guide is reached from the dashboard's first
+ *  steps and from Profile. */
+const GUIDE: { to: string; label: MessageKey; icon: IconName } = {
+  to: '/guide',
+  label: 'nav.guide',
+  icon: 'circle-help',
+}
+
 const PROFILE: { to: string; label: MessageKey; icon: IconName } = {
   to: '/profile',
   label: 'nav.profile',
@@ -44,7 +53,7 @@ export function AppShell() {
     navigate('/login', { replace: true })
   }
 
-  const items = [...TABS, PROFILE]
+  const items = [...TABS, GUIDE, PROFILE]
 
   return (
     <div className="app">
