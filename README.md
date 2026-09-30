@@ -15,6 +15,10 @@
 > `docker compose up` in `server/` brings up Postgres, MinIO, the API and the worker.
 > Each directory's README covers its own decisions. The notes below are the original
 > handoff brief.
+>
+> **Architecture:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — the whole
+> system in one place: components, database schema, job queues, API routes,
+> storage, auth, the main flows and deployment (in Vietnamese).
 
 # CODING AGENTS: READ THIS FIRST
 

@@ -447,11 +447,13 @@ step by hand is a second copy to get wrong. `store.Uploads` reads it back:
 | `cut-failed` | published, no jobs left, and clips that should have a picture have none |
 | `done` | published, and every picture the cutter was going to make is there |
 
-That reading leans on one thing the workers do: a job row exists **only while
-there is work left**. `CutQueue` and `TranscribeQueue` delete the row when they
-finish and when they give up, so "a row is here" means pending, and what
-distinguishes finished from abandoned is whether the result landed — a
-`transcripts` row, a clip's `video_key`.
+That reading leans on what the workers do with a job row. `CutQueue` and
+`TranscribeQueue` delete it when they finish, and when they give up they keep it
+with `state = 'failed'` and the reason in `error`, so an admin can see why and
+retry. A row that is not `failed` therefore means pending; every "is there still
+work" query excludes `failed` rows, and what distinguishes finished from
+abandoned is whether the result landed — a `transcripts` row, a clip's
+`video_key` — or a `failed` row says why not.
 
 `Upload.status()` in Go is the one place that turns those counts into a word, and
 `?state=` filters on it. There is no status column to filter on, deliberately, so
