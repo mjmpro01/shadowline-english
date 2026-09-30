@@ -64,6 +64,15 @@ export function serverEnv(): NodeJS.ProcessEnv {
     OAUTH_REDIRECT_URL: `${API_URL}/auth/google/callback`,
     ADMIN_EMAILS: ADMIN_EMAIL,
     LOG_LEVEL: 'WARNING',
+    // The fake microphone plays a synthetic melody, not speech, so the scorer's
+    // check that the words were said has nothing to hear. Mostly Whisper hears
+    // nothing and the check stands aside; but each take starts at a different
+    // point of the loop, and now and then Whisper hallucinates a word or two
+    // from the tone — which reads as "none of the line was said" and cuts the
+    // score to about 40% of itself (78 became 32). That was the one flaky
+    // browser test. The check is covered where its input can be controlled:
+    // ../../scoring/tests/test_words.py and test_worker.py.
+    WORD_CHECK: '0',
     // The tutor talks to the fake router, never to a real model: those cost
     // money and answer differently every time.
     TUTOR_API_URL: `${ROUTER_URL}/v1`,

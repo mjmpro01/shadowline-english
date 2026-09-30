@@ -130,6 +130,9 @@ export interface Video {
    *  server a few seconds after publishing. The player asks again until it is
    *  there; a take recorded meanwhile is scored once it is. */
   audioPending?: boolean
+  /** Whether the clip has its original sound, which is what a take is scored
+   *  against. A clip without it keeps takes but cannot score them. */
+  hasAudio?: boolean
   /** A still from the clip, for the card. Empty for a clip cut from audio, and
    *  for one whose cut has not finished — both fall back to the play icon. */
   posterUrl: string

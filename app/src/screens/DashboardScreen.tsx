@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { firstToPractise } from '../lib/clips'
 import { useRemote } from '../lib/remote'
 import { repository } from '../repository'
 import { useT } from '../i18n'
@@ -66,7 +67,8 @@ export function DashboardScreen() {
               remote.state === 'ready'
                 ? remote.value
                 : await repository.featuredClips().catch(() => [])
-            navigate(clips[0] ? `/library/${clips[0].id}/practice` : '/library')
+            const first = firstToPractise(clips)
+            navigate(first ? `/library/${first.id}/practice` : '/library')
           }}
           onBrowse={() => navigate('/library')}
           onGuide={() => navigate('/guide')}

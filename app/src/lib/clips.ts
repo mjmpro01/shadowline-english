@@ -48,3 +48,16 @@ export function episodeProgress(
 export function clipName(n: number): string {
   return `Clip ${n}`
 }
+
+/**
+ * The featured clip a first line should be: one that can be scored.
+ *
+ * It used to be simply the first featured clip, and the starter samples come
+ * first and have no original sound — so a new learner's first take, the one
+ * the guided tour builds up to, came back with no score at all. A clip whose
+ * sound is still being cut comes next (it is scored once the cut lands), and
+ * any clip at all after that, rather than none.
+ */
+export function firstToPractise<T extends { hasAudio?: boolean; audioPending?: boolean }>(clips: T[]): T | undefined {
+  return clips.find((c) => c.hasAudio) ?? clips.find((c) => c.audioPending) ?? clips[0]
+}
