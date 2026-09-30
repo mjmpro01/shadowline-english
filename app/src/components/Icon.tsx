@@ -150,6 +150,14 @@ const PATHS: Record<string, React.ReactNode> = {
       <path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z" />
     </>
   ),
+  // Lucide's circle-help: the guide.
+  'circle-help': (
+    <>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+      <path d="M12 17h.01" />
+    </>
+  ),
   scissors: (
     <>
       <circle cx="6" cy="6" r="3" />

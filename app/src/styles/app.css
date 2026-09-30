@@ -2451,3 +2451,360 @@
   color: var(--color-accent-ink);
   flex: none;
 }
+
+/* --- The guide ------------------------------------------------------------
+   Built from the dashboard's first-steps card, which is where a new learner
+   meets it: the same warm banner up top, numbered steps below. */
+.guide-hero {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-6);
+  background: linear-gradient(135deg, var(--color-accent-100), var(--color-accent-200));
+  border: 2px solid var(--color-accent-300);
+}
+.guide-hero-art {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  box-shadow: 0 var(--game-lift) 0 var(--game-edge);
+}
+.guide-title {
+  margin: 0;
+  font-size: 32px;
+}
+.guide-lead {
+  margin: 0;
+  font-size: 17px;
+  color: var(--color-text-muted);
+}
+.guide-jump {
+  text-decoration: none;
+  background: var(--color-surface);
+}
+.guide-jump:hover {
+  background: var(--color-surface-2);
+}
+.guide-section {
+  scroll-margin-top: var(--space-4);
+}
+.guide-heading {
+  margin: 0;
+  font-size: 24px;
+}
+.guide-intro {
+  margin: 0;
+  font-size: 15px;
+}
+.guide-steps {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.guide-step {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+.guide-step-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: #2b2119;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 18px;
+}
+.guide-step-title {
+  margin: 0;
+  font-size: 19px;
+}
+.guide-step-body {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--color-text-muted);
+}
+/* A button's name as it reads on its screen: shaped like a key to press. */
+.guide-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 8px;
+  border: 1.5px solid var(--color-accent-300);
+  border-bottom-width: 3px;
+  background: var(--color-surface);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+.guide-wave {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 2px solid color-mix(in srgb, #8b5cf6 45%, transparent);
+  background: var(--color-surface-2);
+}
+.guide-wave svg {
+  display: block;
+  max-height: 72px;
+}
+.guide-wave-key {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+.guide-wave-key li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.guide-wave-key span {
+  flex: none;
+  width: 14px;
+  height: 8px;
+  border-radius: 2px;
+}
+/* The band's colour on the rim and the fill, the words in the text colour:
+   white on the gold was unreadable in the light theme and dark on it in the
+   dark one. */
+.guide .tier-bronze,
+.guide .tier-silver,
+.guide .tier-gold {
+  border: 2px solid var(--tier);
+  background: color-mix(in srgb, var(--tier) 16%, var(--color-surface));
+  color: var(--color-text);
+  font-weight: 700;
+}
+.guide .tier-bronze {
+  --tier: var(--tier-bronze);
+}
+.guide .tier-silver {
+  --tier: var(--tier-silver);
+}
+.guide .tier-gold {
+  --tier: var(--tier-gold);
+}
+.guide-tips {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: 1.2em;
+  font-size: 15px;
+  line-height: 1.55;
+}
+.guide-faq summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 16px;
+}
+.guide-faq p {
+  margin: var(--space-2) 0 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--color-text-muted);
+}
+.guide-cta {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-4);
+}
+.practice-howto {
+  display: inline-flex;
+  align-self: center;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+.practice-howto:hover {
+  color: var(--color-text);
+}
+@media (max-width: 760px) {
+  .guide-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+    padding: var(--space-4);
+  }
+  .guide-hero-art {
+    width: 100px;
+    height: 100px;
+  }
+  .guide-hero-art .knight {
+    height: 84px !important;
+  }
+  .guide-title {
+    font-size: 26px;
+  }
+  .guide-step {
+    gap: var(--space-3);
+  }
+  .guide-cta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* --- The guided tour -------------------------------------------------------
+   A spotlight on one control, the rest of the screen dimmed round it, and the
+   knight saying what to do in a bubble beside it. Above everything else on
+   screen, dialogs included. */
+.tour-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: color-mix(in srgb, var(--color-neutral-900) 55%, transparent);
+}
+.tour-hole {
+  position: fixed;
+  z-index: 70;
+  border-radius: 16px;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 4px var(--color-accent),
+    0 0 0 9999px color-mix(in srgb, var(--color-neutral-900) 55%, transparent);
+  transition:
+    top 0.2s ease,
+    left 0.2s ease,
+    width 0.2s ease,
+    height 0.2s ease;
+  animation: tour-pulse 1.8s ease-in-out infinite;
+}
+@keyframes tour-pulse {
+  50% {
+    box-shadow:
+      0 0 0 8px color-mix(in srgb, var(--color-accent) 55%, transparent),
+      0 0 0 9999px color-mix(in srgb, var(--color-neutral-900) 55%, transparent);
+  }
+}
+.tour-blocker {
+  position: fixed;
+  z-index: 70;
+}
+.tour-bubble {
+  position: fixed;
+  z-index: 71;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: calc(var(--radius-lg) * 1.15);
+  border: 2px solid var(--color-accent-300);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow:
+    0 var(--game-lift) 0 var(--game-edge),
+    0 18px 40px rgb(0 0 0 / 0.25);
+  animation: tour-in 0.18s ease-out;
+}
+.tour-bubble-center {
+  top: 50%;
+  left: 50%;
+  width: min(420px, calc(100vw - 32px));
+  transform: translate(-50%, -50%);
+  animation: none;
+}
+@keyframes tour-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.tour-face {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--color-accent-100);
+}
+.tour-bubble-center .tour-face {
+  width: 84px;
+  height: 84px;
+}
+.tour-counter {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.tour-title {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 20px;
+  line-height: 1.2;
+}
+.tour-body {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+.tour-skip {
+  padding-left: 0;
+  font-size: 14px;
+}
+.tour-do {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-accent-700, var(--color-text));
+}
+/* Waiting for the learner to get somewhere: a note at the bottom, the screen
+   left alone. Above the phone's tab bar. */
+.tour-pill {
+  position: fixed;
+  z-index: 71;
+  left: 50%;
+  bottom: calc(var(--space-4) + 72px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 6px 6px 6px 10px;
+  border-radius: 999px;
+  border: 2px solid var(--color-accent-300);
+  background: var(--color-surface);
+  box-shadow: 0 10px 24px rgb(0 0 0 / 0.18);
+  font-size: 14px;
+}
+.tour-pill-text {
+  min-width: 0;
+}
+.tour-pill-skip {
+  flex: none;
+  font-size: 13px;
+}
+@media (min-width: 761px) {
+  .tour-pill {
+    bottom: var(--space-4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-hole,
+  .tour-bubble {
+    animation: none;
+    transition: none;
+  }
+}

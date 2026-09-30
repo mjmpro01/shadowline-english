@@ -80,6 +80,7 @@ export function ClipCard({ clip }: { clip: Video }) {
         // above happens to end, so a row of cards has a row of buttons instead
         // of a ragged edge wherever a title wraps.
         style={{ marginTop: 'auto' }}
+        data-tour="practice-clip"
         onClick={() => navigate(`/library/${clip.id}/practice`)}
       >
         <Icon name="mic" size={14} />

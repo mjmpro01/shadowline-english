@@ -411,4 +411,120 @@ export const vi: Messages = {
   'common.retry': 'Thử lại',
   'common.noSuchClip': 'Clip đó không có trong thư viện.',
   'common.backToLibrary': 'Về thư viện',
+
+  // --- guide ----------------------------------------------------------------
+  'nav.guide': 'Hướng dẫn',
+  'dash.firstGuide': 'Cách dùng',
+  'practice.howTo': 'Chưa rõ cách luyện? Xem hướng dẫn',
+  'profile.help': 'Trợ giúp',
+  'profile.helpBody': 'Các bước luyện một câu, ý nghĩa của điểm, và cách xử lý khi micro hay clip trục trặc.',
+  'guide.title': 'Hướng dẫn sử dụng',
+  'guide.lead':
+    'Shadowline giúp bạn nói tiếng Anh tự nhiên hơn bằng cách nhại theo (shadowing) những câu thoại thật: nghe, nói theo ngay, rồi so giọng mình với bản gốc. Mỗi câu chưa tới một phút.',
+  'guide.contents': 'Mục lục',
+  'guide.practiceTitle': 'Luyện một câu trong 5 bước',
+  'guide.practiceIntro': 'Đây là việc bạn sẽ làm nhiều nhất. Làm thử một lần là quen.',
+  'guide.pick.title': 'Chọn một clip',
+  'guide.pick.body':
+    'Vào Thư viện, mở một series rồi một tập, hoặc gõ vào ô tìm kiếm. Bấm Luyện trên một clip để bắt đầu.',
+  'guide.listen.title': 'Nghe trước',
+  'guide.listen.body':
+    'Phát clip một hai lần trước khi nói. Để ý chỗ người nói lên giọng, xuống giọng, nhấn và ngắt. Dòng phiên âm IPA dưới phụ đề chỉ cách đọc, và chạm vào một từ sẽ lưu nó vào Từ vựng.',
+  'guide.record.title': 'Ghi âm giọng bạn',
+  'guide.record.body':
+    'Bấm Ghi âm rồi nói theo ngay. Máy tự dừng khi hết độ dài câu gốc, hoặc bạn bấm Dừng. Lần đầu, trình duyệt sẽ hỏi quyền dùng micro: hãy cho phép.',
+  'guide.waveLabel': 'Dải sóng âm khi luyện: bản gốc màu tím, giọng bạn màu xanh, và một vạch đỏ chạy theo',
+  'guide.wavePurple': 'Tím — bản gốc. Chỗ sóng cao là chỗ cần nhấn.',
+  'guide.waveCyan': 'Xanh — giọng bạn. Hiện dần khi bạn nói và ở lại sau đó để so.',
+  'guide.waveRed': 'Vạch đỏ — chỗ đang ghi, hoặc chỗ clip đang phát.',
+  'guide.score.title': 'Xem điểm',
+  'guide.score.body':
+    'Vài giây sau bạn nhận điểm khớp cao độ trên thang 100: giọng bạn lên xuống giống bản gốc tới đâu. Dưới câu thoại, app cho biết nghe được bao nhiêu từ và đánh dấu những từ chưa rõ. Xem phân tích chia điểm ra ngữ điệu, nhịp điệu, trọng âm và độ biến thiên. Chưa ưng thì Ghi lại — mọi bản ghi đều được lưu.',
+  'guide.tierBronze': (name: string) => `${name}: dưới 50`,
+  'guide.tierSilver': (name: string) => `${name}: 50–74`,
+  'guide.tierGold': (name: string) => `${name}: từ 75 trở lên`,
+  'guide.next.title': 'Sang câu tiếp',
+  'guide.next.body':
+    'Một clip có thể có nhiều câu — góc trên cho biết bạn đang ở câu nào. Bấm Câu tiếp theo để sang câu sau.',
+  'guide.moreTitle': 'Khi đã luyện rồi',
+  'guide.words.title': 'Từ vựng của bạn',
+  'guide.words.body':
+    'Những từ bạn chạm khi luyện nằm trong Từ vựng, kèm nghĩa và phát âm. Luyện ghi nhớ cho bạn ôn chúng bằng thẻ: đọc to từ, lật xem nghĩa, rồi đánh dấu đã nhớ hay chưa thuộc. Từ nào đến hạn sẽ tự quay lại.',
+  'guide.dub.title': 'Nghe giọng mình trong cảnh phim',
+  'guide.dub.body':
+    'Sau khi ghi âm, Xem lồng tiếng phát clip bằng giọng của bạn thay cho giọng gốc, để bạn nghe mình khớp tới đâu. Lưu bản lồng tiếng tải nó về dạng video.',
+  'guide.progress.title': 'Theo dõi tiến bộ',
+  'guide.progress.body':
+    'Tiến độ vẽ điểm trung bình của bạn theo thời gian, cho biết kỹ năng nào cần luyện thêm, và xếp sẵn những câu yếu nhất để luyện lại.',
+  'guide.tipsTitle': 'Mẹo để điểm cao hơn',
+  'guide.tip.quiet': 'Ngồi chỗ yên tĩnh và nói to, rõ, như đang nói chuyện thật với ai đó.',
+  'guide.tip.headphones': 'Đeo tai nghe khi phát clip, để micro không thu lại tiếng loa.',
+  'guide.tip.listenFirst': 'Nghe câu hai ba lần trước khi ghi. Nhại theo cả giai điệu, không chỉ từng từ.',
+  'guide.tip.tune': 'Nhìn sóng tím: chỗ sóng cao thì nhấn mạnh. Cố cho sóng xanh của bạn lên cao đúng những chỗ đó.',
+  'guide.tip.tutor': (button: string) =>
+    `Nếu thấy nút “${button}”, bạn có thể hỏi gia sư về câu đang luyện: nghĩa, cách dùng, cách phát âm.`,
+  'guide.helpTitle': 'Gặp trục trặc?',
+  'guide.faq.mic.q': 'Bấm Ghi âm mà không ghi được gì',
+  'guide.faq.mic.a': (button: string) =>
+    `Có thể trình duyệt đang chặn micro. Bấm biểu tượng ổ khoá cạnh địa chỉ trang, cho phép Micro, bấm “${button}” rồi thử lại. Nếu vẫn không được, hãy dùng Chrome hoặc Safari bản mới.`,
+  'guide.faq.noOriginal.q': 'Clip báo không có bản ghi gốc',
+  'guide.faq.noOriginal.a':
+    'Clip này chưa có âm thanh gốc để so, nên bản ghi của bạn được lưu nhưng không chấm điểm. Hãy chọn clip khác; clip này sẽ có âm thanh khi xử lý xong.',
+  'guide.faq.tooShort.q': 'Máy dừng ghi trước khi tôi nói xong',
+  'guide.faq.tooShort.a': (button: string) =>
+    `Máy ghi đúng bằng độ dài câu gốc, để bạn nói kịp nhịp người bản xứ. Nghe lại clip, bắt đầu nói ngay khi bấm ghi, rồi bấm “${button}”.`,
+  'guide.faq.score.q': 'Điểm chưa hiện ra',
+  'guide.faq.score.a':
+    'Chấm điểm mất vài giây, và chưa thể ghi bản mới cho tới khi chấm xong. Chờ điểm hiện rồi hãy ghi tiếp.',
+  'guide.faq.words.q': 'Vì sao có từ bị đánh dấu?',
+  'guide.faq.words.a':
+    'Đó là những từ app chưa nghe rõ trong bản ghi của bạn — không hẳn là bạn đọc sai. Nói chậm và rõ hơn ở những từ đó rồi ghi lại.',
+  'guide.readyTitle': 'Sẵn sàng chưa?',
+  'guide.readyBody': 'Chọn một clip bạn thích và luyện câu đầu tiên.',
+  'guide.readyGo': 'Tới Thư viện',
+
+  // --- tour -----------------------------------------------------------------
+  'tour.counter': (step: number, total: number) => `Bước ${step}/${total}`,
+  'tour.skip': 'Bỏ qua hướng dẫn',
+  'tour.close': 'Đóng',
+  'tour.next': 'Tiếp',
+  'tour.begin': 'Bắt đầu',
+  'tour.finish': 'Bắt đầu luyện',
+  'tour.pressIt': 'Bấm vào nút đang sáng',
+  'tour.replay': 'Chạy hướng dẫn từng bước',
+  'tour.replayBody': 'Các popup dẫn bạn luyện một câu, bấm từng nút một.',
+  'tour.welcome.title': 'Chào mừng bạn tới Shadowline!',
+  'tour.welcome.body':
+    'Mình sẽ dẫn bạn luyện câu đầu tiên: nghe, nói theo, rồi xem bạn giống bản gốc tới đâu. Chỉ mất khoảng một phút.',
+  'tour.start.title': 'Mở câu đầu tiên',
+  'tour.start.body': 'Bấm vào đây để mở một câu và luyện.',
+  'tour.start.waiting': 'Về Tổng quan hoặc Thư viện để tiếp tục hướng dẫn.',
+  'tour.practice.waiting': 'Mở một clip và bấm Luyện để tiếp tục hướng dẫn.',
+  'tour.listen.title': 'Nghe trước',
+  'tour.listen.body':
+    'Phát bản gốc một hai lần. Để ý chỗ giọng lên, xuống, chỗ được nhấn và chỗ ngắt.',
+  'tour.caption.title': 'Chạm một từ để lưu',
+  'tour.caption.body':
+    'Chạm vào bất kỳ từ nào trong câu để lưu vào Từ vựng, kèm nghĩa. Dòng bên dưới là cách đọc.',
+  'tour.record.title': 'Giờ nói theo nào',
+  'tour.record.body':
+    'Bấm Ghi âm và nói ngay. Nếu trình duyệt hỏi quyền dùng micro, hãy cho phép. Máy tự dừng khi hết câu.',
+  'tour.wave.title': 'Nhìn hai dải sóng',
+  'tour.wave.body':
+    'Tím là bản gốc: chỗ sóng cao là chỗ cần nhấn. Xanh là giọng bạn, hiện ra khi bạn nói và giữ lại sau đó. Vạch đỏ là chỗ bạn đang ở.',
+  'tour.result.title': 'Điểm của bạn',
+  'tour.result.body':
+    'Trên thang 100 — giọng bạn lên xuống giống bản gốc tới đâu. Từ 75 là bậc Vàng. Chưa tới thì cứ Ghi lại, bao nhiêu lần cũng được.',
+  'tour.unscored.title': 'Bản ghi đã được lưu',
+  'tour.unscored.body':
+    'Clip này chưa có âm thanh gốc để so, nên lần này không có điểm. Clip có âm thanh sẽ được chấm trên thang 100 — từ 75 là bậc Vàng.',
+  'tour.result.waiting': 'Đang chấm bản ghi của bạn… mất vài giây.',
+  'tour.after.title': 'Làm gì tiếp',
+  'tour.after.body':
+    'Sang câu tiếp theo, nghe giọng bạn lồng vào clip, hoặc xem phân tích chi tiết bản ghi.',
+  'tour.vocabulary.title': 'Từ vựng của bạn',
+  'tour.vocabulary.body': 'Những từ bạn chạm sẽ nằm ở đây, kèm thẻ ôn tập để bạn nhớ lâu.',
+  'tour.done.title': 'Xong rồi!',
+  'tour.done.body':
+    'Bạn đã luyện xong câu đầu tiên. Mọi thứ khác có trong mục Hướng dẫn, và bạn có thể chạy lại phần này từ đó.',
 }

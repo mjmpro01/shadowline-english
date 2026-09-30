@@ -69,6 +69,7 @@ export function DashboardScreen() {
             navigate(clips[0] ? `/library/${clips[0].id}/practice` : '/library')
           }}
           onBrowse={() => navigate('/library')}
+          onGuide={() => navigate('/guide')}
         />
       ) : (
       <div className="grid-scores">
@@ -209,6 +210,7 @@ export function DashboardScreen() {
                   // Pinned to the bottom, so a row of cards has a row of
                   // buttons rather than a ragged edge wherever a title wraps.
                   style={{ marginTop: 'auto' }}
+                  data-tour="practice-clip"
                   onClick={() => navigate(`/library/${video.id}/practice`)}
                 >
                   <Icon name="mic" size={14} />
@@ -230,7 +232,15 @@ export function DashboardScreen() {
  * "0 learners" — the screen of an app nobody uses, shown to the one person who
  * has just arrived to use it.
  */
-function FirstSteps({ onStart, onBrowse }: { onStart: () => void | Promise<void>; onBrowse: () => void }) {
+function FirstSteps({
+  onStart,
+  onBrowse,
+  onGuide,
+}: {
+  onStart: () => void | Promise<void>
+  onBrowse: () => void
+  onGuide: () => void
+}) {
   const t = useT()
   const steps = [t('dash.stepListen'), t('dash.stepSpeak'), t('dash.stepScore')]
   return (
@@ -252,12 +262,16 @@ function FirstSteps({ onStart, onBrowse }: { onStart: () => void | Promise<void>
           ))}
         </ol>
         <div className="row gap-2 wrap">
-          <button type="button" className="btn btn-primary" onClick={() => void onStart()}>
+          <button type="button" className="btn btn-primary" data-tour="first-line" onClick={() => void onStart()}>
             <Icon name="mic" size={18} />
             {t('dash.firstStart')}
           </button>
           <button type="button" className="btn btn-secondary" onClick={onBrowse}>
             {t('dash.firstBrowse')}
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={onGuide}>
+            <Icon name="circle-help" size={18} />
+            {t('dash.firstGuide')}
           </button>
         </div>
       </div>

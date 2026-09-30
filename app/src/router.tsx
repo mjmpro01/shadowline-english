@@ -6,6 +6,7 @@ import { DashboardScreen } from './screens/DashboardScreen'
 import { DubScreen } from './screens/DubScreen'
 import { EpisodeScreen } from './screens/EpisodeScreen'
 import { FlashcardsScreen } from './screens/FlashcardsScreen'
+import { GuideScreen } from './screens/GuideScreen'
 import { LibraryScreen } from './screens/LibraryScreen'
 import { LoginScreen } from './screens/LoginScreen'
 import { PracticeScreen } from './screens/PracticeScreen'
@@ -38,6 +39,7 @@ export const router = createBrowserRouter([
       { path: 'vocabulary', element: <VocabularyScreen /> },
       { path: 'vocabulary/practice', element: <FlashcardsScreen /> },
       { path: 'progress', element: <ProgressScreen /> },
+      { path: 'guide', element: <GuideScreen /> },
       { path: 'profile', element: <ProfileScreen /> },
       { path: '*', element: <Navigate to="/library" replace /> },
     ],
