@@ -40,6 +40,10 @@ test('the first step leads straight into practising a featured clip', async ({ p
   await page.getByRole('button', { name: 'Practise my first line' }).click()
   await expect(page).toHaveURL(/\/practice$/)
   await expect(page.getByRole('button', { name: 'Record', exact: true })).toBeVisible()
+  // The published line, which has its sound — not the starter samples that
+  // are featured ahead of it and have none, which scored nothing.
+  await expect(page.locator('[data-tour="caption"]')).toContainText(/Shadow\s*this\s*line\s*1/)
+  await expect(page.getByText('This clip has no original recording')).toHaveCount(0)
 })
 
 // Pressed before the featured clips have arrived, it still goes into a clip:

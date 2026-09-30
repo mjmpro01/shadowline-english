@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { episodeProgress, parseCategories } from '../src/lib/clips'
+import { episodeProgress, firstToPractise, parseCategories } from '../src/lib/clips'
 import type { Video } from '../src/data/types'
 
 const clip = (overrides: Partial<Video>): Video => ({
@@ -62,5 +62,24 @@ describe('episodeProgress', () => {
     // Practised means "has been to", not "did well" — that is what the score
     // is for, and a bad take is still a clip you have practised.
     expect(episodeProgress(clips, () => true).practised).toBe(3)
+  })
+})
+
+describe('the first line a new learner is sent to', () => {
+  const starter = { id: 'starter', hasAudio: false }
+  const cutting = { id: 'cutting', hasAudio: false, audioPending: true }
+  const ready = { id: 'ready', hasAudio: true }
+
+  it('is a clip with its sound, even when a starter sample comes first', () => {
+    expect(firstToPractise([starter, cutting, ready])?.id).toBe('ready')
+  })
+
+  it('is one still being cut when none has its sound yet', () => {
+    expect(firstToPractise([starter, cutting])?.id).toBe('cutting')
+  })
+
+  it('is still some clip when none can be scored, and none when there are none', () => {
+    expect(firstToPractise([starter])?.id).toBe('starter')
+    expect(firstToPractise([])).toBeUndefined()
   })
 })

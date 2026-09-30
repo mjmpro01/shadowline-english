@@ -54,10 +54,10 @@ test('a new learner is walked through their first line, one button at a time', a
   await expect(bubble(learner)).toContainText('Watch the two waves')
   await bubble(learner).getByRole('button', { name: 'Next' }).click()
 
-  // The score takes a few seconds, and the tour says so while it waits. The
-  // featured clips include starters with no original sound, and for those the
-  // popup says why there is no score instead of explaining one.
-  await expect(bubble(learner)).toContainText(/Your score|Your take is kept/, { timeout: 30_000 })
+  // The score takes a few seconds, and the tour says so while it waits. A
+  // score, not "your take is kept": the first line is a clip with its sound,
+  // though starter samples with none are featured ahead of it.
+  await expect(bubble(learner)).toContainText('Your score', { timeout: 30_000 })
   await bubble(learner).getByRole('button', { name: 'Next' }).click()
   await expect(bubble(learner)).toContainText('What next')
   await bubble(learner).getByRole('button', { name: 'Next' }).click()
