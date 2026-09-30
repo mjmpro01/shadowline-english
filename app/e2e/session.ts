@@ -9,7 +9,20 @@ import { ADMIN_EMAIL, API_URL, LEARNER_EMAIL } from './environment'
  * button on the login screen goes to the same place; `?email=` is how a test
  * says who to be, and the real provider has no way to honour it.
  */
-export async function signIn(page: Page, email: string): Promise<void> {
+export async function signIn(page: Page, email: string, { tour = false } = {}): Promise<void> {
+  // The guided tour starts by itself for a learner with no takes, and holds the
+  // screen while it runs: every test not about the tour starts as a browser
+  // that has already seen it. Scoped to this page, so a tour test can open a
+  // second page in the same context that has not.
+  if (!tour) {
+    await page.addInitScript(() => {
+      try {
+        localStorage.setItem('shadowline.tour', 'done')
+      } catch {
+        // The API's own origin, before the redirect, may refuse; it has no tour.
+      }
+    })
+  }
   await page.goto(`${API_URL}/auth/google/start?email=${encodeURIComponent(email)}`)
   await page.waitForURL('**/dashboard')
 }

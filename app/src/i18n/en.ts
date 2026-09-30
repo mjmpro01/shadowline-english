@@ -484,6 +484,51 @@ export const en = {
   'guide.readyTitle': 'Ready?',
   'guide.readyBody': 'Pick a clip you like and practise your first line.',
   'guide.readyGo': 'Go to the Library',
+
+  // --- tour -----------------------------------------------------------------
+  'tour.counter': (step: number, total: number) => `Step ${step} of ${total}`,
+  'tour.skip': 'Skip the tour',
+  'tour.close': 'Close',
+  'tour.next': 'Next',
+  'tour.begin': 'Show me',
+  'tour.finish': 'Start practising',
+  'tour.pressIt': 'Press the lit-up button',
+  'tour.replay': 'Take the guided tour',
+  'tour.replayBody': 'Popups that walk you through practising a line, one button at a time.',
+  'tour.welcome.title': 'Welcome to Shadowline!',
+  'tour.welcome.body':
+    'I will walk you through your first line: listen, say it back, and see how close you got. It takes about a minute.',
+  'tour.start.title': 'Open your first line',
+  'tour.start.body': 'Press this to open a line to practise.',
+  'tour.start.waiting': 'Go to the Dashboard or the Library to carry on with the tour.',
+  'tour.practice.waiting': 'Open a clip and press Practice to carry on with the tour.',
+  'tour.listen.title': 'Listen first',
+  'tour.listen.body':
+    'Play the original once or twice. Notice where the voice goes up and down, what it stresses and where it pauses.',
+  'tour.caption.title': 'Tap a word to keep it',
+  'tour.caption.body':
+    'Tap any word in the line to save it to your Vocabulary, with its meaning. The line under it shows how to say it.',
+  'tour.record.title': 'Now say it back',
+  'tour.record.body':
+    'Press Record and speak straight away. If your browser asks to use the microphone, allow it. It stops by itself at the end of the line.',
+  'tour.wave.title': 'Watch the two waves',
+  'tour.wave.body':
+    'Purple is the original: where it is tall, push. Cyan is you, drawn as you speak and kept afterwards. The red line shows where you are.',
+  'tour.result.title': 'Your score',
+  'tour.result.body':
+    'Out of 100 — how closely your voice rose and fell with the original. 75 and up is gold. Not there yet? Re-record as often as you like.',
+  'tour.unscored.title': 'Your take is kept',
+  'tour.unscored.body':
+    'This clip has no original sound to compare with, so there is no score this time. Clips with sound get a score out of 100 — 75 and up is gold.',
+  'tour.result.waiting': 'Scoring your take… it takes a few seconds.',
+  'tour.after.title': 'What next',
+  'tour.after.body':
+    'Move to the next line, hear your voice dubbed over the clip, or see a detailed analysis of your take.',
+  'tour.vocabulary.title': 'Your words',
+  'tour.vocabulary.body': 'The words you tap wait for you here, with cards to help you remember them.',
+  'tour.done.title': 'That is it!',
+  'tour.done.body':
+    'You have practised your first line. The Guide has everything else, and this tour can be taken again from there.',
 } as const
 
 /** Every key the app can ask for. Other locales are checked against this. */

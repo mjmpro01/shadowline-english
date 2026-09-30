@@ -141,6 +141,7 @@ function Body({ page, t }: { page: EpisodePage; t: Translate }) {
               <button
                 type="button"
                 className="btn btn-secondary"
+                data-tour="practice-clip"
                 onClick={() => navigate(`/library/${clip.id}/practice`)}
               >
                 <Icon name="mic" size={14} />

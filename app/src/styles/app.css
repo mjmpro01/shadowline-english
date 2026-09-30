@@ -2662,3 +2662,149 @@
     align-items: flex-start;
   }
 }
+
+/* --- The guided tour -------------------------------------------------------
+   A spotlight on one control, the rest of the screen dimmed round it, and the
+   knight saying what to do in a bubble beside it. Above everything else on
+   screen, dialogs included. */
+.tour-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: color-mix(in srgb, var(--color-neutral-900) 55%, transparent);
+}
+.tour-hole {
+  position: fixed;
+  z-index: 70;
+  border-radius: 16px;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 4px var(--color-accent),
+    0 0 0 9999px color-mix(in srgb, var(--color-neutral-900) 55%, transparent);
+  transition:
+    top 0.2s ease,
+    left 0.2s ease,
+    width 0.2s ease,
+    height 0.2s ease;
+  animation: tour-pulse 1.8s ease-in-out infinite;
+}
+@keyframes tour-pulse {
+  50% {
+    box-shadow:
+      0 0 0 8px color-mix(in srgb, var(--color-accent) 55%, transparent),
+      0 0 0 9999px color-mix(in srgb, var(--color-neutral-900) 55%, transparent);
+  }
+}
+.tour-blocker {
+  position: fixed;
+  z-index: 70;
+}
+.tour-bubble {
+  position: fixed;
+  z-index: 71;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: calc(var(--radius-lg) * 1.15);
+  border: 2px solid var(--color-accent-300);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow:
+    0 var(--game-lift) 0 var(--game-edge),
+    0 18px 40px rgb(0 0 0 / 0.25);
+  animation: tour-in 0.18s ease-out;
+}
+.tour-bubble-center {
+  top: 50%;
+  left: 50%;
+  width: min(420px, calc(100vw - 32px));
+  transform: translate(-50%, -50%);
+  animation: none;
+}
+@keyframes tour-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.tour-face {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--color-accent-100);
+}
+.tour-bubble-center .tour-face {
+  width: 84px;
+  height: 84px;
+}
+.tour-counter {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.tour-title {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 20px;
+  line-height: 1.2;
+}
+.tour-body {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+.tour-skip {
+  padding-left: 0;
+  font-size: 14px;
+}
+.tour-do {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-accent-700, var(--color-text));
+}
+/* Waiting for the learner to get somewhere: a note at the bottom, the screen
+   left alone. Above the phone's tab bar. */
+.tour-pill {
+  position: fixed;
+  z-index: 71;
+  left: 50%;
+  bottom: calc(var(--space-4) + 72px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 6px 6px 6px 10px;
+  border-radius: 999px;
+  border: 2px solid var(--color-accent-300);
+  background: var(--color-surface);
+  box-shadow: 0 10px 24px rgb(0 0 0 / 0.18);
+  font-size: 14px;
+}
+.tour-pill-text {
+  min-width: 0;
+}
+.tour-pill-skip {
+  flex: none;
+  font-size: 13px;
+}
+@media (min-width: 761px) {
+  .tour-pill {
+    bottom: var(--space-4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-hole,
+  .tour-bubble {
+    animation: none;
+    transition: none;
+  }
+}

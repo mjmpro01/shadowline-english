@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { AvatarSlot } from '../components/AvatarSlot'
 import { Dialog } from '../components/Dialog'
 import { Icon } from '../components/Icon'
+import { useTour } from '../tour/context'
 import { LOCALE_CODES, LOCALES, useI18n } from '../i18n'
 import { applyTheme, storedTheme, THEMES, type Theme } from '../lib/theme'
 import { useApp } from '../store/context'
@@ -14,6 +15,7 @@ export function ProfileScreen() {
   const { data, logout, updateProfile } = useApp()
   const { t, locale, setLocale } = useI18n()
   const navigate = useNavigate()
+  const tour = useTour()
   const profile = data.profile
 
   const [editing, setEditing] = useState(false)
@@ -154,6 +156,17 @@ export function ProfileScreen() {
         <div className="card-kicker">{t('profile.help')}</div>
         <span style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>{t('profile.helpBody')}</span>
         <div className="row gap-2 wrap">
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => {
+              navigate('/dashboard')
+              tour.start()
+            }}
+          >
+            <Icon name="play" size={16} />
+            {t('tour.replay')}
+          </button>
           <Link className="btn btn-secondary" to="/guide">
             <Icon name="circle-help" size={16} />
             {t('guide.title')}

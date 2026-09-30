@@ -482,4 +482,49 @@ export const vi: Messages = {
   'guide.readyTitle': 'Sẵn sàng chưa?',
   'guide.readyBody': 'Chọn một clip bạn thích và luyện câu đầu tiên.',
   'guide.readyGo': 'Tới Thư viện',
+
+  // --- tour -----------------------------------------------------------------
+  'tour.counter': (step: number, total: number) => `Bước ${step}/${total}`,
+  'tour.skip': 'Bỏ qua hướng dẫn',
+  'tour.close': 'Đóng',
+  'tour.next': 'Tiếp',
+  'tour.begin': 'Bắt đầu',
+  'tour.finish': 'Bắt đầu luyện',
+  'tour.pressIt': 'Bấm vào nút đang sáng',
+  'tour.replay': 'Chạy hướng dẫn từng bước',
+  'tour.replayBody': 'Các popup dẫn bạn luyện một câu, bấm từng nút một.',
+  'tour.welcome.title': 'Chào mừng bạn tới Shadowline!',
+  'tour.welcome.body':
+    'Mình sẽ dẫn bạn luyện câu đầu tiên: nghe, nói theo, rồi xem bạn giống bản gốc tới đâu. Chỉ mất khoảng một phút.',
+  'tour.start.title': 'Mở câu đầu tiên',
+  'tour.start.body': 'Bấm vào đây để mở một câu và luyện.',
+  'tour.start.waiting': 'Về Tổng quan hoặc Thư viện để tiếp tục hướng dẫn.',
+  'tour.practice.waiting': 'Mở một clip và bấm Luyện để tiếp tục hướng dẫn.',
+  'tour.listen.title': 'Nghe trước',
+  'tour.listen.body':
+    'Phát bản gốc một hai lần. Để ý chỗ giọng lên, xuống, chỗ được nhấn và chỗ ngắt.',
+  'tour.caption.title': 'Chạm một từ để lưu',
+  'tour.caption.body':
+    'Chạm vào bất kỳ từ nào trong câu để lưu vào Từ vựng, kèm nghĩa. Dòng bên dưới là cách đọc.',
+  'tour.record.title': 'Giờ nói theo nào',
+  'tour.record.body':
+    'Bấm Ghi âm và nói ngay. Nếu trình duyệt hỏi quyền dùng micro, hãy cho phép. Máy tự dừng khi hết câu.',
+  'tour.wave.title': 'Nhìn hai dải sóng',
+  'tour.wave.body':
+    'Tím là bản gốc: chỗ sóng cao là chỗ cần nhấn. Xanh là giọng bạn, hiện ra khi bạn nói và giữ lại sau đó. Vạch đỏ là chỗ bạn đang ở.',
+  'tour.result.title': 'Điểm của bạn',
+  'tour.result.body':
+    'Trên thang 100 — giọng bạn lên xuống giống bản gốc tới đâu. Từ 75 là bậc Vàng. Chưa tới thì cứ Ghi lại, bao nhiêu lần cũng được.',
+  'tour.unscored.title': 'Bản ghi đã được lưu',
+  'tour.unscored.body':
+    'Clip này chưa có âm thanh gốc để so, nên lần này không có điểm. Clip có âm thanh sẽ được chấm trên thang 100 — từ 75 là bậc Vàng.',
+  'tour.result.waiting': 'Đang chấm bản ghi của bạn… mất vài giây.',
+  'tour.after.title': 'Làm gì tiếp',
+  'tour.after.body':
+    'Sang câu tiếp theo, nghe giọng bạn lồng vào clip, hoặc xem phân tích chi tiết bản ghi.',
+  'tour.vocabulary.title': 'Từ vựng của bạn',
+  'tour.vocabulary.body': 'Những từ bạn chạm sẽ nằm ở đây, kèm thẻ ôn tập để bạn nhớ lâu.',
+  'tour.done.title': 'Xong rồi!',
+  'tour.done.body':
+    'Bạn đã luyện xong câu đầu tiên. Mọi thứ khác có trong mục Hướng dẫn, và bạn có thể chạy lại phần này từ đó.',
 }

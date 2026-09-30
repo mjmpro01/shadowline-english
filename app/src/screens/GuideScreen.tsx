@@ -1,9 +1,10 @@
 import { useEffect, type ReactNode } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Icon, type IconName } from '../components/Icon'
 import { Mascot } from '../components/Mascot'
 import { useT, type Translate } from '../i18n'
 import type { MessageKey } from '../i18n/en'
+import { useTour } from '../tour/context'
 import { PLAYHEAD_RED, SOURCE_PURPLE, SOURCE_PURPLE_FILL, YOU_CYAN, YOU_CYAN_FILL } from '../lib/practiceGuide'
 
 interface Step {
@@ -80,6 +81,8 @@ const SECTIONS: { id: string; label: MessageKey }[] = [
 export function GuideScreen() {
   const t = useT()
   const { hash } = useLocation()
+  const navigate = useNavigate()
+  const tour = useTour()
 
   // The router moves between screens without the browser's own jump to an id,
   // so a link to a section scrolls to it here.
@@ -97,6 +100,20 @@ export function GuideScreen() {
         <div className="stack gap-2" style={{ minWidth: 0 }}>
           <h1 className="guide-title">{t('guide.title')}</h1>
           <p className="guide-lead">{t('guide.lead')}</p>
+          <div>
+            {/* From the dashboard, where the tour's first popup points. */}
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                navigate('/dashboard')
+                tour.start()
+              }}
+            >
+              <Icon name="play" size={16} />
+              {t('tour.replay')}
+            </button>
+          </div>
           <nav className="row gap-2 wrap" aria-label={t('guide.contents')}>
             {SECTIONS.map((section) => (
               <a key={section.id} className="tag tag-neutral guide-jump" href={`#${section.id}`}>

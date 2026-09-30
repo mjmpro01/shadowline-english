@@ -224,7 +224,7 @@ export function PracticeScreen() {
             {!sourceVideoUrl && <ClipFace id={video.id} posterUrl="" line="" categories={video.categories} />}
           </div>
 
-          <div style={{ fontSize: 16, fontStyle: 'italic', textAlign: 'center' }}>
+          <div data-tour="caption" style={{ fontSize: 16, fontStyle: 'italic', textAlign: 'center' }}>
             “
             <CaptionLine
               text={line.text}
@@ -291,7 +291,7 @@ export function PracticeScreen() {
             </div>
           )}
 
-          <div className="wave-frame wave-frame-guide" data-recorded={!!take} data-recording={recording}>
+          <div className="wave-frame wave-frame-guide" data-tour="wave" data-recorded={!!take} data-recording={recording}>
             {guideReady ? (
               <svg
                 width="100%"
@@ -384,7 +384,7 @@ export function PracticeScreen() {
           )}
 
           {take && take.score !== null && (
-            <div className="card elev-sm row between gap-3">
+            <div className="card elev-sm row between gap-3" data-tour="result" data-scored="true">
               <div className="stack gap-1" style={{ flex: 1 }}>
                 <div className="card-kicker">{t('practice.scoreKicker')}</div>
                 <div style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>{t(scoreLabelKey(take.score))}</div>
@@ -408,7 +408,7 @@ export function PracticeScreen() {
           )}
 
           {take && take.score === null && take.status !== 'pending' && (
-            <div className="card elev-sm stack gap-2">
+            <div className="card elev-sm stack gap-2" data-tour="result" data-scored="false">
               {/*
                 Three different reasons a take has no score, and the screen used
                 to give one message for all of them: it told a learner their
@@ -438,6 +438,7 @@ export function PracticeScreen() {
           <button
             type="button"
             className="btn btn-secondary btn-block"
+            data-tour="listen"
             disabled={!playable}
             title={playable ? t('practice.hearClipTitle') : t('practice.noOriginal')}
             onClick={() => void sourcePlayer.current?.play()}
@@ -447,6 +448,7 @@ export function PracticeScreen() {
           <button
             type="button"
             className={`btn ${recording ? 'btn-secondary' : 'btn-primary'} btn-block`}
+            data-tour="record"
             // Scoring takes seconds, and starting another recording through it
             // leaves the learner watching two takes at once. Stopping is always
             // allowed; starting waits until there is an answer about the last.
@@ -458,33 +460,36 @@ export function PracticeScreen() {
             {recording ? t('practice.stop') : take ? t('practice.rerecord') : t('practice.record')}
           </button>
           <div className="divider" style={{ margin: '4px 0' }} />
-          <button
-            type="button"
-            className="btn btn-secondary btn-block"
-            disabled={!take || lineIndex >= video.captions.length - 1}
-            onClick={nextLine}
-          >
-            {t('practice.nextLine')}
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary btn-block"
-            disabled={!take}
-            onClick={() => navigate(`/library/${video.id}/dub`)}
-          >
-            {/* Named for where it goes. It used to say "Watch", which was
-                unambiguous until the clip above it grew a picture and a button
-                that says "Watch clip again". */}
-            {t('practice.dubReview')}
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary btn-block"
-            disabled={!take}
-            onClick={() => navigate(`/library/${video.id}`)}
-          >
-            {t('practice.seeAnalysis')}
-          </button>
+          {/* One box, so the guided tour can point at "what next" as a whole. */}
+          <div className="stack gap-2" data-tour="after">
+            <button
+              type="button"
+              className="btn btn-secondary btn-block"
+              disabled={!take || lineIndex >= video.captions.length - 1}
+              onClick={nextLine}
+            >
+              {t('practice.nextLine')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-block"
+              disabled={!take}
+              onClick={() => navigate(`/library/${video.id}/dub`)}
+            >
+              {/* Named for where it goes. It used to say "Watch", which was
+                  unambiguous until the clip above it grew a picture and a button
+                  that says "Watch clip again". */}
+              {t('practice.dubReview')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-block"
+              disabled={!take}
+              onClick={() => navigate(`/library/${video.id}`)}
+            >
+              {t('practice.seeAnalysis')}
+            </button>
+          </div>
           {/* Keeping the take is offered here, not only on Dub Review: a
               learner who has just nailed a line should not have to go to
               another screen to save it. */}

@@ -210,6 +210,7 @@ export function DashboardScreen() {
                   // Pinned to the bottom, so a row of cards has a row of
                   // buttons rather than a ragged edge wherever a title wraps.
                   style={{ marginTop: 'auto' }}
+                  data-tour="practice-clip"
                   onClick={() => navigate(`/library/${video.id}/practice`)}
                 >
                   <Icon name="mic" size={14} />
@@ -261,7 +262,7 @@ function FirstSteps({
           ))}
         </ol>
         <div className="row gap-2 wrap">
-          <button type="button" className="btn btn-primary" onClick={() => void onStart()}>
+          <button type="button" className="btn btn-primary" data-tour="first-line" onClick={() => void onStart()}>
             <Icon name="mic" size={18} />
             {t('dash.firstStart')}
           </button>
