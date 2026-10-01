@@ -64,3 +64,13 @@ test('an API from before versions says so, rather than taking the page down', as
   // And the menu marks it, on every page.
   await expect(page.locator('.menu-version')).toHaveAttribute('data-behind', 'true')
 })
+
+// A state is one label, not three lines squeezed into the last column.
+test('on a phone each state stays on one line', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/admin/system')
+  const tags = page.locator('.table .tag')
+  await expect(tags.first()).toBeVisible()
+  for (const height of await tags.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height)))
+    expect(height).toBeLessThan(30)
+})
