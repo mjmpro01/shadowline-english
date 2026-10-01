@@ -202,7 +202,7 @@ export function PracticeScreen() {
     <div className="stack gap-4" style={{ maxWidth: 820 }}>
       {cheer && <Celebrate message={cheer.message} mood={cheer.mood} onDone={endCheer} />}
       <div className="row between wrap gap-2">
-        <h2 style={{ margin: 0 }}>{video.title}</h2>
+        <h1 style={{ margin: 0, fontSize: 32 }}>{video.title}</h1>
         <div className="tag tag-neutral mono">
           {t('practice.lineOf', Math.min(lineIndex + 1, video.captions.length), video.captions.length)}
         </div>

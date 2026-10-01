@@ -67,6 +67,19 @@ export function AppShell() {
   return (
     <TourProvider>
       <div className="app">
+        {/* First in the tab order, shown only when focused: without it every
+            screen starts with its menu's stops before its own content. Focus
+            rather than follow, which would add #content to the address. */}
+        <a
+          className="skip-link"
+          href="#content"
+          onClick={(e) => {
+            e.preventDefault()
+            document.getElementById('content')?.focus()
+          }}
+        >
+          {t('nav.skip')}
+        </a>
         <nav className="sidebar" data-collapsed={collapsed} aria-label={t('nav.main')}>
           {/* The forest, the tree it is nailed to, and the two ropes the planks
               hang from. All of it decoration — a screen reader hears a list of
@@ -121,7 +134,7 @@ export function AppShell() {
           </div>
         </nav>
 
-        <main className="app-content">
+        <main className="app-content" id="content" tabIndex={-1}>
           <Outlet />
         </main>
 

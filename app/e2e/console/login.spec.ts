@@ -46,3 +46,9 @@ test('a learner who reaches the console login is told, and can switch accounts',
   await page.getByRole('button', { name: 'Sign in with another account' }).click()
   await expect(page.getByRole('link', { name: 'Continue with Google' })).toBeVisible()
 })
+
+test('the sign-in page is a main landmark with its heading', async ({ page }) => {
+  await page.context().clearCookies()
+  await page.goto('/admin/login')
+  await expect(page.getByRole('main').getByRole('heading', { level: 1, name: 'Shadowline admin console' })).toBeAttached()
+})

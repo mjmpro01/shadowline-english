@@ -125,7 +125,9 @@ export function Users() {
                 <th>{t('users.lastSignIn')}</th>
                 <th className="num">{t('users.takes')}</th>
                 <th className="num">{t('users.questions')}</th>
-                <th />
+                <th>
+                  <span className="visually-hidden">{t('users.actions')}</span>
+                </th>
               </tr>
             </thead>
             <tbody>

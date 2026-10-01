@@ -442,6 +442,7 @@ export const en = {
   // --- guide ----------------------------------------------------------------
   'nav.guide': 'Guide',
   'nav.main': 'Main',
+  'nav.skip': 'Skip to content',
   'dash.firstGuide': 'How it works',
   'practice.howTo': 'Not sure how this works? Read the guide',
   'profile.help': 'Help',

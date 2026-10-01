@@ -59,7 +59,7 @@ export function AnalysisScreen() {
     return (
       <div className="stack gap-4">
         <BackToLibrary clip={video} />
-        <h2 style={{ marginBottom: 4 }}>{video.title}</h2>
+        <h1 style={{ marginBottom: 4, fontSize: 32 }}>{video.title}</h1>
         <div className="card elev-sm">
           <div className="card-body">{t('analysis.noTakes')}</div>
           <button type="button" className="btn btn-primary" style={{ alignSelf: 'flex-start' }} onClick={() => navigate(`/library/${video.id}/practice`)}>
@@ -75,7 +75,7 @@ export function AnalysisScreen() {
       <BackToLibrary clip={video} />
 
       <div>
-        <h2 style={{ marginBottom: 4 }}>{video.title}</h2>
+        <h1 style={{ marginBottom: 4, fontSize: 32 }}>{video.title}</h1>
         <div className="card-meta">
           {video.source} · <span className="mono">{video.timestamp}</span>
         </div>

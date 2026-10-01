@@ -123,7 +123,7 @@ export function DubScreen() {
         {t('dub.back')}
       </button>
 
-      <h3 style={{ margin: 0 }}>{video.title}</h3>
+      <h1 style={{ margin: 0, fontSize: 25 }}>{video.title}</h1>
 
       {/* Picture on one side, everything that drives it on the other. A 9:16
           frame is tall, and stacking the transport, the export and the takes

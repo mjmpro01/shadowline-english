@@ -75,3 +75,9 @@ test('on a phone the actions are a sideways scroll away', async ({ page }) => {
   await expect(suspend).toBeInViewport()
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
 })
+
+// The actions column has no visible header, but a screen reader still names it.
+test('the actions column is named for a screen reader', async ({ page }) => {
+  await page.goto('/admin/users')
+  await expect(page.getByRole('columnheader', { name: 'Actions' })).toBeAttached()
+})
