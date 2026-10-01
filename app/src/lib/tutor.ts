@@ -12,9 +12,33 @@ import { API_URL, ApiError, api } from './api'
 export interface TutorTurn {
   role: 'user' | 'assistant'
   content: string
-  /** The server's signature on an answer it gave, sent back with it as
-   *  history. An answer without one is left out of what the tutor is told. */
-  sig?: string
+}
+
+/** A past conversation, as the history list shows it. */
+export interface TutorConversation {
+  id: string
+  /** Its first question, cut short. */
+  title: string
+  clipId: string | null
+  clipTitle: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+/** The learner's conversations, the latest first. */
+export function listConversations() {
+  return api.get<TutorConversation[]>('/api/tutor/conversations')
+}
+
+/** One conversation and everything said in it. */
+export function openConversation(id: string) {
+  return api.get<{ conversation: TutorConversation; messages: TutorTurn[] }>(
+    `/api/tutor/conversations/${encodeURIComponent(id)}`,
+  )
+}
+
+export function deleteConversation(id: string) {
+  return api.del(`/api/tutor/conversations/${encodeURIComponent(id)}`)
 }
 
 /** Whether this server has a tutor at all. Off unless TUTOR_API_KEY is set, and
@@ -30,6 +54,13 @@ export async function tutorEnabled(): Promise<boolean> {
 
 /** What the question is about, beyond its words. */
 export interface TutorContext {
+  /** The conversation this question carries on, or null to start one. The
+   *  server reads what was said before from its own record of it. */
+  conversationId: string | null
+  /** Told the conversation's id with the first piece of the answer — a new
+   *  conversation's id, which the next question needs, even if this answer is
+   *  then stopped. */
+  onConversation?: (id: string) => void
   /** The clip on screen, if any: the server tells the tutor the line and this
    *  learner's scores on it. */
   clipId: string | null
@@ -50,18 +81,23 @@ export interface TutorContext {
  * `signal` is aborted — the learner pressed stop, which is not a failure.
  */
 export async function askTutor(
-  messages: TutorTurn[],
-  { clipId, locale }: TutorContext,
+  message: string,
+  { conversationId, onConversation, clipId, locale }: TutorContext,
   onDelta: (text: string) => void,
   signal: AbortSignal,
-): Promise<string | undefined> {
+): Promise<void> {
   let response: Response
   try {
     response = await fetch(`${API_URL}/api/tutor/chat`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages, locale, ...(clipId ? { clipId } : {}) }),
+      body: JSON.stringify({
+        message,
+        locale,
+        ...(conversationId ? { conversationId } : {}),
+        ...(clipId ? { clipId } : {}),
+      }),
       signal,
     })
   } catch (err) {
@@ -96,13 +132,14 @@ export async function askTutor(
         if (!line) continue
         const data = JSON.parse(line.slice('data: '.length)) as {
           delta?: string
+          conversation?: string
           done?: boolean
-          sig?: string
           error?: string
         }
         if (data.error) throw new ApiError(502, data.error)
+        if (data.conversation) onConversation?.(data.conversation)
         if (data.delta) onDelta(data.delta)
-        if (data.done) return data.sig
+        if (data.done) return
       }
     }
   } catch (err) {

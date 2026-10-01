@@ -22,7 +22,7 @@ test('a question to the tutor shows up in its usage', async ({ page }) => {
   // An admin practises too; their question counts like anybody's.
   for (const question of ['What does "break the ice" mean?', 'And "spill the beans"?']) {
     const asked = await page.request.post(`${API_URL}/api/tutor/chat`, {
-      data: { messages: [{ role: 'user', content: question }] },
+      data: { message: question },
     })
     expect(asked.ok()).toBe(true)
     await asked.body()

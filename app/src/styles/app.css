@@ -2808,3 +2808,63 @@
     transition: none;
   }
 }
+
+/* --- The tutor's history ----------------------------------------------------
+   The panel's log area, holding a list instead of a conversation: each past
+   conversation a row to open it again, with a bin beside it. */
+.tutor-history-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tutor-history-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+}
+.tutor-history-item[data-current] {
+  outline: 2px solid var(--color-accent);
+}
+.tutor-history-open {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+.tutor-history-open:hover {
+  background: var(--color-surface);
+}
+.tutor-history-title {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tutor-history-meta {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tutor-history-empty {
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+/* The history button reads as pressed while the list is showing. */
+.tutor-icon-btn[aria-pressed='true'] {
+  background: var(--color-accent-100);
+  color: var(--color-accent-700);
+}

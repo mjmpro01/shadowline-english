@@ -131,6 +131,9 @@ func (s *Server) Routes() http.Handler {
 			quick(r)
 
 			r.Get("/tutor", s.handleTutorStatus)
+			r.Get("/tutor/conversations", s.handleTutorConversations)
+			r.Get("/tutor/conversations/{id}", s.handleTutorConversation)
+			r.Delete("/tutor/conversations/{id}", s.handleDeleteTutorConversation)
 			r.Get("/banners", s.handleLiveBanners)
 			r.Get("/account/export", s.handleExportAccount)
 			r.Post("/account/password", s.handleChangePassword)
