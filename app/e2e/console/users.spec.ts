@@ -62,3 +62,16 @@ test('a suspended learner is turned away at sign-in, with the reason', async ({ 
   await row.getByRole('button', { name: 'Restore' }).click()
   await expect(row.getByText('Suspended')).toHaveCount(0)
 })
+
+// On a phone the table is wider than the screen: it scrolls sideways inside its
+// card, so the actions at the end of a row are still within reach.
+test('on a phone the actions are a sideways scroll away', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/admin/users')
+  const table = page.locator('.table-scroll')
+  expect(await table.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true)
+  const suspend = page.locator('tr', { hasText: 'minh@example.com' }).getByRole('button', { name: 'Suspend' })
+  await suspend.scrollIntoViewIfNeeded()
+  await expect(suspend).toBeInViewport()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+})

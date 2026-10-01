@@ -595,6 +595,11 @@
 .table-scroll {
   overflow-x: auto;
 }
+/* A state in a table is one label: "Never reported in" broken over three
+   lines in a squeezed column read as three words. The table scrolls instead. */
+.table .tag {
+  white-space: nowrap;
+}
 
 /* A suspended account: still listed and still changeable, visibly out. */
 .table tr.is-suspended td:not(:last-child) {

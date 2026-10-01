@@ -123,7 +123,9 @@
      read as text on parchment; the dark theme lightens them. */
   --score-good: #4f7d24;
   --score-medium: #7d705e;
-  --score-attention: #c05a1c;
+  /* 4.7:1 on the page, as in the learner app: #c05a1c was 3.9 there and 4.3 on
+     a card here, under what text needs. */
+  --score-attention: #ad4f18;
 
   /* --- 2D game surface ----------------------------------------------------
      Depth here is a hard offset, never a blur. A panel is a sticker lying on
