@@ -19,6 +19,10 @@ export const en = {
   'nav.vocabulary': 'Vocabulary',
   'nav.progress': 'Progress',
   'nav.profile': 'Profile',
+  // The tab bar on a phone has a fifth of the width each: one long word
+  // there would be cut off, so these two have a shorter name.
+  'nav.tab.dashboard': 'Home',
+  'nav.tab.vocabulary': 'Words',
   'nav.tagline': 'FOREST QUEST',
   'nav.quest': 'QUEST',
   'nav.here': 'HERE',

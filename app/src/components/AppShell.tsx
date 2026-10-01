@@ -9,23 +9,31 @@ import { TourProvider } from '../tour/TourProvider'
 
 /** Labels are keys, not words: the tabs are defined once at module scope and
  *  the language is only known inside a component. */
-const TABS: { to: string; label: MessageKey; icon: IconName }[] = [
-  { to: '/dashboard', label: 'nav.dashboard', icon: 'house-plus' },
+interface Tab {
+  to: string
+  label: MessageKey
+  icon: IconName
+  /** What the phone's tab bar says instead, where a long word does not fit. */
+  short?: MessageKey
+}
+
+const TABS: Tab[] = [
+  { to: '/dashboard', label: 'nav.dashboard', icon: 'house-plus', short: 'nav.tab.dashboard' },
   { to: '/library', label: 'nav.library', icon: 'book-open' },
-  { to: '/vocabulary', label: 'nav.vocabulary', icon: 'message-square' },
+  { to: '/vocabulary', label: 'nav.vocabulary', icon: 'message-square', short: 'nav.tab.vocabulary' },
   { to: '/progress', label: 'nav.progress', icon: 'chart-line' },
 ]
 
 /** In the side menu, where there is room for a sixth plank; the tab bar on a
  *  phone is full, so there the guide is reached from the dashboard's first
  *  steps and from Profile. */
-const GUIDE: { to: string; label: MessageKey; icon: IconName } = {
+const GUIDE: Tab = {
   to: '/guide',
   label: 'nav.guide',
   icon: 'circle-help',
 }
 
-const PROFILE: { to: string; label: MessageKey; icon: IconName } = {
+const PROFILE: Tab = {
   to: '/profile',
   label: 'nav.profile',
   icon: 'user-round',
@@ -123,9 +131,15 @@ export function AppShell() {
 
         <nav className="tabbar" aria-label="Main">
           {[...TABS, PROFILE].map((tab) => (
-            <NavLink key={tab.to} to={tab.to} className="tabbar-link" data-tour={`nav${tab.to}`}>
+            <NavLink
+              key={tab.to}
+              to={tab.to}
+              className="tabbar-link"
+              data-tour={`nav${tab.to}`}
+              title={t(tab.label)}
+            >
               <Icon name={tab.icon} size={19} />
-              {t(tab.label)}
+              <span className="tabbar-label">{t(tab.short ?? tab.label)}</span>
             </NavLink>
           ))}
         </nav>

@@ -23,6 +23,8 @@ export const vi: Messages = {
   'nav.vocabulary': 'Từ vựng',
   'nav.progress': 'Tiến độ',
   'nav.profile': 'Hồ sơ',
+  'nav.tab.dashboard': 'Tổng quan',
+  'nav.tab.vocabulary': 'Từ vựng',
   'nav.tagline': 'HÀNH TRÌNH RỪNG',
   'nav.quest': 'HÀNH TRÌNH',
   'nav.here': 'Ở ĐÂY',
