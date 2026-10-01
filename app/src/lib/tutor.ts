@@ -12,6 +12,9 @@ import { API_URL, ApiError, api } from './api'
 export interface TutorTurn {
   role: 'user' | 'assistant'
   content: string
+  /** The server's signature on an answer it gave, sent back with it as
+   *  history. An answer without one is left out of what the tutor is told. */
+  sig?: string
 }
 
 /** Whether this server has a tutor at all. Off unless TUTOR_API_KEY is set, and
@@ -51,7 +54,7 @@ export async function askTutor(
   { clipId, locale }: TutorContext,
   onDelta: (text: string) => void,
   signal: AbortSignal,
-): Promise<void> {
+): Promise<string | undefined> {
   let response: Response
   try {
     response = await fetch(`${API_URL}/api/tutor/chat`, {
@@ -94,11 +97,12 @@ export async function askTutor(
         const data = JSON.parse(line.slice('data: '.length)) as {
           delta?: string
           done?: boolean
+          sig?: string
           error?: string
         }
         if (data.error) throw new ApiError(502, data.error)
         if (data.delta) onDelta(data.delta)
-        if (data.done) return
+        if (data.done) return data.sig
       }
     }
   } catch (err) {
