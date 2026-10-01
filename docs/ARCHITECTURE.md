@@ -7,7 +7,7 @@ thư mục (xem [mục 15](#15-đọc-thêm)).
 
 > Schema trong [mục 7](#7-cơ-sở-dữ-liệu) được lấy bằng cách chạy toàn bộ
 > migration lên một database trống rồi `pg_dump --schema-only`, tính tới
-> migration `00018_worker_versions`. Khi thêm migration, hãy cập nhật mục đó.
+> migration `00019_email_verified`. Khi thêm migration, hãy cập nhật mục đó.
 
 ## Mục lục
 
@@ -149,10 +149,10 @@ mạng Docker tên `shadowline` (dùng chung với `ops/observability` và `ops/
 
 | Service | Image / build | Cổng | Vai trò |
 | --- | --- | --- | --- |
-| `postgres` | `postgres:16-alpine` | 5432 | Dữ liệu ứng dụng, 5 hàng đợi job, và database `keycloak` |
-| `minio` | `minio/minio` | 9000 (API), 9001 (console) | Lưu file: bucket `clips` và `takes` |
+| `postgres` | `postgres:16-alpine` | 5432 (chỉ 127.0.0.1) | Dữ liệu ứng dụng, 5 hàng đợi job, và database `keycloak` |
+| `minio` | `minio/minio` | 9000 (API), 9001 (console, chỉ 127.0.0.1) | Lưu file: bucket `clips` và `takes` |
 | `keycloak` | `keycloak:26.0` | 8081 | Đăng ký / đăng nhập bằng email + mật khẩu, quên mật khẩu |
-| `mailhog` | `mailhog` | 1025 (SMTP), 8025 (web) | Nhận thư đặt lại mật khẩu khi chạy local |
+| `mailhog` | `mailhog` | 1025 (SMTP), 8025 (web), chỉ 127.0.0.1 | Nhận thư đặt lại mật khẩu khi chạy local. Trên server cần SMTP thật cho Keycloak |
 | `api` | `server/Dockerfile` | 8080 | API Go; tự chạy migration lúc khởi động |
 | `web` | `app/Dockerfile` | 8088 | nginx phục vụ 2 bản build SPA (`/` và `/admin/`) |
 | `seed` | `server/Dockerfile`, entrypoint `seed` | — | Xuất bản thư viện mẫu một lần rồi thoát |
@@ -383,9 +383,10 @@ Chỉ mục: trigram trên `title` và `captions::text` (tìm kiếm), `featured
 | `id` | uuid PK | |
 | `email` | text, unique | Danh tính chung cho Google và Keycloak |
 | `name`, `avatar_key` | | Ảnh đại diện ở `avatar/…` trong bucket `clips` |
-| `is_admin` | boolean | Tính lại mỗi lần đăng nhập: email nằm trong `ADMIN_EMAILS` **hoặc** `admin_granted` |
+| `is_admin` | boolean | Tính lại mỗi lần đăng nhập: email nằm trong `ADMIN_EMAILS` (chỉ khi email **đã xác minh**) **hoặc** `admin_granted` |
 | `admin_granted` | boolean | Quyền admin cấp trong trang quản trị |
 | `suspended_at` | timestamptz | Khác null = bị khoá, không đăng nhập được |
+| `email_verified_at` | timestamptz | Lần đầu có một lần đăng nhập chứng minh được email này (Google, hoặc Keycloak có email đã xác minh). Khi đã có giá trị, đăng nhập chưa xác minh không vào được tài khoản này nữa |
 | `last_signed_in_at`, `created_at` | timestamptz | |
 
 **`sessions`**: `id` (text PK, giá trị ngẫu nhiên trong cookie `shadowline_session`),
@@ -489,6 +490,7 @@ Giới hạn mặc định: **30 câu mỗi 10 phút** cho một người (`cmd/
 | `00016_transcriber_status` | worker_heartbeats |
 | `00017_requeue_missing_sound` | Chỉ sửa dữ liệu: xếp lại việc cắt cho clip thiếu âm thanh |
 | `00018_worker_versions` | `version`, `started_at` trong worker_heartbeats |
+| `00019_email_verified` | `users.email_verified_at`; mọi tài khoản đã có được đánh dấu đã xác minh |
 
 Số `00008` bị bỏ trống, không phải thiếu file. Việc giữ lại job cắt / chép lời
 thất bại (`state='failed'`) nằm trong code worker và API, không cần migration vì
@@ -622,8 +624,26 @@ sequenceDiagram
 - **Phiên:** phiên lưu phía server trong bảng `sessions`. Cookie
   `shadowline_session` là HttpOnly, SameSite=Lax, Secure khi chạy https, và sống 30 ngày. Đăng xuất thì xoá dòng.
 - **Quyền admin:** `requireAdmin` kiểm tra `users.is_admin`. Admin là người có
-  email trong `ADMIN_EMAILS`, hoặc được cấp quyền trong trang quản trị.
-  Tài khoản bị khoá (`suspended_at`) không đăng nhập được.
+  email trong `ADMIN_EMAILS` **và đã chứng minh sở hữu email đó**, hoặc được cấp
+  quyền trong trang quản trị. Tài khoản bị khoá (`suspended_at`) không đăng
+  nhập được.
+- **Email đã xác minh:** tài khoản được gộp theo email, mà ai cũng đăng ký được
+  bất kỳ email nào. Vì vậy:
+  - đăng ký một email đã có tài khoản sẽ bị từ chối;
+  - tài khoản tự đăng ký bị đánh dấu chưa xác minh;
+  - đăng nhập chưa xác minh chỉ vào được tài khoản mà chưa lần đăng nhập đã
+    xác minh nào dùng (`users.email_verified_at`).
+
+  `REQUIRE_VERIFIED_EMAIL=1` bắt buộc xác minh qua thư; cần SMTP thật.
+- **Giới hạn lượt** (trong bộ nhớ API):
+  - 10 lần sai mật khẩu mỗi email trong 15 phút;
+  - 30 yêu cầu đăng nhập/đăng ký/quên mật khẩu mỗi client trong 15 phút;
+  - 5 tài khoản mới mỗi client mỗi giờ;
+  - 3 thư mỗi email mỗi giờ;
+  - 60 từ mới mỗi người học mỗi giờ.
+
+  Client được xác định bằng `X-Real-IP` từ nginx, và chỉ tin header này khi
+  kết nối đến từ địa chỉ nội bộ.
 - **Đăng nhập từ trang quản trị:** cookie `shadowline_login_from` nhớ lần đăng
   nhập bắt đầu từ `/admin`, để sau đăng nhập (thành công hay lỗi) quay về đúng chỗ.
 

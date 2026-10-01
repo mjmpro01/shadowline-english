@@ -143,12 +143,63 @@ has Direct Access Grants enabled for the in-app password login.
 2. `docker compose up -d` — wait until `keycloak` is healthy.
 3. In the app login screen, create an account with email/password.
 4. You land on the dashboard with a Shadowline session cookie.
-5. **Forgot password?** → check Mailhog (`http://localhost:8025`) for the reset link.
+5. **Forgot password?** → check Mailhog (`http://localhost:8025`, this machine
+   only) for the reset link.
 6. Sign in once with Google: the same email appears under Keycloak → Users.
 
 Leave `KEYCLOAK_URL` empty to disable email/password and Admin sync; Google
 still works, but Compose still starts Keycloak (remove the service if you do
 not want it).
+
+### Whose account an address opens
+
+Accounts are matched by address, and anybody can register any address. So the
+server keeps track of which sign-ins *proved* they own it — Google always does,
+Keycloak when it has the address as verified — in `users.email_verified_at`:
+
+- Registering an address that already has an account is refused (409). Its
+  owner adds a password with "forgot password", which mails the address. It
+  used to sign the registrant in to the existing account, admin's included.
+- A registration is created unverified in Keycloak (it was created verified,
+  which made every registrant look like the address's owner).
+- An unverified sign-in reaches only an account no verified one has used, and
+  never gets admin rights from `ADMIN_EMAILS`. Somebody who registers an
+  address before its owner joins loses the account the moment the owner signs
+  in with Google.
+- `REQUIRE_VERIFIED_EMAIL=1` goes the whole way: registering mails a
+  confirmation link instead of signing in, and unverified sign-ins are turned
+  away. It needs Keycloak to have a real SMTP server — with Mailhog the link
+  never reaches anybody — which is why it is off by default.
+
+### Before a server is reachable
+
+- Give Keycloak a real SMTP server (Realm settings → Email). The realm ships
+  pointing at Mailhog, whose web UI has no login: reset links have to reach the
+  learner, not a page anybody can read. Compose now publishes Mailhog,
+  Postgres and MinIO's console on `127.0.0.1` only — Docker's port publishing
+  goes around ufw, so "the firewall blocks it" was not true.
+- Change every example secret: `KEYCLOAK_ADMIN_PASSWORD`, the
+  `shadowline-api` client secret (in Keycloak and in `.env`), `S3_SECRET_KEY`,
+  the database password. The API refuses to start over https while any of
+  them still has its example value.
+- The realm imports with brute-force protection and an eight-character
+  password policy; a realm imported before this needs both set by hand
+  (Realm settings → Security defenses, Authentication → Policies).
+
+### Limits
+
+The API counts, in memory, what it does not want done at scale: ten wrong
+passwords per address in fifteen minutes, thirty sign-in/register/reset
+requests per client in fifteen minutes, five new accounts per client an hour,
+three reset or confirmation mails per address an hour, and sixty lookups of
+never-seen words per learner an hour (each is a dictionary request and often a
+model call). The client is the connection's address, or nginx's `X-Real-IP`
+when the connection comes from a private or loopback address — chi's `RealIP`
+believed `True-Client-IP` from anybody.
+
+A word's lookup context is passed to the model only when it is a line some clip
+really has: the answer is cached for every learner, and a free-text context was
+a way to tell the model what a word means for all of them.
 
 ### The fake provider
 

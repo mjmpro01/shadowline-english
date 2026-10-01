@@ -59,8 +59,11 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     ports:
       # OTLP from host tools / local non-compose clients
-      - "${OTLP_GRPC_PORT:-4317}:4317"
-      - "${OTLP_HTTP_PORT:-4318}:4318"
+      # The services send through the shared Docker network (alloy:4318); the
+      # host ports are for tools on this machine, not for anybody else to
+      # write into the logs and traces.
+      - "127.0.0.1:${OTLP_GRPC_PORT:-4317}:4317"
+      - "127.0.0.1:${OTLP_HTTP_PORT:-4318}:4318"
     depends_on:
       - prometheus
       - loki
