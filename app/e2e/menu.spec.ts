@@ -72,3 +72,25 @@ test('the phone gets the same menu lying down', async ({ page }) => {
   await expect(tabs).toHaveCount(5)
   await expect(tabs.filter({ hasText: 'Library' })).toHaveAttribute('aria-current', 'page')
 })
+
+// Each name whole, on the narrow phones too: at 12px "Vocabulary" was wider
+// than its plank on a 360px screen and lost a letter at either end. Measured
+// in the fallback font, which is wider than the app's own.
+for (const width of [320, 360, 390]) {
+  test(`every tab's name fits on a ${width}px phone, in either language`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 780 })
+    const cut = () =>
+      page
+        .locator('.tabbar-label')
+        .evaluateAll((labels) => labels.filter((l) => l.scrollWidth > l.clientWidth).map((l) => l.textContent))
+
+    await page.goto('/dashboard')
+    await expect(page.locator('.tabbar-label')).toHaveCount(5)
+    expect(await cut()).toEqual([])
+
+    await page.goto('/profile')
+    await page.getByRole('button', { name: 'Tiếng Việt' }).click()
+    await expect(page.locator('.tabbar-label').first()).toHaveText('Tổng quan')
+    expect(await cut()).toEqual([])
+  })
+}
