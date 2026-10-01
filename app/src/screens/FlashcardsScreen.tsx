@@ -97,7 +97,7 @@ export function FlashcardsScreen() {
                   className="card-body"
                   style={{ textAlign: 'center', opacity: card.meaning ? 1 : 0.6 }}
                 >
-                  {meaningOrWait(card.meaning)}
+                  {meaningOrWait(card.meaning, t)}
                 </div>
                 <div className="divider" style={{ width: '100%' }} />
                 <div style={{ fontSize: 14, fontStyle: 'italic' }}>

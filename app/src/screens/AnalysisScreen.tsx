@@ -5,7 +5,7 @@ import { CaptionLine } from '../components/CaptionLine'
 import { heardCount, heardIn } from '../lib/words'
 import { BackToLibrary } from '../components/BackToLibrary'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useT } from '../i18n'
+import { useT, type Translate } from '../i18n'
 import { ClipPlayer } from '../components/ClipPlayer'
 import { Icon } from '../components/Icon'
 import { LoadFailure, Loading } from '../components/LoadState'
@@ -63,7 +63,7 @@ export function AnalysisScreen() {
         <div className="card elev-sm">
           <div className="card-body">{t('analysis.noTakes')}</div>
           <button type="button" className="btn btn-primary" style={{ alignSelf: 'flex-start' }} onClick={() => navigate(`/library/${video.id}/practice`)}>
-            Start practising
+            {t('analysis.startPractising')}
           </button>
         </div>
       </div>
@@ -151,7 +151,7 @@ export function AnalysisScreen() {
         <div className="row between wrap gap-2">
           <div className="row gap-2">
             <div className="card-kicker">{t('analysis.pitchContour')}</div>
-            <span className="tag tag-accent-2">measured</span>
+            <span className="tag tag-accent-2">{t('analysis.measured')}</span>
           </div>
           <div className="row gap-2">
             <button
@@ -183,7 +183,7 @@ export function AnalysisScreen() {
         <ClipPlayer attach={attachSource} videoUrl={sourceVideoUrl} audioUrl={sourceUrl} />
 
         {chart === null ? (
-          <div className="card-meta" style={{ padding: '32px 0' }}>{contourPending(take)}</div>
+          <div className="card-meta" style={{ padding: '32px 0' }}>{contourPending(take, t)}</div>
         ) : (
         <svg width="100%" viewBox="0 0 640 200" style={{ display: 'block' }} aria-label={t('analysis.chartLabel')}>
           <path d={chart.bandPath} fill="var(--color-neutral-300)" opacity="0.5" stroke="none" />
@@ -255,7 +255,7 @@ export function AnalysisScreen() {
             const value = (take.scores as Record<string, number>)[name]
             return (
               <div className="card elev-sm gap-1" key={name}>
-                <div className="card-kicker">{name}</div>
+                <div className="card-kicker">{t(`metric.${name}`)}</div>
                 <div className="mono" style={{ fontSize: 28, color: colorFor(value) }}>
                   {value}
                 </div>
@@ -269,7 +269,7 @@ export function AnalysisScreen() {
       ) : (
         <div className="card elev-sm stack gap-2">
           <div className="card-kicker">{take.status === 'pending' ? t('analysis.measuring') : t('practice.notScored')}</div>
-          <div style={{ fontSize: 14, opacity: 0.8 }}>{unscoredReason(take, sourceAudio.status === 'none')}</div>
+          <div style={{ fontSize: 14, opacity: 0.8 }}>{unscoredReason(take, sourceAudio.status === 'none', t)}</div>
           {take.status !== 'pending' && (
             <button
               type="button"
@@ -277,7 +277,7 @@ export function AnalysisScreen() {
               style={{ alignSelf: 'flex-start' }}
               onClick={() => navigate(`/library/${video.id}/practice`)}
             >
-              Record another take
+              {t('analysis.recordAnother')}
             </button>
           )}
         </div>
@@ -287,7 +287,7 @@ export function AnalysisScreen() {
         <div className="card-kicker">{t('analysis.summary')}</div>
         <div style={{ fontSize: 15, lineHeight: 1.6 }}>
           {take.scores
-            ? summariseTake(take.scores, take.analysis?.meanDeviation ?? null)
+            ? summariseTake(take.scores, take.analysis?.meanDeviation ?? null, t)
             : video.summary}
         </div>
       </div>
@@ -305,10 +305,10 @@ export function AnalysisScreen() {
 }
 
 /** What to say in place of a contour that is not there. */
-function contourPending(take: Take): string {
-  if (take.status === 'pending') return 'Measuring your pitch…'
-  if (take.status === 'failed') return 'This recording could not be measured.'
-  return 'No contour for this take.'
+function contourPending(take: Take, t: Translate): string {
+  if (take.status === 'pending') return t('analysis.measuringPitch')
+  if (take.status === 'failed') return t('analysis.couldNotMeasure')
+  return t('analysis.noContour')
 }
 
 /**
@@ -316,15 +316,11 @@ function contourPending(take: Take): string {
  * a learner ends up believing the app is broken when it is waiting, or waiting
  * when it has given up.
  */
-function unscoredReason(take: Take, clipHasNoAudio: boolean): string {
-  if (take.status === 'pending') return 'Your take is being scored — this usually takes a moment.'
+function unscoredReason(take: Take, clipHasNoAudio: boolean, t: Translate): string {
+  if (take.status === 'pending') return t('analysis.beingScored')
   if (take.status === 'failed') {
-    return take.error
-      ? `We couldn’t score this one: ${take.error}.`
-      : 'We couldn’t score this one.'
+    return take.error ? t('analysis.couldNotScoreBecause', take.error) : t('analysis.couldNotScore')
   }
-  if (clipHasNoAudio) {
-    return "Scores compare your delivery with the clip’s original audio, which this clip is missing."
-  }
-  return 'This take has no score.'
+  if (clipHasNoAudio) return t('analysis.noSourceAudio')
+  return t('analysis.noScore')
 }

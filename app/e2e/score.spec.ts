@@ -92,6 +92,28 @@ test('a published clip scores takes against its own audio', async ({ page }) => 
   await expect(page.getByText('semitones from the source')).toBeVisible()
 })
 
+// The analysis used to stay in English whatever language was chosen: the four
+// measures, the "measured" tag and the summary under them.
+test('the analysis reads in Vietnamese too', async ({ page }) => {
+  await publishLesson(page)
+  await asLearner(page)
+  await practise(page, LINE(1))
+  await recordOnce(page, 'Record')
+  await scoreOf(page)
+  await page.getByRole('button', { name: 'See analysis' }).click()
+  await page.waitForURL(/library\/[^/]+$/)
+  const analysis = page.url()
+
+  await page.goto('/profile')
+  await page.getByRole('button', { name: 'Tiếng Việt' }).click()
+  await page.goto(analysis)
+
+  await expect(page.locator('.tag', { hasText: 'đã đo' })).toBeVisible()
+  await expect(page.locator('.grid-scores .card-kicker')).toHaveText(['Ngữ điệu', 'Nhịp điệu', 'Trọng âm', 'Độ biến thiên'])
+  await expect(page.getByText('nửa cung so với bản gốc')).toBeVisible()
+  await expect(page.getByText(/semitone|Intonation|strongest/)).toHaveCount(0)
+})
+
 test('the take stays on the strip beside the clip, and a line follows the clip as it plays', async ({ page }) => {
   await publishLesson(page)
   await asLearner(page)

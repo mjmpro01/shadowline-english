@@ -129,6 +129,7 @@ export const vi: Messages = {
   // --- dashboard ------------------------------------------------------------
   'dash.title': 'Tổng quan',
   'dash.subtitle': 'Clip đáng luyện, và điểm của bạn đang đi tới đâu',
+  'dash.openClip': (title: string) => `Mở ${title}`,
   'dash.clipsPractised': 'Clip đã luyện',
   'dash.takesRecorded': 'Bản ghi',
   'dash.averageScore': 'Điểm trung bình',
@@ -279,6 +280,7 @@ export const vi: Messages = {
   'dub.noOriginalAudio': 'Chưa gắn âm thanh gốc',
   'dub.preparing': 'Đang tạo tệp…',
   'dub.download': 'Tải về',
+  'dub.open': 'Mở',
 
   // --- vocabulary -----------------------------------------------------------
   'vocab.title': 'Từ vựng',
@@ -296,7 +298,7 @@ export const vi: Messages = {
   'vocab.known': 'Đã thuộc',
   'vocab.markLearned': 'Đánh dấu đang học',
   'vocab.markKnown': 'Đánh dấu đã thuộc',
-  'vocab.from': (title: string) => `từ “${title}”`,
+  'vocab.from': (title: string) => `gặp trong “${title}”`,
   'vocab.empty': 'Chưa có từ nào. Chạm vào một từ trong phụ đề khi đang luyện.',
   'vocab.notLookedUp': 'Chưa tra nghĩa của từ này.',
 
@@ -396,6 +398,15 @@ export const vi: Messages = {
   'analysis.noSourceAudio':
     'Điểm số so cách bạn đọc với âm thanh gốc của clip, mà clip này lại thiếu.',
   'analysis.noScore': 'Bản ghi này không có điểm.',
+  'analysis.couldNotScoreBecause': (reason: string) => `Chúng tôi không chấm được bản này: ${reason}.`,
+  'analysis.startPractising': 'Bắt đầu luyện',
+  'analysis.recordAnother': 'Thu thêm một bản',
+  'analysis.distance': (semitones: number) =>
+    `Trung bình cao độ của bạn lệch ${semitones.toFixed(1).replace('.', ',')} nửa cung so với bản gốc. `,
+  'analysis.allClose': (score: number) =>
+    `Cả bốn chỉ số đều sát nhau, quanh mức ${score} — hãy luyện cả câu thay vì chỉ một phần.`,
+  'analysis.strongestWeakest': (strongest: string, high: number, weakest: string, low: number) =>
+    `${strongest} là phần mạnh nhất của bạn, ${high} điểm; ${weakest.toLowerCase()} là chỗ cần luyện thêm, chỉ ${low}.`,
 
   'score.bestSoFar': (score: number) => `Cao nhất ${score}`,
   'score.bestSoFarWeakest': (score: number, metric: string, value: number) =>
@@ -426,6 +437,7 @@ export const vi: Messages = {
 
   // --- guide ----------------------------------------------------------------
   'nav.guide': 'Hướng dẫn',
+  'nav.main': 'Menu chính',
   'dash.firstGuide': 'Cách dùng',
   'practice.howTo': 'Chưa rõ cách luyện? Xem hướng dẫn',
   'profile.help': 'Trợ giúp',

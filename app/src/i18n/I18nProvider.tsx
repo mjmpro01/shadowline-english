@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
-import { I18nContext, LOCALES, preferredLocale, type I18n, type Locale, type Translate } from '.'
+import { I18nContext, LOCALES, preferredLocale, translator, type I18n, type Locale } from '.'
 
 const STORAGE_KEY = 'shadowline.locale'
 
@@ -31,14 +31,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<I18n>(() => {
-    const messages = LOCALES[locale].messages
-    const t = ((key, ...args) => {
-      const message = messages[key]
-      return typeof message === 'function'
-        ? (message as (...a: unknown[]) => string)(...args)
-        : message
-    }) as Translate
-    return { locale, setLocale, t }
+    return { locale, setLocale, t: translator(LOCALES[locale].messages) }
   }, [locale, setLocale])
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>

@@ -37,7 +37,7 @@ export function DubExport({
           {t('dub.download')}
         </a>
         <a className="btn btn-secondary btn-block" href={dub.url} target="_blank" rel="noreferrer">
-          Open
+          {t('dub.open')}
         </a>
       </div>
     )
