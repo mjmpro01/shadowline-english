@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"net/url"
 	"path"
@@ -418,7 +419,7 @@ func (s *Server) handleUploadClipAudio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	key, err := s.putAudio(r, storage.Clips, "clip/"+id.String())
+	key, err := s.putAudio(r, storage.Clips, "clip/"+id.String(), isRecording)
 	if err != nil {
 		s.failErr(w, err, "store clip audio")
 		return
@@ -477,13 +478,16 @@ func (s *Server) handleDeleteClip(w http.ResponseWriter, r *http.Request) {
 }
 
 // putAudio streams the request body into object storage under a unique key.
-func (s *Server) putAudio(r *http.Request, bucket storage.Bucket, prefix string) (string, error) {
+func (s *Server) putAudio(r *http.Request, bucket storage.Bucket, prefix string, accepts func(string) bool) (string, error) {
 	body := http.MaxBytesReader(nil, r.Body, maxAudioBytes)
 	defer body.Close()
 
 	contentType := r.Header.Get("Content-Type")
 	if contentType == "" {
 		contentType = "application/octet-stream"
+	}
+	if !accepts(contentType) {
+		return "", errUnsupportedMedia
 	}
 	key := prefix + "/" + uuid.NewString() + extensionFor(contentType)
 
@@ -492,6 +496,41 @@ func (s *Server) putAudio(r *http.Request, bucket storage.Bucket, prefix string)
 		return "", err
 	}
 	return key, nil
+}
+
+// errUnsupportedMedia is an upload of a kind its route does not take.
+var errUnsupportedMedia = errors.New("that kind of file is not accepted here")
+
+// What each upload may be. The type is stored with the object and the browser
+// is later served it under it, so a "recording" sent as text/html would come
+// back as a web page. application/octet-stream is let through where a browser
+// may send it for a real file: it is served as a download, never rendered.
+func mediaType(contentType string) string {
+	mt, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return ""
+	}
+	return mt
+}
+
+// isRecording takes what MediaRecorder makes: audio/webm, audio/ogg,
+// audio/mp4 — and video/webm, which some browsers call an audio-only webm.
+func isRecording(contentType string) bool {
+	mt := mediaType(contentType)
+	return strings.HasPrefix(mt, "audio/") || mt == "video/webm" || mt == "application/octet-stream"
+}
+
+func isPicture(contentType string) bool {
+	switch mediaType(contentType) {
+	case "image/png", "image/jpeg", "image/webp", "image/avif":
+		return true
+	}
+	return false
+}
+
+func isSource(contentType string) bool {
+	mt := mediaType(contentType)
+	return strings.HasPrefix(mt, "audio/") || strings.HasPrefix(mt, "video/") || mt == "application/octet-stream"
 }
 
 // contentTypeFor is extensionFor in reverse, for serving an object back. The

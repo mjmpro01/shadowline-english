@@ -8,6 +8,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/shadowline/server/internal/auth"
+
 	"github.com/shadowline/server/internal/store"
 )
 
@@ -15,6 +17,11 @@ import (
 // real one never comes near this; the limit is here so a request cannot make
 // the worker's prompt as long as it likes.
 const maxGlossContext = 400
+
+// maxWordLength is longer than any word a caption holds ("antidisestablish-
+// mentarianism" is 28) and short enough that the queue is not a place to send
+// paragraphs to a model.
+const maxWordLength = 40
 
 // Everything a word can be made of, once it has been through the same sieve as
 // `normalizeWord` in app/src/lib/text.ts. Applied again here because the
@@ -35,6 +42,10 @@ func (s *Server) handleLookupWord(w http.ResponseWriter, r *http.Request) {
 	word := normalizeWord(chi.URLParam(r, "word"))
 	if word == "" {
 		fail(w, http.StatusBadRequest, "word is required")
+		return
+	}
+	if len(word) > maxWordLength {
+		fail(w, http.StatusBadRequest, "that is too long to be a word")
 		return
 	}
 
@@ -58,9 +69,37 @@ func (s *Server) handleLookupWord(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// A miss costs a dictionary request and often a model call, and anybody
+	// can sign up: each learner gets an allowance of words nobody has asked
+	// for yet. A word already on its way costs nothing more.
+	queued, err := s.Store.GlossQueued(r.Context(), word)
+	if err != nil {
+		s.failErr(w, err, "read gloss queue")
+		return
+	}
+	if !queued {
+		u, _ := auth.UserFrom(r.Context())
+		if !s.limits.newWords.allow(u.ID.String()) {
+			tooMany(w, "that is a lot of new words — try again in a while")
+			return
+		}
+	}
+
+	// The context picks the sense the model gives, and the answer is kept for
+	// everybody. So it is used only when it is a line some clip really has:
+	// otherwise it was a way to tell the model what a word means for all
+	// learners. Without it the word still gets its usual sense.
 	line := strings.TrimSpace(in.Context)
 	if len(line) > maxGlossContext {
 		line = line[:maxGlossContext]
+	}
+	if line != "" {
+		if real, err := s.Store.IsCaptionLine(r.Context(), line); err != nil {
+			s.failErr(w, err, "check gloss context")
+			return
+		} else if !real {
+			line = ""
+		}
 	}
 	if err := s.Store.EnqueueGloss(r.Context(), word, line); err != nil {
 		s.failErr(w, err, "queue gloss")

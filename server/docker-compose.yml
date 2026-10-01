@@ -11,8 +11,11 @@ services:
       - pgdata:/var/lib/postgresql/data
       # Creates the `keycloak` database on first boot of an empty volume.
       - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
+    # Loopback only. Published on every address, Docker's own iptables rules
+    # put it in front of the internet whatever ufw says; from another machine,
+    # reach it through `ssh -L 5432:localhost:5432`.
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     healthcheck:
       # Also ensure the Keycloak database exists — init scripts only run on an
       # empty volume, and an older install already has pgdata without it.
@@ -27,9 +30,13 @@ services:
 
   mailhog:
     image: mailhog/mailhog:v1.0.1
+    # Loopback only: every reset and confirmation link Keycloak sends lands
+    # here, and the web UI has no login — open to the internet it was a way to
+    # take over any account. On a server, give Keycloak a real SMTP server
+    # (realm settings → Email) so the mail reaches the learner instead.
     ports:
-      - "1025:1025"   # SMTP (Keycloak → here)
-      - "8025:8025"   # web UI to read reset-password mail
+      - "127.0.0.1:1025:1025"   # SMTP (Keycloak → here)
+      - "127.0.0.1:8025:8025"   # web UI to read that mail, on this machine
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
@@ -74,8 +81,10 @@ services:
     volumes:
       - miniodata:/data
     ports:
+      # The API: browsers fetch presigned URLs from it, so it stays reachable.
       - "9000:9000"
-      - "9001:9001"   # web console
+      # The console logs in with the root credentials: loopback only.
+      - "127.0.0.1:9001:9001"
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
       interval: 5s

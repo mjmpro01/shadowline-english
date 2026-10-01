@@ -59,6 +59,17 @@ func (s *Store) EnqueueGloss(ctx context.Context, word, context_ string) error {
 	return err
 }
 
+// IsCaptionLine is whether some clip has exactly this line.
+func (s *Store) IsCaptionLine(ctx context.Context, line string) (bool, error) {
+	var found bool
+	err := s.pool.QueryRow(ctx, `
+		select exists (
+			select 1 from clips c, jsonb_array_elements(c.captions) line
+			where line->>'text' = $1
+		)`, line).Scan(&found)
+	return found, err
+}
+
 // GlossQueued reports whether a lookup is still running, which is what tells
 // the popup to keep waiting rather than to give up on the word.
 func (s *Store) GlossQueued(ctx context.Context, word string) (bool, error) {

@@ -23,7 +23,7 @@ func TestPasswordLoginSuccess(t *testing.T) {
 			}
 			_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "tok"})
 		case strings.HasSuffix(r.URL.Path, "/userinfo"):
-			_ = json.NewEncoder(w).Encode(map[string]any{"name": "Ada Lovelace"})
+			_ = json.NewEncoder(w).Encode(map[string]any{"name": "Ada Lovelace", "email_verified": true})
 		default:
 			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
 			w.WriteHeader(http.StatusNotFound)
@@ -38,12 +38,17 @@ func TestPasswordLoginSuccess(t *testing.T) {
 		ClientSecret: "secret",
 		HTTPClient:   srv.Client(),
 	}
-	name, err := admin.PasswordLogin(context.Background(), "Ada@Example.com", "secret")
+	login, err := admin.PasswordLogin(context.Background(), "Ada@Example.com", "secret")
 	if err != nil {
 		t.Fatalf("PasswordLogin: %v", err)
 	}
-	if name != "Ada Lovelace" {
-		t.Fatalf("name = %q", name)
+	if login.Name != "Ada Lovelace" {
+		t.Fatalf("name = %q", login.Name)
+	}
+	// Carried through, because the server decides what an unconfirmed
+	// address may sign in to.
+	if !login.Verified {
+		t.Fatal("a confirmed address came back unverified")
 	}
 }
 
@@ -96,6 +101,7 @@ func TestRegisterConflict(t *testing.T) {
 
 func TestRegisterCreates(t *testing.T) {
 	var created bool
+	var verified any
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.URL.Path == "/realms/master/protocol/openid-connect/token":
@@ -104,6 +110,9 @@ func TestRegisterCreates(t *testing.T) {
 			_ = json.NewEncoder(w).Encode([]any{})
 		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/users"):
 			created = true
+			var body map[string]any
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			verified = body["emailVerified"]
 			w.WriteHeader(http.StatusCreated)
 		default:
 			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
@@ -124,6 +133,11 @@ func TestRegisterCreates(t *testing.T) {
 	}
 	if !created {
 		t.Fatal("expected create")
+	}
+	// Anybody can register any address, so registering proves nothing about
+	// owning it.
+	if verified != false {
+		t.Fatalf("a registration was created with emailVerified = %v", verified)
 	}
 }
 

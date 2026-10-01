@@ -18,6 +18,11 @@ import (
 type Identity struct {
 	Email string
 	Name  string
+	// Verified is whether the provider vouches that this person owns Email.
+	// Accounts are matched by address, so an unverified identity is held to
+	// what it created itself: it gets no admin rights from ADMIN_EMAILS and
+	// cannot sign in to an account a verified one has used.
+	Verified bool
 }
 
 // Provider is the seam a fake can sit in. The real one is Google; the fake is
@@ -86,7 +91,7 @@ func (g *googleProvider) Exchange(ctx context.Context, code, verifier string) (I
 	if !info.EmailVerified {
 		return Identity{}, fmt.Errorf("google has not verified %s", info.Email)
 	}
-	return Identity{Email: info.Email, Name: info.Name}, nil
+	return Identity{Email: info.Email, Name: info.Name, Verified: true}, nil
 }
 
 // fakeProvider signs in whoever asks, as whichever address the caller names. It
@@ -129,7 +134,7 @@ func (f *fakeProvider) Exchange(_ context.Context, code, _ string) (Identity, er
 	// A name per address, so a test with two learners can tell them apart on
 	// screen — a leaderboard of identical names proves nothing.
 	local, _, _ := strings.Cut(code, "@")
-	return Identity{Email: code, Name: titleCase(local)}, nil
+	return Identity{Email: code, Name: titleCase(local), Verified: true}, nil
 }
 
 func titleCase(s string) string {

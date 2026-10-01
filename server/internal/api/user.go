@@ -69,7 +69,7 @@ func (s *Server) handleUpdateProfile(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleUploadAvatar(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.UserFrom(r.Context())
 
-	key, err := s.putAudio(r, storage.Clips, "avatar/"+u.ID.String())
+	key, err := s.putAudio(r, storage.Clips, "avatar/"+u.ID.String(), isPicture)
 	if err != nil {
 		s.failErr(w, err, "store avatar")
 		return

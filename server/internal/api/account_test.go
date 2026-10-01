@@ -108,13 +108,18 @@ func TestDeletingAnAccountTakesEverythingWithIt(t *testing.T) {
 	}
 }
 
-// fakeKeycloak keeps one password per address and answers the four calls the
-// server makes: the password grant, an admin token, finding a user, and
-// setting a password.
+// fakeKeycloak keeps one password per address and answers the calls the
+// server makes: the password grant and the userinfo behind it, an admin token,
+// finding, creating and deleting a user, setting a password, and the mails.
+//
+// Addresses it was given at the start are confirmed, as a real account's would
+// be; an address registered through it is not, until a test says otherwise.
 type fakeKeycloak struct {
-	mu        sync.Mutex
-	passwords map[string]string
-	deleted   []string
+	mu         sync.Mutex
+	passwords  map[string]string
+	unverified map[string]bool
+	deleted    []string
+	mailed     []string
 }
 
 func (k *fakeKeycloak) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -130,9 +135,37 @@ func (k *fakeKeycloak) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "tok", "expires_in": 300})
+		// The token names who it is for, so userinfo can answer for them.
+		_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "tok:" + r.Form.Get("username"), "expires_in": 300})
 	case strings.HasSuffix(r.URL.Path, "/userinfo"):
-		_ = json.NewEncoder(w).Encode(map[string]string{"name": ""})
+		who := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer tok:")
+		_ = json.NewEncoder(w).Encode(map[string]any{"name": "", "email_verified": !k.unverified[who]})
+	case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/users"):
+		var body struct {
+			Username      string `json:"username"`
+			EmailVerified bool   `json:"emailVerified"`
+			Credentials   []struct {
+				Value string `json:"value"`
+			} `json:"credentials"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if _, taken := k.passwords[body.Username]; taken {
+			w.WriteHeader(http.StatusConflict)
+			return
+		}
+		k.passwords[body.Username] = ""
+		if len(body.Credentials) > 0 {
+			k.passwords[body.Username] = body.Credentials[0].Value
+		}
+		if !body.EmailVerified {
+			k.unverified[body.Username] = true
+		}
+		w.WriteHeader(http.StatusCreated)
+	case r.Method == http.MethodPut && strings.HasSuffix(r.URL.Path, "/execute-actions-email"):
+		parts := strings.Split(r.URL.Path, "/")
+		email, _ := url.PathUnescape(parts[len(parts)-2])
+		k.mailed = append(k.mailed, email)
+		w.WriteHeader(http.StatusNoContent)
 	case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/users"):
 		email := r.URL.Query().Get("email")
 		if _, ok := k.passwords[email]; !ok {
@@ -162,7 +195,7 @@ func (k *fakeKeycloak) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func withKeycloak(t *testing.T, h *harness, passwords map[string]string) *fakeKeycloak {
 	t.Helper()
-	fake := &fakeKeycloak{passwords: passwords}
+	fake := &fakeKeycloak{passwords: passwords, unverified: map[string]bool{}}
 	server := httptest.NewServer(fake)
 	t.Cleanup(server.Close)
 	h.srv.Users = &keycloak.Admin{

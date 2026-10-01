@@ -16,15 +16,18 @@ type User struct {
 	CreatedAt time.Time `json:"createdAt"`
 	// SuspendedAt is set while the account is suspended: it cannot sign in.
 	SuspendedAt *time.Time `json:"-"`
+	// EmailVerifiedAt is when the address was proven to belong to whoever signs
+	// in to this account. Once set, an unverified identity cannot sign in to it.
+	EmailVerifiedAt *time.Time `json:"-"`
 }
 
 // userColumns is what every read of a user selects, in the order scanUser
 // reads it.
-const userColumns = `id, email, name, avatar_key, is_admin, created_at, suspended_at`
+const userColumns = `id, email, name, avatar_key, is_admin, created_at, suspended_at, email_verified_at`
 
 func scanUser(row interface{ Scan(...any) error }) (User, error) {
 	var u User
-	err := row.Scan(&u.ID, &u.Email, &u.Name, &u.AvatarKey, &u.IsAdmin, &u.CreatedAt, &u.SuspendedAt)
+	err := row.Scan(&u.ID, &u.Email, &u.Name, &u.AvatarKey, &u.IsAdmin, &u.CreatedAt, &u.SuspendedAt, &u.EmailVerifiedAt)
 	return u, mapErr(err)
 }
 
@@ -36,16 +39,27 @@ func scanUser(row interface{ Scan(...any) error }) (User, error) {
 // console stays one (admin_granted), which it used not to.
 //
 // A suspended account comes back with SuspendedAt set; the caller refuses it.
-func (s *Store) UpsertUser(ctx context.Context, email, name string, owner bool) (User, error) {
+// UpsertUser records a sign-in. verified says whether the identity proved it
+// owns the address; the first time one does, the account remembers it.
+func (s *Store) UpsertUser(ctx context.Context, email, name string, owner, verified bool) (User, error) {
 	return scanUser(s.pool.QueryRow(ctx, `
-		insert into users (email, name, is_admin, last_signed_in_at)
-		values ($1, $2, $3, now())
+		insert into users (email, name, is_admin, last_signed_in_at, email_verified_at)
+		values ($1, $2, $3, now(), case when $4 then now() end)
 		on conflict (email) do update
 			set name = case when excluded.name <> '' then excluded.name else users.name end,
 			    is_admin = excluded.is_admin or users.admin_granted,
-			    last_signed_in_at = now()
+			    last_signed_in_at = now(),
+			    email_verified_at = coalesce(users.email_verified_at, excluded.email_verified_at)
 		returning `+userColumns,
-		email, name, owner))
+		email, name, owner, verified))
+}
+
+// UserByEmail is the account an address names, or ErrNotFound. Case does not
+// matter: Google may hand back "Ada@Example.com" for the address Keycloak
+// knows as "ada@example.com", and the question is whose address it is.
+func (s *Store) UserByEmail(ctx context.Context, email string) (User, error) {
+	return scanUser(s.pool.QueryRow(ctx,
+		`select `+userColumns+` from users where lower(email) = lower($1) order by created_at limit 1`, email))
 }
 
 func (s *Store) UserByID(ctx context.Context, id uuid.UUID) (User, error) {

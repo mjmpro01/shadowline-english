@@ -91,8 +91,10 @@ export function loginWithPassword(email: string, password: string) {
   return api.send<{ user: unknown }>('POST', '/auth/login', { email, password })
 }
 
+/** Signs the new account in, or — where the server requires confirmed
+ *  addresses — answers `verify` and mails a link instead. */
 export function registerWithPassword(email: string, password: string, name?: string) {
-  return api.send<{ user: unknown }>('POST', '/auth/register', { email, password, name })
+  return api.send<{ user?: unknown; verify?: boolean }>('POST', '/auth/register', { email, password, name })
 }
 
 export function forgotPassword(email: string) {

@@ -84,6 +84,8 @@ export const en = {
   'login.error.unknown': 'Sign-in did not complete. Try again.',
   'login.tryAgain': 'Try Google again',
   'login.error.server': 'Something went wrong on our side. Try again in a moment.',
+  'login.error.unverified': 'That email address is not confirmed yet. Use “Forgot password” to get a link sent to it, or sign in with Google.',
+  'login.verifySent': 'Almost there — we sent a link to that address. Open it to confirm your email, then sign in.',
   'login.error.suspended': 'This account has been suspended. If you think that is a mistake, contact us.',
 
   'banner.close': 'Close this announcement',

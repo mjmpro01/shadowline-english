@@ -88,6 +88,8 @@ export const vi: Messages = {
   'login.error.unknown': 'Đăng nhập chưa xong. Thử lại nhé.',
   'login.tryAgain': 'Thử lại với Google',
   'login.error.server': 'Có lỗi ở phía chúng tôi. Thử lại sau một lát.',
+  'login.error.unverified': 'Email này chưa được xác nhận. Dùng “Quên mật khẩu” để nhận link qua email, hoặc đăng nhập bằng Google.',
+  'login.verifySent': 'Sắp xong rồi — chúng tôi đã gửi một link tới địa chỉ đó. Mở link để xác nhận email, rồi đăng nhập.',
   'login.error.suspended': 'Tài khoản này đã bị khoá. Nếu bạn nghĩ đây là nhầm lẫn, hãy liên hệ với chúng tôi.',
   'banner.close': 'Đóng thông báo này',
   'profile.theme': 'Giao diện',

@@ -17,6 +17,7 @@ const LOGIN_ERRORS: Record<string, MessageKey> = {
   failed: 'login.error.failed',
   server: 'login.error.server',
   suspended: 'login.error.suspended',
+  unverified: 'login.error.unverified',
 }
 
 /** Where the console starts once somebody is in. A full navigation rather than

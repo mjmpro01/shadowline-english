@@ -87,7 +87,8 @@ is ready you can use a tunnel, or rely on manual **Build Now**.
 ```bash
 cd /opt/shadowline/ops/jenkins
 docker compose -f docker-compose.jenkins.yml --profile portainer up -d
-# UI http://VPS:9002 — view containers only; deploys stay in Jenkins.
+# UI on the VPS itself only (it holds the Docker socket): ssh -L 9002:localhost:9002 VPS,
+# then http://localhost:9002 — view containers only; deploys stay in Jenkins.
 ```
 
 ## What the Pipeline does
@@ -123,9 +124,13 @@ docker compose -f /opt/shadowline/server/docker-compose.yml exec -T postgres \
 
 - Mounting `/var/run/docker.sock` into Jenkins is root-equivalent on the host.
   Restrict who can log into Jenkins; put it on HTTPS.
-- Do not expose port `50000` on the public internet unless you use inbound agents
-  and know the threat model.
-- Production `.env` stays only under `/opt/shadowline/server/.env`.
+- Port `50000` (inbound agents) and Portainer are published on `127.0.0.1`
+  only. Docker's port publishing writes its own iptables rules and goes around
+  ufw, so a port published on every address is on the internet whatever the
+  firewall says.
+- Production `.env` stays only under `/opt/shadowline/server/.env`, with every
+  example secret replaced — the API refuses to start over https otherwise. See
+  "Before a server is reachable" in [`server/README.md`](../server/README.md).
 
 Observability (Grafana / Loki / Tempo / Prometheus) on the same host:
 [`docs/ops-observability.md`](ops-observability.md).

@@ -1,11 +1,15 @@
 package api
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/shadowline/server/internal/auth"
+	"github.com/shadowline/server/internal/store"
 )
 
 // Reasons the login flow can end without a session. They travel to the app as
@@ -13,12 +17,13 @@ import (
 // navigation when these happen, so an error body would strand the learner on
 // the API's origin with raw JSON and no way back.
 const (
-	loginErrExpired   = "expired"   // the state was forged, or older than its ten minutes
-	loginErrBrowser   = "browser"   // no PKCE cookie: the flow started somewhere else
-	loginErrCancelled = "cancelled" // the provider says the learner declined
-	loginErrFailed    = "failed"    // the code would not exchange
-	loginErrServer    = "server"    // our fault, and already logged
-	loginErrSuspended = "suspended" // an admin suspended the account
+	loginErrExpired    = "expired"    // the state was forged, or older than its ten minutes
+	loginErrBrowser    = "browser"    // no PKCE cookie: the flow started somewhere else
+	loginErrCancelled  = "cancelled"  // the provider says the learner declined
+	loginErrFailed     = "failed"     // the code would not exchange
+	loginErrServer     = "server"     // our fault, and already logged
+	loginErrSuspended  = "suspended"  // an admin suspended the account
+	loginErrUnverified = "unverified" // the address is not confirmed, and the account needs it to be
 )
 
 // Where a login can start from, and so where it goes back to. A fixed list,
@@ -144,7 +149,15 @@ func (s *Server) finishAuth(w http.ResponseWriter, r *http.Request, provider aut
 		return
 	}
 
-	user, err := s.Store.UpsertUser(r.Context(), identity.Email, identity.Name, s.Cfg.IsAdmin(identity.Email))
+	if ok, err := s.admits(r.Context(), identity.Email, identity.Verified); err != nil {
+		s.failLogin(w, r, from, loginErrServer, err, "check account")
+		return
+	} else if !ok {
+		s.failLogin(w, r, from, loginErrUnverified, nil, "")
+		return
+	}
+	user, err := s.Store.UpsertUser(r.Context(), identity.Email, identity.Name,
+		s.owner(identity.Email, identity.Verified), identity.Verified)
 	if err != nil {
 		s.failLogin(w, r, from, loginErrServer, err, "upsert user")
 		return
@@ -156,8 +169,8 @@ func (s *Server) finishAuth(w http.ResponseWriter, r *http.Request, provider aut
 
 	// Mirror into Keycloak so forgot/reset password can reach this address
 	// later. Failure must not block login — Keycloak down should not lock
-	// Google out.
-	if s.Users != nil {
+	// Google out. Only for a verified address: the mirror is created verified.
+	if s.Users != nil && identity.Verified {
 		if err := s.Users.EnsureUser(r.Context(), identity.Email, identity.Name); err != nil {
 			s.Log.Warn("keycloak sync failed", "email", identity.Email, "error", err)
 		}
@@ -170,6 +183,36 @@ func (s *Server) finishAuth(w http.ResponseWriter, r *http.Request, provider aut
 
 	_, home := s.loginPages(from)
 	http.Redirect(w, r, home, http.StatusFound)
+}
+
+// admits says whether an identity may sign in to the account its address names.
+//
+// Accounts are matched by address, and anybody can register any address with
+// Keycloak. An unverified identity used to sign straight in to whatever account
+// had that address — the admin's included, with a password the registrant
+// chose. Now it may only reach an account no verified identity has used: one it
+// created itself, or none yet.
+func (s *Server) admits(ctx context.Context, email string, verified bool) (bool, error) {
+	if verified {
+		return true, nil
+	}
+	if s.Cfg.RequireVerifiedEmail {
+		return false, nil
+	}
+	existing, err := s.Store.UserByEmail(ctx, strings.ToLower(strings.TrimSpace(email)))
+	if errors.Is(err, store.ErrNotFound) {
+		return true, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return existing.EmailVerifiedAt == nil, nil
+}
+
+// owner is whether this sign-in gets admin rights from ADMIN_EMAILS: only when
+// the identity proved it owns the listed address.
+func (s *Server) owner(email string, verified bool) bool {
+	return verified && s.Cfg.IsAdmin(email)
 }
 
 // failLogin sends the browser back to the login screen it started from,
