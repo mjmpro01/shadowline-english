@@ -90,6 +90,13 @@ test('a published clip scores takes against its own audio', async ({ page }) => 
   await expect(page.locator('.tag', { hasText: 'measured' })).toBeVisible()
   await expect(page.locator('.grid-scores .card')).toHaveCount(4)
   await expect(page.getByText('semitones from the source')).toBeVisible()
+
+  // The semitone scale used to be drawn inside the SVG and shrink with it, to
+  // about 5px on a phone. It is text now, the same size on any screen.
+  await page.setViewportSize({ width: 360, height: 760 })
+  const scale = page.locator('.chart-y-label')
+  await expect(scale).toHaveText(['-6', '-3', '0', '+3', '+6'])
+  expect((await scale.first().boundingBox())?.height).toBeGreaterThanOrEqual(10)
 })
 
 // The analysis used to stay in English whatever language was chosen: the four
