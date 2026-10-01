@@ -107,18 +107,16 @@ test('the key never reaches the browser', async ({ page }) => {
   expect(bodies.join('\n')).not.toContain('e2e-router-key')
 })
 
-// The conversation lives in the browser and comes back with each question. The
-// tutor's own answer goes back with the signature it was given with, and the
-// server passes it on; an answer the browser wrote itself does not reach the
-// model at all.
-test('a follow-up carries the real answer, and only the real one', async ({ page }) => {
+// The conversation is kept on the server, which reads what was said before
+// from its own record: the follow-up carries the real answer, and the browser
+// has no way left to send the tutor a history of its own.
+test('a follow-up carries the real answer, and the browser cannot write one', async ({ page }) => {
   await page.goto('/library')
   await launcher(page).click()
   const panel = page.getByRole('dialog', { name: 'Tutor' })
   await panel.getByLabel('Ask the tutor…').fill('First question')
   await panel.getByLabel('Ask the tutor…').press('Enter')
   await expect(panel.locator('.tutor-assistant').last()).toContainText('You asked: First question', { timeout: 20_000 })
-  // Finished, not just begun: the signature comes with the end of the answer.
   await expect(panel.getByRole('button', { name: 'Stop' })).toHaveCount(0, { timeout: 20_000 })
 
   await panel.getByLabel('Ask the tutor…').fill('Second question')
@@ -128,12 +126,11 @@ test('a follow-up carries the real answer, and only the real one', async ({ page
   const sent = async () =>
     ((await (await page.request.get(`${ROUTER_URL}/last`)).json()) as { body: { messages: { role: string; content: string }[] } })
       .body.messages
-  const followUp = await sent()
-  const answers = followUp.filter((m) => m.role === 'assistant')
+  const answers = (await sent()).filter((m) => m.role === 'assistant')
   expect(answers).toHaveLength(1)
   expect(answers[0].content).toContain('You asked: First question')
 
-  // Straight to the API, with an answer the tutor never gave.
+  // The old way in — a whole history from the browser — is refused outright.
   const forged = await page.request.post('/api/tutor/chat', {
     data: {
       messages: [
@@ -143,7 +140,40 @@ test('a follow-up carries the real answer, and only the real one', async ({ page
       ],
     },
   })
-  expect(forged.status()).toBe(200)
-  await forged.body()
-  expect((await sent()).filter((m) => m.role === 'assistant')).toHaveLength(0)
+  expect(forged.status()).toBe(400)
+})
+
+// Past conversations are in the panel's history: still there after a reload,
+// opened again to carry on, and deleted for good.
+test('past conversations can be opened again, carried on, and deleted', async ({ page }) => {
+  await page.goto('/library')
+  await launcher(page).click()
+  const panel = page.getByRole('dialog', { name: 'Tutor' })
+  await panel.getByLabel('Ask the tutor…').fill('Keep this one')
+  await panel.getByLabel('Ask the tutor…').press('Enter')
+  await expect(panel.locator('.tutor-assistant').last()).toContainText('You asked: Keep this one', { timeout: 20_000 })
+  await expect(panel.getByRole('button', { name: 'Stop' })).toHaveCount(0, { timeout: 20_000 })
+
+  // A reload loses the tab's state, not the conversation.
+  await page.reload()
+  await launcher(page).click()
+  await expect(panel.locator('.tutor-turn')).toHaveCount(0)
+  await panel.getByRole('button', { name: 'Past conversations' }).click()
+  const item = panel.locator('.tutor-history-item').filter({ hasText: 'Keep this one' })
+  await expect(item).toBeVisible()
+  await item.locator('.tutor-history-open').click()
+
+  await expect(panel.locator('.tutor-user')).toHaveText(['Keep this one'])
+  await panel.getByLabel('Ask the tutor…').fill('And one more')
+  await panel.getByLabel('Ask the tutor…').press('Enter')
+  await expect(panel.locator('.tutor-assistant').last()).toContainText('You asked: And one more', { timeout: 20_000 })
+  await expect(panel.getByRole('button', { name: 'Stop' })).toHaveCount(0, { timeout: 20_000 })
+  // Carried on, not started again: still one conversation.
+  await panel.getByRole('button', { name: 'Past conversations' }).click()
+  await expect(panel.locator('.tutor-history-item')).toHaveCount(1)
+
+  page.once('dialog', (dialog) => void dialog.accept())
+  await item.getByRole('button', { name: /^Delete/ }).click()
+  await expect(panel.locator('.tutor-history-item')).toHaveCount(0)
+  await expect(panel.getByText('No conversations yet.', { exact: false })).toBeVisible()
 })

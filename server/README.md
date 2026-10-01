@@ -239,8 +239,8 @@ The Profile screen's **Your data** card:
 
 - **Download my data** — `GET /api/account/export`, one JSON file: the profile,
   every take with the line it was of, its scores and links to the recording and
-  dub (signed for 24 hours — the file says so), the vocabulary, and when the
-  tutor was asked (its questions were never stored).
+  dub (signed for 24 hours — the file says so), the vocabulary, when the
+  tutor was asked, and every conversation with it.
 - **Change password** — `POST /api/account/password`, only where Keycloak is set
   up (the profile's `passwords` says so). The current password is checked with
   the same grant that signs in, so a session left open on a shared computer is
@@ -528,28 +528,39 @@ for. Set `TUTOR_API_KEY` and `TUTOR_MODEL` and it is on; leave the key blank and
 | `TUTOR_DAILY_PER_LEARNER` | Questions per learner in any 24 hours, on top of 30 per 10 minutes. Default 100; 0 is no limit |
 | `TUTOR_DAILY_TOTAL` | Questions from everybody in any 24 hours — the bill's ceiling, since accounts are free. Default 2000; 0 is no limit |
 
-### What the browser cannot change
+### Conversations, and what the browser cannot change
 
-The conversation lives in the browser and comes back with every question, so
-the server takes from it only what it can stand behind:
+Conversations are kept (`tutor_conversations`, `tutor_messages`), so a learner
+can open one again from the history list in the chat panel — on any device —
+and carry it on:
 
-- The system prompt is added here; a `system` turn from the browser is refused.
-- Each finished answer's `done` event carries `sig`, an HMAC of the learner's
-  id and the answer's text. The app keeps it with the answer and sends it back.
-  An assistant turn without a valid one — written by the browser, edited, or
-  signed for somebody else — is left out of what the model is sent. Without
-  this the browser could hand the tutor a history of having agreed to anything
-  (the usual many-shot jailbreak) and pad every question with pages of it.
-- At most 20 turns and 12,000 characters of them go on, oldest dropped first;
-  a learner's message is at most 2,000 characters, an answer at most 700
-  tokens.
-- What a learner asked is not stored: `tutor_questions` keeps who, when, which
-  clip, the model, the outcome and the tokens.
+| Route | |
+| --- | --- |
+| `POST /api/tutor/chat` | `{message, conversationId?, clipId?, locale?}`. The first piece of the answer names the conversation (`"conversation"`), new or not |
+| `GET /api/tutor/conversations` | The learner's last 50, latest first: title (the first question, cut to 80 characters), clip, dates |
+| `GET /api/tutor/conversations/{id}` | One, with every message |
+| `DELETE /api/tutor/conversations/{id}` | Gone for good |
 
-**The key never leaves the server.** The browser sends the conversation — the
-learner's turns and the tutor's, nothing else — which clip is on screen, and
-the app's language as a tag (`vi`, `pt-BR`; anything else is a 400, because it
-goes into the prompt).
+Somebody else's conversation is a 404 to all of them.
+
+The browser sends only the new question. What was said before is read from
+the database: when the browser sent the whole history, it could write the
+tutor's past answers for it — a history of having agreed to anything, the
+usual many-shot jailbreak, padded with pages of text on our bill. So:
+
+- The system prompt is added here, and nothing the browser sends is a turn.
+- At most the last 20 turns and 12,000 characters of them go on; a learner's
+  message is at most 2,000 characters, an answer at most 700 tokens.
+- An exchange is kept when the answer ends with anything said — answered,
+  stopped or cut off, because that is what the learner saw. A question that
+  got nothing keeps nothing, and a conversation it had just opened is dropped.
+- Deleting the account deletes the conversations; "Download my data" has them.
+- `tutor_questions` stays the record for the allowance and the cost: who,
+  when, which clip, the model, the outcome and the tokens.
+
+**The key never leaves the server.** The browser sends the new question, the
+conversation it carries on, which clip is on screen, and the app's language as
+a tag (`vi`, `pt-BR`; anything else is a 400, because it goes into the prompt).
 The system prompt is added here, and a `system` message from the browser is
 refused with a 400 rather than dropped: a request carrying one is somebody
 trying something.
@@ -672,9 +683,8 @@ the same each time: "Explain photosynthesis in English", from a learner whose ap
 is in Vietnamese, is declined correctly but in Vietnamese — a message that asks
 for English is arguably telling you it is not the learner's first language.
 
-Conversations are not stored. The app keeps one for the tab, and a
-conversation about one evening's practice is not a record anybody asked the
-server to keep.
+Conversations are stored, and the learner can delete each one: see
+"Conversations, and what the browser cannot change" above.
 
 ## Transcripts and IPA
 

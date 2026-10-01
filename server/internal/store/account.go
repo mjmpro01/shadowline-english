@@ -8,8 +8,9 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// AskedQuestion is what is kept of a question to the tutor: not its words,
-// which were never stored, only that it was asked.
+// AskedQuestion is the record of a question to the tutor for its allowance
+// and its cost: when, about which clip, and what it cost. The words are in the
+// learner's conversations (tutor_messages).
 type AskedQuestion struct {
 	AskedAt          time.Time  `json:"askedAt"`
 	ClipID           *uuid.UUID `json:"clipId"`

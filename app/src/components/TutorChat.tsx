@@ -4,7 +4,15 @@ import { useI18n } from '../i18n'
 import type { MessageKey } from '../i18n/en'
 import { ApiError } from '../lib/api'
 import { parseMarkdown, type Inline } from '../lib/markdown'
-import { askTutor, tutorEnabled, type TutorTurn } from '../lib/tutor'
+import {
+  askTutor,
+  deleteConversation,
+  listConversations,
+  openConversation,
+  tutorEnabled,
+  type TutorConversation,
+  type TutorTurn,
+} from '../lib/tutor'
 import { useClip } from '../lib/useClip'
 import { Icon } from './Icon'
 import { Mascot } from './Mascot'
@@ -27,8 +35,10 @@ const IN_GENERAL: MessageKey[] = ['tutor.askLinking', 'tutor.askTh', 'tutor.askR
  * what the line is and how this learner's takes of it measured — which is what
  * lets it say "your stress was 44" rather than "stress is important".
  *
- * Kept for the tab, not stored: a conversation about one evening's practice is
- * not a record anybody asked the server to keep.
+ * Conversations are kept on the server, so a learner can go back to one —
+ * from the history list in the panel's header — on any device, and carry it
+ * on. The server reads what was said before from its own record: the browser
+ * sends only the new question.
  */
 export function TutorChat() {
   const { t, locale } = useI18n()
@@ -38,6 +48,12 @@ export function TutorChat() {
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState<string | null>(null)
+  // The conversation the next question carries on; null starts a new one.
+  const [conversationId, setConversationId] = useState<string | null>(null)
+  // The panel shows either the chat or the list of past conversations.
+  const [view, setView] = useState<'chat' | 'history'>('chat')
+  const [past, setPast] = useState<TutorConversation[] | null>(null)
+  const [pastFailed, setPastFailed] = useState(false)
   const abort = useRef<AbortController | null>(null)
   const input = useRef<HTMLTextAreaElement>(null)
   const log = useRef<HTMLDivElement>(null)
@@ -82,9 +98,9 @@ export function TutorChat() {
     const controller = new AbortController()
     abort.current = controller
     try {
-      const sig = await askTutor(
-        asked,
-        { clipId, locale },
+      await askTutor(
+        question,
+        { conversationId, onConversation: setConversationId, clipId, locale },
         (delta) =>
           setTurns((current) => {
             const next = current.slice()
@@ -94,15 +110,6 @@ export function TutorChat() {
           }),
         controller.signal,
       )
-      // Kept with the answer, so it can go back as history the server believes.
-      if (sig) {
-        setTurns((current) => {
-          const next = current.slice()
-          const last = next[next.length - 1]
-          if (last?.role === 'assistant') next[next.length - 1] = { ...last, sig }
-          return next
-        })
-      }
     } catch (err) {
       setFailure(err instanceof ApiError ? err.message : t('tutor.failed'))
     } finally {
@@ -124,6 +131,45 @@ export function TutorChat() {
     stop()
     setTurns([])
     setFailure(null)
+    setConversationId(null)
+    setView('chat')
+  }
+
+  const showHistory = async () => {
+    setView('history')
+    setPastFailed(false)
+    try {
+      setPast(await listConversations())
+    } catch {
+      setPastFailed(true)
+    }
+  }
+
+  const reopen = async (id: string) => {
+    stop()
+    setFailure(null)
+    try {
+      const { messages } = await openConversation(id)
+      setTurns(messages)
+      setConversationId(id)
+      setView('chat')
+    } catch {
+      setPastFailed(true)
+    }
+  }
+
+  const forget = async (id: string) => {
+    if (!window.confirm(t('tutor.deleteConfirm'))) return
+    try {
+      await deleteConversation(id)
+      setPast((list) => list?.filter((c) => c.id !== id) ?? null)
+      if (id === conversationId) {
+        setTurns([])
+        setConversationId(null)
+      }
+    } catch {
+      setPastFailed(true)
+    }
   }
 
   const suggestions = clipId ? ON_A_CLIP : IN_GENERAL
@@ -163,13 +209,24 @@ export function TutorChat() {
                   One line, cut short if it must: a long title in full is on
                   the screen behind, and in the tooltip. */}
               <div className="tutor-context" title={clip ? clip.title : undefined}>
-                {clip ? t('tutor.about', clip.title) : t('tutor.general')}
+                {view === 'history' ? t('tutor.history') : clip ? t('tutor.about', clip.title) : t('tutor.general')}
               </div>
             </div>
             {/* Icons, not words: "New chat" in Vietnamese took two lines and
                 pushed the header to three. The name is still there for a
                 screen reader, and as a tooltip. */}
-            {turns.length > 0 && (
+            <button
+              type="button"
+              className="tutor-icon-btn"
+              aria-label={view === 'history' ? t('tutor.backToChat') : t('tutor.history')}
+              title={view === 'history' ? t('tutor.backToChat') : t('tutor.history')}
+              aria-pressed={view === 'history'}
+              disabled={busy}
+              onClick={() => (view === 'history' ? setView('chat') : void showHistory())}
+            >
+              <Icon name="history" size={18} />
+            </button>
+            {(turns.length > 0 || view === 'history') && (
               <button
                 type="button"
                 className="tutor-icon-btn"
@@ -191,6 +248,36 @@ export function TutorChat() {
             </button>
           </header>
 
+          {view === 'history' ? (
+            <div className="tutor-log tutor-history" aria-live="polite">
+              {pastFailed && <div className="tutor-failure">{t('tutor.historyFailed')}</div>}
+              {past === null && !pastFailed && <div className="tutor-thinking">{t('tutor.historyLoading')}</div>}
+              {past?.length === 0 && <div className="tutor-history-empty">{t('tutor.historyEmpty')}</div>}
+              <ul className="tutor-history-list">
+                {past?.map((c) => (
+                  <li key={c.id} className="tutor-history-item" data-current={c.id === conversationId || undefined}>
+                    <button type="button" className="tutor-history-open" onClick={() => void reopen(c.id)}>
+                      <span className="tutor-history-title">{c.title || t('tutor.untitled')}</span>
+                      <span className="tutor-history-meta">
+                        {new Date(c.updatedAt).toLocaleDateString(locale, { day: 'numeric', month: 'short' })}
+                        {c.clipTitle ? ` · ${c.clipTitle}` : ''}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className="tutor-icon-btn"
+                      aria-label={t('tutor.delete', c.title)}
+                      title={t('tutor.delete', c.title)}
+                      onClick={() => void forget(c.id)}
+                    >
+                      <Icon name="trash" size={16} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+          <>
           <div className="tutor-log" ref={log} aria-live="polite">
             {turns.length === 0 && (
               <div className="stack gap-2">
@@ -270,6 +357,8 @@ export function TutorChat() {
               </button>
             )}
           </form>
+          </>
+          )}
           <div className="tutor-note">{t('tutor.note')}</div>
         </section>
       )}

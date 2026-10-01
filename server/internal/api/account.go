@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -60,6 +61,24 @@ func (s *Server) handleExportAccount(w http.ResponseWriter, r *http.Request) {
 		s.failErr(w, err, "export tutor questions")
 		return
 	}
+	type exportConversation struct {
+		store.TutorConversation
+		Messages []store.TutorTurn `json:"messages"`
+	}
+	listed, err := s.Store.TutorConversations(ctx, u.ID, math.MaxInt32)
+	if err != nil {
+		s.failErr(w, err, "export tutor conversations")
+		return
+	}
+	conversations := make([]exportConversation, len(listed))
+	for i, c := range listed {
+		turns, err := s.Store.TutorTurns(ctx, c.ID)
+		if err != nil {
+			s.failErr(w, err, "export a tutor conversation")
+			return
+		}
+		conversations[i] = exportConversation{TutorConversation: c, Messages: orNone(turns)}
+	}
 
 	sign := func(key *string) string {
 		if key == nil {
@@ -87,13 +106,14 @@ func (s *Server) handleExportAccount(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"exportedAt": now,
 		"about": "Everything Shadowline keeps about you. Recording links work for 24 hours " +
-			"from exportedAt. What you asked the tutor was never stored, only when you asked.",
+			"from exportedAt. Your conversations with the tutor are here as you left them.",
 		"profile": map[string]any{
 			"email": u.Email, "name": u.Name, "createdAt": u.CreatedAt, "isAdmin": u.IsAdmin,
 		},
-		"takes":          out,
-		"vocabulary":     orNone(words),
-		"tutorQuestions": orNone(questions),
+		"takes":              out,
+		"vocabulary":         orNone(words),
+		"tutorQuestions":     orNone(questions),
+		"tutorConversations": conversations,
 	})
 }
 

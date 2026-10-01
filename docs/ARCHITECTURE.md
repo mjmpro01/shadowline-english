@@ -7,7 +7,7 @@ thư mục (xem [mục 15](#15-đọc-thêm)).
 
 > Schema trong [mục 7](#7-cơ-sở-dữ-liệu) được lấy bằng cách chạy toàn bộ
 > migration lên một database trống rồi `pg_dump --schema-only`, tính tới
-> migration `00019_email_verified`. Khi thêm migration, hãy cập nhật mục đó.
+> migration `00020_tutor_conversations`. Khi thêm migration, hãy cập nhật mục đó.
 
 ## Mục lục
 
@@ -252,7 +252,8 @@ API.
 | Từ vựng | `GET /vocab`, `POST /vocab`, `PATCH /vocab/{id}`, `DELETE /vocab/{id}` |
 | Hồ sơ | `GET /profile`, `PATCH /profile`, `PUT /profile/avatar` |
 | Tài khoản | `GET /account/export`, `POST /account/password`, `DELETE /account` |
-| Khác | `GET /leaderboard`, `GET /banners`, `GET /tutor`, `POST /tutor/chat` (stream) |
+| Gia sư | `GET /tutor`, `POST /tutor/chat` (stream), `GET /tutor/conversations`, `GET/DELETE /tutor/conversations/{id}` |
+| Khác | `GET /leaderboard`, `GET /banners` |
 
 **Quản trị (`/api/admin`, cần quyền admin)**
 
@@ -268,7 +269,7 @@ API.
 ## 7. Cơ sở dữ liệu
 
 PostgreSQL 16, extension `pgcrypto` (UUID) và `pg_trgm` (tìm kiếm mờ). Có
-**18 bảng**: 12 bảng dữ liệu, 5 bảng hàng đợi, 1 bảng migration.
+**20 bảng**: 14 bảng dữ liệu, 5 bảng hàng đợi, 1 bảng migration.
 
 ### 7.1 Sơ đồ quan hệ
 
@@ -278,6 +279,9 @@ erDiagram
   users ||--o{ takes : "ghi âm"
   users ||--o{ vocab_words : "lưu từ"
   users ||--o{ tutor_questions : "hỏi gia sư"
+  users ||--o{ tutor_conversations : "trò chuyện"
+  tutor_conversations ||--o{ tutor_messages : "gồm"
+  clips |o--o{ tutor_conversations : "bắt đầu từ clip"
   users |o--o{ clip_sources : "tải lên (created_by)"
   users |o--o{ clips : "tạo (created_by)"
 
@@ -449,7 +453,18 @@ Khi migrate, `internal/db/seed_freetalk.go` nạp sẵn một danh sách từ v�
 | `prompt_tokens`, `completion_tokens` | int | |
 | `asked_at`, `answered_at` | timestamptz | |
 
-Giới hạn mặc định: **30 câu mỗi 10 phút** cho một người (`cmd/api/main.go`).
+Giới hạn mặc định:
+- **30 câu mỗi 10 phút** cho một người (`cmd/api/main.go`);
+- `TUTOR_DAILY_PER_LEARNER` câu mỗi người mỗi ngày;
+- `TUTOR_DAILY_TOTAL` câu cho cả hệ thống mỗi ngày.
+
+**`tutor_conversations`**: `id`, `user_id` (`CASCADE`), `clip_id` (clip lúc bắt
+đầu, `SET NULL`), `title` (câu hỏi đầu, tối đa 80 ký tự), `created_at`,
+`updated_at`.
+
+**`tutor_messages`**: `id`, `conversation_id` (`CASCADE`), `role`
+(`user` | `assistant`), `content`, `created_at`. Đây là lịch sử mà server tự đọc
+để gửi cho model, và là thứ hiện ở danh sách lịch sử trong thanh chat.
 
 **`banners`** — thông báo trên Tổng quan hoặc Thư viện
 
@@ -491,6 +506,7 @@ Giới hạn mặc định: **30 câu mỗi 10 phút** cho một người (`cmd/
 | `00017_requeue_missing_sound` | Chỉ sửa dữ liệu: xếp lại việc cắt cho clip thiếu âm thanh |
 | `00018_worker_versions` | `version`, `started_at` trong worker_heartbeats |
 | `00019_email_verified` | `users.email_verified_at`; mọi tài khoản đã có được đánh dấu đã xác minh |
+| `00020_tutor_conversations` | `tutor_conversations`, `tutor_messages`: lịch sử chat với gia sư |
 
 Số `00008` bị bỏ trống, không phải thiếu file. Việc giữ lại job cắt / chép lời
 thất bại (`state='failed'`) nằm trong code worker và API, không cần migration vì
@@ -732,10 +748,16 @@ giọng người học ngay trong trình duyệt; file mp4 chỉ để tải v�
 3. Câu trả lời được stream về trình duyệt.
 4. Khi xong, dòng được cập nhật `answered` / `stopped` / `failed` kèm số token.
    Trang quản trị đọc các dòng này ở `GET /api/admin/tutor/usage`.
-5. Sự kiện `done` kèm `sig`, là HMAC của (user, câu trả lời). App gửi lại `sig`
-   cùng lịch sử. Lượt assistant nào không có chữ ký hợp lệ bị bỏ, nên trình
-   duyệt không bịa được "tutor đã nói gì". Lịch sử gửi cho model tối đa 20 lượt
-   và 12.000 ký tự. Nội dung câu hỏi không được lưu lại.
+5. Trình duyệt chỉ gửi câu hỏi mới kèm `conversationId`. Server tự đọc lịch sử
+   từ `tutor_messages`, tối đa 20 lượt và 12.000 ký tự, nên trình duyệt không
+   bịa được "tutor đã nói gì". Mảnh trả lời đầu tiên kèm id cuộc trò chuyện.
+   Câu hỏi và câu trả lời được lưu khi trả lời xong (hoặc dừng giữa chừng mà đã
+   có chữ); hỏi lỗi thì không lưu gì.
+6. Thanh chat có danh sách lịch sử:
+   - `GET /api/tutor/conversations`, `GET /api/tutor/conversations/{id}`,
+     `DELETE …/{id}`;
+   - chỉ chủ sở hữu thấy, người khác nhận 404;
+   - có trong "Tải dữ liệu của tôi", và bị xoá theo khi xoá tài khoản.
 
 Nếu `TUTOR_API_KEY` rỗng, `GET /api/tutor` báo tắt và app ẩn khung chat.
 
