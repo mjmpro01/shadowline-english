@@ -10,4 +10,8 @@ import "time"
 type Limit struct {
 	Max    int
 	Window time.Duration
+	// Daily is per learner in any 24 hours; TotalDaily is everybody's. Zero is
+	// no limit.
+	Daily      int
+	TotalDaily int
 }

@@ -525,6 +525,26 @@ for. Set `TUTOR_API_KEY` and `TUTOR_MODEL` and it is on; leave the key blank and
 | `TUTOR_API_URL` | The endpoint's `/v1`. 9router's default is `http://localhost:20128/v1` |
 | `TUTOR_API_KEY` | Sent as `Authorization: Bearer …`. 9router shows one on its dashboard |
 | `TUTOR_MODEL` | A 9router model id (`cc/claude-haiku-4-5-20251001`, below) or a combo name |
+| `TUTOR_DAILY_PER_LEARNER` | Questions per learner in any 24 hours, on top of 30 per 10 minutes. Default 100; 0 is no limit |
+| `TUTOR_DAILY_TOTAL` | Questions from everybody in any 24 hours — the bill's ceiling, since accounts are free. Default 2000; 0 is no limit |
+
+### What the browser cannot change
+
+The conversation lives in the browser and comes back with every question, so
+the server takes from it only what it can stand behind:
+
+- The system prompt is added here; a `system` turn from the browser is refused.
+- Each finished answer's `done` event carries `sig`, an HMAC of the learner's
+  id and the answer's text. The app keeps it with the answer and sends it back.
+  An assistant turn without a valid one — written by the browser, edited, or
+  signed for somebody else — is left out of what the model is sent. Without
+  this the browser could hand the tutor a history of having agreed to anything
+  (the usual many-shot jailbreak) and pad every question with pages of it.
+- At most 20 turns and 12,000 characters of them go on, oldest dropped first;
+  a learner's message is at most 2,000 characters, an answer at most 700
+  tokens.
+- What a learner asked is not stored: `tutor_questions` keeps who, when, which
+  clip, the model, the outcome and the tokens.
 
 **The key never leaves the server.** The browser sends the conversation — the
 learner's turns and the tutor's, nothing else — which clip is on screen, and

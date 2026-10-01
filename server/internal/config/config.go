@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -64,6 +65,11 @@ type Config struct {
 	TutorAPIURL string
 	TutorAPIKey string
 	TutorModel  string
+	// TutorDailyPerLearner and TutorDailyTotal cap questions in any 24 hours,
+	// per learner and from everybody: every one is paid for, and accounts are
+	// free. Zero turns a cap off.
+	TutorDailyPerLearner int
+	TutorDailyTotal      int
 }
 
 func Load() (Config, error) {
@@ -98,6 +104,13 @@ func Load() (Config, error) {
 		TutorAPIURL:          strings.TrimRight(env("TUTOR_API_URL", "http://localhost:20128/v1"), "/"),
 		TutorAPIKey:          env("TUTOR_API_KEY", ""),
 		TutorModel:           env("TUTOR_MODEL", ""),
+	}
+	var err error
+	if c.TutorDailyPerLearner, err = envCount("TUTOR_DAILY_PER_LEARNER", 100); err != nil {
+		return c, err
+	}
+	if c.TutorDailyTotal, err = envCount("TUTOR_DAILY_TOTAL", 2000); err != nil {
+		return c, err
 	}
 	if c.KeycloakPublicURL == "" {
 		c.KeycloakPublicURL = c.KeycloakURL
@@ -231,4 +244,17 @@ func (c Config) shippedSecrets() []string {
 		}
 	}
 	return shipped
+}
+
+// envCount reads a whole number of things, zero or more.
+func envCount(key string, fallback int) (int, error) {
+	raw := env(key, "")
+	if raw == "" {
+		return fallback, nil
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n < 0 {
+		return 0, fmt.Errorf("%s is %q: want a whole number, 0 for no limit", key, raw)
+	}
+	return n, nil
 }

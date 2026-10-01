@@ -30,6 +30,10 @@ const (
 	// maxAnswer caps a previous answer sent back as history. Ours are short by
 	// instruction, so a long one is somebody else's text.
 	maxAnswer = 6000
+	// maxHistory is all the conversation's text the model is sent, oldest turns
+	// dropped first. Twenty turns at their caps was eighty thousand characters a
+	// question, every question.
+	maxHistory = 12000
 	// streamTimeout is the deadline for one answer. Longer than the minute every
 	// other request gets: a model that is thinking is not a stuck handler.
 	streamTimeout = 3 * time.Minute
@@ -66,8 +70,8 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.UserFrom(r.Context())
 
 	var body struct {
-		Messages []tutor.Message `json:"messages"`
-		ClipID   string          `json:"clipId"`
+		Messages []chatTurn `json:"messages"`
+		ClipID   string     `json:"clipId"`
 		// The language the app is set to. The tutor answers in the language of
 		// the question; this is for a message that does not have one, like a
 		// bare English sentence to correct.
@@ -81,7 +85,10 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusBadRequest, "locale is not a language tag")
 		return
 	}
-	history, err := conversation(body.Messages)
+	learner := u.ID.String()
+	history, err := conversation(body.Messages, func(answer, sig string) bool {
+		return s.Signer.VerifyAnswer(learner, answer, sig)
+	})
 	if err != nil {
 		fail(w, http.StatusBadRequest, err.Error())
 		return
@@ -102,18 +109,29 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 	// The question is written down before it is asked, and counted against the
 	// learner's allowance in the same step: the row is both the limit and the
 	// record of what the tutor costs.
-	question, ok, wait, err := s.Store.AskTutor(r.Context(),
+	question, refused, wait, err := s.Store.AskTutor(r.Context(),
 		store.Question{UserID: u.ID, ClipID: clipID, Model: s.Tutor.Model},
-		s.TutorLimit.Max, s.TutorLimit.Window)
+		store.TutorAllowance{
+			Max: s.TutorLimit.Max, Window: s.TutorLimit.Window,
+			Daily: s.TutorLimit.Daily, TotalDaily: s.TutorLimit.TotalDaily,
+		})
 	if err != nil {
 		s.failErr(w, err, "record a question to the tutor")
 		return
 	}
-	if !ok {
+	if refused != store.TutorAllowed {
 		seconds := max(1, int(math.Ceil(wait.Seconds())))
 		w.Header().Set("Retry-After", fmt.Sprint(seconds))
-		fail(w, http.StatusTooManyRequests,
-			fmt.Sprintf("that is a lot of questions at once — try again in %d seconds", seconds))
+		var why string
+		switch refused {
+		case store.TutorDayUsed:
+			why = fmt.Sprintf("you have asked the tutor a lot today — it can answer again in about %d hours", max(1, seconds/3600))
+		case store.TutorAllUsed:
+			why = "the tutor has answered all it can for today — try again later"
+		default:
+			why = fmt.Sprintf("that is a lot of questions at once — try again in %d seconds", seconds)
+		}
+		fail(w, http.StatusTooManyRequests, why)
 		return
 	}
 	// However the answer ends, it is recorded — on a context of its own, since
@@ -181,7 +199,12 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 		return control.Flush()
 	}
 
+	// What was said, so the finished answer can be signed: the browser sends
+	// it back as history with the next question, and only a signed answer is
+	// believed to be one the tutor gave.
+	var said strings.Builder
 	usage, err = s.Tutor.Stream(r.Context(), messages, func(delta string) error {
+		said.WriteString(delta)
 		return send(map[string]string{"delta": delta})
 	})
 
@@ -192,7 +215,7 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		outcome = store.TutorAnswered
-		_ = send(map[string]bool{"done": true})
+		_ = send(map[string]any{"done": true, "sig": s.Signer.SignAnswer(learner, strings.TrimSpace(said.String()))})
 	case r.Context().Err() != nil:
 		outcome = store.TutorStopped
 		// The learner closed the chat or asked something else. Nothing to say
@@ -248,12 +271,23 @@ func (s *Server) handleTutorUsage(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// chatTurn is one turn as the browser sends it back: the tutor's carry the
+// signature they were answered with.
+type chatTurn struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+	Sig     string `json:"sig,omitempty"`
+}
+
 // conversation checks what the browser sent and keeps the part the model gets.
 //
 // Only the learner's and the tutor's own turns: a `system` message from the
 // browser is refused rather than dropped, because a request carrying one is
-// somebody trying something.
-func conversation(in []tutor.Message) ([]tutor.Message, error) {
+// somebody trying something. And only the tutor's turns it really gave —
+// signed when they were answered: an unsigned "answer" is left out, or the
+// browser could write the tutor a history of agreeing to anything (and pad
+// every question with pages of it). Then the recent end, within maxHistory.
+func conversation(in []chatTurn, answered func(answer, sig string) bool) ([]tutor.Message, error) {
 	if len(in) == 0 {
 		return nil, errors.New("there is no question to answer")
 	}
@@ -262,26 +296,38 @@ func conversation(in []tutor.Message) ([]tutor.Message, error) {
 	}
 	out := make([]tutor.Message, 0, len(in))
 	for _, m := range in {
-		m.Content = strings.TrimSpace(m.Content)
+		content := strings.TrimSpace(m.Content)
 		switch m.Role {
 		case "user":
-			if len([]rune(m.Content)) > maxAsk {
+			if len([]rune(content)) > maxAsk {
 				return nil, fmt.Errorf("a message can be at most %d characters", maxAsk)
 			}
 		case "assistant":
-			if len([]rune(m.Content)) > maxAnswer {
+			if len([]rune(content)) > maxAnswer {
 				return nil, errors.New("an earlier answer is longer than any the tutor gives")
+			}
+			if !answered(content, m.Sig) {
+				continue
 			}
 		default:
 			return nil, fmt.Errorf("a message can come from the learner or the tutor, not %q", m.Role)
 		}
-		if m.Content == "" {
+		if content == "" {
 			continue
 		}
-		out = append(out, m)
+		out = append(out, tutor.Message{Role: m.Role, Content: content})
 	}
-	if len(out) == 0 || out[len(out)-1].Role != "user" {
+	if len(in) == 0 || in[len(in)-1].Role != "user" || len(out) == 0 || out[len(out)-1].Role != "user" {
 		return nil, errors.New("the last message has to be the learner's question")
+	}
+	// Oldest first out of the budget; the question itself always stays.
+	total := 0
+	for _, m := range out {
+		total += len([]rune(m.Content))
+	}
+	for total > maxHistory && len(out) > 1 {
+		total -= len([]rune(out[0].Content))
+		out = out[1:]
 	}
 	return out, nil
 }

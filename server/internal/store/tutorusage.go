@@ -23,47 +23,94 @@ type Question struct {
 	Model  string
 }
 
-// AskTutor records a question if the learner has allowance left for it.
+// TutorAllowance is how many questions the tutor takes.
+type TutorAllowance struct {
+	// Max questions per learner in any Window; no limit when Max is 0.
+	Max    int
+	Window time.Duration
+	// Daily questions per learner in any 24 hours; no limit when 0. The window
+	// stops a burst; this stops thirty every ten minutes all day long.
+	Daily int
+	// TotalDaily questions from everybody in any 24 hours; no limit when 0. The
+	// bill's ceiling: accounts are free, so a per-learner limit alone is a limit
+	// per address somebody bothered to make.
+	TotalDaily int
+}
+
+// TutorRefusal is which allowance turned a question away.
+type TutorRefusal string
+
+const (
+	TutorAllowed  TutorRefusal = ""
+	TutorTooFast  TutorRefusal = "window"
+	TutorDayUsed  TutorRefusal = "day"
+	TutorAllUsed  TutorRefusal = "everyone"
+	tutorDayHours              = 24 * time.Hour
+)
+
+// AskTutor records a question if the allowances have room for it, and answers
+// with the new row's id — or with which allowance is used up and how long
+// until its oldest question falls out of it.
 //
-// At most max questions in any window (no limit when max is 0): it answers with
-// the new row's id, or with
-// ok false and how long until the oldest question in the window falls out of it.
-// The count and the insert happen under a lock on the learner's own row, so two
-// questions sent at once cannot both be the last one allowed — and every API
-// instance counts the same rows.
-func (s *Store) AskTutor(ctx context.Context, q Question, max int, window time.Duration) (id int64, ok bool, wait time.Duration, err error) {
+// The counts and the insert happen under a lock on the learner's own row, so
+// two questions sent at once cannot both be the last one allowed — and every
+// API instance counts the same rows. The total across learners is not locked:
+// at worst a few questions over, on a number set for the bill.
+func (s *Store) AskTutor(ctx context.Context, q Question, a TutorAllowance) (id int64, refused TutorRefusal, wait time.Duration, err error) {
 	err = s.inTx(ctx, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, `select 1 from users where id = $1 for update`, q.UserID); err != nil {
 			return err
 		}
-		if max <= 0 {
-			ok = true
-			return tx.QueryRow(ctx, `
-				insert into tutor_questions (user_id, clip_id, model) values ($1, $2, $3)
-				returning id`, q.UserID, q.ClipID, q.Model).Scan(&id)
-		}
-		var count int
-		var oldest *time.Time
-		if err := tx.QueryRow(ctx, `
-			select count(*), min(asked_at) from tutor_questions
-			where user_id = $1 and asked_at > now() - make_interval(secs => $2)`,
-			q.UserID, window.Seconds()).Scan(&count, &oldest); err != nil {
+		var now time.Time
+		if err := tx.QueryRow(ctx, `select now()`).Scan(&now); err != nil {
 			return err
 		}
-		if count >= max && oldest != nil {
-			var now time.Time
-			if err := tx.QueryRow(ctx, `select now()`).Scan(&now); err != nil {
+		// check is whether a limit's questions in the last period are used up,
+		// and if so how long until the oldest of them leaves it.
+		check := func(limit int, period time.Duration, mine bool) (bool, time.Duration, error) {
+			if limit <= 0 {
+				return false, 0, nil
+			}
+			var count int
+			var oldest *time.Time
+			err := tx.QueryRow(ctx, `
+				select count(*), min(asked_at) from tutor_questions
+				where ($1::uuid is null or user_id = $1) and asked_at > $2::timestamptz - make_interval(secs => $3)`,
+				func() any {
+					if mine {
+						return q.UserID
+					}
+					return nil
+				}(), now, period.Seconds()).Scan(&count, &oldest)
+			if err != nil || count < limit || oldest == nil {
+				return false, 0, err
+			}
+			return true, oldest.Add(period).Sub(now), nil
+		}
+		for _, allowance := range []struct {
+			limit  int
+			period time.Duration
+			mine   bool
+			why    TutorRefusal
+		}{
+			{a.Max, a.Window, true, TutorTooFast},
+			{a.Daily, tutorDayHours, true, TutorDayUsed},
+			{a.TotalDaily, tutorDayHours, false, TutorAllUsed},
+		} {
+			full, until, err := check(allowance.limit, allowance.period, allowance.mine)
+			if err != nil {
 				return err
 			}
-			wait = oldest.Add(window).Sub(now)
-			return nil
+			if full {
+				refused, wait = allowance.why, until
+				return nil
+			}
 		}
-		ok = true
 		return tx.QueryRow(ctx, `
 			insert into tutor_questions (user_id, clip_id, model) values ($1, $2, $3)
 			returning id`, q.UserID, q.ClipID, q.Model).Scan(&id)
 	})
-	return id, ok, wait, err
+	return id, refused, wait, err
 }
 
 // TutorAnswer records how a question ended and what the router said it cost.

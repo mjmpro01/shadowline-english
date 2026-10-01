@@ -722,13 +722,20 @@ giọng người học ngay trong trình duyệt; file mp4 chỉ để tải v�
 
 ### 12.5 Gia sư
 
-1. `POST /api/tutor/chat` kiểm tra giới hạn lượt (đếm trong `tutor_questions`).
+1. `POST /api/tutor/chat` kiểm tra giới hạn lượt, đếm trong `tutor_questions`:
+   - 30 câu mỗi 10 phút;
+   - `TUTOR_DAILY_PER_LEARNER` câu mỗi người mỗi ngày;
+   - `TUTOR_DAILY_TOTAL` câu cho cả hệ thống mỗi ngày.
 2. API ghi một dòng `asked`, rồi gọi endpoint tương thích OpenAI (`TUTOR_API_URL`,
    mặc định là 9router, model `TUTOR_MODEL`). Prompt kèm lời thoại thật của clip
    đang luyện.
 3. Câu trả lời được stream về trình duyệt.
 4. Khi xong, dòng được cập nhật `answered` / `stopped` / `failed` kèm số token.
    Trang quản trị đọc các dòng này ở `GET /api/admin/tutor/usage`.
+5. Sự kiện `done` kèm `sig`, là HMAC của (user, câu trả lời). App gửi lại `sig`
+   cùng lịch sử. Lượt assistant nào không có chữ ký hợp lệ bị bỏ, nên trình
+   duyệt không bịa được "tutor đã nói gì". Lịch sử gửi cho model tối đa 20 lượt
+   và 12.000 ký tự. Nội dung câu hỏi không được lưu lại.
 
 Nếu `TUTOR_API_KEY` rỗng, `GET /api/tutor` báo tắt và app ẩn khung chat.
 

@@ -70,6 +70,19 @@ func (s *Signer) VerifyState(state string) bool {
 
 // RandomID returns a URL-safe random string with 256 bits of entropy, used for
 // session ids, OAuth nonces and PKCE verifiers.
+// SignAnswer vouches that the tutor gave this answer to this learner. The chat
+// keeps its history in the browser, which sends it back with each question;
+// without this, a "previous answer" was whatever the browser said it was — a
+// way to put words in the tutor's mouth, or pages of text on our bill.
+func (s *Signer) SignAnswer(userID, answer string) string {
+	return s.mac("tutor-answer", userID, answer)
+}
+
+// VerifyAnswer is whether sig is SignAnswer's for this learner and answer.
+func (s *Signer) VerifyAnswer(userID, answer, sig string) bool {
+	return sig != "" && hmac.Equal([]byte(sig), []byte(s.mac("tutor-answer", userID, answer)))
+}
+
 func RandomID() (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {

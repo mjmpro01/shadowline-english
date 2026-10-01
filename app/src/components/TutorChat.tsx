@@ -82,7 +82,7 @@ export function TutorChat() {
     const controller = new AbortController()
     abort.current = controller
     try {
-      await askTutor(
+      const sig = await askTutor(
         asked,
         { clipId, locale },
         (delta) =>
@@ -94,6 +94,15 @@ export function TutorChat() {
           }),
         controller.signal,
       )
+      // Kept with the answer, so it can go back as history the server believes.
+      if (sig) {
+        setTurns((current) => {
+          const next = current.slice()
+          const last = next[next.length - 1]
+          if (last?.role === 'assistant') next[next.length - 1] = { ...last, sig }
+          return next
+        })
+      }
     } catch (err) {
       setFailure(err instanceof ApiError ? err.message : t('tutor.failed'))
     } finally {
