@@ -1,3 +1,5 @@
+import type { Translate } from '../i18n'
+
 /**
  * The words of a caption, split the way the scoring worker splits it.
  *
@@ -30,6 +32,6 @@ export function normalizeWord(raw: string): string {
  *
  * Either way it beats a blank line under the word.
  */
-export function meaningOrWait(meaning: string): string {
-  return meaning || 'Meaning not looked up yet.'
+export function meaningOrWait(meaning: string, t: Translate): string {
+  return meaning || t('vocab.notLookedUp')
 }

@@ -73,7 +73,7 @@ export function AvatarSlot({
         onDrop={editable ? onDrop : undefined}
         aria-label={editable ? t('profile.changeAvatar') : t('profile.avatar')}
       >
-        {shown ? <img src={shown} alt="" /> : 'Avatar'}
+        {shown ? <img src={shown} alt="" /> : t('profile.avatar')}
       </button>
       {editable && (
         <input

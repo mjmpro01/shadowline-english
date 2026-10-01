@@ -58,6 +58,14 @@ export type Translate = <K extends MessageKey>(
   ...args: Messages[K] extends (...a: infer A) => string ? A : []
 ) => string
 
+/** The lookup itself, for one locale's messages. */
+export function translator(messages: Messages): Translate {
+  return ((key, ...args) => {
+    const message = messages[key]
+    return typeof message === 'function' ? (message as (...a: unknown[]) => string)(...args) : message
+  }) as Translate
+}
+
 export interface I18n {
   locale: Locale
   setLocale: (locale: Locale) => void

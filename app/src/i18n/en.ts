@@ -105,6 +105,7 @@ export const en = {
   // --- dashboard ------------------------------------------------------------
   'dash.title': 'Dashboard',
   'dash.subtitle': 'Clips worth practising, and how your scores are going',
+  'dash.openClip': (title: string) => `Open ${title}`,
   'dash.clipsPractised': 'Clips practised',
   'dash.takesRecorded': 'Takes recorded',
   'dash.averageScore': 'Average score',
@@ -259,6 +260,7 @@ export const en = {
   'dub.noOriginalAudio': 'No original audio attached',
   'dub.preparing': 'Making the file…',
   'dub.download': 'Download',
+  'dub.open': 'Open',
 
   // --- vocabulary -----------------------------------------------------------
   'vocab.title': 'Vocabulary',
@@ -400,6 +402,15 @@ export const en = {
   'analysis.noSourceAudio':
     'Scores compare your delivery with the clip’s original audio, which this clip is missing.',
   'analysis.noScore': 'This take has no score.',
+  'analysis.couldNotScoreBecause': (reason: string) => `We couldn’t score this one: ${reason}.`,
+  'analysis.startPractising': 'Start practising',
+  'analysis.recordAnother': 'Record another take',
+  'analysis.distance': (semitones: number) =>
+    `Your pitch sat ${semitones.toFixed(1)} semitone${semitones.toFixed(1) === '1.0' ? '' : 's'} from the source on average. `,
+  'analysis.allClose': (score: number) =>
+    `All four measures landed close together, around ${score} — work on the whole line rather than one part of it.`,
+  'analysis.strongestWeakest': (strongest: string, high: number, weakest: string, low: number) =>
+    `${strongest} was your strongest at ${high}; ${weakest.toLowerCase()} is the one to work on, at ${low}.`,
 
   'score.bestSoFar': (score: number) => `Best so far ${score}`,
   'score.bestSoFarWeakest': (score: number, metric: string, value: number) =>
@@ -430,6 +441,7 @@ export const en = {
 
   // --- guide ----------------------------------------------------------------
   'nav.guide': 'Guide',
+  'nav.main': 'Main',
   'dash.firstGuide': 'How it works',
   'practice.howTo': 'Not sure how this works? Read the guide',
   'profile.help': 'Help',

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { chartFromAnalysis, chartFromReference, playheadX } from '../src/lib/chart'
 import { summariseTake } from '../src/lib/summary'
+import { translator } from '../src/i18n'
+import { en } from '../src/i18n/en'
+import { vi } from '../src/i18n/vi'
 import type { TakeAnalysis } from '../src/data/types'
 
 const analysis = (overrides: Partial<TakeAnalysis> = {}): TakeAnalysis => ({
@@ -82,19 +85,34 @@ describe('chartFromReference', () => {
 
 describe('summariseTake', () => {
   it('names the strongest and weakest measures', () => {
-    const text = summariseTake({ Intonation: 88, Rhythm: 60, Stress: 74, Variation: 81 }, 1.2)
+    const text = summariseTake({ Intonation: 88, Rhythm: 60, Stress: 74, Variation: 81 }, 1.2, translator(en))
     expect(text).toContain('1.2 semitones')
     expect(text).toContain('Intonation')
     expect(text).toContain('rhythm')
   })
 
   it('says so when everything landed together', () => {
-    const text = summariseTake({ Intonation: 80, Rhythm: 78, Stress: 82, Variation: 79 }, 0.5)
+    const text = summariseTake({ Intonation: 80, Rhythm: 78, Stress: 82, Variation: 79 }, 0.5, translator(en))
     expect(text).toContain('close together')
   })
 
   it('leaves out the distance when nothing was measured against', () => {
-    const text = summariseTake({ Intonation: 80, Rhythm: 60, Stress: 70, Variation: 75 }, null)
+    const text = summariseTake({ Intonation: 80, Rhythm: 60, Stress: 70, Variation: 75 }, null, translator(en))
     expect(text).not.toContain('semitone')
+  })
+
+  // It used to be written in English whatever the learner had chosen.
+  it('speaks the learner’s language, measures included', () => {
+    const text = summariseTake({ Intonation: 88, Rhythm: 60, Stress: 74, Variation: 81 }, 1.2, translator(vi))
+    expect(text).toContain('1,2 nửa cung')
+    expect(text).toContain('Ngữ điệu')
+    expect(text).toContain('nhịp điệu')
+    expect(text).not.toMatch(/semitone|Intonation|rhythm/i)
+  })
+
+  it('says “semitone” for one of them', () => {
+    expect(summariseTake({ Intonation: 80, Rhythm: 60, Stress: 70, Variation: 75 }, 1, translator(en))).toContain(
+      '1.0 semitone from',
+    )
   })
 })

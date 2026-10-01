@@ -130,7 +130,7 @@ export function VocabularyScreen() {
                 </span>
               </div>
               <div className="card-body" style={{ opacity: word.meaning ? 1 : 0.6 }}>
-                {meaningOrWait(word.meaning)}
+                {meaningOrWait(word.meaning, t)}
               </div>
               {video && (
                 <button
@@ -146,7 +146,7 @@ export function VocabularyScreen() {
                   }}
                   onClick={() => navigate(`/library/${video.id}`)}
                 >
-                  from “{video.title}”
+                  {t('vocab.from', video.title)}
                 </button>
               )}
               <button

@@ -181,7 +181,7 @@ export function DashboardScreen() {
                   type="button"
                   className="link-button thumb"
                   onClick={() => navigate(`/library/${video.id}`)}
-                  aria-label={`Open ${video.title}`}
+                  aria-label={t('dash.openClip', video.title)}
                 >
                   <ClipFace
                     id={video.id}

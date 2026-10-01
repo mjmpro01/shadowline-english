@@ -67,7 +67,7 @@ export function AppShell() {
   return (
     <TourProvider>
       <div className="app">
-        <nav className="sidebar" data-collapsed={collapsed} aria-label="Main">
+        <nav className="sidebar" data-collapsed={collapsed} aria-label={t('nav.main')}>
           {/* The forest, the tree it is nailed to, and the two ropes the planks
               hang from. All of it decoration — a screen reader hears a list of
               links and nothing about a tree. */}
@@ -129,7 +129,7 @@ export function AppShell() {
             moving from a line to its analysis and back. */}
         <TutorChat />
 
-        <nav className="tabbar" aria-label="Main">
+        <nav className="tabbar" aria-label={t('nav.main')}>
           {[...TABS, PROFILE].map((tab) => (
             <NavLink
               key={tab.to}
