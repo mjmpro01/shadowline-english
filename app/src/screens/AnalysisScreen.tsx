@@ -185,23 +185,11 @@ export function AnalysisScreen() {
         {chart === null ? (
           <div className="card-meta" style={{ padding: '32px 0' }}>{contourPending(take, t)}</div>
         ) : (
+        <div style={{ position: 'relative' }}>
         <svg width="100%" viewBox="0 0 640 200" style={{ display: 'block' }} aria-label={t('analysis.chartLabel')}>
           <path d={chart.bandPath} fill="var(--color-neutral-300)" opacity="0.5" stroke="none" />
           {chart.gridLines.map((line) => (
             <line key={line.label} x1="30" y1={line.y} x2="630" y2={line.y} stroke="var(--color-divider)" strokeWidth="1" />
-          ))}
-          {chart.gridLines.map((line) => (
-            <text
-              key={`t-${line.label}`}
-              x="4"
-              y={Number(line.y) + 4}
-              fill="var(--color-text)"
-              opacity="0.5"
-              fontSize="11"
-              fontFamily="var(--font-mono)"
-            >
-              {line.label}
-            </text>
           ))}
           <polyline
             points={chart.refPoints}
@@ -223,10 +211,23 @@ export function AnalysisScreen() {
             />
           ))}
         </svg>
+        {/* The scale, outside the SVG: drawn inside it, it shrank with the
+            chart to about 5px on a phone, at half opacity. */}
+        {chart.gridLines.map((line) => (
+          <span
+            key={`t-${line.label}`}
+            className="mono chart-y-label"
+            style={{ top: `${(Number(line.y) / 200) * 100}%` }}
+            aria-hidden="true"
+          >
+            {line.label}
+          </span>
+        ))}
+        </div>
         )}
 
         {chart && (
-        <div className="row between mono" style={{ marginTop: 2, fontSize: 13, color: 'var(--color-neutral-600)' }}>
+        <div className="row between mono" style={{ marginTop: 2, fontSize: 13, color: 'var(--color-text-muted)' }}>
           {chart.xLabels.map((label) => (
             <span key={label}>{label}</span>
           ))}

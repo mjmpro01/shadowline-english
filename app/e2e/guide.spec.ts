@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { contrastOf } from './contrast'
 import { startFresh } from './session'
 
 /**
@@ -72,4 +73,17 @@ test('the practice screen links to the steps, and lands on them', async ({ page 
   await page.getByRole('link', { name: 'Not sure how this works? Read the guide' }).click()
   await expect(page).toHaveURL(/\/guide#practice$/)
   await expect(page.getByRole('heading', { name: 'Practise a line in 5 steps' })).toBeInViewport()
+})
+
+// The section links kept the light theme's grey ink on the dark theme's
+// surface, and all but disappeared (1.3:1).
+test('the contents can be read in either theme', async ({ page }) => {
+  for (const theme of ['Light', 'Dark']) {
+    await page.goto('/profile')
+    await page.getByRole('button', { name: theme, exact: true }).click()
+    await page.goto('/guide')
+    const links = page.locator('.guide-jump')
+    await expect(links).toHaveCount(4)
+    for (let i = 0; i < 4; i++) expect(await contrastOf(links.nth(i)), theme).toBeGreaterThanOrEqual(4.5)
+  }
 })
