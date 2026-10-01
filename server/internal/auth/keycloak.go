@@ -84,9 +84,10 @@ func (k *keycloakProvider) Exchange(ctx context.Context, code, verifier string) 
 	if email == "" {
 		return Identity{}, fmt.Errorf("userinfo carried no email")
 	}
-	// Registration with email-as-username may leave email_verified false in
-	// local/dev (verifyEmail off). Still accept: the address is the username
-	// Keycloak already owns, and ADMIN_EMAILS is an allow-list we control.
+	// Registration with email-as-username leaves email_verified false until
+	// the address is confirmed. Still accepted, but marked: the login handler
+	// keeps an unverified identity out of accounts it did not create and out
+	// of ADMIN_EMAILS, since anybody can register any address.
 	name := info.Name
 	if name == "" {
 		name = strings.TrimSpace(info.GivenName + " " + info.FamilyName)
@@ -95,5 +96,5 @@ func (k *keycloakProvider) Exchange(ctx context.Context, code, verifier string) 
 		local, _, _ := strings.Cut(email, "@")
 		name = titleCase(local)
 	}
-	return Identity{Email: email, Name: name}, nil
+	return Identity{Email: email, Name: name, Verified: info.EmailVerified}, nil
 }

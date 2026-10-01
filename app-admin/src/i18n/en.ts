@@ -330,6 +330,7 @@ export const en = {
   'login.error.cancelled': 'Sign-in was cancelled.',
   'login.error.failed': 'Google could not confirm the account. Try again.',
   'login.error.server': 'Something went wrong on our side. Try again in a moment.',
+  'login.error.unverified': 'That email address is not confirmed yet. Sign in with Google, or confirm it from the learner app.',
   'login.error.suspended': 'This account has been suspended.',
   'login.error.unknown': 'Sign-in did not work. Try again.',
   // --- previewing an episode's clips -----------------------------------------

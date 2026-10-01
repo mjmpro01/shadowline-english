@@ -23,6 +23,12 @@ type Config struct {
 	// server can tell from its own environment.
 	AuthFake    bool
 	AdminEmails map[string]bool
+	// RequireVerifiedEmail turns away any identity whose address is not
+	// confirmed, and has a password registration send the confirmation mail
+	// instead of signing in. Off by default because it needs Keycloak to have a
+	// real SMTP server; with it off, an unverified identity still cannot reach
+	// an account a verified one has used, nor get admin from ADMIN_EMAILS.
+	RequireVerifiedEmail bool
 
 	// Keycloak: email/password login and Admin API user sync. Empty URL means
 	// the feature is off — Google still works, and EnsureUser is a no-op.
@@ -69,6 +75,7 @@ func Load() (Config, error) {
 		OAuthRedirectURL:     env("OAUTH_REDIRECT_URL", "http://localhost:8080/auth/google/callback"),
 		SessionSecret:        env("SESSION_SECRET", ""),
 		AuthFake:             env("AUTH_FAKE", "") == "1",
+		RequireVerifiedEmail: env("REQUIRE_VERIFIED_EMAIL", "") == "1",
 		AdminEmails:          emailSet(env("ADMIN_EMAILS", "")),
 		KeycloakURL:          strings.TrimRight(env("KEYCLOAK_URL", ""), "/"),
 		KeycloakPublicURL:    strings.TrimRight(env("KEYCLOAK_PUBLIC_URL", ""), "/"),
@@ -124,6 +131,16 @@ func Load() (Config, error) {
 	if c.AuthFake {
 		if origin := httpsOrigin(c.AppOrigin, c.OAuthRedirectURL); origin != "" {
 			return c, fmt.Errorf("AUTH_FAKE=1 signs in anyone as any address, and %s is served over https — unset AUTH_FAKE and configure Google OAuth", origin)
+		}
+	}
+	// The same reasoning for the values .env.example and the Keycloak realm ship
+	// with: they are in this repository, so on a server anybody can reach they
+	// are not secrets. Keycloak's admin console with admin/admin, or the client
+	// secret every checkout knows, is the whole login system handed over.
+	if origin := httpsOrigin(c.AppOrigin, c.OAuthRedirectURL); origin != "" {
+		if shipped := c.shippedSecrets(); len(shipped) > 0 {
+			return c, fmt.Errorf("%s is served over https but still uses the example values for %s — set them in .env (and in Keycloak, for its secrets) before starting",
+				origin, strings.Join(shipped, ", "))
 		}
 	}
 	// A key with no model is a tutor that would fail on its first message; say so
@@ -191,4 +208,27 @@ func env(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// shippedSecrets names the settings still holding a value published in this
+// repository: .env.example's placeholders and the Keycloak realm's defaults.
+func (c Config) shippedSecrets() []string {
+	var shipped []string
+	if u, err := url.Parse(c.DatabaseURL); err == nil {
+		if pw, ok := u.User.Password(); ok && pw == "change-me" {
+			shipped = append(shipped, "the database password (DATABASE_URL)")
+		}
+	}
+	if c.S3SecretKey == "change-me" {
+		shipped = append(shipped, "S3_SECRET_KEY")
+	}
+	if c.KeycloakConfigured() {
+		if c.KeycloakClientSecret == "shadowline-dev-secret" {
+			shipped = append(shipped, "KEYCLOAK_CLIENT_SECRET")
+		}
+		if c.KeycloakAdminPass == "admin" {
+			shipped = append(shipped, "KEYCLOAK_ADMIN_PASSWORD")
+		}
+	}
+	return shipped
 }

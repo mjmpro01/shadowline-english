@@ -94,6 +94,16 @@ func (s *Server) handleUploadFile(w http.ResponseWriter, r *http.Request) {
 	if contentType == "" {
 		contentType = "application/octet-stream"
 	}
+	if !isSource(contentType) {
+		// Written down like any other failed upload, or the history would show
+		// this one as still on its way.
+		const reason = "a recording to cut is an audio or video file"
+		if err := s.Store.UploadFailedWith(r.Context(), id, reason); err != nil {
+			s.Log.Warn("could not record a refused upload", "id", id, "error", err)
+		}
+		fail(w, http.StatusUnsupportedMediaType, reason)
+		return
+	}
 	body := http.MaxBytesReader(w, r.Body, maxSourceBytes)
 	defer body.Close()
 

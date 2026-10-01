@@ -320,6 +320,7 @@ export const vi: Messages = {
   'login.error.cancelled': 'Bạn đã huỷ đăng nhập.',
   'login.error.failed': 'Google không xác nhận được tài khoản. Hãy thử lại.',
   'login.error.server': 'Có lỗi phía máy chủ. Hãy thử lại sau ít phút.',
+  'login.error.unverified': 'Email này chưa được xác nhận. Hãy đăng nhập bằng Google, hoặc xác nhận email từ app người học.',
   'login.error.suspended': 'Tài khoản này đã bị khoá.',
   'login.error.unknown': 'Đăng nhập không thành công. Hãy thử lại.',
   // --- xem trước clip của một tập ---------------------------------------------------

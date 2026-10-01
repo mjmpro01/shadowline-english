@@ -121,8 +121,15 @@ func (s *Server) handleChangePassword(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusBadRequest, "password must be at least 8 characters")
 		return
 	}
+	// The same allowance as signing in: a stolen session is otherwise a place
+	// to guess the password from without limit.
+	if s.limits.loginFailures.full(u.Email) {
+		tooMany(w, "too many wrong passwords — wait a few minutes and try again")
+		return
+	}
 	if _, err := s.Users.PasswordLogin(r.Context(), u.Email, body.Current); err != nil {
 		if errors.Is(err, keycloak.ErrInvalidCredentials) {
+			s.limits.loginFailures.add(u.Email)
 			fail(w, http.StatusForbidden,
 				"that is not your current password — if you have only signed in with Google, set one with “forgot password”")
 			return

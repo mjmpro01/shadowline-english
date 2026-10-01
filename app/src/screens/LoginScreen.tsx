@@ -29,6 +29,7 @@ const LOGIN_ERRORS: Record<string, MessageKey> = {
   failed: 'login.error.failed',
   server: 'login.error.server',
   suspended: 'login.error.suspended',
+  unverified: 'login.error.unverified',
 }
 
 type Mode = 'login' | 'register' | 'forgot'
@@ -46,6 +47,9 @@ export function LoginScreen() {
   const [remember, setRemember] = useState(true)
   const [formError, setFormError] = useState<string | null>(null)
   const [forgotDone, setForgotDone] = useState(false)
+  // A registration the server will not sign in until the address is
+  // confirmed: the link is in the mail, and that is the whole message.
+  const [verifySent, setVerifySent] = useState(false)
 
   useEffect(() => {
     try {
@@ -78,6 +82,7 @@ export function LoginScreen() {
     e.preventDefault()
     setFormError(null)
     setForgotDone(false)
+    setVerifySent(false)
     setBusy(true)
     try {
       if (mode === 'forgot') {
@@ -86,7 +91,11 @@ export function LoginScreen() {
         return
       }
       if (mode === 'register') {
-        await registerWithPassword(email, password, name.trim() || undefined)
+        const registered = await registerWithPassword(email, password, name.trim() || undefined)
+        if (registered.verify) {
+          setVerifySent(true)
+          return
+        }
       } else {
         await loginWithPassword(email, password)
       }
@@ -138,6 +147,11 @@ export function LoginScreen() {
         {forgotDone && (
           <div className="login-note" role="status">
             {t('login.forgotSent')}
+          </div>
+        )}
+        {verifySent && (
+          <div className="login-note" role="status">
+            {t('login.verifySent')}
           </div>
         )}
 

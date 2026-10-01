@@ -21,7 +21,7 @@ func (s *Store) CreateSession(ctx context.Context, id string, userID uuid.UUID, 
 // rather than when their cookie runs out.
 func (s *Store) UserBySession(ctx context.Context, id string) (User, error) {
 	return scanUser(s.pool.QueryRow(ctx, `
-		select u.id, u.email, u.name, u.avatar_key, u.is_admin, u.created_at, u.suspended_at
+		select u.id, u.email, u.name, u.avatar_key, u.is_admin, u.created_at, u.suspended_at, u.email_verified_at
 		from sessions s join users u on u.id = s.user_id
 		where s.id = $1 and s.expires_at > now() and u.suspended_at is null`, id))
 }

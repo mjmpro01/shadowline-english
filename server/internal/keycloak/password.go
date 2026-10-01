@@ -18,18 +18,27 @@ var (
 	ErrConflict           = errors.New("user already exists")
 )
 
+// Login is who a password grant says signed in.
+type Login struct {
+	// Name is the display name, possibly empty.
+	Name string
+	// Verified is whether Keycloak has the address as confirmed. False when it
+	// could not say, which is the safe way to be wrong.
+	Verified bool
+}
+
 // PasswordLogin checks email/password against Keycloak via the resource-owner
-// password grant. On success it returns a display name (may be empty).
-func (a *Admin) PasswordLogin(ctx context.Context, email, password string) (name string, err error) {
+// password grant.
+func (a *Admin) PasswordLogin(ctx context.Context, email, password string) (Login, error) {
 	if a == nil || a.BaseURL == "" {
-		return "", fmt.Errorf("keycloak not configured")
+		return Login{}, fmt.Errorf("keycloak not configured")
 	}
 	email = strings.TrimSpace(strings.ToLower(email))
 	if email == "" || password == "" {
-		return "", ErrInvalidCredentials
+		return Login{}, ErrInvalidCredentials
 	}
 	if a.ClientID == "" || a.ClientSecret == "" {
-		return "", fmt.Errorf("keycloak client credentials missing")
+		return Login{}, fmt.Errorf("keycloak client credentials missing")
 	}
 
 	form := url.Values{
@@ -44,30 +53,30 @@ func (a *Admin) PasswordLogin(ctx context.Context, email, password string) (name
 		a.BaseURL+"/realms/"+url.PathEscape(a.Realm)+"/protocol/openid-connect/token",
 		strings.NewReader(form.Encode()))
 	if err != nil {
-		return "", err
+		return Login{}, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := a.client().Do(req)
 	if err != nil {
-		return "", fmt.Errorf("password grant: %w", err)
+		return Login{}, fmt.Errorf("password grant: %w", err)
 	}
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusBadRequest {
-		return "", ErrInvalidCredentials
+		return Login{}, ErrInvalidCredentials
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("password grant: %s: %s", resp.Status, bytes.TrimSpace(raw))
+		return Login{}, fmt.Errorf("password grant: %s: %s", resp.Status, bytes.TrimSpace(raw))
 	}
 
 	var tok struct {
 		AccessToken string `json:"access_token"`
 	}
 	if err := json.Unmarshal(raw, &tok); err != nil || tok.AccessToken == "" {
-		return "", fmt.Errorf("password grant: bad token response")
+		return Login{}, fmt.Errorf("password grant: bad token response")
 	}
-	return a.userinfoName(ctx, tok.AccessToken), nil
+	return a.userinfo(ctx, tok.AccessToken), nil
 }
 
 // Register creates a Keycloak user with a permanent password. Returns
@@ -89,10 +98,13 @@ func (a *Admin) Register(ctx context.Context, email, password, name string) erro
 
 	first, last := splitName(name)
 	body, err := json.Marshal(map[string]any{
-		"username":      email,
-		"email":         email,
-		"enabled":       true,
-		"emailVerified": true,
+		"username": email,
+		"email":    email,
+		"enabled":  true,
+		// Not verified: nobody has shown they own this address yet, and
+		// anybody can register any address. It was true, which made every
+		// registration look like the address's owner.
+		"emailVerified": false,
 		"firstName":     first,
 		"lastName":      last,
 		"credentials": []map[string]any{{
@@ -134,6 +146,16 @@ func (a *Admin) Register(ctx context.Context, email, password, name string) erro
 // SendResetPassword emails Keycloak's UPDATE_PASSWORD action. Missing users are
 // a no-op so callers can always answer 204.
 func (a *Admin) SendResetPassword(ctx context.Context, email, redirectURI string) error {
+	return a.emailActions(ctx, email, redirectURI, "UPDATE_PASSWORD")
+}
+
+// SendVerifyEmail emails Keycloak's VERIFY_EMAIL action: the link that proves
+// the address belongs to whoever registered it.
+func (a *Admin) SendVerifyEmail(ctx context.Context, email, redirectURI string) error {
+	return a.emailActions(ctx, email, redirectURI, "VERIFY_EMAIL")
+}
+
+func (a *Admin) emailActions(ctx context.Context, email, redirectURI string, actions ...string) error {
 	if a == nil || a.BaseURL == "" {
 		return fmt.Errorf("keycloak not configured")
 	}
@@ -163,7 +185,7 @@ func (a *Admin) SendResetPassword(ctx context.Context, email, redirectURI string
 		endpoint += "?" + enc
 	}
 
-	body, err := json.Marshal([]string{"UPDATE_PASSWORD"})
+	body, err := json.Marshal(actions)
 	if err != nil {
 		return err
 	}
@@ -178,43 +200,45 @@ func (a *Admin) SendResetPassword(ctx context.Context, email, redirectURI string
 
 	resp, err := a.client().Do(req)
 	if err != nil {
-		return fmt.Errorf("reset email: %w", err)
+		return fmt.Errorf("%s email: %w", strings.Join(actions, ","), err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusOK {
 		return nil
 	}
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
-	return fmt.Errorf("reset email: %s: %s", resp.Status, bytes.TrimSpace(raw))
+	return fmt.Errorf("%s email: %s: %s", strings.Join(actions, ","), resp.Status, bytes.TrimSpace(raw))
 }
 
-func (a *Admin) userinfoName(ctx context.Context, accessToken string) string {
+func (a *Admin) userinfo(ctx context.Context, accessToken string) Login {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
 		a.BaseURL+"/realms/"+url.PathEscape(a.Realm)+"/protocol/openid-connect/userinfo", nil)
 	if err != nil {
-		return ""
+		return Login{}
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	resp, err := a.client().Do(req)
 	if err != nil {
-		return ""
+		return Login{}
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return ""
+		return Login{}
 	}
 	var info struct {
-		Name       string `json:"name"`
-		GivenName  string `json:"given_name"`
-		FamilyName string `json:"family_name"`
+		Name          string `json:"name"`
+		GivenName     string `json:"given_name"`
+		FamilyName    string `json:"family_name"`
+		EmailVerified bool   `json:"email_verified"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-		return ""
+		return Login{}
 	}
-	if info.Name != "" {
-		return info.Name
+	name := info.Name
+	if name == "" {
+		name = strings.TrimSpace(info.GivenName + " " + info.FamilyName)
 	}
-	return strings.TrimSpace(info.GivenName + " " + info.FamilyName)
+	return Login{Name: name, Verified: info.EmailVerified}
 }
 
 // SetPassword replaces the password of the user with this address. It is the

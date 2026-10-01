@@ -38,7 +38,9 @@ type Server struct {
 	Tutor *tutor.Client
 	// TutorLimit caps questions per learner; every one is paid for.
 	TutorLimit tutor.Limit
-	Log        *slog.Logger
+	// limits are the API's own allowances: password guesses, mails, new words.
+	limits *limits
+	Log    *slog.Logger
 }
 
 // requestTimeout is how long an ordinary request may take. A handler that has
@@ -52,8 +54,11 @@ const requestTimeout = 60 * time.Second
 const transferTimeout = 30 * time.Minute
 
 func (s *Server) Routes() http.Handler {
+	if s.limits == nil {
+		s.limits = newLimits()
+	}
 	r := chi.NewRouter()
-	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer)
+	r.Use(middleware.RequestID, clientIP, middleware.Recoverer, securityHeaders)
 	r.Use(s.cors)
 	r.Use(s.Sessions.Middleware)
 
@@ -200,6 +205,18 @@ func (s *Server) Routes() http.Handler {
 	return r
 }
 
+// securityHeaders goes on every answer: JSON is never to be sniffed into
+// something a browser runs, and nothing the API serves belongs in a frame.
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("X-Frame-Options", "DENY")
+		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		next.ServeHTTP(w, r)
+	})
+}
+
 // cors allows exactly the app origin, with credentials, because the session is
 // a cookie. A wildcard would not be allowed to carry one anyway.
 func (s *Server) cors(next http.Handler) http.Handler {
@@ -269,6 +286,10 @@ func fail(w http.ResponseWriter, status int, message string) {
 func (s *Server) failErr(w http.ResponseWriter, err error, action string) {
 	if errors.Is(err, store.ErrNotFound) || errors.Is(err, storage.ErrNotFound) {
 		fail(w, http.StatusNotFound, "not found")
+		return
+	}
+	if errors.Is(err, errUnsupportedMedia) {
+		fail(w, http.StatusUnsupportedMediaType, err.Error())
 		return
 	}
 	// A cancelled context means the browser navigated away mid-request. Nothing

@@ -56,7 +56,7 @@ func (s *Server) handleCreateTake(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	key, err := s.putAudio(r, storage.Takes, "take/"+u.ID.String())
+	key, err := s.putAudio(r, storage.Takes, "take/"+u.ID.String(), isRecording)
 	if err != nil {
 		s.failErr(w, err, "store take audio")
 		return
