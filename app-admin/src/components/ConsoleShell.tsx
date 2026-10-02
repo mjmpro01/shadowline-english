@@ -48,6 +48,19 @@ export function ConsoleShell() {
 
   return (
     <div className="console">
+      {/* First in the tab order, shown only when focused: without it every
+          screen starts with its menu's stops before its own content. Focus
+          rather than follow, which would add #content to the address. */}
+      <a
+        className="skip-link"
+        href="#content"
+        onClick={(e) => {
+          e.preventDefault()
+          document.getElementById('content')?.focus()
+        }}
+      >
+        {t('nav.skip')}
+      </a>
       <nav className="console-rail" aria-label="Console">
         {/* Decoration only: a screen reader hears a list of links. */}
         <div className="menu-scene" aria-hidden="true">
@@ -97,7 +110,7 @@ export function ConsoleShell() {
         </div>
       </nav>
 
-      <main className="console-page">
+      <main className="console-page" id="content" tabIndex={-1}>
         <Outlet />
       </main>
     </div>

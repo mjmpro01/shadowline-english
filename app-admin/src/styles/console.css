@@ -594,6 +594,10 @@
 
 .table-scroll {
   overflow-x: auto;
+  /* Holds anything absolutely placed inside, such as a visually hidden header:
+     placed against the page instead, it sat past the table's right edge and
+     widened the whole page on a phone. */
+  position: relative;
 }
 /* A state in a table is one label: "Never reported in" broken over three
    lines in a squeezed column read as three words. The table scrolls instead. */

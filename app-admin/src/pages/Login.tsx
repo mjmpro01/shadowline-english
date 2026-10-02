@@ -75,10 +75,11 @@ export function Login() {
   }
 
   return (
-    <div className="console-login">
+    <main className="console-login">
       <div className="console-login-card">
         <img className="console-login-crest" src="/login/crest.png" alt="" width={84} height={84} />
-        <div className="menu-sign console-login-sign">
+        <h1 className="visually-hidden">{t('login.heading')}</h1>
+        <div className="menu-sign console-login-sign" aria-hidden="true">
           <span className="menu-sign-title">SHADOWLINE</span>
           <span className="menu-sign-tagline">{t('nav.tagline')}</span>
         </div>
@@ -156,6 +157,6 @@ export function Login() {
           </>
         )}
       </div>
-    </div>
+    </main>
   )
 }

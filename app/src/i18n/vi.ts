@@ -438,6 +438,7 @@ export const vi: Messages = {
   // --- guide ----------------------------------------------------------------
   'nav.guide': 'Hướng dẫn',
   'nav.main': 'Menu chính',
+  'nav.skip': 'Bỏ qua tới nội dung',
   'dash.firstGuide': 'Cách dùng',
   'practice.howTo': 'Chưa rõ cách luyện? Xem hướng dẫn',
   'profile.help': 'Trợ giúp',

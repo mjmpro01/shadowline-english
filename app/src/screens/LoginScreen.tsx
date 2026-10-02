@@ -123,7 +123,7 @@ export function LoginScreen() {
           : t('login.signIn')
 
   return (
-    <div className="login-hero">
+    <main className="login-hero">
       <div className="login-hero-bg" aria-hidden="true" />
       <div className="login-panel">
         <div className="login-crest" aria-hidden="true">
@@ -283,6 +283,6 @@ export function LoginScreen() {
           <p>{t('login.trust')}</p>
         </div>
       </div>
-    </div>
+    </main>
   )
 }

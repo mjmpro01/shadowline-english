@@ -56,6 +56,9 @@ export function FlashcardsScreen() {
 
   return (
     <div className="stack gap-6" style={{ maxWidth: 380, margin: '0 auto', alignItems: 'center', textAlign: 'center' }}>
+      {/* The back link and the counter say where this is; a screen reader is
+          told by a heading. */}
+      <h1 className="visually-hidden">{t('vocab.memoryPractice')}</h1>
       <div className="row between" style={{ width: '100%' }}>
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/vocabulary')}>
           <Icon name="chevron-left" />

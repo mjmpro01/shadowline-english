@@ -237,6 +237,7 @@ export const en = {
   'common.loading': 'Loading…',
   // --- console navigation ---------------------------------------------------
   'nav.cut': 'Cut a recording',
+  'nav.skip': 'Skip to content',
   'nav.uploads': 'Uploads',
   'nav.clips': 'Clips',
   'nav.series': 'Series',
@@ -297,6 +298,7 @@ export const en = {
   'users.lastSignIn': 'Last sign-in',
   'users.takes': 'Takes',
   'users.questions': 'Tutor questions',
+  'users.actions': 'Actions',
   'users.never': '—',
   'users.owner': 'Owner',
   'users.admin': 'Admin',
@@ -313,6 +315,7 @@ export const en = {
   'users.previous': 'Previous',
   'users.next': 'Next',
   // --- login -------------------------------------------------------------------
+  'login.heading': 'Shadowline admin console',
   'login.lead': 'Sign in with an admin account to manage the library.',
   'login.google': 'Continue with Google',
   'login.tryAgain': 'Try Google again',

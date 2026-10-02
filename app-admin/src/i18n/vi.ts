@@ -229,6 +229,7 @@ export const vi: Messages = {
   'studio.deleteSeriesBlocked': 'Xoá các tập trước đã — series còn clip thì không bị xoá nhầm.',
   'common.loading': 'Đang tải…',
   'nav.cut': 'Cắt bản thu',
+  'nav.skip': 'Bỏ qua tới nội dung',
   'nav.uploads': 'Lịch sử upload',
   'nav.clips': 'Clip',
   'nav.series': 'Series',
@@ -287,6 +288,7 @@ export const vi: Messages = {
   'users.lastSignIn': 'Đăng nhập gần nhất',
   'users.takes': 'Lần thu',
   'users.questions': 'Câu hỏi gia sư',
+  'users.actions': 'Thao tác',
   'users.never': '—',
   'users.owner': 'Chủ sở hữu',
   'users.admin': 'Admin',
@@ -303,6 +305,7 @@ export const vi: Messages = {
   'users.previous': 'Trước',
   'users.next': 'Sau',
   // --- đăng nhập ------------------------------------------------------------------
+  'login.heading': 'Bảng quản trị Shadowline',
   'login.lead': 'Đăng nhập bằng tài khoản quản trị để quản lý thư viện.',
   'login.google': 'Tiếp tục với Google',
   'login.tryAgain': 'Thử lại với Google',
