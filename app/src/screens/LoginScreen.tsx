@@ -4,13 +4,13 @@ import { LoadFailure, Loading } from '../components/LoadState'
 import { useT } from '../i18n'
 import type { MessageKey } from '../i18n/en'
 import {
-  ApiError,
   forgotPassword,
   loginURL,
   loginWithPassword,
   registerWithPassword,
 } from '../lib/api'
 import { useApp } from '../store/context'
+import { explain } from '../lib/errors'
 
 const REMEMBER_EMAIL_KEY = 'shadowline.login.email'
 
@@ -107,7 +107,7 @@ export function LoginScreen() {
       }
       await reload()
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : t('login.error.server'))
+      setFormError(explain(err, t, t('login.error.server')))
     } finally {
       setBusy(false)
     }

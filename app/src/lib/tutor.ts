@@ -1,4 +1,4 @@
-import { API_URL, ApiError, api } from './api'
+import { API_URL, ApiError, errorFrom, api } from './api'
 
 /**
  * The tutor's side of the chat.
@@ -105,16 +105,7 @@ export async function askTutor(
     throw new ApiError(0, err instanceof Error ? 'Could not reach the server.' : String(err))
   }
 
-  if (!response.ok || !response.body) {
-    let message = response.statusText || `Request failed (${response.status})`
-    try {
-      const body = (await response.json()) as { error?: string }
-      if (body.error) message = body.error
-    } catch {
-      /* not JSON — keep the status text */
-    }
-    throw new ApiError(response.status, message)
-  }
+  if (!response.ok || !response.body) throw await errorFrom(response)
 
   const reader = response.body.getReader()
   const decoder = new TextDecoder()

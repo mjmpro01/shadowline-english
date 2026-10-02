@@ -20,7 +20,7 @@ type passwordBody struct {
 // the same session cookie Google login uses.
 func (s *Server) handlePasswordLogin(w http.ResponseWriter, r *http.Request) {
 	if s.Users == nil {
-		fail(w, http.StatusServiceUnavailable, "email login is not configured")
+		failCode(w, http.StatusServiceUnavailable, "login.unavailable", "email login is not configured")
 		return
 	}
 	var body passwordBody
@@ -30,18 +30,18 @@ func (s *Server) handlePasswordLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	email := strings.TrimSpace(strings.ToLower(body.Email))
 	if email == "" || body.Password == "" {
-		fail(w, http.StatusBadRequest, "email and password are required")
+		failCode(w, http.StatusBadRequest, "login.missing", "email and password are required")
 		return
 	}
 	if !s.limits.authAttempts.allow(r.RemoteAddr) || s.limits.loginFailures.full(email) {
-		tooMany(w, "too many sign-in attempts — wait a few minutes and try again")
+		tooMany(w, "limit.signIn", "too many sign-in attempts — wait a few minutes and try again")
 		return
 	}
 
 	login, err := s.Users.PasswordLogin(r.Context(), email, body.Password)
 	if errors.Is(err, keycloak.ErrInvalidCredentials) {
 		s.limits.loginFailures.add(email)
-		fail(w, http.StatusUnauthorized, "wrong email or password")
+		failCode(w, http.StatusUnauthorized, "login.wrong", "wrong email or password")
 		return
 	}
 	if err != nil {
@@ -54,7 +54,7 @@ func (s *Server) handlePasswordLogin(w http.ResponseWriter, r *http.Request) {
 // handlePasswordRegister creates the Keycloak user and a Shadowline session.
 func (s *Server) handlePasswordRegister(w http.ResponseWriter, r *http.Request) {
 	if s.Users == nil {
-		fail(w, http.StatusServiceUnavailable, "email registration is not configured")
+		failCode(w, http.StatusServiceUnavailable, "login.unavailable", "email registration is not configured")
 		return
 	}
 	var body passwordBody
@@ -64,15 +64,15 @@ func (s *Server) handlePasswordRegister(w http.ResponseWriter, r *http.Request) 
 	}
 	email := strings.TrimSpace(strings.ToLower(body.Email))
 	if email == "" || body.Password == "" {
-		fail(w, http.StatusBadRequest, "email and password are required")
+		failCode(w, http.StatusBadRequest, "login.missing", "email and password are required")
 		return
 	}
 	if len(body.Password) < 8 {
-		fail(w, http.StatusBadRequest, "password must be at least 8 characters")
+		failCode(w, http.StatusBadRequest, "password.short", "password must be at least 8 characters")
 		return
 	}
 	if !s.limits.authAttempts.allow(r.RemoteAddr) || !s.limits.registrations.allow(r.RemoteAddr) {
-		tooMany(w, "too many new accounts from here — try again later")
+		tooMany(w, "limit.accounts", "too many new accounts from here — try again later")
 		return
 	}
 
@@ -125,7 +125,7 @@ func (s *Server) handlePasswordForgot(w http.ResponseWriter, r *http.Request) {
 	}
 	email := strings.TrimSpace(strings.ToLower(body.Email))
 	if !s.limits.authAttempts.allow(r.RemoteAddr) {
-		tooMany(w, "too many requests — wait a few minutes and try again")
+		tooMany(w, "limit.requests", "too many requests — wait a few minutes and try again")
 		return
 	}
 	// Past its allowance an address gets no more mail, and the answer is the
@@ -148,7 +148,7 @@ func (s *Server) issuePasswordSession(w http.ResponseWriter, r *http.Request, em
 		s.failErr(w, err, "check account")
 		return
 	} else if !ok {
-		fail(w, http.StatusForbidden, "confirm your email address first — use “forgot password” to get a link sent to it")
+		failCode(w, http.StatusForbidden, "email.unconfirmed", "confirm your email address first — use “forgot password” to get a link sent to it")
 		return
 	}
 	user, err := s.Store.UpsertUser(r.Context(), email, name, s.owner(email, verified), verified)
@@ -157,7 +157,7 @@ func (s *Server) issuePasswordSession(w http.ResponseWriter, r *http.Request, em
 		return
 	}
 	if user.SuspendedAt != nil {
-		fail(w, http.StatusForbidden, "this account has been suspended")
+		failCode(w, http.StatusForbidden, "account.suspended", "this account has been suspended")
 		return
 	}
 	if err := s.Sessions.Issue(r.Context(), w, user.ID); err != nil {

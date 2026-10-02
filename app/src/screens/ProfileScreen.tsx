@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from 'react'
-import { ApiError } from '../lib/api'
 import { useRemote } from '../lib/remote'
 import { repository } from '../repository'
 import { Link, useNavigate } from 'react-router-dom'
@@ -10,6 +9,7 @@ import { useTour } from '../tour/context'
 import { LOCALE_CODES, LOCALES, useI18n } from '../i18n'
 import { applyTheme, storedTheme, THEMES, type Theme } from '../lib/theme'
 import { useApp } from '../store/context'
+import { explain } from '../lib/errors'
 
 export function ProfileScreen() {
   const { data, logout, updateProfile } = useApp()
@@ -64,7 +64,7 @@ export function ProfileScreen() {
       link.click()
       URL.revokeObjectURL(url)
     } catch (err) {
-      setNote(err instanceof ApiError ? err.message : t('profile.failed'))
+      setNote(explain(err, t, t('profile.failed')))
     } finally {
       setExporting(false)
     }
@@ -296,7 +296,7 @@ function PasswordDialog({ onClose, onChanged }: { onClose: () => void; onChanged
       await repository.changePassword(current, next)
       onChanged()
     } catch (err) {
-      setProblem(err instanceof ApiError ? err.message : t('profile.failed'))
+      setProblem(explain(err, t, t('profile.failed')))
     } finally {
       setSaving(false)
     }
@@ -388,7 +388,7 @@ function DeleteAccountDialog({
       await repository.deleteAccount(typed.trim())
       onDeleted()
     } catch (err) {
-      setProblem(err instanceof ApiError ? err.message : t('profile.failed'))
+      setProblem(explain(err, t, t('profile.failed')))
       setBusy(false)
     }
   }

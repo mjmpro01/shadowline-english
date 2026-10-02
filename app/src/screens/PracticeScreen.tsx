@@ -33,6 +33,7 @@ import { useRecorder } from '../lib/useRecorder'
 import { usePlayhead } from '../lib/usePlayhead'
 import { normalizeWord } from '../lib/text'
 import { useApp } from '../store/context'
+import { explain, takeProblem } from '../lib/errors'
 
 const POPUP_LABEL = {
   added: 'practice.added',
@@ -130,7 +131,7 @@ export function PracticeScreen() {
 
   // Before the early returns, because it is a hook. No popup means no word and
   // no lookup.
-  const gloss = useGloss(popup?.word ?? null, popup?.context ?? '')
+  const { gloss, refused: glossRefused } = useGloss(popup?.word ?? null, popup?.context ?? '')
 
   // Which words of this line the transcriber heard in the take just recorded.
   // Undefined until there is a scored take, and for a deployment with no model.
@@ -272,9 +273,12 @@ export function PracticeScreen() {
                   wait for one nobody has ever asked for, and the admission
                   that none is coming. Saying nothing would read as a blank. */}
               <div className="card-body" style={{ opacity: gloss?.meaning ? 1 : 0.6 }}>
-                {gloss?.meaning || (gloss === null || gloss.status === 'pending'
-                  ? t('practice.lookingUp')
-                  : t('practice.noDefinition'))}
+                {gloss?.meaning ||
+                  (gloss === null && glossRefused
+                    ? explain(glossRefused, t, t('practice.noDefinition'))
+                    : gloss === null || gloss.status === 'pending'
+                      ? t('practice.lookingUp')
+                      : t('practice.noDefinition'))}
               </div>
               {/* Merriam-Webster's free tier requires their name wherever their
                   definitions appear. Credited whoever wrote it, though: a
@@ -419,7 +423,7 @@ export function PracticeScreen() {
                 <>
                   <div className="card-kicker">{t('practice.nothingToMeasure')}</div>
                   <div style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>
-                    {take.error ?? t('practice.tooQuiet')} {t('practice.tryCloser')}
+                    {takeProblem(take.error, t) ?? t('practice.tooQuiet')} {t('practice.tryCloser')}
                   </div>
                 </>
               ) : (

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { AppData, Take, Video, VocabStatus } from '../data/types'
-import { ApiError } from '../lib/api'
+import { useT } from '../i18n'
+import { explain } from '../lib/errors'
 import { normalizeWord } from '../lib/text'
 import { repository, type LeaderboardRow } from '../repository'
 import { AppContext, type LoadState, type Store, type VideoStats } from './context'
@@ -29,6 +30,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [leaderboard, setLeaderboard] = useState<LeaderboardRow[]>([])
   const [state, setState] = useState<LoadState>('loading')
   const [error, setError] = useState<string | null>(null)
+  // Read from a ref inside load(), which is made once: the message is worded in
+  // the language of the moment it failed.
+  const t = useT()
+  const tRef = useRef(t)
+  useEffect(() => {
+    tRef.current = t
+  }, [t])
   // Polling reads the latest records without re-creating every callback.
   const dataRef = useRef<AppData>(EMPTY)
   // Ids a fetch is already out for, so two screens mounting at once do not
@@ -75,7 +83,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setState('ready')
     } catch (err) {
       // Without this the browser version showed a blank page forever.
-      setError(err instanceof ApiError ? err.message : 'Could not load your data.')
+      setError(explain(err, tRef.current, tRef.current('common.loadFailed')))
       setState('error')
     }
   }, [])

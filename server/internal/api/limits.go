@@ -106,9 +106,9 @@ func newLimits() *limits {
 	}
 }
 
-func tooMany(w http.ResponseWriter, what string) {
+func tooMany(w http.ResponseWriter, code, what string) {
 	w.Header().Set("Retry-After", "900")
-	fail(w, http.StatusTooManyRequests, what)
+	failCode(w, http.StatusTooManyRequests, code, what)
 }
 
 // clientIP replaces chi's RealIP, which believed True-Client-IP and

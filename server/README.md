@@ -233,6 +233,35 @@ then undo from the console) and an owner's (change `ADMIN_EMAILS`).
 it, so the person is signed out at once; signing in again ends at
 `/login?error=suspended`. Nothing is deleted, and restoring it is one click.
 
+## Errors a learner can meet
+
+Every error is `{"error": "…"}`, an English sentence for whoever reads the
+response. The ones a learner can meet also carry a `code`:
+`{"error": "wrong email or password", "code": "login.wrong"}`. The learner app
+translates by the code (`app/src/lib/errors.ts`), so rewording a sentence here
+does not undo a translation there, and an unknown code still shows the
+sentence. Refusals for too many requests send `Retry-After`, which the CORS
+headers expose so an app on another origin can say how long to wait.
+
+| Code | When |
+|---|---|
+| `signIn`, `server` | no session; an unexpected failure |
+| `login.wrong`, `login.missing`, `login.unavailable` | email sign-in and registration |
+| `password.short`, `password.none` | registration, changing a password |
+| `email.unconfirmed`, `account.suspended` | signing in |
+| `delete.confirm`, `name.empty` | the learner's own account |
+| `limit.signIn`, `limit.accounts`, `limit.requests`, `limit.passwords`, `limit.words` | the limits above |
+| `word.tooLong`, `dub.noVideo` | looking a word up, exporting a dub |
+| `tutor.window`, `tutor.day`, `tutor.everyone` | the tutor's allowances |
+| `tutor.empty`, `tutor.tooLong`, `tutor.unreachable`, `tutor.silent`, `tutor.unavailable` | asking the tutor |
+
+Errors only an admin can meet have no code yet; the console shows the
+sentence as it is.
+
+A take the scorer could not score keeps its reason in `takes.error`, which the
+app also translates — by the few fixed sentences the scorer writes, since the
+scorer has no codes.
+
 ## A learner's own account
 
 The Profile screen's **Your data** card:

@@ -297,9 +297,9 @@ func TestAQuestionIsNeeded(t *testing.T) {
 	withTutor(t, h, 10)
 	learner := h.login("learner@example.com")
 
-	expectStatus(t, learner.json("POST", "/api/tutor/chat", question("   ")), http.StatusBadRequest)
-	expectStatus(t, learner.json("POST", "/api/tutor/chat",
-		question(strings.Repeat("a", 2001))), http.StatusBadRequest)
+	expectCode(t, learner.json("POST", "/api/tutor/chat", question("   ")), http.StatusBadRequest, "tutor.empty")
+	expectCode(t, learner.json("POST", "/api/tutor/chat",
+		question(strings.Repeat("a", 2001))), http.StatusBadRequest, "tutor.tooLong")
 	// The old shape, a whole history from the browser, is not taken any more.
 	expectStatus(t, learner.json("POST", "/api/tutor/chat", map[string]any{"messages": []map[string]string{
 		{"role": "user", "content": "hi"},
@@ -314,13 +314,10 @@ func TestTooManyQuestionsAreTurnedAway(t *testing.T) {
 	ask(t, learner, question("one"))
 	ask(t, learner, question("two"))
 	res := learner.json("POST", "/api/tutor/chat", question("three"))
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusTooManyRequests {
-		t.Fatalf("third question: %d, want 429", res.StatusCode)
-	}
 	if res.Header.Get("Retry-After") == "" {
 		t.Fatal("refused without saying when to come back")
 	}
+	expectCode(t, res, http.StatusTooManyRequests, "tutor.window")
 	fake.mu.Lock()
 	asked := len(fake.received)
 	fake.mu.Unlock()

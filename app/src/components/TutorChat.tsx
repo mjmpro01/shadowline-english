@@ -2,7 +2,6 @@ import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useI18n } from '../i18n'
 import type { MessageKey } from '../i18n/en'
-import { ApiError } from '../lib/api'
 import { parseMarkdown, type Inline } from '../lib/markdown'
 import {
   askTutor,
@@ -17,6 +16,7 @@ import { useClip } from '../lib/useClip'
 import { Icon } from './Icon'
 import { Mascot } from './Mascot'
 import { canSpeak, sayable, speak } from '../lib/speak'
+import { explain } from '../lib/errors'
 
 /** A clip's own screens: /library/<id>, and its practice and dub screens. Series
  *  and episode pages are /library/s/… and /library/e/…, which this does not match. */
@@ -111,7 +111,7 @@ export function TutorChat() {
         controller.signal,
       )
     } catch (err) {
-      setFailure(err instanceof ApiError ? err.message : t('tutor.failed'))
+      setFailure(explain(err, t, t('tutor.failed')))
     } finally {
       // An answer that never started is not a turn: drop the empty bubble, so
       // the next question is not sent after a blank reply the model never gave.

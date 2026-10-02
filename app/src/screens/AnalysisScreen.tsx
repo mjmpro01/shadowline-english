@@ -16,6 +16,7 @@ import { summariseTake } from '../lib/summary'
 import { colorFor } from '../lib/score'
 import { urlOf, useClipAudio, useClipVideo, useTakeAudio } from '../lib/useAudioUrl'
 import { useApp } from '../store/context'
+import { takeProblem } from '../lib/errors'
 
 export function AnalysisScreen() {
   const { videoId } = useParams()
@@ -320,7 +321,8 @@ function contourPending(take: Take, t: Translate): string {
 function unscoredReason(take: Take, clipHasNoAudio: boolean, t: Translate): string {
   if (take.status === 'pending') return t('analysis.beingScored')
   if (take.status === 'failed') {
-    return take.error ? t('analysis.couldNotScoreBecause', take.error) : t('analysis.couldNotScore')
+    const reason = takeProblem(take.error, t)
+    return reason ? t('analysis.couldNotScoreBecause', reason) : t('analysis.couldNotScore')
   }
   if (clipHasNoAudio) return t('analysis.noSourceAudio')
   return t('analysis.noScore')

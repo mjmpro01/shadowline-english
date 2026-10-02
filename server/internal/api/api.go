@@ -231,6 +231,9 @@ func (s *Server) cors(next http.Handler) http.Handler {
 			h.Set("Access-Control-Allow-Credentials", "true")
 			h.Set("Access-Control-Allow-Headers", "Content-Type")
 			h.Set("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS")
+			// A refusal says how long to wait; across origins the app can only
+			// read that if it is listed here.
+			h.Set("Access-Control-Expose-Headers", "Retry-After")
 			h.Add("Vary", "Origin")
 		}
 		if r.Method == http.MethodOptions {
@@ -244,7 +247,7 @@ func (s *Server) cors(next http.Handler) http.Handler {
 func (s *Server) requireUser(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := auth.UserFrom(r.Context()); !ok {
-			fail(w, http.StatusUnauthorized, "sign in first")
+			failCode(w, http.StatusUnauthorized, "signIn", "sign in first")
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -284,6 +287,14 @@ func fail(w http.ResponseWriter, status int, message string) {
 	writeJSON(w, status, map[string]string{"error": message})
 }
 
+// failCode is fail with a stable code beside the sentence, for the errors a
+// learner can meet. The sentence is English and for whoever reads the response;
+// the code is what the app looks up to say it in the learner's own language, so
+// rewording a message here does not silently undo a translation there.
+func failCode(w http.ResponseWriter, status int, code, message string) {
+	writeJSON(w, status, map[string]string{"error": message, "code": code})
+}
+
 // failErr maps the few error kinds handlers share; anything else is a 500 with
 // the detail kept server-side.
 func (s *Server) failErr(w http.ResponseWriter, err error, action string) {
@@ -302,7 +313,7 @@ func (s *Server) failErr(w http.ResponseWriter, err error, action string) {
 		return
 	}
 	s.Log.Error(action, "error", err)
-	fail(w, http.StatusInternalServerError, "something went wrong")
+	failCode(w, http.StatusInternalServerError, "server", "something went wrong")
 }
 
 func decodeJSON(r *http.Request, into any) error {
