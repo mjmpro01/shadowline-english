@@ -54,7 +54,7 @@ func (s *Server) handleUpdateProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if body.Name == "" {
-		fail(w, http.StatusBadRequest, "name cannot be empty")
+		failCode(w, http.StatusBadRequest, "name.empty", "name cannot be empty")
 		return
 	}
 

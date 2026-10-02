@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+import { useT } from '../i18n'
 import { ApiError } from './api'
+import { explain } from './errors'
 
 /**
  * One thing fetched from the server, and what to draw while it is not there.
@@ -28,6 +30,7 @@ export type Remote<T> =
  */
 export function useRemote<T>(key: string, load: (key: string) => Promise<T>): Remote<T> {
   const [remote, setRemote] = useState<Remote<T>>({ state: 'loading' })
+  const t = useT()
 
   useEffect(() => {
     // Not `setRemote({state:'loading'})` first: that is a second render before
@@ -43,7 +46,7 @@ export function useRemote<T>(key: string, load: (key: string) => Promise<T>): Re
         if (!wanted) return
         setRemote({
           state: 'error',
-          message: err instanceof ApiError ? err.message : 'Could not load that.',
+          message: explain(err, t, t('common.loadFailed')),
           status: err instanceof ApiError ? err.status : 0,
         })
       })

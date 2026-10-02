@@ -106,7 +106,7 @@ func (s *Server) handleRequestDub(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, store.ErrNoVideo) {
 			// Not a failure of the request: an audio clip has no picture, and
 			// one whose cut is still queued does not have it yet.
-			fail(w, http.StatusConflict, "this clip has no video to dub onto")
+			failCode(w, http.StatusConflict, "dub.noVideo", "this clip has no video to dub onto")
 			return
 		}
 		s.failErr(w, err, "queue dub")

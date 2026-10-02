@@ -35,11 +35,16 @@ const POLL_MS = 800
  * going?" is not `really` in "I really like it". Pass it alongside the word and
  * change the two together: a word is looked up once per tap, not once per
  * keystroke.
+ *
+ * `refused` is why the lookup was turned down, when it was — the hourly limit
+ * on new words, usually. It used to be dropped, and the popup said it was
+ * looking the word up for as long as it stayed open.
  */
-export function useGloss(word: string | null, context: string): Gloss | null {
+export function useGloss(word: string | null, context: string): { gloss: Gloss | null; refused: unknown } {
   // Keyed by word, so tapping a second one shows a wait rather than the
   // previous word's meaning while the new answer is in flight.
   const [resolved, setResolved] = useState<{ word: string; gloss: Gloss } | null>(null)
+  const [refused, setRefused] = useState<{ word: string; error: unknown } | null>(null)
 
   useEffect(() => {
     if (!word) return
@@ -67,9 +72,10 @@ export function useGloss(word: string | null, context: string): Gloss | null {
     repository
       .lookUpWord(word, context)
       .then(settle)
-      // Nothing to show and nothing queued. The popup keeps waiting rather than
-      // claiming there is no such word: the next tap asks again.
-      .catch(() => {})
+      // Nothing to show and nothing queued: say why, and the next tap asks again.
+      .catch((error: unknown) => {
+        if (active) setRefused({ word, error })
+      })
 
     return () => {
       active = false
@@ -77,5 +83,8 @@ export function useGloss(word: string | null, context: string): Gloss | null {
     }
   }, [word, context])
 
-  return resolved?.word === word ? resolved.gloss : null
+  return {
+    gloss: resolved?.word === word ? resolved.gloss : null,
+    refused: refused?.word === word ? refused.error : null,
+  }
 }

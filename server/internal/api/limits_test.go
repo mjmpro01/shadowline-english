@@ -15,11 +15,11 @@ func TestWrongPasswordsForOneAddressAreLimited(t *testing.T) {
 	withKeycloak(t, h, map[string]string{"learner@example.com": "the-right-one"})
 	c := h.anonymous()
 	for i := 0; i < 10; i++ {
-		expectStatus(t, c.json("POST", "/auth/login",
-			map[string]any{"email": "learner@example.com", "password": fmt.Sprintf("guess-%d", i)}), http.StatusUnauthorized)
+		expectCode(t, c.json("POST", "/auth/login",
+			map[string]any{"email": "learner@example.com", "password": fmt.Sprintf("guess-%d", i)}), http.StatusUnauthorized, "login.wrong")
 	}
-	expectStatus(t, c.json("POST", "/auth/login",
-		map[string]any{"email": "learner@example.com", "password": "guess-again"}), http.StatusTooManyRequests)
+	expectCode(t, c.json("POST", "/auth/login",
+		map[string]any{"email": "learner@example.com", "password": "guess-again"}), http.StatusTooManyRequests, "limit.signIn")
 	expectStatus(t, c.json("POST", "/auth/login",
 		map[string]any{"email": "learner@example.com", "password": "the-right-one"}), http.StatusTooManyRequests)
 
@@ -130,5 +130,25 @@ func TestEveryAnswerCarriesTheSecurityHeaders(t *testing.T) {
 		if got := resp.Header.Get(header); got != want {
 			t.Errorf("%s = %q, want %q", header, got, want)
 		}
+	}
+}
+
+// A refusal's Retry-After is read by the app, which in development and in any
+// split deployment is on another origin: it has to be exposed, or the browser
+// hides it and the app can only say "wait a while".
+func TestTheAppCanReadHowLongToWait(t *testing.T) {
+	h := newHarness(t)
+	req, err := http.NewRequest("GET", h.server.URL+"/healthz", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Origin", "http://localhost:5173")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if got := res.Header.Get("Access-Control-Expose-Headers"); !strings.Contains(got, "Retry-After") {
+		t.Fatalf("Access-Control-Expose-Headers = %q, want Retry-After in it", got)
 	}
 }

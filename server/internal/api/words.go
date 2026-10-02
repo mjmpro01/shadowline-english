@@ -45,7 +45,7 @@ func (s *Server) handleLookupWord(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(word) > maxWordLength {
-		fail(w, http.StatusBadRequest, "that is too long to be a word")
+		failCode(w, http.StatusBadRequest, "word.tooLong", "that is too long to be a word")
 		return
 	}
 
@@ -80,7 +80,7 @@ func (s *Server) handleLookupWord(w http.ResponseWriter, r *http.Request) {
 	if !queued {
 		u, _ := auth.UserFrom(r.Context())
 		if !s.limits.newWords.allow(u.ID.String()) {
-			tooMany(w, "that is a lot of new words — try again in a while")
+			tooMany(w, "limit.words", "that is a lot of new words — try again in a while")
 			return
 		}
 	}

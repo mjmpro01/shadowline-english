@@ -125,7 +125,7 @@ func (s *Server) handleExportAccount(w http.ResponseWriter, r *http.Request) {
 // and is told to set one through "forgot password" instead.
 func (s *Server) handleChangePassword(w http.ResponseWriter, r *http.Request) {
 	if s.Users == nil {
-		fail(w, http.StatusNotFound, "this server does not keep passwords")
+		failCode(w, http.StatusNotFound, "password.none", "this server does not keep passwords")
 		return
 	}
 	u, _ := auth.UserFrom(r.Context())
@@ -138,13 +138,13 @@ func (s *Server) handleChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(body.Next) < 8 {
-		fail(w, http.StatusBadRequest, "password must be at least 8 characters")
+		failCode(w, http.StatusBadRequest, "password.short", "password must be at least 8 characters")
 		return
 	}
 	// The same allowance as signing in: a stolen session is otherwise a place
 	// to guess the password from without limit.
 	if s.limits.loginFailures.full(u.Email) {
-		tooMany(w, "too many wrong passwords — wait a few minutes and try again")
+		tooMany(w, "limit.passwords", "too many wrong passwords — wait a few minutes and try again")
 		return
 	}
 	if _, err := s.Users.PasswordLogin(r.Context(), u.Email, body.Current); err != nil {
@@ -178,7 +178,7 @@ func (s *Server) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !strings.EqualFold(strings.TrimSpace(body.Email), u.Email) {
-		fail(w, http.StatusBadRequest, "type your email address to confirm")
+		failCode(w, http.StatusBadRequest, "delete.confirm", "type your email address to confirm")
 		return
 	}
 

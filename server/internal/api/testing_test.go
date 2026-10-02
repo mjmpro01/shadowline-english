@@ -538,3 +538,18 @@ func (h *harness) recordScoredTake(t *testing.T, c *client, clipID string, score
 		t.Fatalf("score take %s: %v", take.ID, err)
 	}
 }
+
+// expectCode is expectStatus for an error a learner can meet, which also names
+// a code: the app translates by the code, not by the English sentence.
+func expectCode(t *testing.T, resp *http.Response, status int, code string) {
+	t.Helper()
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != status {
+		t.Fatalf("got %d, want %d: %s", resp.StatusCode, status, strings.TrimSpace(string(raw)))
+	}
+	var body struct{ Error, Code string }
+	if err := json.Unmarshal(raw, &body); err != nil || body.Code != code || body.Error == "" {
+		t.Fatalf("want code %q and a message, got %s", code, strings.TrimSpace(string(raw)))
+	}
+}

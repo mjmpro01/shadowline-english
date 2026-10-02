@@ -69,7 +69,7 @@ func (s *Server) handleTutorStatus(w http.ResponseWriter, r *http.Request) {
 // because there is still a status code to put it in, and keeps nothing.
 func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 	if s.Tutor == nil {
-		fail(w, http.StatusServiceUnavailable, "the tutor is not set up on this server")
+		failCode(w, http.StatusServiceUnavailable, "tutor.unavailable", "the tutor is not set up on this server")
 		return
 	}
 	u, _ := auth.UserFrom(r.Context())
@@ -93,11 +93,11 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 	}
 	asked := strings.TrimSpace(body.Message)
 	if asked == "" {
-		fail(w, http.StatusBadRequest, "there is no question to answer")
+		failCode(w, http.StatusBadRequest, "tutor.empty", "there is no question to answer")
 		return
 	}
 	if len([]rune(asked)) > maxAsk {
-		fail(w, http.StatusBadRequest, fmt.Sprintf("a message can be at most %d characters", maxAsk))
+		failCode(w, http.StatusBadRequest, "tutor.tooLong", fmt.Sprintf("a message can be at most %d characters", maxAsk))
 		return
 	}
 
@@ -151,16 +151,19 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 	if refused != store.TutorAllowed {
 		seconds := max(1, int(math.Ceil(wait.Seconds())))
 		w.Header().Set("Retry-After", fmt.Sprint(seconds))
-		var why string
+		var code, why string
 		switch refused {
 		case store.TutorDayUsed:
+			code = "tutor.day"
 			why = fmt.Sprintf("you have asked the tutor a lot today — it can answer again in about %d hours", max(1, seconds/3600))
 		case store.TutorAllUsed:
+			code = "tutor.everyone"
 			why = "the tutor has answered all it can for today — try again later"
 		default:
+			code = "tutor.window"
 			why = fmt.Sprintf("that is a lot of questions at once — try again in %d seconds", seconds)
 		}
-		fail(w, http.StatusTooManyRequests, why)
+		failCode(w, http.StatusTooManyRequests, code, why)
 		return
 	}
 	// However the answer ends, it is recorded — on a context of its own, since
@@ -270,7 +273,7 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case err == nil:
 		if !started {
-			fail(w, http.StatusBadGateway, "the tutor had nothing to say — try asking again")
+			failCode(w, http.StatusBadGateway, "tutor.silent", "the tutor had nothing to say — try asking again")
 			return
 		}
 		outcome = store.TutorAnswered
@@ -281,7 +284,7 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 		// and nobody to say it to.
 	case !started:
 		s.Log.Warn("tutor failed", "error", err)
-		fail(w, http.StatusBadGateway, "the tutor could not answer just now — try again in a moment")
+		failCode(w, http.StatusBadGateway, "tutor.unreachable", "the tutor could not answer just now — try again in a moment")
 	default:
 		s.Log.Warn("tutor failed mid-answer", "error", err)
 		_ = send(map[string]string{"error": "the answer was cut off — try asking again"})

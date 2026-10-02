@@ -9,11 +9,18 @@ export const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost
 
 export class ApiError extends Error {
   readonly status: number
+  /** The server's stable name for the error, when it gave one: what the app
+   *  translates by (lib/errors.ts), where the message is English. */
+  readonly code: string | undefined
+  /** Seconds the server asked to wait, from Retry-After. */
+  readonly retryAfter: number | undefined
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, code?: string, retryAfter?: number) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.code = code
+    this.retryAfter = retryAfter
   }
 
   /** True when the session has expired or was never there. */
@@ -32,21 +39,25 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw new ApiError(0, 'Could not reach the server.')
   }
 
-  if (!response.ok) {
-    throw new ApiError(response.status, await errorMessage(response))
-  }
+  if (!response.ok) throw await errorFrom(response)
   if (response.status === 204) return undefined as T
   return (await response.json()) as T
 }
 
-async function errorMessage(response: Response): Promise<string> {
+/** The ApiError a failed response describes: its message, its code if it has
+ *  one, and how long it asked to be left alone. */
+export async function errorFrom(response: Response): Promise<ApiError> {
+  let message = response.statusText || `Request failed (${response.status})`
+  let code: string | undefined
   try {
-    const body = (await response.json()) as { error?: string }
-    if (body.error) return body.error
+    const body = (await response.json()) as { error?: string; code?: string }
+    if (body.error) message = body.error
+    code = body.code
   } catch {
-    /* not JSON — fall through to the status text */
+    /* not JSON — keep the status text */
   }
-  return response.statusText || `Request failed (${response.status})`
+  const wait = Number(response.headers.get('Retry-After'))
+  return new ApiError(response.status, message, code, Number.isFinite(wait) && wait > 0 ? wait : undefined)
 }
 
 export const api = {
@@ -69,7 +80,7 @@ export const api = {
     } catch {
       throw new ApiError(0, 'Could not reach the server.')
     }
-    if (!response.ok) throw new ApiError(response.status, await errorMessage(response))
+    if (!response.ok) throw await errorFrom(response)
     return response.blob()
   },
 

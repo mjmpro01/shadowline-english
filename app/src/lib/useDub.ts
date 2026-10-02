@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Dub } from '../data/types'
-import { ApiError } from './api'
+import { useT } from '../i18n'
+import { explain } from './errors'
 import { repository } from '../repository'
 
 /** How often to ask whether the dub is there. Muxing is sub-second work, so
@@ -25,6 +26,7 @@ export interface DubState {
  * you are reviewing.
  */
 export function useDub(takeId: string | null): DubState {
+  const t = useT()
   // Keyed by take, so switching takes shows nothing rather than the previous
   // one's file while the new answer is in flight.
   const [resolved, setResolved] = useState<{ takeId: string; dub: Dub } | null>(null)
@@ -71,7 +73,7 @@ export function useDub(takeId: string | null): DubState {
       // The common one is a clip with no picture to dub onto: an audio clip, or
       // one whose cut has not landed yet. Saying which beats a dead button.
       setResolved({ takeId, dub: { status: 'none', url: null } })
-      setError(err instanceof ApiError ? err.message : 'Could not start the export.')
+      setError(explain(err, t, t('error.dubFailed')))
     }
   }
 
