@@ -4,7 +4,8 @@ import { useId } from 'react'
  * The Shadowing Hero: the knight from the app's crest, as the tutor's face and
  * the one who cheers.
  *
- * Cut out of public/login/crest.png, so it is the same character as the login
+ * Cut out of the crest (art/crest.png; the login screens show a small WebP of
+ * it), so it is the same character as the login
  * screen and the home-screen icon rather than a second mascot beside them.
  *
  * Two forms. The helmet alone for a chat line or a button, where the whole

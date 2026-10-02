@@ -127,7 +127,7 @@ export function LoginScreen() {
       <div className="login-hero-bg" aria-hidden="true" />
       <div className="login-panel">
         <div className="login-crest" aria-hidden="true">
-          <img src="/login/crest.png" alt="" width={90} height={90} />
+          <img src="/login/crest.webp" alt="" width={90} height={90} />
         </div>
 
         <header className="login-intro">
