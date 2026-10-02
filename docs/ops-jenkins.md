@@ -93,8 +93,14 @@ docker compose -f docker-compose.jenkins.yml --profile portainer up -d
 
 ## What the Pipeline does
 
-1. **Test app** — `yarn lint`, `yarn test`, `yarn build` in Node 22.
-2. **Test server** — focused `go test` packages that do not need Postgres.
+1. **Test app** — `yarn lint`, `yarn test`, `yarn build` in Node 22, and the
+   admin console's lint, typecheck, tests and build.
+2. **Test server and workers** — starts a throwaway `postgres:16-alpine`
+   container, then `go vet ./...` and `go test ./...` (the API and store tests
+   included, against that Postgres), and the Python workers' `pytest` with
+   ffmpeg installed. About two minutes; the container goes when the stage ends.
+   Needs the Docker Pipeline plugin, which the `agent { docker }` stages already
+   use. pip's downloads are kept in the `shadowline-ci-pip` Docker volume.
 3. **Deploy** (only `main` / `master` / tags `v*`) — rsync workspace into
    `/opt/shadowline` (keeps `server/.env`), then
    `docker compose up -d --build` in `server/`.

@@ -1001,6 +1001,11 @@ ops notes (webhook, RAM, backup, first boot) are in
 [`docs/ops-jenkins.md`](../docs/ops-jenkins.md). The SPA is the Compose service
 `web` (nginx serving `app/dist`).
 
+Before any deploy, CI runs every Go test here against a throwaway Postgres (the
+same `TEST_DATABASE_URL` the tests read locally) and the workers' `pytest`.
+The browser tests in `app/e2e` are not in CI yet: they need the whole stack —
+API, workers, ffmpeg and Chromium — and run locally with `yarn test:e2e`.
+
 ## Observability (Grafana)
 
 Logs, metrics, and traces: self-hosted Grafana LGTM + Alloy. See
