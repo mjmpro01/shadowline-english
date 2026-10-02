@@ -117,9 +117,16 @@ something a manifest buys.
 The icons are the crest the login screen already wears, cropped and resized by
 `scripts/icons.mjs` — which is committed rather than run once and forgotten,
 because a set of PNGs nobody can rebuild is a set nobody dares change. Run
-`node scripts/icons.mjs` after changing `public/login/crest.png` and the tab,
+`node scripts/icons.mjs` after changing `art/crest.png` and the tab,
 the home screen and the install prompt all follow. The browser tab gets the
 helmet alone: a whole knight at 32 pixels is a smudge.
+
+`art/` holds the full-size originals — the 1024px crest and the 2880px login
+background — which are not served. What the login screens load are WebP copies
+in `public/login/` at the size they are shown: `crest.webp` (192px, 7 KB),
+`hero-bg-1920.webp` (210 KB) and `hero-bg-960.webp` for phones (82 KB). The
+PNGs were served as they were and came to 4.4 MB on the first page anybody
+sees. After changing an original, export the copies again at those sizes.
 
 ## Taking things away
 

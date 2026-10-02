@@ -15,7 +15,7 @@
 import { chromium } from '@playwright/test'
 import { mkdirSync, readFileSync } from 'node:fs'
 
-const SOURCE = 'public/login/crest.png'
+const SOURCE = 'art/crest.png'
 const OUT = 'public/icons'
 
 /** The crest's own background, sampled from its corner. */

@@ -1264,13 +1264,23 @@
   background: #120b0a;
 }
 
+/* The first thing a new learner downloads, often on a phone: it was a 3.8 MB
+   PNG at 2880px. WebP at the width the screen can use is 82 KB on a phone and
+   210 KB on a desktop. */
 .login-hero-bg {
   position: absolute;
   inset: 0;
   background:
     linear-gradient(180deg, rgba(18, 11, 10, 0.18), rgba(18, 11, 10, 0.42)),
-    url('/login/hero-bg.png') center / cover no-repeat;
+    url('/login/hero-bg-1920.webp') center / cover no-repeat;
   pointer-events: none;
+}
+@media (max-width: 900px) {
+  .login-hero-bg {
+    background:
+      linear-gradient(180deg, rgba(18, 11, 10, 0.18), rgba(18, 11, 10, 0.42)),
+      url('/login/hero-bg-960.webp') center / cover no-repeat;
+  }
 }
 
 .login-panel {

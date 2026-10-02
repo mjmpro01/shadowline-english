@@ -52,3 +52,28 @@ test('the login screen is clean when nothing has gone wrong', async ({ page }) =
   await expect(page.getByRole('link', { name: 'Continue with Google' })).toBeVisible()
   await expect(page.getByRole('alert')).toHaveCount(0)
 })
+
+// The login screen is the first page anybody loads, often on a phone. Its
+// pictures were PNGs at full size: a 3.8 MB background and a 0.7 MB crest shown
+// at 90px. Measured here so a new picture cannot quietly bring that back.
+for (const [width, budget] of [
+  [390, 150_000],
+  [1440, 300_000],
+] as const) {
+  test(`the login screen's pictures stay small at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 })
+    await page.context().clearCookies()
+    const sizes = new Map<string, number>()
+    page.on('response', async (response) => {
+      if (response.request().resourceType() !== 'image') return
+      sizes.set(response.url(), (await response.body().catch(() => Buffer.alloc(0))).length)
+    })
+    await page.goto('/login')
+    await expect(page.locator('.login-crest img')).toBeVisible()
+    await page.waitForLoadState('networkidle')
+
+    const total = [...sizes.values()].reduce((a, b) => a + b, 0)
+    expect([...sizes.keys()].some((url) => url.includes('/login/hero-bg-'))).toBe(true)
+    expect(total, JSON.stringify(Object.fromEntries(sizes))).toBeLessThan(budget)
+  })
+}

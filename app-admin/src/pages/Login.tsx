@@ -77,7 +77,7 @@ export function Login() {
   return (
     <main className="console-login">
       <div className="console-login-card">
-        <img className="console-login-crest" src="/login/crest.png" alt="" width={84} height={84} />
+        <img className="console-login-crest" src="/login/crest.webp" alt="" width={84} height={84} />
         <h1 className="visually-hidden">{t('login.heading')}</h1>
         <div className="menu-sign console-login-sign" aria-hidden="true">
           <span className="menu-sign-title">SHADOWLINE</span>
