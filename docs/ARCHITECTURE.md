@@ -849,8 +849,11 @@ flowchart LR
    [`docs/ops-observability.md`](ops-observability.md).
 5. **Sao lưu:** volume `pgdata` (Postgres, gồm cả dữ liệu Keycloak) và volume
    chứa file (`blobs` ở prod, `miniodata` khi dùng MinIO). Hai volume này là toàn
-   bộ trạng thái của hệ thống. `ops/backup/backup.sh` dump cả hai database và nén
-   toàn bộ file mỗi đêm (cron), giữ 14 ngày.
+   bộ trạng thái của hệ thống. `ops/backup/backup.sh` chạy mỗi đêm (cron): dump cả hai database, giữ 2 bản nén
+   toàn bộ file trên máy, và đẩy ra object storage (OCI, qua rclone) bản dump
+   database cùng một bản mirror file — mỗi đêm chỉ tải file mới; file bị xoá trên
+   app nằm trong `deleted/` 7 ngày rồi mất hẳn. Chi tiết:
+   [`docs/deploy-prod.md`](deploy-prod.md#5-backups).
 
 ### Chạy local
 
