@@ -21,6 +21,7 @@ Keycloak in production mode, no Mailhog, and restarts with the host.
 | Mail | Brevo, Mailgun, SES, … | SMTP host, port 587, user, password, and a verified sender address |
 | Tutor | 9router dashboard | A key of Shadowline's own, so it can be revoked alone. Retire any key that has been pasted anywhere |
 | Disk | Oracle Console → Boot volume → Edit | 100 GB is plenty to start; growing it is online (`growpart` + `resize2fs`) |
+| Image registry | Oracle Console → Developer Services → Container Registry | Note the **region key** (e.g. `sin`) and the tenancy **namespace** (shown on the registry page). Create an **Auth Token** under your user → Auth tokens: it is the registry password. Set a retention policy (keep the last ~10 tags) so old images do not pile up |
 
 Docker Compose has to be 2.24 or later (`docker compose version`) for the
 `!reset` and `!override` tags in the prod file.
@@ -41,6 +42,11 @@ the API refuses to start over https with any value this repository ships.
 
 ```bash
 COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml
+
+# Oracle Container Registry: <region-key>.ocir.io/<namespace>/<prefix>.
+# Shadowline's three images are $REGISTRY/api, /workers and /web. IMAGE_TAG is
+# written by Jenkins on every deploy; leave it out at first.
+REGISTRY=sin.ocir.io/<namespace>/shadowline
 
 POSTGRES_PASSWORD=<openssl rand -hex 24>
 DATABASE_URL=postgres://shadowline:<same>@postgres:5432/shadowline?sslmode=disable
@@ -109,9 +115,18 @@ Once https works, uncomment the `Strict-Transport-Security` line.
 
 ### First start
 
+Normally the first Jenkins deploy is the first start (section 3). To start by
+hand before Jenkins exists, log in to the registry once and use the checkout's
+commit as the tag:
+
 ```bash
 cd /opt/shadowline/server
-docker compose up -d --build        # the first build takes a while: Whisper is baked in
+docker login sin.ocir.io -u '<namespace>/<user>'    # password: the Auth Token
+export IMAGE_TAG=$(git rev-parse --short=7 HEAD)
+docker compose build                # the first build takes a while: Whisper is baked in
+docker compose push api scoring web
+echo "IMAGE_TAG=$IMAGE_TAG" >> .env
+docker compose up -d --no-build
 docker compose ps                   # every service Up or healthy; seed and blobs-init Exited (0)
 docker compose logs -f api          # "listening", no "refusing to start"
 curl -fsS https://app.<domain>/healthz
@@ -123,10 +138,20 @@ Keycloak's admin console is not on the public host. When you need it:
 ## 3. Jenkins
 
 `docs/ops-jenkins.md`. Jenkins publishes 8085 on loopback only and is reached
-through `ci.<domain>`. Its Deploy stage runs `docker compose up -d --build` in
-`/opt/shadowline/server`, which picks up `COMPOSE_FILE` from `.env` — nothing in
-the Jenkinsfile changes for production. The first build pulls the CI images
-and Python packages (about 2 GB); later builds reuse them.
+through `ci.<domain>`. Give it the registry login: **Manage Jenkins →
+Credentials → Add**, kind *Username with password*, ID `ocir`, username
+`<namespace>/<user>`, password the Auth Token.
+
+On `main`, its Deploy stage, in `/opt/shadowline/server`:
+
+1. builds the three images (api, workers, web) tagged with the commit;
+2. pushes them to `$REGISTRY` — a failed push stops the deploy, so whatever
+   runs is in the registry;
+3. writes `IMAGE_TAG=<commit>` into `.env`;
+4. `docker compose pull`, then `up -d --no-build`.
+
+The first build pulls the CI images and Python packages (about 2 GB); later
+builds reuse them.
 
 ## 4. After every first deploy: a smoke test
 
@@ -168,9 +193,19 @@ docker compose up -d
 A merge to `main` deploys. Migrations run when the API starts and only go
 forward, so:
 
-- **Code only:** revert the commit on `main`; Jenkins deploys the revert.
-- **With a migration:** run `ops/backup/backup.sh` before merging. To go back,
-  revert, then restore the database dump taken before the deploy.
+- **Fastest, code only:** run the previous images again. Every deploy's images
+  stay in the registry under their commit, so:
+
+  ```bash
+  cd /opt/shadowline/server
+  sed -i 's/^IMAGE_TAG=.*/IMAGE_TAG=<previous commit>/' .env
+  docker compose up -d --no-build          # pulls that tag if it is not here
+  ```
+
+  Then revert the commit on `main`, or the next deploy brings it back.
+- **With a migration:** run `ops/backup/backup.sh` before merging. Older code
+  on a newer schema may not work, so going back is the previous tag *and* the
+  database dump taken before the deploy.
 
 ## 7. On a shared host
 

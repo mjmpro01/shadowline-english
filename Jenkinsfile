@@ -111,43 +111,59 @@ pipeline {
         }
       }
       steps {
-        sh '''
-          set -euo pipefail
-          ROOT="${SHADOWLINE_ROOT}"
-          COMPOSE_DIR="${DEPLOY_COMPOSE}"
+        // An OCI Auth Token for Oracle's registry: Jenkins → Credentials,
+        // "Username with password", ID `ocir`. Username <namespace>/<user>.
+        withCredentials([usernamePassword(credentialsId: 'ocir', usernameVariable: 'OCIR_USER', passwordVariable: 'OCIR_TOKEN')]) {
+          sh '''
+            set -euo pipefail
+            ROOT="${SHADOWLINE_ROOT}"
+            COMPOSE_DIR="${DEPLOY_COMPOSE}"
 
-          if [ ! -d "$COMPOSE_DIR" ]; then
-            echo "Deploy tree missing at $COMPOSE_DIR — clone the repo to $ROOT on the VPS first."
-            exit 1
-          fi
+            if [ ! -d "$COMPOSE_DIR" ]; then
+              echo "Deploy tree missing at $COMPOSE_DIR — clone the repo to $ROOT on the VPS first."
+              exit 1
+            fi
 
-          # Sync this workspace into the deploy checkout (preserves server/.env).
-          rsync -a --delete \
-            --exclude '.git/' \
-            --exclude 'server/.env' \
-            --exclude '**/node_modules/' \
-            --exclude 'app/dist/' \
-            --exclude 'app-admin/dist/' \
-            ./ "$ROOT/"
+            # Sync this workspace into the deploy checkout (preserves server/.env).
+            rsync -a --delete \
+              --exclude '.git/' \
+              --exclude 'server/.env' \
+              --exclude '**/node_modules/' \
+              --exclude 'app/dist/' \
+              --exclude 'app-admin/dist/' \
+              ./ "$ROOT/"
 
-          # Both SPA builds from the Test app stage (reuseNode keeps workspace).
-          mkdir -p "$ROOT/app/dist" "$ROOT/app-admin/dist"
-          if [ -d app/dist ]; then
-            rsync -a --delete app/dist/ "$ROOT/app/dist/"
-          fi
-          if [ -d app-admin/dist ]; then
-            rsync -a --delete app-admin/dist/ "$ROOT/app-admin/dist/"
-          fi
+            # Which commit this is: the images' tag, and baked into each image
+            # so the console's System page can show it. Asked here, in the
+            # workspace: the deploy tree has no .git.
+            SHADOWLINE_VERSION="$(git rev-parse HEAD | cut -c1-7)"
+            IMAGE_TAG="$SHADOWLINE_VERSION"
+            export SHADOWLINE_VERSION IMAGE_TAG
 
-          # Which commit this is, baked into every image so the console's System
-          # page can show each part's version. Asked here, in the workspace: the
-          # deploy tree has no .git.
-          SHADOWLINE_VERSION="$(git rev-parse HEAD | cut -c1-7)"
-          export SHADOWLINE_VERSION
+            cd "$COMPOSE_DIR"
+            REGISTRY="$(sed -n 's/^REGISTRY=//p' .env | tail -n 1)"
+            if [ -z "$REGISTRY" ]; then
+              echo "Set REGISTRY in $COMPOSE_DIR/.env, e.g. sin.ocir.io/<namespace>/shadowline (docs/deploy-prod.md)."
+              exit 1
+            fi
+            echo "$OCIR_TOKEN" | docker login "${REGISTRY%%/*}" -u "$OCIR_USER" --password-stdin
 
-          cd "$COMPOSE_DIR"
-          docker compose up -d --build
-        '''
+            # Build the three images (api, workers, web) and push them. A push
+            # that fails stops the deploy: what runs is always in the registry.
+            docker compose build
+            docker compose push api scoring web
+
+            # Record what is deployed, so a reboot or a manual `docker compose up`
+            # runs this commit too. Rolling back is writing an older tag here
+            # and `docker compose up -d`.
+            sed -i '/^IMAGE_TAG=/d' .env
+            echo "IMAGE_TAG=$IMAGE_TAG" >> .env
+
+            docker compose pull --quiet
+            docker compose up -d --no-build --remove-orphans
+            docker compose ps
+          '''
+        }
       }
     }
   }

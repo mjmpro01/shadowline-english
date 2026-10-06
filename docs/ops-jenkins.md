@@ -37,11 +37,10 @@ cp /opt/shadowline/server/.env.example /opt/shadowline/server/.env
 
 ### 2. Start Shadowline (+ web)
 
-```bash
-cd /opt/shadowline/server
-docker compose up -d --build
-# SPA: http://VPS:8088  API: http://VPS:8080
-```
+Production is set up as in [`deploy-prod.md`](deploy-prod.md): `.env` with
+`COMPOSE_FILE`, `REGISTRY` and the secrets, then either the first Jenkins
+deploy or its "First start" by hand. With the prod file everything listens on
+127.0.0.1 only (SPA :8088, API :8090), behind the host's nginx.
 
 Point DNS at the VPS and install host nginx with
 [`ops/nginx/vhost.example.conf`](../ops/nginx/vhost.example.conf) (rename
@@ -105,16 +104,20 @@ docker compose -f docker-compose.jenkins.yml --profile portainer up -d
    Needs the Docker Pipeline plugin, which the `agent { docker }` stages already
    use. pip's downloads are kept in the `shadowline-ci-pip` Docker volume.
 3. **Deploy** (only `main` / `master` / tags `v*`) — rsync workspace into
-   `/opt/shadowline` (keeps `server/.env`), then
-   `docker compose up -d --build` in `server/`.
+   `/opt/shadowline` (keeps `server/.env`); in `server/`, log in to Oracle's
+   registry (`REGISTRY` in `.env`, credential `ocir`), build the api, workers
+   and web images tagged with the commit, push them, write `IMAGE_TAG` into
+   `.env`, then `docker compose pull` and `up -d --no-build`. See
+   [`deploy-prod.md`](deploy-prod.md) for rolling back by tag.
 
 Rebuild or replay from the Jenkins UI anytime (**Build Now** / failed stage retry).
 
 ## Credentials (Jenkins UI, never in git)
 
 - GitHub deploy key or PAT for SCM checkout.
-- If private npm/Docker registries appear later, add them under
-  **Manage Jenkins → Credentials**.
+- `ocir` — *Username with password* for Oracle Container Registry: username
+  `<namespace>/<user>`, password an OCI Auth Token (your user → Auth tokens).
+  The Deploy stage pushes and pulls with it.
 
 ## Backup
 

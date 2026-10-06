@@ -820,9 +820,10 @@ File `.env` không nằm trong git.
 flowchart LR
   GH["GitHub push / PR merge"] -- webhook --> J["Jenkins<br/>(ops/jenkins)"]
   J --> T1["Test app<br/>app: lint · vitest · build<br/>app-admin: lint · typecheck · vitest · build"]
-  J --> T2["Test server<br/>go test (keycloak, config, auth)"]
-  T1 & T2 --> DEP["Deploy (main / tag v*)<br/>rsync → docker compose up -d --build<br/>SHADOWLINE_VERSION = commit"]
-  DEP --> VPS["docker compose trên VPS"]
+  J --> T2["Test server and workers<br/>go vet · go test (Postgres tạm) · pytest"]
+  T1 & T2 --> DEP["Deploy (main / tag v*)<br/>rsync → build 3 image → push OCIR<br/>tag = commit"]
+  DEP --> REG[("Oracle Container Registry<br/>api · workers · web")]
+  REG --> VPS["VPS: IMAGE_TAG trong .env<br/>compose pull → up -d"]
 ```
 
 1. **Pipeline** ([`Jenkinsfile`](../Jenkinsfile)) gồm Checkout, Test app, Test
@@ -830,8 +831,10 @@ flowchart LR
    Deploy. CI **chưa** chạy e2e Playwright; e2e chạy khi phát triển (xem bảng
    Kiểm thử bên dưới).
 2. Bước Deploy chỉ chạy trên `main`/`master` hoặc tag `v*`. Nó rsync workspace vào
-   thư mục triển khai, giữ nguyên `server/.env`, rồi `docker compose up -d --build`.
-   Trên server, `.env` đặt `COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml`:
+   thư mục triển khai, giữ nguyên `server/.env`, build 3 image (`api`, `workers`,
+   `web`) gắn tag là commit, push lên Oracle Container Registry (`REGISTRY`), ghi
+   `IMAGE_TAG` vào `.env`, rồi `docker compose pull` và `up -d --no-build`.
+   Rollback là đặt lại `IMAGE_TAG` cũ rồi `up -d`. Trên server, `.env` đặt `COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml`:
    file prod chỉ mở cổng trên 127.0.0.1, đưa API sang 8090, lưu file trên volume
    `blobs` (`DISK_ROOT`) thay cho MinIO, chạy Keycloak ở chế độ production và bỏ
    Mailhog. Chi tiết: [`docs/deploy-prod.md`](deploy-prod.md) và
