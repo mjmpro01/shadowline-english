@@ -609,7 +609,7 @@ Hai chế độ lưu trữ:
 - **`S3_ENDPOINT` được đặt (MinIO/S3):** API trả về URL ký sẵn, trình duyệt tải
   thẳng từ MinIO. `S3_PUBLIC_ENDPOINT` là địa chỉ mà trình duyệt nhìn thấy.
   MinIO phải cho phép CORS từ `APP_ORIGIN`.
-- **`DISK_ROOT` được đặt:** file nằm trên đĩa, mỗi bucket một thư mục, và API tự
+- **`DISK_ROOT` được đặt** (cách production chạy): file nằm trên đĩa, mỗi bucket một thư mục, và API tự
   phục vụ qua `GET /files/{bucket}/*` với chữ ký HMAC (`internal/auth/sign.go`).
   Route này trả đúng `Content-Type` theo đuôi file và hỗ trợ range request, để
   trình duyệt tua được audio/video.
@@ -826,20 +826,28 @@ flowchart LR
 ```
 
 1. **Pipeline** ([`Jenkinsfile`](../Jenkinsfile)) gồm Checkout, Test app, Test
-   server, rồi Deploy. CI **chưa** chạy e2e Playwright, `pytest`, hay các test Go
-   cần Postgres; chúng chạy khi phát triển (xem bảng Kiểm thử bên dưới).
+   server and workers (mọi test Go và `pytest`, với một Postgres tạm), rồi
+   Deploy. CI **chưa** chạy e2e Playwright; e2e chạy khi phát triển (xem bảng
+   Kiểm thử bên dưới).
 2. Bước Deploy chỉ chạy trên `main`/`master` hoặc tag `v*`. Nó rsync workspace vào
    thư mục triển khai, giữ nguyên `server/.env`, rồi `docker compose up -d --build`.
-   Chi tiết: [`docs/ops-jenkins.md`](ops-jenkins.md).
+   Trên server, `.env` đặt `COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml`:
+   file prod chỉ mở cổng trên 127.0.0.1, đưa API sang 8090, lưu file trên volume
+   `blobs` (`DISK_ROOT`) thay cho MinIO, chạy Keycloak ở chế độ production và bỏ
+   Mailhog. Chi tiết: [`docs/deploy-prod.md`](deploy-prod.md) và
+   [`docs/ops-jenkins.md`](ops-jenkins.md).
 3. **nginx trên host** lo TLS (file mẫu: `ops/nginx/vhost.example.conf`). Nó
-   chuyển `/api/`, `/auth/`, `/files/`, `/healthz` sang API (8080), còn lại sang
-   container `web` (8088). Trong container, nginx phục vụ `index.html` của từng
-   SPA (`ops/nginx/app.conf`). File mẫu còn có vhost cho Jenkins và Grafana.
+   chuyển `/api/`, `/auth/`, `/files/`, `/healthz` sang API (8090 ở prod, 8080
+   khi chạy local), còn lại sang container `web` (8088). Trong container, nginx
+   phục vụ `index.html` của từng SPA (`ops/nginx/app.conf`). File mẫu còn có
+   vhost cho Keycloak (`auth.`, trang `/admin/` bị chặn), Jenkins và Grafana.
 4. **Quan sát:** các service gửi trace, log và metric qua OpenTelemetry tới
    Grafana Alloy, rồi tới Tempo, Loki, Prometheus và Grafana. Chi tiết:
    [`docs/ops-observability.md`](ops-observability.md).
-5. **Sao lưu:** volume `pgdata` (Postgres, gồm cả dữ liệu Keycloak) và
-   `miniodata` (mọi file). Hai volume này là toàn bộ trạng thái của hệ thống.
+5. **Sao lưu:** volume `pgdata` (Postgres, gồm cả dữ liệu Keycloak) và volume
+   chứa file (`blobs` ở prod, `miniodata` khi dùng MinIO). Hai volume này là toàn
+   bộ trạng thái của hệ thống. `ops/backup/backup.sh` dump cả hai database và nén
+   toàn bộ file mỗi đêm (cron), giữ 14 ngày.
 
 ### Chạy local
 
