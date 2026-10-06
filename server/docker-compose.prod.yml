@@ -23,9 +23,19 @@
 #   its realm imported from keycloak-prod/, which reads the client secret,
 #   redirect URLs and SMTP settings from this .env.
 # - Everything restarts with the host.
+# - Shadowline's own images are named for Oracle's registry (OCIR) and tagged
+#   with the commit: REGISTRY and IMAGE_TAG in .env. Jenkins builds, pushes
+#   and writes IMAGE_TAG; going back is setting an older IMAGE_TAG and `up -d`.
+#   Three images, not eight: the API and seed share one, and the five workers
+#   are one image with five entrypoints.
 
 x-restart: &restart
   restart: unless-stopped
+
+# `:?` stops compose with the message rather than starting something untagged.
+x-api-image: &api-image ${REGISTRY:?set REGISTRY in .env, e.g. sin.ocir.io/<namespace>/shadowline}/api:${IMAGE_TAG:?set IMAGE_TAG in .env (Jenkins writes it)}
+x-workers-image: &workers-image ${REGISTRY:?set REGISTRY in .env}/workers:${IMAGE_TAG:?set IMAGE_TAG in .env}
+x-web-image: &web-image ${REGISTRY:?set REGISTRY in .env}/web:${IMAGE_TAG:?set IMAGE_TAG in .env}
 
 # Where audio, video and posters live. One volume for the API, which writes
 # uploads and takes and serves them, and the workers, which read and write the
@@ -96,6 +106,7 @@ services:
 
   api:
     <<: *restart
+    image: *api-image
     environment:
       <<: *disk
     volumes:
@@ -112,10 +123,13 @@ services:
 
   web:
     <<: *restart
+    image: *web-image
     ports: !override
       - "127.0.0.1:8088:80"
 
   seed:
+    image: *api-image
+    build: !reset null
     environment:
       <<: *disk
     volumes:
@@ -126,8 +140,10 @@ services:
       blobs-init:
         condition: service_completed_successfully
 
+  # The one worker service that builds; the other four run its image.
   scoring:
     <<: *restart
+    image: *workers-image
     environment:
       <<: *disk
     volumes:
@@ -140,6 +156,8 @@ services:
 
   cutting:
     <<: *restart
+    image: *workers-image
+    build: !reset null
     environment:
       <<: *disk
     volumes:
@@ -152,6 +170,8 @@ services:
 
   dubbing:
     <<: *restart
+    image: *workers-image
+    build: !reset null
     environment:
       <<: *disk
     volumes:
@@ -164,6 +184,8 @@ services:
 
   transcribing:
     <<: *restart
+    image: *workers-image
+    build: !reset null
     environment:
       <<: *disk
     volumes:
@@ -176,6 +198,8 @@ services:
 
   glossing:
     <<: *restart
+    image: *workers-image
+    build: !reset null
 
 volumes:
   blobs:
