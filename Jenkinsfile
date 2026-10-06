@@ -63,21 +63,41 @@ pipeline {
       }
     }
 
-    stage('Test server') {
-      agent {
-        docker {
-          image 'golang:1.26-bookworm'
-          reuseNode true
-        }
-      }
-      environment {
-        // Prefer the toolchain the image ships; allow Go to fetch if the
-        // bookworm tag lags go.mod slightly.
-        GOTOOLCHAIN = 'auto'
-      }
+    // The server's API and database tests and the workers' tests all need a
+    // Postgres to create their own databases in, so they share one throwaway
+    // container for the length of this stage. Until this stage existed CI ran
+    // three small Go packages and no Python at all: the API, the store and
+    // every worker reached production untested.
+    stage('Test server and workers') {
       steps {
-        dir('server') {
-          sh 'go test ./internal/keycloak/ ./internal/config/ ./internal/auth/ -count=1'
+        script {
+          docker.image('postgres:16-alpine').withRun('-e POSTGRES_PASSWORD=ci') { pg ->
+            docker.image('postgres:16-alpine').inside("--link ${pg.id}:db") {
+              sh 'for i in $(seq 1 60); do pg_isready -q -h db -U postgres && exit 0; sleep 1; done; echo "Postgres did not start"; exit 1'
+            }
+            withEnv(['TEST_DATABASE_URL=postgres://postgres:ci@db:5432/postgres?sslmode=disable']) {
+              // Caches under /tmp, inside the container: the workspace is
+              // rsynced into the deploy tree, and the image's HOME may not be
+              // writable by the Jenkins user the container runs as.
+              docker.image('golang:1.26-bookworm').inside("--link ${pg.id}:db -e GOTOOLCHAIN=auto -e GOCACHE=/tmp/go-build -e GOMODCACHE=/tmp/go-mod") {
+                dir('server') {
+                  sh 'go vet ./...'
+                  sh 'go test ./... -count=1'
+                }
+              }
+              // As root for apt (ffmpeg is what the workers cut and decode
+              // with), so nothing is written into the workspace: no bytecode,
+              // no pytest cache, the virtualenv in /tmp. Downloads are kept in
+              // a named volume between builds.
+              docker.image('python:3.12-bookworm').inside("--link ${pg.id}:db -u root -e PYTHONDONTWRITEBYTECODE=1 -v shadowline-ci-pip:/root/.cache/pip") {
+                dir('scoring') {
+                  sh 'apt-get update -qq && apt-get install -y -qq --no-install-recommends ffmpeg libsndfile1 > /dev/null'
+                  sh 'python -m venv /tmp/venv && /tmp/venv/bin/pip install -q -r requirements-dev.txt'
+                  sh '/tmp/venv/bin/python -m pytest -q -p no:cacheprovider'
+                }
+              }
+            }
+          }
         }
       }
     }
