@@ -173,6 +173,11 @@ Keycloak when it has the address as verified — in `users.email_verified_at`:
 
 ### Before a server is reachable
 
+The whole production setup — `docker-compose.prod.yml`, the Keycloak realm
+read from `.env`, nginx, backups, rollback — is in
+[`docs/deploy-prod.md`](../docs/deploy-prod.md). The prod file takes care of the
+first two points below; they still apply to anything run without it.
+
 - Give Keycloak a real SMTP server (Realm settings → Email). The realm ships
   pointing at Mailhog, whose web UI has no login: reset links have to reach the
   learner, not a page anybody can read. Compose now publishes Mailhog,

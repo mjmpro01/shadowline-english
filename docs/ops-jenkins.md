@@ -4,6 +4,9 @@ Jenkins runs on the **same Docker host** as the app so you can watch builds,
 retry failed stages, and trigger deploys from a UI. GitHub only hosts the repo
 and fires a webhook — it is not the CD runner.
 
+Setting up the production host itself — `.env`, nginx, certificates, backups —
+is [`deploy-prod.md`](deploy-prod.md); this page is the Jenkins part of it.
+
 ## What you get
 
 | Piece | Path |

@@ -22,7 +22,10 @@ services:
     # single-admin VPS. Lock the UI behind HTTPS + a strong password.
     user: root
     ports:
-      - "${JENKINS_HTTP_PORT:-8085}:8080"
+      # Loopback: the host's nginx is the way in (ci.<domain>, with https). On
+      # every address, Docker's own iptables rules would put the UI — which
+      # can run anything on this host — in front of the internet.
+      - "127.0.0.1:${JENKINS_HTTP_PORT:-8085}:8080"
       # Inbound agents only, and none are used: kept off the internet.
       - "127.0.0.1:${JENKINS_AGENT_PORT:-50000}:50000"
     environment:

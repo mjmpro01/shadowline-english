@@ -1,0 +1,181 @@
+# Production, on top of docker-compose.yml. Turned on by one line in .env:
+#
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml
+#
+# so `docker compose up -d --build` — by hand, or Jenkins' Deploy stage — reads
+# both files without anybody remembering a flag. Needs Docker Compose 2.24 or
+# later for !reset and !override.
+#
+# What it changes, and why:
+#
+# - Nothing is published on a public address. Docker writes its own iptables
+#   rules for a published port, ahead of ufw and of the host's INPUT chain, so
+#   0.0.0.0:8080 is on the internet whatever the firewall says. The host's
+#   nginx reaches each service on 127.0.0.1 and is the only way in.
+# - The API is on 127.0.0.1:8090, not 8080: a production host may already have
+#   something there (the first one did — a WordPress).
+# - Audio and video live on a volume (DISK_ROOT) and are served by the API at
+#   /files/, signed, from the app's own origin. MinIO's presigned URLs would be
+#   a second public host, and plain http on an https page, which browsers block.
+# - Mailhog and MinIO do not start (profile "dev"). Mailhog has no ARM image and
+#   would receive every reset link; Keycloak sends through SMTP_* instead.
+# - Keycloak runs in production mode behind nginx, on KEYCLOAK_PUBLIC_URL, with
+#   its realm imported from keycloak-prod/, which reads the client secret,
+#   redirect URLs and SMTP settings from this .env.
+# - Everything restarts with the host.
+
+x-restart: &restart
+  restart: unless-stopped
+
+# Where audio, video and posters live. One volume for the API, which writes
+# uploads and takes and serves them, and the workers, which read and write the
+# same files.
+x-disk: &disk
+  S3_ENDPOINT: ""
+  DISK_ROOT: /data/blobs
+
+services:
+  postgres:
+    <<: *restart
+    # Only the services on the compose network reach it. For psql from the host:
+    # docker compose exec postgres psql -U shadowline
+    ports: !reset []
+
+  mailhog:
+    profiles: ["dev"]
+
+  minio:
+    profiles: ["dev"]
+
+  # The blobs volume is created owned by root; the API (app) and the workers
+  # (worker) both run as uid 10001. Runs once per `up` and exits.
+  blobs-init:
+    image: alpine:3.20
+    command: ["sh", "-c", "chown 10001:10001 /data/blobs"]
+    volumes:
+      - blobs:/data/blobs
+    restart: "no"
+
+  keycloak:
+    <<: *restart
+    command: ["start", "--import-realm"]
+    environment: !override
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: shadowline
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      # The address browsers use, https and all. Behind nginx, which ends TLS
+      # and says so in X-Forwarded-*.
+      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL}
+      # The admin console is kept off the public host (nginx answers 404 for
+      # /admin/ there) and opened through `ssh -L 8081:localhost:8081`.
+      KC_HOSTNAME_ADMIN: http://localhost:8081
+      KC_PROXY_HEADERS: xforwarded
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      # Read by the placeholders in keycloak-prod/shadowline-realm.json, the
+      # first time the realm is imported. Later changes go through Keycloak's
+      # admin console: an existing realm is never imported over.
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_REDIRECT_URL: ${KEYCLOAK_REDIRECT_URL}
+      APP_ORIGIN: ${APP_ORIGIN}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_FROM: ${SMTP_FROM}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+    volumes: !override
+      - ./keycloak-prod:/opt/keycloak/data/import:ro
+    ports: !override
+      - "127.0.0.1:8081:8080"
+    depends_on: !override
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *restart
+    environment:
+      <<: *disk
+    volumes:
+      - blobs:/data/blobs
+    ports: !override
+      - "127.0.0.1:8090:8080"
+    depends_on: !override
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      blobs-init:
+        condition: service_completed_successfully
+
+  web:
+    <<: *restart
+    ports: !override
+      - "127.0.0.1:8088:80"
+
+  seed:
+    environment:
+      <<: *disk
+    volumes:
+      - blobs:/data/blobs
+    depends_on: !override
+      postgres:
+        condition: service_healthy
+      blobs-init:
+        condition: service_completed_successfully
+
+  scoring:
+    <<: *restart
+    environment:
+      <<: *disk
+    volumes:
+      - blobs:/data/blobs
+    depends_on: !override
+      postgres:
+        condition: service_healthy
+      blobs-init:
+        condition: service_completed_successfully
+
+  cutting:
+    <<: *restart
+    environment:
+      <<: *disk
+    volumes:
+      - blobs:/data/blobs
+    depends_on: !override
+      postgres:
+        condition: service_healthy
+      blobs-init:
+        condition: service_completed_successfully
+
+  dubbing:
+    <<: *restart
+    environment:
+      <<: *disk
+    volumes:
+      - blobs:/data/blobs
+    depends_on: !override
+      postgres:
+        condition: service_healthy
+      blobs-init:
+        condition: service_completed_successfully
+
+  transcribing:
+    <<: *restart
+    environment:
+      <<: *disk
+    volumes:
+      - blobs:/data/blobs
+    depends_on: !override
+      postgres:
+        condition: service_healthy
+      blobs-init:
+        condition: service_completed_successfully
+
+  glossing:
+    <<: *restart
+
+volumes:
+  blobs:
