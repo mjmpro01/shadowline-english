@@ -56,7 +56,11 @@ docker compose -f docker-compose.jenkins.yml up -d --build
 docker compose -f docker-compose.jenkins.yml logs jenkins 2>&1 | grep -i password
 ```
 
-Open `http://VPS:8085`, unlock with the admin password, create the admin user.
+Jenkins listens on 127.0.0.1 only. Open it through a tunnel —
+`ssh -L 8085:localhost:8085 <server>`, then http://localhost:8085 — or, once the
+`ci.` nginx site and its certificate are in place (the same three steps as in
+[`deploy-prod.md`](deploy-prod.md)), at `https://ci.<domain>`. Unlock with the
+admin password from the logs, and create the admin user.
 
 ### 4. Create the Pipeline job
 

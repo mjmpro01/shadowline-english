@@ -29,7 +29,13 @@ pipeline {
   stages {
     stage('Checkout') {
       steps {
-        checkout scm
+        script {
+          // Kept for the Deploy condition: a plain Pipeline job (not a
+          // multibranch one) has no BRANCH_NAME, so `branch 'main'` is never
+          // true there and nothing would ever deploy. The checkout says which
+          // branch it took, as origin/main.
+          env.GIT_BRANCH = checkout(scm).GIT_BRANCH ?: ''
+        }
       }
     }
 
@@ -108,6 +114,7 @@ pipeline {
           branch 'main'
           branch 'master'
           tag pattern: 'v*', comparator: 'GLOB'
+          expression { env.GIT_BRANCH in ['origin/main', 'origin/master', 'main', 'master'] }
         }
       }
       steps {

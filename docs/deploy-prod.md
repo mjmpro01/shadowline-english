@@ -29,6 +29,10 @@ Docker Compose has to be 2.24 or later (`docker compose version`) for the
 
 ## 2. The server
 
+The repository is private, so the server needs read access to it: a deploy
+key (`ssh-keygen -t ed25519`, the public half under GitHub → Settings →
+Deploy keys, read-only) or an HTTPS token.
+
 ```bash
 sudo mkdir -p /opt/shadowline && sudo chown "$USER:$USER" /opt/shadowline
 git clone git@github.com:mjmpro01/shadowline-english.git /opt/shadowline
@@ -103,16 +107,22 @@ Check from inside: `docker compose exec api wget -qO- http://host.docker.interna
 
 ### nginx and certificates
 
-Add the `app.` and `auth.` server blocks from `ops/nginx/vhost.example.conf`
-beside the host's existing sites (nothing in them is a `default_server`), with
-the real names, then:
+The `listen 443 ssl` blocks in `ops/nginx/vhost.example.conf` need a
+certificate before nginx will load them, so the certificate comes first, from
+the port-80 blocks alone:
 
-```bash
-sudo nginx -t && sudo systemctl reload nginx
-sudo certbot --nginx -d app.<domain> -d auth.<domain>
-```
+1. Copy only the two `listen 80` server blocks for `app.` and `auth.` (they
+   answer the ACME challenge from `/var/www/html` and redirect the rest) into
+   `/etc/nginx/sites-available/shadowline`, with the real names; link it into
+   `sites-enabled`; `sudo nginx -t && sudo systemctl reload nginx`.
+2. `sudo certbot certonly --webroot -w /var/www/html -d app.<domain> -d auth.<domain>`
+3. Add the two `listen 443 ssl` blocks, with their `ssl_certificate` lines
+   uncommented and pointing at `/etc/letsencrypt/live/app.<domain>/` (one
+   certificate covers both names); `sudo nginx -t && sudo systemctl reload nginx`.
 
-Once https works, uncomment the `Strict-Transport-Security` line.
+Nothing in these blocks is a `default_server`, so the host's other sites are
+untouched. Once https works, uncomment the `Strict-Transport-Security` line.
+Certbot renews by itself; `sudo certbot renew --dry-run` checks that it can.
 
 ### First start
 
