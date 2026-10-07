@@ -21,6 +21,7 @@ Keycloak in production mode, no Mailhog, and restarts with the host.
 | Mail | Brevo, Mailgun, SES, … | SMTP host, port 587, user, password, and a verified sender address |
 | Tutor | 9router dashboard | A key of Shadowline's own, so it can be revoked alone. Retire any key that has been pasted anywhere |
 | Disk | Oracle Console → Boot volume → Edit | 100 GB is plenty to start; growing it is online (`growpart` + `resize2fs`) |
+| Backups | Oracle Console → Storage → Buckets; your user → Customer secret keys | A private bucket for nightly backups (section 5). Always Free covers 20 GB |
 | Image registry | Oracle Console → Developer Services → Container Registry | Note the **region key** (e.g. `sin`) and the tenancy **namespace** (shown on the registry page). Create an **Auth Token** under your user → Auth tokens: it is the registry password. Set a retention policy (keep the last ~10 tags) so old images do not pile up |
 
 Docker Compose has to be 2.24 or later (`docker compose version`) for the
@@ -166,26 +167,100 @@ builds reuse them.
 
 ## 5. Backups
 
+`ops/backup/backup.sh`, nightly from root's crontab, keeps:
+
+| Where | What | How long |
+|---|---|---|
+| `/var/backups/shadowline` | both databases (plain-SQL dumps) | 14 days |
+| `/var/backups/shadowline` | every file, as a tarball | the last 2 |
+| object storage `db/` | both databases | 30 days |
+| object storage `blobs/` | a mirror of every file — only new files upload each night | as long as the app has them |
+| object storage `deleted/<night>/` | files the app deleted (a take, an account) | 7 days, then gone |
+
+So a deleted account leaves the file backups within a week, and the database
+dumps within a month. Two guards stop a mistake from destroying the copies: if
+the volume is found with less than half the files the bucket has (a bad mount,
+a fresh host), the mirror is refused and the night fails; and if tonight's
+tarball is less than half of the last one, no older tarball is removed.
+
+### Object storage (OCI, S3-compatible)
+
+1. Oracle Console → **Storage → Buckets → Create bucket**, e.g.
+   `shadowline-backups`, *Standard*, private (the default). Always Free covers
+   20 GB.
+2. Your user → **Customer secret keys → Generate secret key**. Note the access
+   key and the secret — the secret is shown once.
+3. On the server:
+
+   ```bash
+   sudo apt install rclone
+   sudo mkdir -p /root/.config/rclone
+   sudo tee /root/.config/rclone/rclone.conf > /dev/null <<'CONF'
+   [oci]
+   type = s3
+   provider = Other
+   access_key_id = <access key>
+   secret_access_key = <secret>
+   region = <region, e.g. ap-singapore-1>
+   endpoint = https://<namespace>.compat.objectstorage.<region>.oraclecloud.com
+   acl = private
+   no_check_bucket = true
+   CONF
+   sudo chmod 600 /root/.config/rclone/rclone.conf
+   sudo rclone lsd oci:                     # the bucket is listed
+
+   echo 'RCLONE_REMOTE=oci:shadowline-backups' | sudo tee /etc/shadowline-backup.env
+   # optional: a ping on success, so a failed night is noticed by its silence
+   # echo 'HEALTHCHECK_URL=https://hc-ping.com/<uuid>' | sudo tee -a /etc/shadowline-backup.env
+   sudo chmod 600 /etc/shadowline-backup.env
+   ```
+
+4. Run it once by hand and look:
+
+   ```bash
+   sudo /opt/shadowline/ops/backup/backup.sh
+   sudo rclone ls oci:shadowline-backups/db
+   sudo rclone size oci:shadowline-backups/blobs
+   ```
+
+5. Then nightly:
+
+   ```bash
+   sudo crontab -e
+   15 3 * * * /opt/shadowline/ops/backup/backup.sh >> /var/log/shadowline-backup.log 2>&1
+   ```
+
+Every setting (`DB_KEEP_DAYS`, `BLOB_COPIES`, `REMOTE_DB_KEEP_DAYS`,
+`DELETED_KEEP_DAYS`, …) has a default at the top of the script and can be
+changed in `/etc/shadowline-backup.env`.
+
+### Restoring
+
+Restore once before you need to — on a spare machine, or a second checkout with
+its own project name — so the steps are known to work.
+
 ```bash
-sudo crontab -e
-15 3 * * * /opt/shadowline/ops/backup/backup.sh >> /var/log/shadowline-backup.log 2>&1
-```
-
-Both databases and every file, into `/var/backups/shadowline`, fourteen days
-kept. That survives a bad deploy; copy the directory off the machine (rclone to
-object storage) for it to survive the machine.
-
-Restore once before you need to — on a spare machine, or a second checkout
-with its own project name — so the steps are known to work:
-
-```bash
+cd /opt/shadowline/server
 docker compose stop api scoring cutting dubbing transcribing glossing keycloak
-docker compose exec -T postgres dropdb -U shadowline shadowline
-docker compose exec -T postgres createdb -U shadowline shadowline
-gunzip -c shadowline-<stamp>.sql.gz | docker compose exec -T postgres psql -q -U shadowline -d shadowline
-# the same for keycloak-<stamp>.sql.gz into the keycloak database
-docker compose run --rm --no-deps -T --entrypoint tar api -xzf - -C /data/blobs < blobs-<stamp>.tar.gz
-docker compose up -d
+
+# The databases: from /var/backups/shadowline, or fetched from the bucket.
+sudo rclone copy oci:shadowline-backups/db/shadowline-<stamp>.sql.gz .
+sudo rclone copy oci:shadowline-backups/db/keycloak-<stamp>.sql.gz .
+for db in shadowline keycloak; do
+  docker compose exec -T postgres dropdb -U shadowline "$db"
+  docker compose exec -T postgres createdb -U shadowline "$db"
+  gunzip -c "$db-<stamp>.sql.gz" | docker compose exec -T postgres psql -q -U shadowline -d "$db"
+done
+
+# The files: the local tarball…
+docker compose run --rm --no-deps -T --entrypoint tar api -xzf - -C /data/blobs < /var/backups/shadowline/blobs-<stamp>.tar.gz
+# …or the mirror, straight into the volume (start the stack once first so it exists).
+blobs="$(docker inspect "$(docker compose ps -aq api)" \
+  --format '{{range .Mounts}}{{if eq .Destination "/data/blobs"}}{{.Source}}{{end}}{{end}}')"
+sudo rclone copy oci:shadowline-backups/blobs "$blobs"
+sudo chown -R 10001:10001 "$blobs"
+
+docker compose up -d --no-build
 ```
 
 ## 6. Updating and rolling back

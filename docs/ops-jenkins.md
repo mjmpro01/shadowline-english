@@ -126,11 +126,11 @@ Rebuild or replay from the Jenkins UI anytime (**Build Now** / failed stage retr
 docker run --rm -v ops_jenkins_jenkins_home:/data -v "$PWD":/backup alpine \
   tar czf /backup/jenkins_home-$(date +%F).tgz -C /data .
 # Volume name may differ — check: docker volume ls | grep jenkins
-
-# App database (same as always)
-docker compose -f /opt/shadowline/server/docker-compose.yml exec -T postgres \
-  pg_dump -U shadowline shadowline | gzip > shadowline-$(date +%F).sql.gz
 ```
+
+The app itself — both databases and every file, here and in object storage —
+is backed up nightly by `ops/backup/backup.sh`: see
+[`deploy-prod.md`](deploy-prod.md#5-backups).
 
 ## Security notes
 
