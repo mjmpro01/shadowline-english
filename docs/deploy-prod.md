@@ -151,7 +151,11 @@ curl -fsS https://app.<domain>/healthz
 ```
 
 Keycloak's admin console is not on the public host. When you need it:
-`ssh -L 8081:localhost:8081 <server>` and open http://localhost:8081/admin/.
+`ssh -L 8081:127.0.0.1:8081 <server>` and open http://localhost:8081/admin/.
+Write 127.0.0.1, not localhost: on a host where another container publishes
+8081 on IPv6, `localhost` resolves to `::1` there and the tunnel lands on it.
+Sign in with `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD` — that account lives
+in the `master` realm, and the `shadowline` realm starts with no users at all.
 
 ## 3. Jenkins
 
