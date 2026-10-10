@@ -86,6 +86,7 @@ S3_SECRET_KEY=<anything random — not change-me>
 
 TUTOR_API_URL=http://host.docker.internal:20128/v1
 TUTOR_API_KEY=...
+TUTOR_MODEL=cc/claude-haiku-4-5-20251001   # a model id or combo from 9router's list
 TUTOR_DAILY_TOTAL=2000
 ```
 
