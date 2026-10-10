@@ -128,7 +128,14 @@ the port-80 blocks alone:
 
 Nothing in these blocks is a `default_server`, so the host's other sites are
 untouched. Once https works, uncomment the `Strict-Transport-Security` line.
-Certbot renews by itself; `sudo certbot renew --dry-run` checks that it can.
+Certbot renews by itself, but a certificate made with `certonly --webroot` is
+only renewed on disk: nginx keeps serving the old one until it reloads, and
+three months later browsers refuse the site. Give certbot the reload:
+
+```bash
+sudo install -m 755 /opt/shadowline/ops/maintenance/reload-nginx.sh /etc/letsencrypt/renewal-hooks/deploy/
+sudo certbot renew --dry-run            # "all simulated renewals succeeded"
+```
 
 ### The landing page
 
@@ -335,7 +342,48 @@ forward, so:
   on a newer schema may not work, so going back is the previous tag *and* the
   database dump taken before the deploy.
 
-## 7. On a shared host
+## 7. Upkeep
+
+Deploys, backups and certificate renewals run by themselves. What is left:
+
+**Old images.** Every deploy leaves a few GB of images behind (the workers'
+image carries Whisper), and nothing removes them. A weekly timer removes images
+and build cache that no container uses and that are older than two weeks;
+rolling back further than that pulls the tag from the registry again:
+
+```bash
+sudo cp /opt/shadowline/ops/maintenance/docker-prune.{service,timer} /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now docker-prune.timer
+```
+
+**A look once a week**, or a monitor (UptimeRobot or the like) on `/healthz`
+and `HEALTHCHECK_URL` for the backups (section 5) to do it for you:
+
+```bash
+cd /opt/shadowline/server
+docker compose ps --format '{{.Service}}\t{{.Status}}'    # every service Up or healthy
+curl -s https://app.<domain>/healthz
+tail -2 /var/log/shadowline-backup.log                 # last night's "remote backup ok"
+df -h /                                                # below 80%
+systemctl list-timers shadowline-backup.timer docker-prune.timer certbot.timer
+```
+
+**Things that are easy to get wrong:**
+
+- `/opt/shadowline` belongs to Jenkins: every deploy rsyncs the repository
+  over it. Change code through `main`, never in place; `server/.env` is the one
+  file there that is yours.
+- `server/.env` is in no backup. Keep a copy in a password manager: without
+  it a restored database cannot be opened, and every session is signed out.
+- The registry's Auth Token is in two places — Jenkins' `ocir` credential, and
+  `docker login` on the host for anything run by hand. Replace one, replace
+  both.
+- Jenkins' own state (jobs, credentials, build history) is the `jenkins_home`
+  volume, not in the nightly backup either; `docs/ops-jenkins.md` has the
+  command. Remade by hand, it is ten minutes.
+
+## 8. On a shared host
 
 Docker's published ports bypass the host's iptables: a container published on
 `0.0.0.0` is reachable from anywhere the VCN allows, whatever INPUT says.
