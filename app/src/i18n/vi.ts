@@ -76,6 +76,32 @@ export const vi: Messages = {
   'native.saving': 'Đang lưu…',
   'native.more': 'Sẽ sớm có thêm nhiều ngôn ngữ khác.',
 
+  // --- home (public: what Shadowline is, before any sign-in) ---------------
+  'home.tagline': 'Luyện nói tiếng Anh bằng cách nhại theo các đoạn video thật — và nghe rõ bạn nói giống đến đâu.',
+  'home.start': 'Bắt đầu — miễn phí',
+  'home.signIn': 'Đăng nhập',
+  'home.howTitle': 'Cách hoạt động',
+  'home.step1Title': 'Nghe',
+  'home.step1Body': 'Chọn một clip ngắn trong thư viện và nghe một câu do người bản xứ nói.',
+  'home.step2Title': 'Nhại theo',
+  'home.step2Body': 'Ghi âm bạn nói lại đúng câu đó, bắt chước nhịp, trọng âm và ngữ điệu.',
+  'home.step3Title': 'Xem bạn giống đến đâu',
+  'home.step3Body': 'Nhận điểm và xem cao độ, nhịp của bạn đặt cạnh bản gốc, rồi thử lại.',
+  'home.featuresTitle': 'Mọi thứ bạn cần để tự tin nói tiếng Anh',
+  'home.f1Title': 'Nhận xét phát âm',
+  'home.f1Body': 'So sánh cao độ, nhịp và thời gian với người nói, từng câu một.',
+  'home.f2Title': 'Từ vựng nhớ lâu',
+  'home.f2Body': 'Lưu từ từ bất kỳ clip nào và ôn lại bằng thẻ ghi nhớ theo lịch giãn cách.',
+  'home.f3Title': 'Gia sư AI',
+  'home.f3Body': 'Hỏi cách phát âm một âm, nghĩa của một cụm từ, hay vì sao điểm của bạn giảm.',
+  'home.f4Title': 'Tiến độ và chuỗi ngày',
+  'home.f4Body': 'Theo dõi số ngày luyện tập, điểm theo thời gian và leo bảng xếp hạng thân thiện.',
+  'home.safeTitle': 'An toàn, riêng tư và đầy khích lệ',
+  'home.safeBody': 'Dành cho người học ở mọi lứa tuổi. Đăng nhập bằng Google chỉ chia sẻ tên và email của bạn, bản ghi âm không bao giờ hiển thị cho người khác, và bạn có thể tải về hoặc xoá dữ liệu bất cứ lúc nào.',
+  'home.ctaTitle': 'Sẵn sàng tìm lại giọng nói tiếng Anh của bạn?',
+  'home.rights': 'Bảo lưu mọi quyền.',
+  'home.contact': 'Liên hệ',
+
   // --- legal ----------------------------------------------------------------
   'legal.privacy': 'Chính sách quyền riêng tư',
   'legal.terms': 'Điều khoản dịch vụ',
@@ -85,7 +111,7 @@ export const vi: Messages = {
   'legal.and': 'và',
 
   // --- login ----------------------------------------------------------------
-  'login.brand': 'Shadowing Hero',
+  'login.brand': 'Shadowline',
   'login.brandAccent': 'English',
   'login.tagline': 'Nói thật dũng cảm. Lên cấp tiếng Anh, từng nhiệm vụ một.',
   'login.google': 'Tiếp tục với Google',

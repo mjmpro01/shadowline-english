@@ -28,7 +28,7 @@ export function LegalScreen({ kind }: { kind: LegalKind }) {
   return (
     <main className="legal" lang={locale}>
       <header className="legal-top">
-        <Link to="/login" className="legal-brand">
+        <Link to="/" className="legal-brand">
           <img src="/login/crest.webp" alt="" width={36} height={36} />
           <span>Shadowline English</span>
         </Link>
@@ -73,7 +73,7 @@ export function LegalScreen({ kind }: { kind: LegalKind }) {
       <footer className="legal-foot">
         <Link to={`/${other}`}>{t(`legal.${other}`)}</Link>
         <span aria-hidden="true">·</span>
-        <Link to="/login">{t('legal.back')}</Link>
+        <Link to="/">{t('legal.back')}</Link>
       </footer>
     </main>
   )
