@@ -80,7 +80,7 @@ services:
       # and says so in X-Forwarded-*.
       KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL}
       # The admin console is kept off the public host (nginx answers 404 for
-      # /admin/ there) and opened through `ssh -L 8081:localhost:8081`.
+      # /admin/ there) and opened through `ssh -L 8081:127.0.0.1:8081`.
       KC_HOSTNAME_ADMIN: http://localhost:8081
       KC_PROXY_HEADERS: xforwarded
       KC_HTTP_ENABLED: "true"

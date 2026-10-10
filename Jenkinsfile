@@ -121,7 +121,9 @@ pipeline {
         // An OCI Auth Token for Oracle's registry: Jenkins → Credentials,
         // "Username with password", ID `ocir`. Username <namespace>/<user>.
         withCredentials([usernamePassword(credentialsId: 'ocir', usernameVariable: 'OCIR_USER', passwordVariable: 'OCIR_TOKEN')]) {
-          sh '''
+          // bash, not the image's /bin/sh: Debian's dash has no pipefail, and
+          // `set -o pipefail` there stops the deploy before it starts.
+          sh '''#!/bin/bash
             set -euo pipefail
             ROOT="${SHADOWLINE_ROOT}"
             COMPOSE_DIR="${DEPLOY_COMPOSE}"

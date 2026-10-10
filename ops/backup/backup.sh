@@ -3,8 +3,8 @@
 # video file, on this machine and — when RCLONE_REMOTE is set — off it, in
 # object storage.
 #
-#   sudo crontab -e
-#   15 3 * * * /opt/shadowline/ops/backup/backup.sh >> /var/log/shadowline-backup.log 2>&1
+#   started nightly by shadowline-backup.timer (beside this file), or by hand:
+#   sudo /opt/shadowline/ops/backup/backup.sh
 #
 # Settings come from the environment, or from /etc/shadowline-backup.env when
 # it exists. The object storage keys are not there but in rclone's own config
