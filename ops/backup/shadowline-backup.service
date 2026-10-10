@@ -1,0 +1,17 @@
+# Runs ops/backup/backup.sh once; shadowline-backup.timer starts it nightly.
+# Install: see docs/deploy-prod.md, "Backups".
+[Unit]
+Description=Shadowline backup (databases and files, here and in object storage)
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+# A system service gets no HOME, and rclone looks for its config under it.
+Environment=HOME=/root
+ExecStart=/opt/shadowline/ops/backup/backup.sh
+StandardOutput=append:/var/log/shadowline-backup.log
+StandardError=append:/var/log/shadowline-backup.log
+# Behind the app for CPU and disk while it runs.
+Nice=10
+IOSchedulingClass=idle
