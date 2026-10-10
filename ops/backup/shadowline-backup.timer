@@ -1,0 +1,12 @@
+# Nightly at 03:15 Vietnam time, whatever the server's own time zone. A night
+# missed while the server was off runs when it comes back (Persistent).
+[Unit]
+Description=Nightly Shadowline backup
+
+[Timer]
+OnCalendar=*-*-* 03:15:00 Asia/Ho_Chi_Minh
+Persistent=true
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target

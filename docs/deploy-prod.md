@@ -189,7 +189,7 @@ builds reuse them.
 
 ## 5. Backups
 
-`ops/backup/backup.sh`, nightly from root's crontab, keeps:
+`ops/backup/backup.sh`, nightly from a systemd timer, keeps:
 
 | Where | What | How long |
 |---|---|---|
@@ -245,11 +245,16 @@ tarball is less than half of the last one, no older tarball is removed.
    sudo rclone size oci:shadowline-backups/blobs
    ```
 
-5. Then nightly:
+5. Then nightly, from the timer beside the script (03:15 Vietnam time,
+   whatever the server's time zone; Oracle's Ubuntu image has no cron):
 
    ```bash
-   sudo crontab -e
-   15 3 * * * /opt/shadowline/ops/backup/backup.sh >> /var/log/shadowline-backup.log 2>&1
+   sudo cp /opt/shadowline/ops/backup/shadowline-backup.{service,timer} /etc/systemd/system/
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now shadowline-backup.timer
+   systemctl list-timers shadowline-backup.timer      # NEXT is tonight
+   sudo systemctl start shadowline-backup.service     # one run now, as the timer would
+   tail -3 /var/log/shadowline-backup.log             # "remote backup ok"
    ```
 
 Every setting (`DB_KEEP_DAYS`, `BLOB_COPIES`, `REMOTE_DB_KEEP_DAYS`,
