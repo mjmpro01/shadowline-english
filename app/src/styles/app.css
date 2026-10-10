@@ -2286,6 +2286,26 @@
   .native-tick {
     transition: none;
   }
+
+  .login-panel,
+  .login-crest,
+  .login-alert,
+  .login-form > *,
+  .login-sent,
+  .login-sent-mark {
+    animation: none;
+  }
+
+  /* Still drawn — just there at once instead of being drawn in. */
+  .login-sent-mark circle,
+  .login-sent-mark path {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+
+  .login-spinner {
+    animation-duration: 1.6s;
+  }
 }
 
 /* — the library tree: series, episodes — */
