@@ -15,9 +15,9 @@ Keycloak in production mode, no Mailhog, and restarts with the host.
 
 | What | Where | Notes |
 |---|---|---|
-| DNS | your registrar | `A` records for `app.` and `auth.` (and `ci.` for Jenkins) → the VM's public IP |
+| DNS | your registrar | `A` records for the bare domain, `www.`, `app.` and `auth.` (and `ci.` for Jenkins) → the VM's public IP |
 | Ports 80/443 | Oracle Console → VCN → Security List (or NSG) | Ingress TCP 80 and 443 from 0.0.0.0/0. The host's own iptables already allows them |
-| Google sign-in | console.cloud.google.com → Google Auth Platform | A Web client with redirect `https://app.<domain>/auth/google/callback`; Audience → **Publish app**, or only listed test users get in |
+| Google sign-in | console.cloud.google.com → Google Auth Platform | A Web client with redirect `https://app.<domain>/auth/google/callback`; Audience → **Publish app**, or only listed test users get in. Branding: home page `https://<domain>/`, privacy `https://app.<domain>/privacy`, terms `https://app.<domain>/terms`, authorized domain `<domain>` — and the domain verified in Search Console (see *The landing page*) |
 | Mail | Brevo, Mailgun, SES, … | SMTP host, port 587, user, password, and a verified sender address |
 | Tutor | 9router dashboard | A key of Shadowline's own, so it can be revoked alone. Retire any key that has been pasted anywhere |
 | Disk | Oracle Console → Boot volume → Edit | 100 GB is plenty to start; growing it is online (`growpart` + `resize2fs`) |
@@ -129,6 +129,32 @@ the port-80 blocks alone:
 Nothing in these blocks is a `default_server`, so the host's other sites are
 untouched. Once https works, uncomment the `Strict-Transport-Security` line.
 Certbot renews by itself; `sudo certbot renew --dry-run` checks that it can.
+
+### The landing page
+
+`https://<domain>/` is the public home page — what Shadowline is, before any
+login, which Google's OAuth branding verification requires. It is static files
+in `landing/`, which every deploy rsyncs to `/opt/shadowline/landing`, and the
+host's nginx serves them from there: no container, nothing to build. The app
+stays on `app.<domain>`.
+
+1. Add the landing page's `listen 80` block (bare domain and `www.`) from
+   `ops/nginx/vhost.example.conf`; reload nginx.
+2. `sudo certbot certonly --webroot -w /var/www/html -d <domain> -d www.<domain>`
+3. Add its two `listen 443 ssl` blocks with the certificate lines pointing at
+   `/etc/letsencrypt/live/<domain>/`; `sudo nginx -t && sudo systemctl reload nginx`.
+4. nginx (`www-data`) must be able to read `/opt/shadowline/landing`:
+   `namei -l /opt/shadowline/landing/index.html` should show `r-x` for others
+   on every directory. If `/opt/shadowline` is `drwx------`,
+   `chmod o+rx /opt/shadowline /opt/shadowline/landing`.
+5. Prove the domain is yours to Google: Search Console → Add property →
+   **Domain** → `<domain>`, add the `TXT` record it gives at your registrar,
+   Verify. Use the Google account that owns the Cloud project. One domain
+   property covers `app.` and `www.` too. Wait a day before resubmitting the
+   OAuth branding for verification.
+
+Check: `curl -sI https://<domain>/` is `200`, and `curl -s https://<domain>/ |
+grep -c 'Shadowline English'` is not 0.
 
 ### First start
 
