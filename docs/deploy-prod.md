@@ -48,7 +48,9 @@ the API refuses to start over https with any value this repository ships.
 ```bash
 COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml
 
-# Oracle Container Registry: <region-key>.ocir.io/<namespace>/<prefix>.
+# Oracle Container Registry: <region-key>.ocir.io/<namespace>/<prefix>, written
+# out in full — compose does not see shell variables like $NS here, and an
+# empty one leaves ".ocir.io//shadowline", an invalid image name.
 # Shadowline's three images are $REGISTRY/api, /workers and /web. IMAGE_TAG is
 # written by Jenkins on every deploy; leave it out at first.
 REGISTRY=sin.ocir.io/<namespace>/shadowline
@@ -76,11 +78,15 @@ SMTP_USER=...
 SMTP_PASSWORD=...
 
 # Audio lives on the volume (the prod file sets DISK_ROOT); leave S3 unset.
+# The two keys are still read (MinIO's service is defined, if not started),
+# and the secret is checked like the others.
 S3_ENDPOINT=
+S3_ACCESS_KEY=shadowline
 S3_SECRET_KEY=<anything random — not change-me>
 
 TUTOR_API_URL=http://host.docker.internal:20128/v1
 TUTOR_API_KEY=...
+TUTOR_MODEL=cc/claude-haiku-4-5-20251001   # a model id or combo from 9router's list
 TUTOR_DAILY_TOTAL=2000
 ```
 
@@ -133,10 +139,12 @@ commit as the tag:
 ```bash
 cd /opt/shadowline/server
 docker login sin.ocir.io -u '<namespace>/<user>'    # password: the Auth Token
+                                    # <user> is the sign-in name, usually the email
 export IMAGE_TAG=$(git rev-parse --short=7 HEAD)
+docker compose config --images      # five names, sin.ocir.io/<namespace>/shadowline/…:<tag>
 docker compose build                # the first build takes a while: Whisper is baked in
 docker compose push api scoring web
-echo "IMAGE_TAG=$IMAGE_TAG" >> .env
+sed -i '/^IMAGE_TAG=/d' .env && echo "IMAGE_TAG=$IMAGE_TAG" >> .env
 docker compose up -d --no-build
 docker compose ps                   # every service Up or healthy; seed and blobs-init Exited (0)
 docker compose logs -f api          # "listening", no "refusing to start"
@@ -144,7 +152,11 @@ curl -fsS https://app.<domain>/healthz
 ```
 
 Keycloak's admin console is not on the public host. When you need it:
-`ssh -L 8081:localhost:8081 <server>` and open http://localhost:8081/admin/.
+`ssh -L 8081:127.0.0.1:8081 <server>` and open http://localhost:8081/admin/.
+Write 127.0.0.1, not localhost: on a host where another container publishes
+8081 on IPv6, `localhost` resolves to `::1` there and the tunnel lands on it.
+Sign in with `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD` — that account lives
+in the `master` realm, and the `shadowline` realm starts with no users at all.
 
 ## 3. Jenkins
 
