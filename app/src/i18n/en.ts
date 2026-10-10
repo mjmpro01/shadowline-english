@@ -74,6 +74,32 @@ export const en = {
   'native.saving': 'Saving…',
   'native.more': 'More languages are on the way.',
 
+  // --- home (public: what Shadowline is, before any sign-in) ---------------
+  'home.tagline': 'Practise speaking English by shadowing real video clips — and hear exactly how close you got.',
+  'home.start': 'Get started — it is free',
+  'home.signIn': 'Sign in',
+  'home.howTitle': 'How it works',
+  'home.step1Title': 'Listen',
+  'home.step1Body': 'Pick a short clip from the library and listen to one line spoken by a native speaker.',
+  'home.step2Title': 'Shadow',
+  'home.step2Body': 'Record yourself saying the same line, copying its rhythm, stress and intonation.',
+  'home.step3Title': 'See how close you got',
+  'home.step3Body': 'Get a score and a side-by-side view of your pitch and timing against the original, then try again.',
+  'home.featuresTitle': 'Everything you need to speak with confidence',
+  'home.f1Title': 'Pronunciation feedback',
+  'home.f1Body': 'Pitch, rhythm and timing compared with the speaker, line by line.',
+  'home.f2Title': 'Vocabulary that sticks',
+  'home.f2Body': 'Save words from any clip and review them as flashcards on a spaced schedule.',
+  'home.f3Title': 'An AI tutor',
+  'home.f3Body': 'Ask how to say a sound, what a phrase means, or why your score dropped.',
+  'home.f4Title': 'Progress and streaks',
+  'home.f4Body': 'Track practice days, scores over time and climb the friendly leaderboard.',
+  'home.safeTitle': 'Safe, private and encouraging',
+  'home.safeBody': 'Built for learners of every age. Signing in with Google shares only your name and email address, your recordings are never shown to anyone else, and you can download or delete your data at any time.',
+  'home.ctaTitle': 'Ready to find your voice in English?',
+  'home.rights': 'All rights reserved.',
+  'home.contact': 'Contact',
+
   // --- legal ----------------------------------------------------------------
   'legal.privacy': 'Privacy Policy',
   'legal.terms': 'Terms of Service',
@@ -83,7 +109,7 @@ export const en = {
   'legal.and': 'and',
 
   // --- login ----------------------------------------------------------------
-  'login.brand': 'Shadowing Hero',
+  'login.brand': 'Shadowline',
   'login.brandAccent': 'English',
   'login.tagline': 'Speak bravely. Level up your English, one quest at a time.',
   'login.google': 'Continue with Google',

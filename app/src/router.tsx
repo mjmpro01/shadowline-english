@@ -7,6 +7,7 @@ import { DubScreen } from './screens/DubScreen'
 import { EpisodeScreen } from './screens/EpisodeScreen'
 import { FlashcardsScreen } from './screens/FlashcardsScreen'
 import { GuideScreen } from './screens/GuideScreen'
+import { HomeScreen } from './screens/HomeScreen'
 import { LibraryScreen } from './screens/LibraryScreen'
 import { LegalScreen } from './screens/LegalScreen'
 import { LoginScreen } from './screens/LoginScreen'
@@ -21,15 +22,18 @@ export const router = createBrowserRouter([
   // Public, outside RequireAuth: Google's consent screen links to both.
   { path: '/privacy', element: <LegalScreen kind="privacy" /> },
   { path: '/terms', element: <LegalScreen kind="terms" /> },
+  // The home page is public — Google's OAuth verification requires one that
+  // explains the app without a login. A signed-in visitor is sent on to the
+  // dashboard from inside it.
+  { path: '/', element: <HomeScreen /> },
   {
-    path: '/',
+    // Pathless: everything below needs an account, and shares the shell.
     element: (
       <RequireAuth>
         <AppShell />
       </RequireAuth>
     ),
     children: [
-      { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: 'dashboard', element: <DashboardScreen /> },
       { path: 'library', element: <LibraryScreen /> },
       // The library is a tree: a series, an episode, a clip. Before the

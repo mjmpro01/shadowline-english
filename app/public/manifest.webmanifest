@@ -1,7 +1,7 @@
 {
-  "name": "Shadowline",
+  "name": "Shadowline English",
   "short_name": "Shadowline",
-  "description": "Shadow one line at a time, and hear how close you got.",
+  "description": "Practise speaking English by shadowing real video clips, and hear how close you got.",
   "id": "/",
   "scope": "/",
   "start_url": "/dashboard",
