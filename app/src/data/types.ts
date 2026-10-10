@@ -216,6 +216,9 @@ export interface Profile {
   isAdmin: boolean
   /** Whether this server keeps passwords (Keycloak), so one can be changed. */
   passwords?: boolean
+  /** The language tag the learner chose as their own on their first sign-in,
+   *  or null until they have been asked. */
+  nativeLanguage?: string | null
 }
 
 export interface AppData {

@@ -44,6 +44,8 @@ export interface Store {
   setVocabStatus: (id: string, status: VocabStatus) => Promise<void>
   reviewWord: (id: string, status: VocabStatus) => Promise<void>
   updateProfile: (name: string, avatar: Blob | null) => Promise<void>
+  /** Records the answer to the first-sign-in question: which language is theirs. */
+  setNativeLanguage: (language: string) => Promise<void>
   statsFor: (videoId: string) => VideoStats
   leaderboard: LeaderboardRow[]
 }

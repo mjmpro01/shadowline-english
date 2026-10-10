@@ -66,6 +66,24 @@ export const vi: Messages = {
   'tutor.failed': 'Gia sư chưa trả lời được lúc này. Thử lại sau chút nhé.',
   'tutor.note': 'Gia sư là AI và có thể sai — điểm của bạn là do app đo, không phải do gia sư.',
 
+  // --- native language (asked on the first sign-in) -------------------------
+  'native.welcome': (name: string) => (name ? `Chào mừng ${name}!` : 'Chào mừng anh hùng!'),
+  'native.title': 'Ngôn ngữ mẹ đẻ của bạn là gì?',
+  'native.subtitle':
+    'Shadowline sẽ nói chuyện với bạn bằng ngôn ngữ đó, để bạn dồn hết sức cho tiếng Anh. Bạn có thể đổi ngôn ngữ ứng dụng sau trong trang hồ sơ.',
+  'native.label': 'Ngôn ngữ mẹ đẻ',
+  'native.continue': 'Tiếp tục',
+  'native.saving': 'Đang lưu…',
+  'native.more': 'Sẽ sớm có thêm nhiều ngôn ngữ khác.',
+
+  // --- legal ----------------------------------------------------------------
+  'legal.privacy': 'Chính sách quyền riêng tư',
+  'legal.terms': 'Điều khoản dịch vụ',
+  'legal.updated': (date: string) => `Cập nhật lần cuối: ${date}`,
+  'legal.back': 'Quay lại Shadowline',
+  'legal.agree': 'Khi tiếp tục, bạn đồng ý với',
+  'legal.and': 'và',
+
   // --- login ----------------------------------------------------------------
   'login.brand': 'Shadowing Hero',
   'login.brandAccent': 'English',

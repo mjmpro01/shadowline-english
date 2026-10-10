@@ -284,6 +284,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setData((prev) => ({ ...prev, profile }))
   }, [])
 
+  const setNativeLanguage = useCallback(async (language: string) => {
+    const profile = await repository.setNativeLanguage(language)
+    setData((prev) => ({ ...prev, profile }))
+  }, [])
+
   const statsFor = useCallback(
     (videoId: string): VideoStats => {
       const takes = data.takes.filter((t) => t.videoId === videoId)
@@ -318,6 +323,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setVocabStatus,
       reviewWord,
       updateProfile,
+      setNativeLanguage,
       statsFor,
       leaderboard,
     }),
@@ -335,6 +341,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setVocabStatus,
       reviewWord,
       updateProfile,
+      setNativeLanguage,
       statsFor,
       leaderboard,
     ],

@@ -185,6 +185,40 @@ func TestProfileNameCanBeChangedButAdminCannot(t *testing.T) {
 	}
 }
 
+// The language question is asked until it is answered, and the answer is the
+// account's: it comes back from /auth/me, which is all a new device reads.
+func TestNativeLanguageIsAskedOnceAndRemembered(t *testing.T) {
+	h := newHarness(t)
+	c := h.login("learner@example.com")
+
+	before := expect[meJSON](t, c.do("GET", "/auth/me", "", nil), http.StatusOK)
+	if before.User == nil || before.User.NativeLanguage != nil {
+		t.Fatalf("a new account already has a native language: %+v", before.User)
+	}
+
+	updated := expect[profileJSON](t, c.json("PATCH", "/api/profile", map[string]any{"nativeLanguage": "vi"}), http.StatusOK)
+	if updated.NativeLanguage == nil || *updated.NativeLanguage != "vi" {
+		t.Fatalf("native language is %v", updated.NativeLanguage)
+	}
+	if updated.Name == "" {
+		t.Fatal("setting the language alone cleared the name")
+	}
+
+	after := expect[meJSON](t, c.do("GET", "/auth/me", "", nil), http.StatusOK)
+	if after.User.NativeLanguage == nil || *after.User.NativeLanguage != "vi" {
+		t.Fatalf("/auth/me forgot the native language: %v", after.User.NativeLanguage)
+	}
+
+	// Renaming afterwards keeps it.
+	renamed := expect[profileJSON](t, c.json("PATCH", "/api/profile", map[string]any{"name": "Minh"}), http.StatusOK)
+	if renamed.NativeLanguage == nil || *renamed.NativeLanguage != "vi" {
+		t.Fatalf("renaming lost the native language: %v", renamed.NativeLanguage)
+	}
+
+	expectStatus(t, c.json("PATCH", "/api/profile", map[string]any{"nativeLanguage": "not a language"}), http.StatusBadRequest)
+	expectStatus(t, c.json("PATCH", "/api/profile", map[string]any{}), http.StatusBadRequest)
+}
+
 func TestReplacingAnAvatarDoesNotLeaveTheOldOne(t *testing.T) {
 	h := newHarness(t)
 	c := h.login("learner@example.com")

@@ -8,6 +8,7 @@ import { EpisodeScreen } from './screens/EpisodeScreen'
 import { FlashcardsScreen } from './screens/FlashcardsScreen'
 import { GuideScreen } from './screens/GuideScreen'
 import { LibraryScreen } from './screens/LibraryScreen'
+import { LegalScreen } from './screens/LegalScreen'
 import { LoginScreen } from './screens/LoginScreen'
 import { PracticeScreen } from './screens/PracticeScreen'
 import { ProfileScreen } from './screens/ProfileScreen'
@@ -17,6 +18,9 @@ import { VocabularyScreen } from './screens/VocabularyScreen'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginScreen /> },
+  // Public, outside RequireAuth: Google's consent screen links to both.
+  { path: '/privacy', element: <LegalScreen kind="privacy" /> },
+  { path: '/terms', element: <LegalScreen kind="terms" /> },
   {
     path: '/',
     element: (

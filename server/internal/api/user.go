@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/shadowline/server/internal/auth"
@@ -22,10 +23,14 @@ type Profile struct {
 	// Passwords is whether this server keeps passwords at all (Keycloak is
 	// set up), so the Profile screen offers to change one only where it can.
 	Passwords bool `json:"passwords"`
+	// NativeLanguage is null until the learner has said which language is
+	// theirs; the app asks once, on the first sign-in, while it is.
+	NativeLanguage *string `json:"nativeLanguage"`
 }
 
 func (s *Server) profileOf(ctx context.Context, u store.User) Profile {
-	p := Profile{ID: u.ID.String(), Name: u.Name, Email: u.Email, IsAdmin: u.IsAdmin, Passwords: s.Users != nil}
+	p := Profile{ID: u.ID.String(), Name: u.Name, Email: u.Email, IsAdmin: u.IsAdmin, Passwords: s.Users != nil,
+		NativeLanguage: u.NativeLanguage}
 	if u.AvatarKey != nil {
 		// Avatars live in the clips bucket: they are small, server-written and
 		// share the clips bucket's lifecycle rather than a learner's takes.
@@ -46,22 +51,39 @@ func (s *Server) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleUpdateProfile(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.UserFrom(r.Context())
 
+	// Either field may come alone: the first-sign-in question sends only the
+	// language, the Profile screen only the name.
 	var body struct {
-		Name string `json:"name"`
+		Name           *string `json:"name"`
+		NativeLanguage *string `json:"nativeLanguage"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		fail(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if body.Name == "" {
+	if body.NativeLanguage != nil && !languageTag.MatchString(*body.NativeLanguage) {
+		fail(w, http.StatusBadRequest, "nativeLanguage is not a language tag")
+		return
+	}
+	if body.Name == nil && body.NativeLanguage == nil || body.Name != nil && *body.Name == "" {
 		failCode(w, http.StatusBadRequest, "name.empty", "name cannot be empty")
 		return
 	}
 
-	updated, err := s.Store.UpdateProfile(r.Context(), u.ID, body.Name, u.AvatarKey)
-	if err != nil {
-		s.failErr(w, err, "update profile")
-		return
+	updated := u
+	var err error
+	if body.Name != nil {
+		if updated, err = s.Store.UpdateProfile(r.Context(), u.ID, *body.Name, u.AvatarKey); err != nil {
+			s.failErr(w, err, "update profile")
+			return
+		}
+	}
+	if body.NativeLanguage != nil {
+		language := strings.ToLower(*body.NativeLanguage)
+		if updated, err = s.Store.SetNativeLanguage(r.Context(), u.ID, language); err != nil {
+			s.failErr(w, err, "set native language")
+			return
+		}
 	}
 	writeJSON(w, http.StatusOK, s.profileOf(r.Context(), updated))
 }

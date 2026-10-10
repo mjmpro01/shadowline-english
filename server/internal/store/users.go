@@ -19,15 +19,18 @@ type User struct {
 	// EmailVerifiedAt is when the address was proven to belong to whoever signs
 	// in to this account. Once set, an unverified identity cannot sign in to it.
 	EmailVerifiedAt *time.Time `json:"-"`
+	// NativeLanguage is the language tag the learner chose as their own, or
+	// nil until they have been asked.
+	NativeLanguage *string `json:"nativeLanguage"`
 }
 
 // userColumns is what every read of a user selects, in the order scanUser
 // reads it.
-const userColumns = `id, email, name, avatar_key, is_admin, created_at, suspended_at, email_verified_at`
+const userColumns = `id, email, name, avatar_key, is_admin, created_at, suspended_at, email_verified_at, native_language`
 
 func scanUser(row interface{ Scan(...any) error }) (User, error) {
 	var u User
-	err := row.Scan(&u.ID, &u.Email, &u.Name, &u.AvatarKey, &u.IsAdmin, &u.CreatedAt, &u.SuspendedAt, &u.EmailVerifiedAt)
+	err := row.Scan(&u.ID, &u.Email, &u.Name, &u.AvatarKey, &u.IsAdmin, &u.CreatedAt, &u.SuspendedAt, &u.EmailVerifiedAt, &u.NativeLanguage)
 	return u, mapErr(err)
 }
 
@@ -72,4 +75,13 @@ func (s *Store) UpdateProfile(ctx context.Context, id uuid.UUID, name string, av
 		where id = $1
 		returning `+userColumns,
 		id, name, avatarKey))
+}
+
+// SetNativeLanguage records the language the learner calls their own.
+func (s *Store) SetNativeLanguage(ctx context.Context, id uuid.UUID, language string) (User, error) {
+	return scanUser(s.pool.QueryRow(ctx, `
+		update users set native_language = $2
+		where id = $1
+		returning `+userColumns,
+		id, language))
 }

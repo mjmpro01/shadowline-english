@@ -64,6 +64,24 @@ export const en = {
   'tutor.failed': 'The tutor could not answer just now. Try again in a moment.',
   'tutor.note': 'An AI tutor. It can be wrong — your scores come from the app, not from it.',
 
+  // --- native language (asked on the first sign-in) -------------------------
+  'native.welcome': (name: string) => (name ? `Welcome, ${name}!` : 'Welcome, hero!'),
+  'native.title': 'What is your native language?',
+  'native.subtitle':
+    'Shadowline will talk to you in it, so all your energy goes into your English. You can change the app language later in your profile.',
+  'native.label': 'Native language',
+  'native.continue': 'Continue',
+  'native.saving': 'Saving…',
+  'native.more': 'More languages are on the way.',
+
+  // --- legal ----------------------------------------------------------------
+  'legal.privacy': 'Privacy Policy',
+  'legal.terms': 'Terms of Service',
+  'legal.updated': (date: string) => `Last updated: ${date}`,
+  'legal.back': 'Back to Shadowline',
+  'legal.agree': 'By continuing you agree to our',
+  'legal.and': 'and',
+
   // --- login ----------------------------------------------------------------
   'login.brand': 'Shadowing Hero',
   'login.brandAccent': 'English',

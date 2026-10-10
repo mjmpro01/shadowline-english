@@ -86,6 +86,7 @@ export interface Repository {
   deleteVocabWord(id: string): Promise<void>
 
   updateProfile(name: string): Promise<Profile>
+  setNativeLanguage(language: string): Promise<Profile>
   uploadAvatar(avatar: Blob): Promise<Profile>
 
   leaderboard(): Promise<LeaderboardRow[]>
@@ -275,6 +276,10 @@ class ApiRepository implements Repository {
 
   updateProfile(name: string) {
     return api.send<Profile>('PATCH', '/api/profile', { name })
+  }
+
+  setNativeLanguage(language: string) {
+    return api.send<Profile>('PATCH', '/api/profile', { nativeLanguage: language })
   }
 
   uploadAvatar(avatar: Blob) {

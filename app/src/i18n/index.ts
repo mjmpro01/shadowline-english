@@ -8,16 +8,31 @@ import { vi } from './vi'
  *  landed in a language they cannot read needs to find their own in the list,
  *  and "Vietnamese" is no help to them. */
 export const LOCALES = {
-  en: { name: 'English', messages: en as Messages },
-  vi: { name: 'Tiếng Việt', messages: vi },
+  en: { name: 'English', hello: 'Hello!', messages: en as Messages },
+  vi: { name: 'Tiếng Việt', hello: 'Xin chào!', messages: vi },
 } as const
 
 export type Locale = keyof typeof LOCALES
 
 export const LOCALE_CODES = Object.keys(LOCALES) as Locale[]
 
-function isLocale(value: string | null): value is Locale {
-  return value !== null && value in LOCALES
+/** Where this browser remembers the language it was last shown in. */
+export const LOCALE_STORAGE_KEY = 'shadowline.locale'
+
+/** The language this browser was set to, or null when it never was — or when
+ *  a private window refuses to say. */
+export function storedLocale(): string | null {
+  try {
+    return localStorage.getItem(LOCALE_STORAGE_KEY)
+  } catch {
+    // A private window can refuse to hand this over. Not remembering the
+    // choice is survivable; failing to render the app is not.
+    return null
+  }
+}
+
+export function isLocale(value: string | null | undefined): value is Locale {
+  return value != null && Object.hasOwn(LOCALES, value)
 }
 
 /**
