@@ -11,6 +11,9 @@ type profileJSON struct {
 	Name    string `json:"name"`
 	Email   string `json:"email"`
 	IsAdmin bool   `json:"isAdmin"`
+	// NativeLanguage is null until the learner has answered the first-sign-in
+	// question.
+	NativeLanguage *string `json:"nativeLanguage"`
 }
 
 type meJSON struct {

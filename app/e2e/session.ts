@@ -9,7 +9,11 @@ import { ADMIN_EMAIL, API_URL, LEARNER_EMAIL } from './environment'
  * button on the login screen goes to the same place; `?email=` is how a test
  * says who to be, and the real provider has no way to honour it.
  */
-export async function signIn(page: Page, email: string, { tour = false } = {}): Promise<void> {
+export async function signIn(
+  page: Page,
+  email: string,
+  { tour = false, nativeLanguage = 'en' as string | null } = {},
+): Promise<void> {
   // The guided tour starts by itself for a learner with no takes, and holds the
   // screen while it runs: every test not about the tour starts as a browser
   // that has already seen it. Scoped to this page, so a tour test can open a
@@ -25,6 +29,16 @@ export async function signIn(page: Page, email: string, { tour = false } = {}): 
   }
   await page.goto(`${API_URL}/auth/google/start?email=${encodeURIComponent(email)}`)
   await page.waitForURL('**/dashboard')
+  // A new account is asked its native language before anything else shows.
+  // Every test not about that question answers it here, the way the screen
+  // would, and loads the app again past it. null leaves it unanswered.
+  if (nativeLanguage) {
+    const answered = await page.request.patch(`${API_URL}/api/profile`, {
+      data: { nativeLanguage },
+    })
+    if (!answered.ok()) throw new Error(`answering the language: ${answered.status()}`)
+    await page.reload()
+  }
 }
 
 export const asAdmin = (page: Page) => signIn(page, ADMIN_EMAIL)

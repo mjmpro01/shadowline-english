@@ -1980,6 +1980,169 @@
   }
 }
 
+/* --- First sign-in: which language is yours ------------------------------ */
+.native-intro {
+  animation: login-in 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.native-welcome {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f6b83f;
+}
+
+.native-title {
+  font-size: clamp(26px, 4.4vw, 32px);
+}
+
+.native-options {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.native-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #6f4324;
+  background: #140e0c;
+  text-align: left;
+  cursor: pointer;
+  animation: login-in 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 120ms ease;
+}
+.native-option:nth-child(3) {
+  animation-delay: 60ms;
+}
+.native-option:nth-child(n + 4) {
+  animation-delay: 120ms;
+}
+
+.native-option:hover {
+  border-color: #8d5a30;
+  transform: translateY(-1px);
+}
+
+.native-option:active {
+  transform: translateY(1px);
+}
+
+.native-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.native-option:has(input:checked) {
+  border-color: #f6b83f;
+  background: #2a1a12;
+  box-shadow: 0 0 0 3px rgba(246, 184, 63, 0.22);
+}
+
+.native-option:has(input:focus-visible) {
+  outline: 2px solid #ffd96a;
+  outline-offset: 3px;
+}
+
+.native-code {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: #3a2a20;
+  color: #ffe7aa;
+  font-family: var(--font-heading);
+  font-size: 15px;
+  font-weight: 800;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.native-option:has(input:checked) .native-code {
+  background: linear-gradient(135deg, #e46f2b, #f6b83f);
+  color: #120b0a;
+}
+
+.native-names {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.native-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: #fffdf6;
+}
+
+.native-hello {
+  font-size: 13px;
+  color: #c9af87;
+}
+
+.native-tick {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #6f4324;
+  color: transparent;
+  font-size: 13px;
+  font-weight: 800;
+  transform: scale(0.85);
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    transform 220ms cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+.native-option:has(input:checked) .native-tick {
+  background: #f6b83f;
+  border-color: #f6b83f;
+  color: #120b0a;
+  transform: scale(1);
+}
+
+.native-more {
+  margin: -8px 0 0;
+  font-size: 12px;
+  color: #c9af87;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .native-intro,
+  .native-option {
+    animation: none;
+  }
+
+  .native-option,
+  .native-code,
+  .native-tick {
+    transition: none;
+  }
+}
+
 /* — the library tree: series, episodes — */
 
 /* Wider cards than the clip grid. A series card carries a title, two counts and

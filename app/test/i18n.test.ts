@@ -67,6 +67,9 @@ describe('preferredLocale', () => {
 
   it('ignores a stored value it does not recognise', () => {
     expect(preferredLocale('kl', ['vi-VN'])).toBe('vi')
+    // Names every object has are not languages.
+    expect(preferredLocale('toString', ['vi-VN'])).toBe('vi')
+    expect(preferredLocale(null, ['constructor'])).toBe('en')
   })
 
   it('reads the browser in its own order of preference', () => {
