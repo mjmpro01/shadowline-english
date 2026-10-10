@@ -76,6 +76,14 @@ export const vi: Messages = {
   'native.saving': 'Đang lưu…',
   'native.more': 'Sẽ sớm có thêm nhiều ngôn ngữ khác.',
 
+  // --- legal ----------------------------------------------------------------
+  'legal.privacy': 'Chính sách quyền riêng tư',
+  'legal.terms': 'Điều khoản dịch vụ',
+  'legal.updated': (date: string) => `Cập nhật lần cuối: ${date}`,
+  'legal.back': 'Quay lại Shadowline',
+  'legal.agree': 'Khi tiếp tục, bạn đồng ý với',
+  'legal.and': 'và',
+
   // --- login ----------------------------------------------------------------
   'login.brand': 'Shadowing Hero',
   'login.brandAccent': 'English',

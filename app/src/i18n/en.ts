@@ -74,6 +74,14 @@ export const en = {
   'native.saving': 'Saving…',
   'native.more': 'More languages are on the way.',
 
+  // --- legal ----------------------------------------------------------------
+  'legal.privacy': 'Privacy Policy',
+  'legal.terms': 'Terms of Service',
+  'legal.updated': (date: string) => `Last updated: ${date}`,
+  'legal.back': 'Back to Shadowline',
+  'legal.agree': 'By continuing you agree to our',
+  'legal.and': 'and',
+
   // --- login ----------------------------------------------------------------
   'login.brand': 'Shadowing Hero',
   'login.brandAccent': 'English',

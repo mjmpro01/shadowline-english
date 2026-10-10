@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Navigate, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { LoadFailure, Loading } from '../components/LoadState'
 import { useT } from '../i18n'
 import type { MessageKey } from '../i18n/en'
@@ -378,6 +378,11 @@ export function LoginScreen() {
           <img src="/login/trust.svg" alt="" width={18} height={18} aria-hidden="true" />
           <p>{t('login.trust')}</p>
         </div>
+
+        <p className="login-legal">
+          {t('legal.agree')} <Link to="/terms">{t('legal.terms')}</Link> {t('legal.and')}{' '}
+          <Link to="/privacy">{t('legal.privacy')}</Link>.
+        </p>
       </div>
     </main>
   )

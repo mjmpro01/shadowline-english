@@ -77,3 +77,25 @@ for (const [width, budget] of [
     expect(total, JSON.stringify(Object.fromEntries(sizes))).toBeLessThan(budget)
   })
 }
+
+// Google's consent screen links to both pages, and so does the login screen:
+// they have to open for somebody with no account at all.
+test('the privacy policy and terms open without an account, from the login screen', async ({
+  page,
+}) => {
+  await page.context().clearCookies()
+  await page.goto('/login')
+
+  await page.getByRole('link', { name: 'Privacy Policy' }).click()
+  await expect(page).toHaveURL(/\/privacy$/)
+  await expect(page.getByRole('heading', { level: 1, name: 'Privacy Policy' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '3. Google user data' })).toBeVisible()
+
+  await page.getByRole('link', { name: 'Terms of Service' }).click()
+  await expect(page).toHaveURL(/\/terms$/)
+  await expect(page.getByRole('heading', { level: 1, name: 'Terms of Service' })).toBeVisible()
+
+  // Opened directly, as Google's reviewers will.
+  await page.goto('/privacy')
+  await expect(page.getByRole('heading', { level: 1, name: 'Privacy Policy' })).toBeVisible()
+})
