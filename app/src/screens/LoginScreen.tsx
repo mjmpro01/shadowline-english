@@ -3,12 +3,7 @@ import { Navigate, useSearchParams } from 'react-router-dom'
 import { LoadFailure, Loading } from '../components/LoadState'
 import { useT } from '../i18n'
 import type { MessageKey } from '../i18n/en'
-import {
-  forgotPassword,
-  loginURL,
-  loginWithPassword,
-  registerWithPassword,
-} from '../lib/api'
+import { forgotPassword, loginURL, loginWithPassword, registerWithPassword } from '../lib/api'
 import { useApp } from '../store/context'
 import { explain } from '../lib/errors'
 
@@ -33,6 +28,30 @@ const LOGIN_ERRORS: Record<string, MessageKey> = {
 }
 
 type Mode = 'login' | 'register' | 'forgot'
+
+const STRENGTH: MessageKey[] = [
+  'login.strength.weak',
+  'login.strength.weak',
+  'login.strength.fair',
+  'login.strength.good',
+  'login.strength.strong',
+]
+
+/**
+ * A rough 0–4 for the meter under a new password. Not a policy — the server
+ * only insists on eight characters — just a nudge towards a better one while
+ * the learner is still typing it.
+ */
+function passwordStrength(password: string): number {
+  if (!password) return 0
+  if (password.length < 8) return 1
+  let score = 1
+  if (password.length >= 12) score++
+  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++
+  if (/\d/.test(password)) score++
+  if (/[^A-Za-z0-9]/.test(password)) score++
+  return Math.min(4, score)
+}
 
 export function LoginScreen() {
   const { state, signedIn, reload } = useApp()
@@ -75,7 +94,9 @@ export function LoginScreen() {
     setMode(next)
     setFormError(null)
     setForgotDone(false)
+    setVerifySent(false)
     setPassword('')
+    setShowPassword(false)
   }
 
   const onSubmit = async (e: FormEvent) => {
@@ -113,14 +134,22 @@ export function LoginScreen() {
     }
   }
 
-  const submitLabel =
-    busy
-      ? t('login.signingIn')
-      : mode === 'register'
-        ? t('login.register')
-        : mode === 'forgot'
-          ? t('login.sendReset')
-          : t('login.signIn')
+  const submitLabel = busy
+    ? mode === 'register'
+      ? t('login.creating')
+      : mode === 'forgot'
+        ? t('login.sending')
+        : t('login.signingIn')
+    : mode === 'register'
+      ? t('login.register')
+      : mode === 'forgot'
+        ? t('login.sendReset')
+        : t('login.signIn')
+
+  const strength = mode === 'register' ? passwordStrength(password) : 0
+  // Once the mail is on its way the form has nothing left to ask: the panel
+  // turns into the one thing to do next.
+  const sent = forgotDone || verifySent
 
   return (
     <main className="login-hero">
@@ -139,144 +168,211 @@ export function LoginScreen() {
         </header>
 
         {message && (
-          <div className="login-alert" role="alert">
+          // Keyed on the text so a second failure shakes again rather than
+          // sitting still and looking like the old one.
+          <div key={message} className="login-alert" role="alert">
             {message}
           </div>
         )}
 
-        {forgotDone && (
-          <div className="login-note" role="status">
-            {t('login.forgotSent')}
-          </div>
-        )}
-        {verifySent && (
-          <div className="login-note" role="status">
-            {t('login.verifySent')}
+        {sent && (
+          <div className="login-sent" role="status">
+            <svg className="login-sent-mark" viewBox="0 0 52 52" aria-hidden="true">
+              <circle cx="26" cy="26" r="23" />
+              <path d="M15 27l7 7 15-16" />
+            </svg>
+            <h2>{t('login.checkInbox')}</h2>
+            {email && <p className="login-sent-email">{email}</p>}
+            <p>{verifySent ? t('login.verifySent') : t('login.forgotSent')}</p>
+            <button type="button" className="login-submit" onClick={() => switchMode('login')}>
+              {t('login.toSignIn')}
+            </button>
           </div>
         )}
 
-        {/*
+        {!sent && (
+          <>
+            {/*
           Google stays a navigation out of the app; email/password stays here
           and talks to our API, which talks to Keycloak behind the scenes.
         */}
-        <a className="login-google" href={loginURL()}>
-          <span className="login-google-mark" aria-hidden="true">
-            G
-          </span>
-          <span>{oauthMessage ? t('login.tryAgain') : t('login.google')}</span>
-        </a>
-
-        <div className="login-divider">
-          <span />
-          <span>{t('login.orEmail')}</span>
-          <span />
-        </div>
-
-        <form className="login-form" onSubmit={(e) => void onSubmit(e)}>
-          {mode === 'register' && (
-            <label className="login-field">
-              <span>{t('login.name')}</span>
-              <span className="login-input">
-                <input
-                  id="login-name"
-                  autoComplete="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={t('login.namePlaceholder')}
-                />
+            <a className="login-google" href={loginURL()}>
+              <span className="login-google-mark" aria-hidden="true">
+                G
               </span>
-            </label>
-          )}
+              <span>{oauthMessage ? t('login.tryAgain') : t('login.google')}</span>
+            </a>
 
-          <label className="login-field">
-            <span>{t('login.emailLabel')}</span>
-            <span className="login-input">
-              <img src="/login/mail.svg" alt="" width={18} height={18} aria-hidden="true" />
-              <input
-                id="login-email"
-                type="email"
-                required
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={t('login.emailPlaceholder')}
-              />
-            </span>
-          </label>
+            <div className="login-divider">
+              <span />
+              <span>{t('login.orEmail')}</span>
+              <span />
+            </div>
 
-          {mode !== 'forgot' && (
-            <label className="login-field">
-              <span>{t('login.password')}</span>
-              <span className="login-input">
-                <img src="/login/key.svg" alt="" width={18} height={18} aria-hidden="true" />
-                <input
-                  id="login-password"
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  minLength={mode === 'register' ? 8 : undefined}
-                  autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={t('login.passwordPlaceholder')}
-                />
+            {mode !== 'forgot' && (
+              <div
+                className="login-tabs"
+                role="group"
+                aria-label={t('login.modes')}
+                data-mode={mode}
+              >
+                <span className="login-tabs-pill" aria-hidden="true" />
                 <button
                   type="button"
-                  className="login-eye"
-                  aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
-                  onClick={() => setShowPassword((v) => !v)}
+                  aria-pressed={mode === 'login'}
+                  onClick={() => mode !== 'login' && switchMode('login')}
                 >
-                  <img
-                    src="/login/eye-off.svg"
-                    alt=""
-                    width={18}
-                    height={18}
-                    style={{ opacity: showPassword ? 0.45 : 1 }}
-                  />
+                  {t('login.signIn')}
                 </button>
-              </span>
-            </label>
-          )}
+                <button
+                  type="button"
+                  aria-pressed={mode === 'register'}
+                  onClick={() => mode !== 'register' && switchMode('register')}
+                >
+                  {t('login.register')}
+                </button>
+              </div>
+            )}
 
-          {mode === 'login' && (
-            <div className="login-options">
-              <label className="login-remember">
-                <input
-                  type="checkbox"
-                  checked={remember}
-                  onChange={(e) => setRemember(e.target.checked)}
-                />
-                <span className="login-check" aria-hidden="true">
-                  ✓
+            {/* Keyed on the mode so the fields that change arrive with a little
+            movement, instead of the form silently growing a box. */}
+            <form
+              key={mode}
+              className="login-form"
+              data-mode={mode}
+              onSubmit={(e) => void onSubmit(e)}
+            >
+              <p className="login-hint">{t(`login.hint.${mode}`)}</p>
+
+              {mode === 'register' && (
+                <label className="login-field">
+                  <span>{t('login.name')}</span>
+                  <span className="login-input">
+                    <input
+                      id="login-name"
+                      autoComplete="name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder={t('login.namePlaceholder')}
+                    />
+                  </span>
+                </label>
+              )}
+
+              <label className="login-field">
+                <span>{t('login.emailLabel')}</span>
+                <span className="login-input">
+                  <img src="/login/mail.svg" alt="" width={18} height={18} aria-hidden="true" />
+                  <input
+                    id="login-email"
+                    type="email"
+                    required
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={t('login.emailPlaceholder')}
+                  />
                 </span>
-                <span>{t('login.remember')}</span>
               </label>
-              <button type="button" className="login-forgot" onClick={() => switchMode('forgot')}>
-                {t('login.forgot')}
-              </button>
-            </div>
-          )}
 
-          <button type="submit" className="login-submit" disabled={busy}>
-            {submitLabel}
-          </button>
-        </form>
+              {mode !== 'forgot' && (
+                <label className="login-field">
+                  <span>{t('login.password')}</span>
+                  <span className="login-input">
+                    <img src="/login/key.svg" alt="" width={18} height={18} aria-hidden="true" />
+                    <input
+                      id="login-password"
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      minLength={mode === 'register' ? 8 : undefined}
+                      autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder={t('login.passwordPlaceholder')}
+                      aria-describedby={mode === 'register' ? 'login-password-rule' : undefined}
+                    />
+                    <button
+                      type="button"
+                      className="login-eye"
+                      aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
+                      onClick={() => setShowPassword((v) => !v)}
+                    >
+                      <img
+                        src="/login/eye-off.svg"
+                        alt=""
+                        width={18}
+                        height={18}
+                        style={{ opacity: showPassword ? 0.45 : 1 }}
+                      />
+                    </button>
+                  </span>
+                </label>
+              )}
+              {mode === 'register' && (
+                <span className="login-strength" data-level={strength}>
+                  <span
+                    className="login-strength-bars"
+                    role="meter"
+                    aria-label={t('login.strength.label')}
+                    aria-valuemin={0}
+                    aria-valuemax={4}
+                    aria-valuenow={strength}
+                    aria-valuetext={strength ? t(STRENGTH[strength]) : undefined}
+                  >
+                    <i />
+                    <i />
+                    <i />
+                    <i />
+                  </span>
+                  <span className="login-strength-text" aria-hidden="true">
+                    {strength ? t(STRENGTH[strength]) : ''}
+                  </span>
+                  <span id="login-password-rule" className="login-strength-rule">
+                    {t('login.passwordRule')}
+                  </span>
+                </span>
+              )}
 
-        <div className="login-switch">
-          {mode === 'login' ? (
-            <p>
-              {t('login.newHero')}{' '}
-              <button type="button" onClick={() => switchMode('register')}>
-                {t('login.toRegister')}
+              {mode === 'login' && (
+                <div className="login-options">
+                  <label className="login-remember">
+                    <input
+                      type="checkbox"
+                      checked={remember}
+                      onChange={(e) => setRemember(e.target.checked)}
+                    />
+                    <span className="login-check" aria-hidden="true">
+                      ✓
+                    </span>
+                    <span>{t('login.remember')}</span>
+                  </label>
+                  <button
+                    type="button"
+                    className="login-forgot"
+                    onClick={() => switchMode('forgot')}
+                  >
+                    {t('login.forgot')}
+                  </button>
+                </div>
+              )}
+
+              <button type="submit" className="login-submit" disabled={busy} aria-busy={busy}>
+                {busy && <span className="login-spinner" aria-hidden="true" />}
+                <span>{submitLabel}</span>
               </button>
-            </p>
-          ) : (
-            <p>
-              <button type="button" onClick={() => switchMode('login')}>
-                {t('login.toSignIn')}
-              </button>
-            </p>
-          )}
-        </div>
+            </form>
+
+            {mode === 'forgot' && (
+              <div className="login-switch">
+                <p>
+                  <button type="button" onClick={() => switchMode('login')}>
+                    ← {t('login.toSignIn')}
+                  </button>
+                </p>
+              </div>
+            )}
+          </>
+        )}
 
         <div className="login-trust">
           <img src="/login/trust.svg" alt="" width={18} height={18} aria-hidden="true" />

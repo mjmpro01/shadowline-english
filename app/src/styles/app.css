@@ -1297,6 +1297,7 @@
   background: rgba(28, 18, 16, 0.95);
   box-shadow: 0 22px 48px 4px rgba(0, 0, 0, 0.53);
   text-align: center;
+  animation: login-rise 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 .login-crest {
@@ -1309,6 +1310,7 @@
   overflow: hidden;
   display: grid;
   place-items: center;
+  animation: login-glow 3.2s ease-in-out infinite;
 }
 
 .login-crest img {
@@ -1355,6 +1357,7 @@
   color: #ffe7aa;
   border: 1px solid color-mix(in srgb, var(--score-attention) 55%, #6f4324);
   background: color-mix(in srgb, var(--score-attention) 18%, #2c1a15);
+  animation: login-shake 420ms ease both;
 }
 
 .login-google {
@@ -1370,11 +1373,21 @@
   font-weight: 700;
   font-size: 15px;
   text-decoration: none;
-  transition: filter 120ms ease;
+  transition:
+    filter 120ms ease,
+    transform 120ms ease,
+    box-shadow 120ms ease;
 }
 
 .login-google:hover {
   filter: brightness(1.04);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+
+.login-google:active {
+  transform: translateY(1px) scale(0.99);
+  box-shadow: none;
 }
 
 .login-google:focus-visible {
@@ -1431,6 +1444,30 @@
   border-radius: 8px;
   border: 1px solid #6f4324;
   background: #140e0c;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+
+.login-input:hover {
+  border-color: #8d5a30;
+}
+
+/* The input itself draws no outline, so the box around it has to say where
+   the cursor is. */
+.login-input:focus-within {
+  border-color: #f6b83f;
+  background: #1a110e;
+  box-shadow: 0 0 0 3px rgba(246, 184, 63, 0.22);
+}
+
+.login-input img {
+  transition: transform 160ms ease;
+}
+
+.login-input:focus-within img:first-child {
+  transform: scale(1.12);
 }
 
 .login-input input {
@@ -1536,15 +1573,62 @@
   font-size: 16px;
   font-weight: 800;
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition:
+    transform 120ms ease,
+    box-shadow 160ms ease,
+    filter 120ms ease;
+}
+
+/* A streak of light across the button on hover: the one call to action on
+   the page should feel like it wants to be pressed. */
+.login-submit::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.45) 50%,
+    transparent 70%
+  );
+  transform: translateX(-120%);
+  pointer-events: none;
 }
 
 .login-submit:hover:not(:disabled) {
   filter: brightness(1.05);
+  transform: translateY(-1px);
+  box-shadow: 0 0 32px 4px rgba(246, 184, 63, 0.62);
+}
+
+.login-submit:hover:not(:disabled)::after {
+  transform: translateX(120%);
+  transition: transform 700ms ease;
+}
+
+.login-submit:active:not(:disabled) {
+  transform: translateY(1px) scale(0.99);
+  box-shadow: 0 0 16px 1px rgba(246, 184, 63, 0.45);
 }
 
 .login-submit:disabled {
-  opacity: 0.7;
+  opacity: 0.8;
   cursor: wait;
+}
+
+.login-spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2.5px solid rgba(18, 11, 10, 0.25);
+  border-top-color: #120b0a;
+  animation: login-spin 700ms linear infinite;
 }
 
 .login-submit:focus-visible {
@@ -1576,8 +1660,7 @@
   text-decoration: underline;
 }
 
-.login-trust,
-.login-note {
+.login-trust {
   width: 100%;
   display: flex;
   align-items: center;
@@ -1588,16 +1671,270 @@
   text-align: left;
 }
 
-.login-trust p,
-.login-note {
+.login-trust p {
   margin: 0;
   font-size: 12px;
   line-height: 1.4;
   color: #ffe7aa;
 }
 
-.login-note {
-  display: block;
+/* Sign in | Create account: a pill that slides under whichever is chosen. */
+.login-tabs {
+  position: relative;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid #6f4324;
+  background: #140e0c;
+}
+
+.login-tabs-pill {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  border-radius: 7px;
+  background: linear-gradient(90deg, #e46f2b, #f6b83f);
+  box-shadow: 0 0 14px rgba(246, 184, 63, 0.45);
+  transition: transform 320ms cubic-bezier(0.3, 1.3, 0.5, 1);
+}
+
+.login-tabs[data-mode='register'] .login-tabs-pill {
+  transform: translateX(100%);
+}
+
+.login-tabs button {
+  position: relative;
+  z-index: 1;
+  height: 40px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #c9af87;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: color 200ms ease;
+}
+
+.login-tabs button:hover {
+  color: #ffe7aa;
+}
+
+.login-tabs button[aria-pressed='true'] {
+  color: #120b0a;
+  cursor: default;
+}
+
+.login-tabs button:focus-visible {
+  outline: 2px solid #ffd96a;
+  outline-offset: 2px;
+}
+
+.login-hint {
+  margin: 0 0 2px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #c9af87;
+  text-align: center;
+}
+
+/* Each field arrives a beat after the one above it when the form changes. */
+.login-form > * {
+  animation: login-in 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.login-form > :nth-child(2) {
+  animation-delay: 40ms;
+}
+.login-form > :nth-child(3) {
+  animation-delay: 80ms;
+}
+.login-form > :nth-child(4) {
+  animation-delay: 120ms;
+}
+.login-form > :nth-child(5) {
+  animation-delay: 160ms;
+}
+.login-form > :nth-child(n + 6) {
+  animation-delay: 200ms;
+}
+
+.login-strength {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: -6px;
+}
+
+.login-strength-bars {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.login-strength-bars i {
+  height: 5px;
+  border-radius: 999px;
+  background: #3a2a20;
+  transition:
+    background-color 220ms ease,
+    transform 220ms ease;
+  transform-origin: left;
+}
+
+.login-strength[data-level='1'] i:nth-child(-n + 1) {
+  background: #e5533d;
+}
+.login-strength[data-level='2'] i:nth-child(-n + 2) {
+  background: #e98a2c;
+}
+.login-strength[data-level='3'] i:nth-child(-n + 3) {
+  background: #e8c547;
+}
+.login-strength[data-level='4'] i:nth-child(-n + 4) {
+  background: #5fc46b;
+}
+
+.login-strength-text {
+  min-width: 64px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 800;
+  color: #ffe7aa;
+}
+
+.login-strength-rule {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #c9af87;
+}
+
+/* What the panel becomes once a mail is on its way. */
+.login-sent {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  animation: login-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.login-sent h2 {
+  margin: 4px 0 0;
+  font-family: var(--font-heading);
+  font-size: 22px;
+  color: #fffdf6;
+}
+
+.login-sent p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #ffe7aa;
+}
+
+.login-sent .login-sent-email {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #2c1a15;
+  border: 1px solid #6f4324;
+  color: #ffd96a;
+  font-weight: 700;
+  word-break: break-all;
+}
+
+.login-sent .login-submit {
+  margin-top: 10px;
+}
+
+.login-sent-mark {
+  width: 72px;
+  height: 72px;
+  fill: none;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 12px rgba(95, 196, 107, 0.55));
+  animation: login-pop 520ms cubic-bezier(0.3, 1.4, 0.5, 1) both;
+}
+
+.login-sent-mark circle {
+  stroke: #5fc46b;
+  stroke-dasharray: 145;
+  stroke-dashoffset: 145;
+  animation: login-draw 600ms ease-out 120ms forwards;
+}
+
+.login-sent-mark path {
+  stroke: #fffdf6;
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: login-draw 360ms ease-out 620ms forwards;
+}
+
+@keyframes login-rise {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.98);
+  }
+}
+
+@keyframes login-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes login-glow {
+  50% {
+    box-shadow: 0 0 34px 6px rgba(246, 184, 63, 0.7);
+  }
+}
+
+@keyframes login-shake {
+  0% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+  20% {
+    opacity: 1;
+    transform: translateX(-8px);
+  }
+  40% {
+    transform: translateX(7px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(2px);
+  }
+}
+
+@keyframes login-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes login-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
+@keyframes login-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
 @media (max-width: 520px) {
@@ -1613,8 +1950,33 @@
 
 @media (prefers-reduced-motion: reduce) {
   .login-google,
-  .login-submit {
+  .login-submit,
+  .login-submit::after,
+  .login-input,
+  .login-input img,
+  .login-tabs-pill,
+  .login-strength-bars i {
     transition: none;
+  }
+
+  .login-panel,
+  .login-crest,
+  .login-alert,
+  .login-form > *,
+  .login-sent,
+  .login-sent-mark {
+    animation: none;
+  }
+
+  /* Still drawn — just there at once instead of being drawn in. */
+  .login-sent-mark circle,
+  .login-sent-mark path {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+
+  .login-spinner {
+    animation-duration: 1.6s;
   }
 }
 
