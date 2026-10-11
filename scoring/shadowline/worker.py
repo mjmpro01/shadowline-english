@@ -25,6 +25,7 @@ from .analysis import build as build_analysis
 from .audio import DecodeError, decode_to_mono
 from .compare import compare_contours
 from .pitch import ANALYSIS_RATE, track_pitch
+from .speech import missing_speech
 from .queue import Job, Queue
 from .storage import ObjectMissing, Storage, from_env as storage_from_env
 from .transcribe import Transcriber, WhisperTranscriber
@@ -62,6 +63,12 @@ def score_job(
         user = track_pitch(decode_to_mono(take_audio), ANALYSIS_RATE)
     except DecodeError as err:
         raise Unscoreable(f"could not read the recording: {err}") from err
+
+    # A steady hum or fan is periodic too, and the tracker follows it as if it
+    # were a voice; scored, it came out at 50 or 60 for a take with no one in it.
+    why = missing_speech(user, reference)
+    if why is not None:
+        raise Unscoreable(why)
 
     comparison = compare_contours(reference, user)
     if comparison is None:

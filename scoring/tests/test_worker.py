@@ -115,6 +115,31 @@ def test_a_take_with_no_speech_in_it_fails_rather_than_scoring_zero(db, blobs):
     assert "no speech" in error
 
 
+def test_a_take_of_a_humming_room_fails_rather_than_scoring(db, blobs):
+    """Mains hum is periodic, so the pitch tracker follows it like a voice; the
+    take had nobody in it and used to come back with a score of about 50."""
+    import numpy as np
+    import soundfile as sf
+
+    store, root = blobs
+    hum = root / "takes" / "take" / "one" / "hum.wav"
+    hum.parent.mkdir(parents=True, exist_ok=True)
+    t = np.arange(int(2.4 * 8000)) / 8000
+    tone = (np.sin(2 * np.pi * 100 * t) + 0.5 * np.sin(2 * np.pi * 200 * t)) * 0.01
+    noise = np.random.default_rng(1).standard_normal(t.size) * 0.003
+    sf.write(hum, (tone + noise).astype(np.float32), 8000)
+    take_id = seed(db, root, take_audio=None)
+    db.execute("update takes set audio_key = 'take/one/hum.wav' where id = %s", (take_id,))
+
+    for _ in range(MAX_ATTEMPTS):
+        assert run_once(Queue(db), store) is True
+
+    status, score, _, _, error = take_row(db, take_id)
+    assert status == "failed"
+    assert score is None
+    assert error.startswith("no speech found")
+
+
 def test_a_missing_recording_stops_being_retried(db, blobs):
     store, root = blobs
     take_id = seed(db, root)
