@@ -75,6 +75,35 @@ export interface Playlist {
   createdAt: string
 }
 
+/** A shelf of the library's front screen — "For children", "Anime" — that an
+ *  admin made and filled with series. */
+export interface Section {
+  id: string
+  slug: string
+  title: string
+  description: string
+  /** One emoji drawn beside the title, or empty. */
+  icon: string
+  position: number
+  /** How many series are on the shelf. */
+  series: number
+  createdAt: string
+}
+
+/** A shelf as the front screen draws it: the start of its row. */
+export interface SectionRow extends Section {
+  items: Playlist[]
+}
+
+/** One page of a shelf, for its own screen. */
+export interface SectionPage {
+  section: Section
+  items: Playlist[]
+  total: number
+  offset: number
+  limit: number
+}
+
 /** One page of the library's series, and how many there are in all. */
 export interface PlaylistList {
   items: Playlist[]

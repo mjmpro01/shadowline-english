@@ -15,6 +15,7 @@ import { PracticeScreen } from './screens/PracticeScreen'
 import { ProfileScreen } from './screens/ProfileScreen'
 import { ProgressScreen } from './screens/ProgressScreen'
 import { SeriesScreen } from './screens/SeriesScreen'
+import { ShelfScreen } from './screens/ShelfScreen'
 import { VocabularyScreen } from './screens/VocabularyScreen'
 
 export const router = createBrowserRouter([
@@ -40,6 +41,7 @@ export const router = createBrowserRouter([
       // :videoId route in the file for readability; each wins on its own
       // anyway, having a static segment where that one has a parameter.
       { path: 'library/s/:slug', element: <SeriesScreen /> },
+      { path: 'library/shelf/:slug', element: <ShelfScreen /> },
       { path: 'library/e/:episodeId', element: <EpisodeScreen /> },
       { path: 'library/:videoId', element: <AnalysisScreen /> },
       { path: 'library/:videoId/practice', element: <PracticeScreen /> },

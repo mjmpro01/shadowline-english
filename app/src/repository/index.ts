@@ -6,6 +6,8 @@ import type {
   Gloss,
   Playlist,
   PlaylistList,
+  SectionPage,
+  SectionRow,
   Profile,
   SearchResults,
   Take,
@@ -30,6 +32,10 @@ export interface Repository {
   /** The library's top level, a page at a time: series with their counts and
    *  badges, and how many series there are in all. */
   playlistPage(offset: number, limit: number): Promise<PlaylistList>
+  /** The shelves that have series on them, each with the start of its row. */
+  sections(): Promise<SectionRow[]>
+  /** One shelf, a page at a time. */
+  section(slug: string, offset: number, limit: number): Promise<SectionPage>
   /** One series and its episodes, together: there is no moment worth rendering
    *  where the screen has the heading and not the list. */
   playlist(slug: string): Promise<PlaylistPage>
@@ -152,6 +158,16 @@ class ApiRepository implements Repository {
 
   playlistPage(offset: number, limit: number) {
     return api.get<PlaylistList>(`/api/playlists?offset=${offset}&limit=${limit}`)
+  }
+
+  sections() {
+    return api.get<SectionRow[]>('/api/library/sections')
+  }
+
+  section(slug: string, offset: number, limit: number) {
+    return api.get<SectionPage>(
+      `/api/library/sections/${encodeURIComponent(slug)}?offset=${offset}&limit=${limit}`,
+    )
   }
 
   playlist(slug: string) {

@@ -98,6 +98,28 @@ export interface Playlist {
   createdAt: string
 }
 
+/** A shelf of the library's front screen, and the series on it in order. */
+export interface Section {
+  id: string
+  slug: string
+  title: string
+  description: string
+  /** One emoji beside the title, or empty. */
+  icon: string
+  position: number
+  /** How many series are on the shelf. */
+  series: number
+  playlistIds: string[]
+  createdAt: string
+}
+
+export interface SectionPatch {
+  title?: string
+  description?: string
+  icon?: string
+  position?: number
+}
+
 /** One episode: the recording an admin uploaded, and the clips cut out of it. */
 export interface Episode {
   id: string

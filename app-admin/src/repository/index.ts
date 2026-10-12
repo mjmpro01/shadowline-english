@@ -3,6 +3,8 @@ import type {
   CaptionLine,
   Episode,
   Playlist,
+  Section,
+  SectionPatch,
   Profile,
   Services,
   Transcript,
@@ -375,6 +377,28 @@ export const repository = {
   /** Takes the uploaded cover away; the series borrows its first clip's still again. */
   removePlaylistCover(id: string) {
     return api.del(`/api/admin/playlists/${id}/cover`)
+  },
+
+  /** Every shelf of the library, empty ones too, with the series on each. */
+  sections() {
+    return api.get<Section[]>('/api/admin/sections')
+  },
+
+  createSection(input: SectionPatch & { title: string }) {
+    return api.send<Section>('POST', '/api/admin/sections', input)
+  },
+
+  updateSection(id: string, patch: SectionPatch) {
+    return api.send<Section>('PATCH', `/api/admin/sections/${id}`, patch)
+  },
+
+  deleteSection(id: string) {
+    return api.del(`/api/admin/sections/${id}`)
+  },
+
+  /** Replaces what is on a shelf with these series, in this order. */
+  setSectionSeries(id: string, playlistIds: string[]) {
+    return api.send<Section>('PUT', `/api/admin/sections/${id}/series`, { playlistIds })
   },
 
   updateEpisode(id: string, patch: EpisodePatch) {

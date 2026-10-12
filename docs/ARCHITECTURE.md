@@ -244,7 +244,7 @@ API.
 
 | Nhóm | Route |
 | --- | --- |
-| Thư viện | `GET /playlists` (`?limit=&offset=` trả một trang `{items,total,offset,limit}`; không có `limit` trả cả danh sách), `GET /playlists/{slug}`, `GET /episodes/{id}`, `GET /library/search`, `GET /library/summary` |
+| Thư viện | `GET /playlists` (`?limit=&offset=` trả một trang `{items,total,offset,limit}`; không có `limit` trả cả danh sách), `GET /playlists/{slug}`, `GET /episodes/{id}`, `GET /library/search`, `GET /library/summary`, `GET /library/sections` (các kệ có series, mỗi kệ kèm tối đa 12 series đầu), `GET /library/sections/{slug}` (một kệ theo trang) |
 | Clip | `GET /clips`, `GET /clips/featured`, `GET /clips/next-up`, `GET /clips/{id}`, `GET /clips/{id}/audio`, `GET /clips/{id}/video` |
 | Bản ghi | `GET /takes`, `POST /takes`, `GET /takes/{id}`, `GET /takes/{id}/audio`, `DELETE /takes/{id}` |
 | Lồng tiếng | `POST /takes/{id}/dub` (xếp job), `GET /takes/{id}/dub` |
@@ -261,7 +261,7 @@ API.
 | --- | --- |
 | Tải lên | `GET /admin/uploads`, `POST /admin/uploads`, `PUT /admin/uploads/{id}/file`, `GET /admin/uploads/{id}`, `POST /admin/uploads/{id}/retry`, `GET /admin/uploads/{id}/transcript` |
 | Clip | `GET /admin/clips`, `GET /admin/clips/next-number`, `POST /admin/clips`, `PATCH /admin/clips/{id}`, `PUT /admin/clips/{id}/audio`, `DELETE /admin/clips/{id}` |
-| Series / tập | `PATCH /admin/playlists/{id}`, `DELETE /admin/playlists/{id}`, `PUT/DELETE /admin/playlists/{id}/cover`, `PATCH /admin/episodes/{id}`, `DELETE /admin/episodes/{id}` |
+| Series / tập | `PATCH /admin/playlists/{id}`, `DELETE /admin/playlists/{id}`, `PUT/DELETE /admin/playlists/{id}/cover`, `GET/POST /admin/sections`, `PATCH/DELETE /admin/sections/{id}`, `PUT /admin/sections/{id}/series` (thay toàn bộ danh sách series của kệ, theo thứ tự), `PATCH /admin/episodes/{id}`, `DELETE /admin/episodes/{id}` |
 | Người dùng | `GET /admin/users`, `PATCH /admin/users/{id}` |
 | Banner | `GET/POST /admin/banners`, `PUT/DELETE /admin/banners/{id}`, `PUT/DELETE /admin/banners/{id}/image` |
 | Hệ thống | `GET /admin/services` (phiên bản + heartbeat worker), `GET /admin/tutor/usage` |
@@ -315,6 +315,9 @@ series thì clip và tập chỉ mất `playlist_id`. File trong MinIO do API d�
 
 Ba tầng thư viện tương ứng ba bảng: **series** = `playlists`, **tập** =
 `clip_sources` (một bản ghi dài được tải lên), **clip** = `clips` (một câu cắt từ tập).
+
+**`library_sections`** — kệ trong Thư viện (Dành cho trẻ em, Anime…): `slug` (cố định từ lần tạo đầu, đổi tên không đổi link), `title`, `description`, `icon` (một emoji), `position`.
+**`library_section_series`** — series nào trên kệ nào, theo `position`; khoá chính `(section_id, playlist_id)`, một series có thể nằm ở nhiều kệ. Xoá kệ hay xoá series đều xoá dòng nối (`on delete cascade`). Kệ không có series nào thì người học không thấy.
 
 **`playlists`** — series (Friends, một khoá bài giảng…)
 
@@ -510,6 +513,7 @@ Giới hạn mặc định:
 | `00020_tutor_conversations` | `tutor_conversations`, `tutor_messages`: lịch sử chat với gia sư |
 | `00021_native_language` | `users.native_language` |
 | `00022_playlist_cover` | `playlists.cover_key`: ảnh bìa series |
+| `00023_library_sections` | `library_sections`, `library_section_series`: các kệ của Thư viện (Dành cho trẻ em, Phim ảnh, Anime, Luyện IPA được tạo sẵn, để trống) |
 
 Số `00008` bị bỏ trống, không phải thiếu file. Việc giữ lại job cắt / chép lời
 thất bại (`state='failed'`) nằm trong code worker và API, không cần migration vì

@@ -1,14 +1,15 @@
 import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Banners } from '../components/Banners'
 import { useT, type Translate } from '../i18n'
 import { ClipCard } from '../components/ClipCard'
+import { Pager } from '../components/Pager'
+import { SeriesCard } from '../components/SeriesCard'
 import { Icon } from '../components/Icon'
 import { Loading } from '../components/LoadState'
-import type { Episode, Playlist, PlaylistList, SearchResults } from '../data/types'
-import { pageNumbers, searchIsWorthRunning } from '../lib/library'
+import type { Episode, PlaylistList, SearchResults, SectionRow } from '../data/types'
+import { searchIsWorthRunning } from '../lib/library'
 import { useDebounced, useRemote } from '../lib/remote'
-import { tintOf } from '../lib/score'
 import { iconFor } from '../lib/topics'
 import { clock } from '../lib/time'
 import { repository } from '../repository'
@@ -47,6 +48,10 @@ export function LibraryScreen() {
     setParams(next > 1 ? { page: String(next) } : {})
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
+  // The shelves an admin filled. Asked for once: they head the first page and
+  // are not part of the paging below them.
+  const shelves = useRemote('', () => repository.sections())
+  const hasShelves = shelves.state === 'ready' && shelves.value.length > 0
   const found = useRemote(searching ? settled : '', (q) =>
     searchIsWorthRunning(q) ? repository.searchLibrary(q) : Promise.resolve(NOTHING),
   )
@@ -82,13 +87,51 @@ export function LibraryScreen() {
       {query.trim() !== '' ? (
         <Found query={query.trim()} settled={settled} remote={found} t={t} />
       ) : (
-        <Series remote={series} page={page} onPage={goTo} t={t} />
+        <>
+          {/* On the first page only: the shelves are the way into the library,
+              and a learner on page 3 of every series has already chosen the
+              other way. */}
+          {page === 1 && shelves.state === 'ready' &&
+            shelves.value.map((shelf) => <Shelf key={shelf.id} shelf={shelf} t={t} />)}
+          <section className="stack gap-3">
+            {hasShelves && <h2 className="section-title">{t('library.allSeries')}</h2>}
+            <Series remote={series} page={page} onPage={goTo} t={t} />
+          </section>
+        </>
       )}
     </div>
   )
 }
 
 const NOTHING: SearchResults = { playlists: [], episodes: [], clips: [] }
+
+/**
+ * One shelf: its name, and a row of its series that scrolls sideways — the
+ * shape every streaming app has taught people to read as "a kind of thing".
+ * The whole shelf is a page of its own, behind "See all".
+ */
+function Shelf({ shelf, t }: { shelf: SectionRow; t: Translate }) {
+  return (
+    <section className="stack gap-2 shelf" aria-labelledby={`shelf-${shelf.id}`}>
+      <div className="row between gap-2" style={{ alignItems: 'baseline' }}>
+        <h2 className="section-title shelf-title" id={`shelf-${shelf.id}`}>
+          {shelf.icon && <span aria-hidden="true">{shelf.icon}</span>}
+          {shelf.title}
+        </h2>
+        <Link className="shelf-all" to={`/library/shelf/${encodeURIComponent(shelf.slug)}`}>
+          {t('library.seeAll', shelf.series)}
+          <Icon name="chevron-right" size={16} />
+        </Link>
+      </div>
+      {shelf.description && <div className="card-meta">{shelf.description}</div>}
+      <div className="shelf-row">
+        {shelf.items.map((playlist) => (
+          <SeriesCard key={playlist.id} playlist={playlist} t={t} />
+        ))}
+      </div>
+    </section>
+  )
+}
 
 /** Three rows of four on a wide screen, four of three on a narrower one. */
 const SERIES_PER_PAGE = 12
@@ -128,109 +171,6 @@ function Series({
       </div>
       {pages > 1 && <Pager page={page} pages={pages} onPage={onPage} t={t} />}
     </div>
-  )
-}
-
-function Pager({
-  page,
-  pages,
-  onPage,
-  t,
-}: {
-  page: number
-  pages: number
-  onPage: (page: number) => void
-  t: Translate
-}) {
-  return (
-    <nav className="pager" aria-label={t('library.pages')}>
-      <button
-        type="button"
-        className="btn btn-secondary pager-step"
-        disabled={page <= 1}
-        onClick={() => onPage(page - 1)}
-      >
-        <Icon name="chevron-left" size={16} />
-        <span className="pager-label">{t('library.pagePrev')}</span>
-      </button>
-      <span className="pager-numbers">
-        {pageNumbers(page, pages).map((n, i) =>
-          n === null ? (
-            <span key={`gap-${i}`} className="pager-gap" aria-hidden="true">
-              …
-            </span>
-          ) : (
-            <button
-              type="button"
-              key={n}
-              className={`pager-number${n === page ? ' is-current' : ''}`}
-              aria-current={n === page ? 'page' : undefined}
-              aria-label={t('library.pageGo', n)}
-              onClick={() => onPage(n)}
-            >
-              {n}
-            </button>
-          ),
-        )}
-      </span>
-      <span className="pager-of card-meta">{t('library.pageOf', page, pages)}</span>
-      <button
-        type="button"
-        className="btn btn-secondary pager-step"
-        disabled={page >= pages}
-        onClick={() => onPage(page + 1)}
-      >
-        <span className="pager-label">{t('library.pageNext')}</span>
-        <Icon name="chevron-right" size={16} />
-      </button>
-    </nav>
-  )
-}
-
-function SeriesCard({ playlist, t }: { playlist: Playlist; t: Translate }) {
-  const navigate = useNavigate()
-  return (
-    <button
-      type="button"
-      className="link-button card elev-sm series-card"
-      aria-label={t('library.openSeries', playlist.title)}
-      onClick={() => navigate(`/library/s/${encodeURIComponent(playlist.slug)}`)}
-    >
-      {/* A still from the first clip that has one. When none does — a series cut
-          from audio, or one whose cuts are still queued — the cover carries the
-          series' own name on a tint it keeps, the same way a clip with no still
-          carries its line. A grid of identical grey rectangles is nothing to
-          aim at. */}
-      <span
-        className="series-cover"
-        style={playlist.coverUrl ? undefined : { background: tintOf(playlist.id) }}
-      >
-        {playlist.coverUrl ? (
-          <img src={playlist.coverUrl} alt="" loading="lazy" />
-        ) : (
-          <span className="series-face">{playlist.title}</span>
-        )}
-        {/* The badge says an admin picked this one; the line under the title
-            says what that is worth this week. A claim and its evidence, rather
-            than a claim dressed as one. */}
-        {playlist.hot && (
-          <span className="tag tag-accent series-hot" title={t('library.hotTitle')}>
-            <Icon name="flame" size={12} />
-            {t('library.hot')}
-          </span>
-        )}
-      </span>
-      <span className="stack" style={{ gap: 2, padding: 'var(--space-3)' }}>
-        {/* Never the same thing twice: a series with no cover has its name set
-            large across the face above, and printing it again here would be one
-            name and two sizes of it. */}
-        {playlist.coverUrl !== '' && <span className="card-title clamp-2">{playlist.title}</span>}
-        <span className="card-meta">{t('library.seriesCounts', playlist.episodes, playlist.clips)}</span>
-        {playlist.recentTakes > 0 && (
-          <span className="card-meta">{t('library.takesThisWeek', playlist.recentTakes)}</span>
-        )}
-      </span>
-    </button>
   )
 }
 

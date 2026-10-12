@@ -2615,6 +2615,62 @@
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: var(--space-4);
 }
+/* A shelf of the library: its name as a heading rather than a kicker — it is
+   a place to go, not a label on a list — and a row that scrolls sideways,
+   snapping card by card, with the next card showing at the edge so the row
+   reads as one that goes on. */
+/* Doubled for weight over .section-title, which it sits on and which comes
+   later in this file. */
+.shelf-title.shelf-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 22px;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--color-text);
+}
+h1.shelf-title.shelf-title {
+  font-size: 32px;
+}
+.shelf-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  font-weight: 700;
+  color: var(--color-accent-ink);
+  text-decoration: none;
+}
+.shelf-all:hover {
+  text-decoration: underline;
+}
+.shelf-row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 240px;
+  gap: var(--space-4);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  /* Room for the cards' lift and shadow, which overflow would otherwise cut. */
+  padding: 4px 2px 10px;
+  margin: -4px -2px 0;
+}
+.shelf-row > * {
+  scroll-snap-align: start;
+}
+@media (max-width: 560px) {
+  .shelf-row {
+    grid-auto-columns: 78%;
+  }
+  .shelf-title.shelf-title {
+    font-size: 19px;
+  }
+}
+
 /* The library's pages. The numbers are the chips the topic row uses, so the
    pager reads as part of the same board rather than a table footer. */
 .pager {
