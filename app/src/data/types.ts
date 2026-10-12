@@ -67,10 +67,20 @@ export interface Playlist {
   position: number
   episodes: number
   clips: number
-  /** The still of the first clip in the series that has one; empty until the
-   *  cutter has produced one, and for a series cut from audio. */
+  /** The cover an admin uploaded for the series, or else the still of its
+   *  first clip that has one; empty when it has neither. */
   coverUrl: string
+  /** Whether `coverUrl` is an uploaded cover rather than a borrowed still. */
+  ownCover: boolean
   createdAt: string
+}
+
+/** One page of the library's series, and how many there are in all. */
+export interface PlaylistList {
+  items: Playlist[]
+  total: number
+  offset: number
+  limit: number
 }
 
 /**

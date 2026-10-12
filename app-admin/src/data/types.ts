@@ -90,7 +90,11 @@ export interface Playlist {
   position: number
   episodes: number
   clips: number
+  /** The uploaded cover, or else the still of the first clip that has one. */
   coverUrl: string
+  /** Whether `coverUrl` is an uploaded cover, which can be removed, rather
+   *  than a still borrowed from a clip. */
+  ownCover: boolean
   createdAt: string
 }
 

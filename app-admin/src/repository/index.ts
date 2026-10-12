@@ -367,6 +367,16 @@ export const repository = {
     return api.del(`/api/admin/playlists/${id}`)
   },
 
+  /** Sets a series' cover, replacing any it had. PNG, JPEG or WebP, 3 MB. */
+  playlistCover(id: string, image: File) {
+    return api.upload<Playlist>('PUT', `/api/admin/playlists/${id}/cover`, image)
+  },
+
+  /** Takes the uploaded cover away; the series borrows its first clip's still again. */
+  removePlaylistCover(id: string) {
+    return api.del(`/api/admin/playlists/${id}/cover`)
+  },
+
   updateEpisode(id: string, patch: EpisodePatch) {
     return api.send<Episode>('PATCH', `/api/admin/episodes/${id}`, patch)
   },

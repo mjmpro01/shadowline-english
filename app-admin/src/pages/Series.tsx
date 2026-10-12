@@ -150,9 +150,90 @@ export function Series() {
             }
           />
 
+          <Cover playlist={playlist} onChange={reload} />
+
           {open === playlist.id && <Episodes playlist={playlist} series={series} onChange={reload} />}
         </div>
       ))}
+    </div>
+  )
+}
+
+/**
+ * The series' picture on the library card. An uploaded one wins; without one
+ * the card borrows its first clip's still, which is a 9:16 phone frame of
+ * whoever speaks first — cropped into a poster, it is rarely the one anybody
+ * would pick.
+ */
+function Cover({ playlist, onChange }: { playlist: Playlist; onChange: () => Promise<void> }) {
+  const t = useT()
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
+
+  const run = async (work: () => Promise<unknown>) => {
+    setBusy(true)
+    setProblem(null)
+    try {
+      await work()
+      await onChange()
+    } catch (err) {
+      setProblem(err instanceof ApiError ? err.message : t('studio.seriesCoverFailed'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="stack gap-1">
+      <span className="card-kicker">{t('studio.seriesCover')}</span>
+      <div className="row gap-3 wrap" style={{ alignItems: 'flex-start' }}>
+        <span className="series-cover-preview">
+          {playlist.coverUrl ? (
+            <img src={playlist.coverUrl} alt="" />
+          ) : (
+            <span className="card-meta">{playlist.title}</span>
+          )}
+        </span>
+        <div className="stack gap-2" style={{ flex: '1 1 240px' }}>
+          <div className="card-meta">
+            {playlist.ownCover
+              ? t('studio.seriesCoverHint')
+              : playlist.coverUrl
+                ? t('studio.seriesCoverBorrowed')
+                : t('studio.seriesCoverNone')}
+          </div>
+          <div className="row gap-2 wrap">
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              aria-label={t('studio.seriesCover')}
+              disabled={busy}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                e.target.value = ''
+                if (file) void run(() => repository.playlistCover(playlist.id, file))
+              }}
+            />
+            {playlist.ownCover && (
+              <button
+                type="button"
+                className="btn btn-ghost"
+                disabled={busy}
+                onClick={() => void run(() => repository.removePlaylistCover(playlist.id))}
+              >
+                {t('studio.seriesCoverRemove')}
+              </button>
+            )}
+          </div>
+          {busy && <div className="card-meta">{t('studio.seriesCoverUploading')}</div>}
+          {!playlist.ownCover && <div className="card-meta">{t('studio.seriesCoverHint')}</div>}
+          {problem !== null && (
+            <div className="card-meta" role="alert">
+              {problem}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

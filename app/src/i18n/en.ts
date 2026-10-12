@@ -202,6 +202,11 @@ export const en = {
   'library.seriesCounts': (episodes: number, clips: number) =>
     `${episodes} ${episodes === 1 ? 'episode' : 'episodes'} · ${clips} ${clips === 1 ? 'clip' : 'clips'}`,
   'library.openSeries': (title: string) => `Open ${title}`,
+  'library.pages': 'Pages of series',
+  'library.pagePrev': 'Previous',
+  'library.pageNext': 'Next',
+  'library.pageGo': (n: number) => `Page ${n}`,
+  'library.pageOf': (page: number, pages: number) => `Page ${page} of ${pages}`,
   'library.foundSeries': 'Series',
   'library.foundEpisodes': 'Episodes',
   'library.foundClips': 'Clips',
