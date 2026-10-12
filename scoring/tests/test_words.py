@@ -73,10 +73,15 @@ class TestCheck:
         got = check("We were on a break!", heard("we were on a break"))
         assert [text for text, _ in got.line] == ["We", "were", "on", "a", "break!"]
 
-    def test_nothing_heard_is_not_a_score_of_zero(self):
-        # An empty transcript is a quiet room at least as often as it is
-        # silence, and a learner should not lose a score over the difference.
-        assert check("We were on a break", []) is None
+    def test_nothing_heard_is_none_of_the_line(self):
+        # An empty transcript used to be skipped, and a take with nobody in it
+        # kept the score its background hum earned. Nothing heard is every word
+        # missing; the floor in gate() is what is left of the score.
+        got = check("We were on a break", [])
+        assert got is not None
+        assert got.accuracy == 0.0
+        assert got.heard == []
+        assert [text for text, ok in got.line if not ok] == ["We", "were", "on", "a", "break"]
 
     def test_a_clip_with_no_line_has_nothing_to_check(self):
         assert check("", heard("we were on a break")) is None

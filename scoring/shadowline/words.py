@@ -108,14 +108,20 @@ class WordScore:
 def check(expected_line: str, heard_words: list[str]) -> WordScore | None:
     """Match a transcript against the line the clip asked for.
 
-    None when there is nothing to compare — a clip with no caption, or a
-    transcript with no words in it. The second is the important one: an empty
-    transcript means a quiet room or a poor microphone at least as often as it
-    means silence, and a learner should not lose a score over the difference.
+    None when there is nothing to compare: a clip with no caption.
+
+    A transcript with no words in it is not nothing to compare — it is none of
+    the line heard, and it scores that way. It used to be let through, on the
+    view that a quiet room or a poor microphone empties a transcript as often
+    as silence does; in practice it let a take with nobody in it keep its whole
+    prosody score, and prosody will happily measure a fan. A take that reaches
+    this point has already passed the check for speech in the signal, so an
+    empty transcript here is a voice Whisper could not make out a word of, and
+    the floor in `gate` is what keeps that from costing everything.
     """
     expected_tokens = normalise(expected_line)
     heard_tokens = [token for word in heard_words for token in normalise(word)]
-    if not expected_tokens or not heard_tokens:
+    if not expected_tokens:
         return None
 
     spoken = [word for word in re.split(r"\s+", expected_line.strip()) if normalise(word)]
