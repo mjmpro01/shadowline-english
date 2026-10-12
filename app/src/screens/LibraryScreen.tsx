@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Banners } from '../components/Banners'
 import { useT, type Translate } from '../i18n'
 import { ClipCard } from '../components/ClipCard'
 import { Icon } from '../components/Icon'
 import { Loading } from '../components/LoadState'
-import type { Episode, Playlist, SearchResults } from '../data/types'
-import { searchIsWorthRunning } from '../lib/library'
+import type { Episode, Playlist, PlaylistList, SearchResults } from '../data/types'
+import { pageNumbers, searchIsWorthRunning } from '../lib/library'
 import { useDebounced, useRemote } from '../lib/remote'
 import { tintOf } from '../lib/score'
 import { iconFor } from '../lib/topics'
@@ -36,7 +36,17 @@ export function LibraryScreen() {
   const summary = useRemote('', () => repository.librarySummary())
   const categories = summary.state === 'ready' ? summary.value.categories : []
 
-  const series = useRemote('', () => repository.listPlaylists())
+  // The page is in the address, so the back button and a shared link land on
+  // the same page of the library rather than the first.
+  const [params, setParams] = useSearchParams()
+  const page = Math.max(1, Number.parseInt(params.get('page') ?? '1', 10) || 1)
+  const series = useRemote(String(page), (key) =>
+    repository.playlistPage((Number(key) - 1) * SERIES_PER_PAGE, SERIES_PER_PAGE),
+  )
+  const goTo = (next: number) => {
+    setParams(next > 1 ? { page: String(next) } : {})
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
   const found = useRemote(searching ? settled : '', (q) =>
     searchIsWorthRunning(q) ? repository.searchLibrary(q) : Promise.resolve(NOTHING),
   )
@@ -72,7 +82,7 @@ export function LibraryScreen() {
       {query.trim() !== '' ? (
         <Found query={query.trim()} settled={settled} remote={found} t={t} />
       ) : (
-        <Series remote={series} t={t} />
+        <Series remote={series} page={page} onPage={goTo} t={t} />
       )}
     </div>
   )
@@ -80,17 +90,100 @@ export function LibraryScreen() {
 
 const NOTHING: SearchResults = { playlists: [], episodes: [], clips: [] }
 
-function Series({ remote, t }: { remote: ReturnType<typeof useRemote<Playlist[]>>; t: Translate }) {
+/** Three rows of four on a wide screen, four of three on a narrower one. */
+const SERIES_PER_PAGE = 12
+
+function Series({
+  remote,
+  page,
+  onPage,
+  t,
+}: {
+  remote: ReturnType<typeof useRemote<PlaylistList>>
+  page: number
+  onPage: (page: number) => void
+  t: Translate
+}) {
   if (remote.state === 'loading') return <Loading />
   if (remote.state === 'error') return <div className="card-meta">{remote.message}</div>
-  if (remote.value.length === 0) return <div className="card-meta">{t('library.noSeries')}</div>
+  const { items, total, limit } = remote.value
+  const pages = Math.max(1, Math.ceil(total / limit))
+  // A page past the end — an old link, a series deleted since — goes to the
+  // last one there is rather than to an empty grid.
+  if (items.length === 0 && total > 0) {
+    return (
+      <button type="button" className="btn btn-secondary" onClick={() => onPage(pages)}>
+        {t('library.pageGo', pages)}
+      </button>
+    )
+  }
+  if (total === 0) return <div className="card-meta">{t('library.noSeries')}</div>
 
   return (
-    <div className="grid-series">
-      {remote.value.map((playlist) => (
-        <SeriesCard key={playlist.id} playlist={playlist} t={t} />
-      ))}
+    <div className="stack gap-4">
+      <div className="grid-series">
+        {items.map((playlist) => (
+          <SeriesCard key={playlist.id} playlist={playlist} t={t} />
+        ))}
+      </div>
+      {pages > 1 && <Pager page={page} pages={pages} onPage={onPage} t={t} />}
     </div>
+  )
+}
+
+function Pager({
+  page,
+  pages,
+  onPage,
+  t,
+}: {
+  page: number
+  pages: number
+  onPage: (page: number) => void
+  t: Translate
+}) {
+  return (
+    <nav className="pager" aria-label={t('library.pages')}>
+      <button
+        type="button"
+        className="btn btn-secondary pager-step"
+        disabled={page <= 1}
+        onClick={() => onPage(page - 1)}
+      >
+        <Icon name="chevron-left" size={16} />
+        <span className="pager-label">{t('library.pagePrev')}</span>
+      </button>
+      <span className="pager-numbers">
+        {pageNumbers(page, pages).map((n, i) =>
+          n === null ? (
+            <span key={`gap-${i}`} className="pager-gap" aria-hidden="true">
+              …
+            </span>
+          ) : (
+            <button
+              type="button"
+              key={n}
+              className={`pager-number${n === page ? ' is-current' : ''}`}
+              aria-current={n === page ? 'page' : undefined}
+              aria-label={t('library.pageGo', n)}
+              onClick={() => onPage(n)}
+            >
+              {n}
+            </button>
+          ),
+        )}
+      </span>
+      <span className="pager-of card-meta">{t('library.pageOf', page, pages)}</span>
+      <button
+        type="button"
+        className="btn btn-secondary pager-step"
+        disabled={page >= pages}
+        onClick={() => onPage(page + 1)}
+      >
+        <span className="pager-label">{t('library.pageNext')}</span>
+        <Icon name="chevron-right" size={16} />
+      </button>
+    </nav>
   )
 }
 

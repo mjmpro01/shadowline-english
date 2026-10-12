@@ -2610,9 +2610,74 @@
    a badge; the 190px clip tile wraps all three onto their own lines. */
 .grid-series {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  /* auto-fill keeps the empty tracks, so a lone series is one card wide rather
+     than the whole row. */
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: var(--space-4);
 }
+/* The library's pages. The numbers are the chips the topic row uses, so the
+   pager reads as part of the same board rather than a table footer. */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.pager-numbers {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pager-number {
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 2px solid var(--color-divider);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--game-edge);
+}
+.pager-number:hover {
+  background: var(--color-accent-100);
+}
+.pager-number.is-current {
+  background: var(--color-accent);
+  border-color: var(--color-accent-600);
+  color: var(--color-on-accent);
+  cursor: default;
+}
+.pager-gap {
+  color: var(--color-text-muted);
+  padding: 0 2px;
+}
+/* "Page 3 of 9" is for a screen reader and a phone, where the numbers give
+   way to it; on a wider screen the numbers already say it. */
+.pager-of {
+  display: none;
+}
+@media (max-width: 560px) {
+  .pager-numbers {
+    display: none;
+  }
+  .pager-of {
+    display: inline;
+  }
+  .pager-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+
 .series-card {
   display: flex;
   flex-direction: column;
@@ -2639,11 +2704,17 @@
   display: grid;
   place-items: center;
   aspect-ratio: 16 / 9;
+  overflow: hidden;
   background: var(--color-accent-100);
   color: var(--color-accent-500);
   border-bottom: 2px solid var(--game-edge);
 }
+/* Laid over the frame rather than in it. As a grid item at height: 100% the
+   picture's own height won: the first clip's still is a 9:16 phone frame, and
+   it stretched the "16:9" cover into a card taller than the screen. */
 .series-cover img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;

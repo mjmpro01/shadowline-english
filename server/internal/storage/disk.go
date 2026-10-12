@@ -54,18 +54,44 @@ func (d *Disk) Put(ctx context.Context, bucket Bucket, key string, r io.Reader, 
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+	dir := filepath.Dir(full)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	f, err := os.Create(full)
+	// Written beside the object and renamed into place, so the key holds the
+	// whole object or nothing. Written straight to the key, an upload cut off
+	// part way — too large, a dropped connection — left half a file under a
+	// real name: served, backed up, and never cleaned up.
+	f, err := os.CreateTemp(dir, ".part-*")
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	tmp := f.Name()
 	if _, err := io.Copy(f, r); err != nil {
+		f.Close()
+		os.Remove(tmp)
 		return err
 	}
-	return f.Sync()
+	if err := f.Sync(); err != nil {
+		f.Close()
+		os.Remove(tmp)
+		return err
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(tmp)
+		return err
+	}
+	// CreateTemp makes the file 0600; an object is read by the workers too,
+	// which run as another user.
+	if err := os.Chmod(tmp, 0o644); err != nil {
+		os.Remove(tmp)
+		return err
+	}
+	if err := os.Rename(tmp, full); err != nil {
+		os.Remove(tmp)
+		return err
+	}
+	return nil
 }
 
 func (d *Disk) SignedGetURL(ctx context.Context, bucket Bucket, key string, ttl time.Duration) (string, error) {

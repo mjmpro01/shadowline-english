@@ -244,7 +244,7 @@ API.
 
 | Nhóm | Route |
 | --- | --- |
-| Thư viện | `GET /playlists`, `GET /playlists/{slug}`, `GET /episodes/{id}`, `GET /library/search`, `GET /library/summary` |
+| Thư viện | `GET /playlists` (`?limit=&offset=` trả một trang `{items,total,offset,limit}`; không có `limit` trả cả danh sách), `GET /playlists/{slug}`, `GET /episodes/{id}`, `GET /library/search`, `GET /library/summary` |
 | Clip | `GET /clips`, `GET /clips/featured`, `GET /clips/next-up`, `GET /clips/{id}`, `GET /clips/{id}/audio`, `GET /clips/{id}/video` |
 | Bản ghi | `GET /takes`, `POST /takes`, `GET /takes/{id}`, `GET /takes/{id}/audio`, `DELETE /takes/{id}` |
 | Lồng tiếng | `POST /takes/{id}/dub` (xếp job), `GET /takes/{id}/dub` |
@@ -261,7 +261,7 @@ API.
 | --- | --- |
 | Tải lên | `GET /admin/uploads`, `POST /admin/uploads`, `PUT /admin/uploads/{id}/file`, `GET /admin/uploads/{id}`, `POST /admin/uploads/{id}/retry`, `GET /admin/uploads/{id}/transcript` |
 | Clip | `GET /admin/clips`, `GET /admin/clips/next-number`, `POST /admin/clips`, `PATCH /admin/clips/{id}`, `PUT /admin/clips/{id}/audio`, `DELETE /admin/clips/{id}` |
-| Series / tập | `PATCH /admin/playlists/{id}`, `DELETE /admin/playlists/{id}`, `PATCH /admin/episodes/{id}`, `DELETE /admin/episodes/{id}` |
+| Series / tập | `PATCH /admin/playlists/{id}`, `DELETE /admin/playlists/{id}`, `PUT/DELETE /admin/playlists/{id}/cover`, `PATCH /admin/episodes/{id}`, `DELETE /admin/episodes/{id}` |
 | Người dùng | `GET /admin/users`, `PATCH /admin/users/{id}` |
 | Banner | `GET/POST /admin/banners`, `PUT/DELETE /admin/banners/{id}`, `PUT/DELETE /admin/banners/{id}/image` |
 | Hệ thống | `GET /admin/services` (phiên bản + heartbeat worker), `GET /admin/tutor/usage` |
@@ -326,6 +326,7 @@ Ba tầng thư viện tương ứng ba bảng: **series** = `playlists`, **tập
 | `description` | text | |
 | `hot` | boolean | Gắn nhãn "hot" trong thư viện |
 | `position` | int | Thứ tự hiển thị |
+| `cover_key` | text, null | Ảnh bìa admin tải lên. Không có thì thẻ series dùng khung hình của clip đầu tiên có ảnh |
 | `created_at` | timestamptz | |
 
 **`clip_sources`** — tập / bản ghi gốc được tải lên
@@ -507,6 +508,8 @@ Giới hạn mặc định:
 | `00018_worker_versions` | `version`, `started_at` trong worker_heartbeats |
 | `00019_email_verified` | `users.email_verified_at`; mọi tài khoản đã có được đánh dấu đã xác minh |
 | `00020_tutor_conversations` | `tutor_conversations`, `tutor_messages`: lịch sử chat với gia sư |
+| `00021_native_language` | `users.native_language` |
+| `00022_playlist_cover` | `playlists.cover_key`: ảnh bìa series |
 
 Số `00008` bị bỏ trống, không phải thiếu file. Việc giữ lại job cắt / chép lời
 thất bại (`state='failed'`) nằm trong code worker và API, không cần migration vì

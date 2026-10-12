@@ -5,6 +5,7 @@ import type {
   Episode,
   Gloss,
   Playlist,
+  PlaylistList,
   Profile,
   SearchResults,
   Take,
@@ -26,8 +27,9 @@ export interface Repository {
   me(): Promise<Profile | null>
   logout(): Promise<void>
 
-  /** The library's top level: every series, with its counts and its badge. */
-  listPlaylists(): Promise<Playlist[]>
+  /** The library's top level, a page at a time: series with their counts and
+   *  badges, and how many series there are in all. */
+  playlistPage(offset: number, limit: number): Promise<PlaylistList>
   /** One series and its episodes, together: there is no moment worth rendering
    *  where the screen has the heading and not the list. */
   playlist(slug: string): Promise<PlaylistPage>
@@ -148,8 +150,8 @@ class ApiRepository implements Repository {
     return api.send<void>('POST', '/auth/logout', {})
   }
 
-  listPlaylists() {
-    return api.get<Playlist[]>('/api/playlists')
+  playlistPage(offset: number, limit: number) {
+    return api.get<PlaylistList>(`/api/playlists?offset=${offset}&limit=${limit}`)
   }
 
   playlist(slug: string) {

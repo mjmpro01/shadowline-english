@@ -623,6 +623,27 @@
   border-radius: 8px;
 }
 
+/* A series' cover as the library card shows it: 16:9, cropped to fill. */
+.series-cover-preview {
+  display: grid;
+  place-items: center;
+  width: 192px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--color-surface-2);
+  border: 2px solid var(--color-divider);
+  text-align: center;
+  padding: 4px;
+}
+.series-cover-preview img {
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  margin: -4px;
+  object-fit: cover;
+  display: block;
+}
+
 .banner-preview {
   width: 100%;
   max-height: 160px;

@@ -222,6 +222,11 @@ export const vi: Messages = {
   'library.seriesCounts': (episodes: number, clips: number) =>
     `${episodes} tập · ${clips} clip`,
   'library.openSeries': (title: string) => `Mở ${title}`,
+  'library.pages': 'Các trang series',
+  'library.pagePrev': 'Trước',
+  'library.pageNext': 'Sau',
+  'library.pageGo': (n: number) => `Trang ${n}`,
+  'library.pageOf': (page: number, pages: number) => `Trang ${page}/${pages}`,
   'library.foundSeries': 'Series',
   'library.foundEpisodes': 'Tập',
   'library.foundClips': 'Clip',

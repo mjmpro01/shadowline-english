@@ -32,11 +32,13 @@ type Playlist struct {
 	Position    int  `json:"position"`
 	Episodes    int  `json:"episodes"`
 	Clips       int  `json:"clips"`
-	// CoverKey is the still of the first clip that has one; the API signs it
-	// into CoverURL. A playlist has no picture of its own to upload — the
-	// pictures are already in it.
+	// CoverKey is the picture an admin uploaded for the series, or, when there
+	// is none, the still of its first clip that has one; the API signs it into
+	// CoverURL. OwnCover says which: the console offers to remove an uploaded
+	// cover, and there is nothing to remove from a borrowed one.
 	CoverKey  *string   `json:"-"`
 	CoverURL  string    `json:"coverUrl"`
+	OwnCover  bool      `json:"ownCover"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 
@@ -50,15 +52,16 @@ const playlistColumns = `p.id, p.slug, p.title, p.description, p.hot, p.position
 	(select count(*) from clips c where c.playlist_id = p.id),
 	(select count(*) from takes t join clips c on c.id = t.clip_id
 	 where c.playlist_id = p.id and t.recorded_at > now() - $1::interval),
-	(select c.poster_key from clips c
+	coalesce(p.cover_key, (select c.poster_key from clips c
 	 where c.playlist_id = p.id and c.poster_key is not null
-	 order by c.start_seconds, c.created_at limit 1),
+	 order by c.start_seconds, c.created_at limit 1)),
+	p.cover_key is not null,
 	p.created_at`
 
 func scanPlaylist(row pgx.Row) (Playlist, error) {
 	var p Playlist
 	err := row.Scan(&p.ID, &p.Slug, &p.Title, &p.Description, &p.Hot, &p.Position,
-		&p.Episodes, &p.Clips, &p.RecentTakes, &p.CoverKey, &p.CreatedAt)
+		&p.Episodes, &p.Clips, &p.RecentTakes, &p.CoverKey, &p.OwnCover, &p.CreatedAt)
 	return p, mapErr(err)
 }
 
@@ -70,11 +73,16 @@ func recentInterval() string {
 // strings where the long form buries the query.
 func itoa(n int) string { return strconv.Itoa(n) }
 
-// ListPlaylists answers the library's front screen.
+// ListPlaylists answers the library's front screen, a page at a time.
 //
 // Hot first, then the order an admin gave them, then alphabetically — so a
 // library nobody has curated still reads as a list rather than as insertion
-// order, which is the order of nothing a learner can see.
+// order, which is the order of nothing a learner can see. The id breaks the
+// last tie, so a page boundary never falls between two series that sort the
+// same and shows one of them twice.
+//
+// limit 0 is every series: the console's pickers need the whole list. total is
+// how many there are whatever the page, counted in the same query.
 //
 // Written apart from playlistColumns, which counts per series with a subquery
 // each: right for the one series a page asks for, and for the whole list a
@@ -82,7 +90,14 @@ func itoa(n int) string { return strconv.Itoa(n) }
 // once over the table and joined on, and only the cover is looked up per
 // series, on the index made for it. 37–48 ms became 3.1 ms on a library of
 // 12,650 clips (migration 00015 has the numbers).
-func (s *Store) ListPlaylists(ctx context.Context) ([]Playlist, error) {
+func (s *Store) ListPlaylists(ctx context.Context, offset, limit int) ([]Playlist, int, error) {
+	if offset < 0 {
+		offset = 0
+	}
+	var lim *int
+	if limit > 0 {
+		lim = &limit
+	}
 	rows, err := s.pool.Query(ctx, `
 		with episodes as (
 			select playlist_id, count(*) as n from clip_sources
@@ -94,33 +109,61 @@ func (s *Store) ListPlaylists(ctx context.Context) ([]Playlist, error) {
 			select c.playlist_id, count(*) as n
 			from takes t join clips c on c.id = t.clip_id
 			where t.recorded_at > now() - $1::interval and c.playlist_id is not null
-			group by c.playlist_id)
+			group by c.playlist_id),
+		page as (
+			select p.*, count(*) over () as total from playlists p
+			order by p.hot desc, p.position, p.title, p.id
+			offset $2 limit $3)
 		select p.id, p.slug, p.title, p.description, p.hot, p.position,
-		       coalesce(e.n, 0), coalesce(cc.n, 0), coalesce(r.n, 0), cover.poster_key,
-		       p.created_at
-		from playlists p
+		       coalesce(e.n, 0), coalesce(cc.n, 0), coalesce(r.n, 0),
+		       coalesce(p.cover_key, cover.poster_key), p.cover_key is not null,
+		       p.created_at, p.total
+		from page p
 		left join episodes e on e.playlist_id = p.id
 		left join clip_counts cc on cc.playlist_id = p.id
 		left join recent r on r.playlist_id = p.id
 		left join lateral (
 			select c.poster_key from clips c
-			where c.playlist_id = p.id and c.poster_key is not null
+			where p.cover_key is null and c.playlist_id = p.id and c.poster_key is not null
 			order by c.start_seconds, c.created_at limit 1) cover on true
-		order by p.hot desc, p.position, p.title`, recentInterval())
+		order by p.hot desc, p.position, p.title, p.id`, recentInterval(), offset, lim)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
 	out := []Playlist{}
+	total := 0
 	for rows.Next() {
-		p, err := scanPlaylist(rows)
-		if err != nil {
-			return nil, err
+		var p Playlist
+		if err := rows.Scan(&p.ID, &p.Slug, &p.Title, &p.Description, &p.Hot, &p.Position,
+			&p.Episodes, &p.Clips, &p.RecentTakes, &p.CoverKey, &p.OwnCover, &p.CreatedAt,
+			&total); err != nil {
+			return nil, 0, err
 		}
 		out = append(out, p)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	// A page past the end has no rows to carry the total on.
+	if len(out) == 0 && offset > 0 {
+		if err := s.pool.QueryRow(ctx, `select count(*) from playlists`).Scan(&total); err != nil {
+			return nil, 0, err
+		}
+	}
+	return out, total, nil
+}
+
+// SetPlaylistCover records a series' uploaded cover, or clears it with nil, and
+// answers with the key it replaced so the caller can delete that picture.
+func (s *Store) SetPlaylistCover(ctx context.Context, id uuid.UUID, key *string) (old *string, err error) {
+	err = s.pool.QueryRow(ctx, `
+		update playlists p set cover_key = $2
+		from (select cover_key from playlists where id = $1 for update) prev
+		where p.id = $1
+		returning prev.cover_key`, id, key).Scan(&old)
+	return old, mapErr(err)
 }
 
 func (s *Store) PlaylistBySlug(ctx context.Context, slug string) (Playlist, error) {
@@ -279,8 +322,11 @@ func (s *Store) DeletePlaylist(ctx context.Context, id uuid.UUID) ([]string, err
 		// clips left is one whose clips have already been deleted, and it is
 		// being deleted because the series is.
 		var err error
-		keys, err = keysFrom(ctx, tx,
-			`select key from clip_sources where playlist_id = $1 and key <> ''`, id)
+		// Its sources' recordings, and its own cover if it was given one.
+		keys, err = keysFrom(ctx, tx, `
+			select key from clip_sources where playlist_id = $1 and key <> ''
+			union all
+			select cover_key from playlists where id = $1 and cover_key is not null`, id)
 		if err != nil {
 			return err
 		}
