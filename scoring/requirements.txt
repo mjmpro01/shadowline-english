@@ -5,6 +5,9 @@ minio>=7.2
 # Whisper on CPU through CTranslate2 — the same models, fast enough that a
 # lecture transcribes in minutes rather than hours.
 faster-whisper>=1.1
+# Downloading a video an admin gave a link to. [default] brings the pieces
+# YouTube needs (the JavaScript solver, run by the Deno in the image).
+yt-dlp[default]>=2025.11.12
 # IPA comes from a dictionary, not a model: same answer every run, no download.
 cmudict>=1.0
 # Definitions for tapped words. Optional at runtime: without an API key the
