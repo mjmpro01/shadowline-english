@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from shadowline.fetcher import (
+    PERMANENT,
     FetchFailed,
     Fetched,
     YtDlpDownloader,
@@ -202,6 +203,21 @@ class TestCredit:
 
     def test_nothing_known(self):
         assert credit_of({}) == ""
+
+
+@pytest.mark.parametrize(
+    "said, permanent",
+    [
+        ("Private video. Sign in if you've been granted access", True),
+        ("Video unavailable. This video has been removed by the uploader", True),
+        ("Not found.", True),
+        ("Unable to download webpage: HTTP Error 404: Not Found", True),
+        ("Unable to download webpage: <urlopen error [Errno 104] Connection reset by peer>", False),
+        ("Sign in to confirm you're not a bot", False),
+    ],
+)
+def test_what_the_site_said_decides_whether_to_try_again(said, permanent):
+    assert bool(PERMANENT.search(said)) is permanent
 
 
 def test_the_reason_is_what_the_site_said():

@@ -259,7 +259,7 @@ API.
 
 | Nhóm | Route |
 | --- | --- |
-| Tải lên | `GET /admin/uploads`, `POST /admin/uploads`, `PUT /admin/uploads/{id}/file`, `GET /admin/uploads/{id}`, `POST /admin/uploads/{id}/retry`, `GET /admin/uploads/{id}/transcript` |
+| Tải lên | `GET /admin/uploads`, `POST /admin/uploads`, `PUT /admin/uploads/{id}/file`, `GET /admin/uploads/{id}`, `POST /admin/uploads/{id}/retry`, `GET /admin/uploads/{id}/transcript`, `POST /admin/uploads/link` (tải video từ link), `GET /admin/uploads/{id}/media` (trả file đã lưu cho studio) |
 | Clip | `GET /admin/clips`, `GET /admin/clips/next-number`, `POST /admin/clips`, `PATCH /admin/clips/{id}`, `PUT /admin/clips/{id}/audio`, `DELETE /admin/clips/{id}` |
 | Series / tập | `PATCH /admin/playlists/{id}`, `DELETE /admin/playlists/{id}`, `PUT/DELETE /admin/playlists/{id}/cover`, `GET/POST /admin/sections`, `PATCH/DELETE /admin/sections/{id}`, `PUT /admin/sections/{id}/series` (thay toàn bộ danh sách series của kệ, theo thứ tự), `PATCH /admin/episodes/{id}`, `DELETE /admin/episodes/{id}` |
 | Người dùng | `GET /admin/users`, `PATCH /admin/users/{id}` |
@@ -290,6 +290,7 @@ erDiagram
   clip_sources |o--o{ clips : "tập được cắt thành clip"
   clip_sources ||--o| transcripts : "bản chép lời"
   clip_sources ||--o| transcribe_jobs : "job chép lời"
+  clip_sources ||--o| fetch_jobs : "job tải từ link"
 
   clips ||--o{ takes : "được luyện"
   clips ||--o| cut_jobs : "job cắt"
@@ -344,8 +345,9 @@ Ba tầng thư viện tương ứng ba bảng: **series** = `playlists`, **tập
 | `playlist_id` | uuid FK → playlists | Series chứa tập (`SET NULL`) |
 | `position` | int | Thứ tự trong series |
 | `published` | boolean | Đã xuất bản vào thư viện chưa |
-| `upload_state` | text | `uploading` \| `stored` \| `failed` |
-| `error` | text | Lý do khi tải lên thất bại |
+| `upload_state` | text | `uploading` \| `fetching` \| `stored` \| `failed` |
+| `error` | text | Lý do khi tải lên (hoặc tải từ link) thất bại |
+| `source_url`, `source_credit` | text | Trang gốc và kênh (@handle hoặc tên) của video tải từ link; rỗng với file tải lên. Mọi clip cắt từ tập mang theo hai giá trị này (`sourceUrl`, `sourceCredit`) và màn luyện tập hiện "Nguồn: …" |
 | `created_by` | uuid FK → users | `SET NULL` |
 
 Trạng thái hiển thị trong "Lịch sử tải lên" (`uploading`, `transcribing`,
@@ -514,6 +516,7 @@ Giới hạn mặc định:
 | `00021_native_language` | `users.native_language` |
 | `00022_playlist_cover` | `playlists.cover_key`: ảnh bìa series |
 | `00023_library_sections` | `library_sections`, `library_section_series`: các kệ của Thư viện (Dành cho trẻ em, Phim ảnh, Anime, Luyện IPA được tạo sẵn, để trống) |
+| `00024_fetch_from_link` | `upload_state` thêm `fetching`; `clip_sources.source_url`, `source_credit`; bảng `fetch_jobs` |
 
 Số `00008` bị bỏ trống, không phải thiếu file. Việc giữ lại job cắt / chép lời
 thất bại (`state='failed'`) nằm trong code worker và API, không cần migration vì
@@ -531,7 +534,7 @@ hay Redis không giúp gì. Bảng còn cho hai thứ mà message broker không 
    nào một bản ghi tồn tại mà không có job chấm nó.
 2. Không thêm hạ tầng phải vận hành.
 
-### 8.2 Cách một job chạy (chung cho 5 hàng đợi)
+### 8.2 Cách một job chạy (chung cho 6 hàng đợi)
 
 ```mermaid
 stateDiagram-v2
@@ -542,7 +545,7 @@ stateDiagram-v2
   running --> running: worker chết → locked_at quá hạn,<br/>worker khác nhận lại
   running --> gave_up: lỗi lần thứ 3
   gave_up --> [*]: scoring / dub / gloss:<br/>xoá job
-  gave_up --> failed: cut / transcribe:<br/>giữ job, state='failed', kèm error
+  gave_up --> failed: cut / transcribe / fetch:<br/>giữ job, state='failed', kèm error
   failed --> queued: quản trị bấm "Thử lại"<br/>(attempts = 0)
 ```
 
@@ -560,6 +563,7 @@ stateDiagram-v2
 | `scoring_jobs` | `take_id` | `POST /api/takes` | `scoring` | 5 phút | Xoá job; take `status='failed'` kèm `error` |
 | `cut_jobs` | `clip_id` | `POST /api/admin/clips` (xuất bản) | `cutting` | 20 phút | **Giữ** job `state='failed'`; quản trị viên bấm thử lại được |
 | `transcribe_jobs` | `source_id` | `PUT /api/admin/uploads/{id}/file` (khi file đã lưu) | `transcribing` | 90 phút | **Giữ** job `state='failed'`; thử lại được |
+| `fetch_jobs` | `source_id` | `POST /api/admin/uploads/link` | `transcribing` (làm trước job chép lời) | 30 phút | **Giữ** job `state='failed'`, tập `upload_state='failed'` kèm lý do; video riêng tư / bị gỡ / không tìm thấy thì bỏ ngay, không thử lại; "Thử lại" xếp lại việc tải |
 | `dub_jobs` | `take_id` | `POST /api/takes/{id}/dub` | `dubbing` | 5 phút | Xoá job |
 | `gloss_jobs` | `word` | `POST /api/words/{word}` khi từ chưa có trong `glosses` | `glossing` | 1 phút | Xoá job; từ giữ nghĩa rỗng |
 
@@ -581,6 +585,7 @@ thoát.
 | `worker.py` (scoring) | Audio clip (`clips`), bản ghi (`takes`) | `takes.score/scores/analysis/status` | Theo dõi cao độ, DTW; Whisper kiểm tra người học có nói đúng từ (`WORD_CHECK`) |
 | `cutter.py` | File tập (`source/…`) | `clip/…wav`, `clip/…mp4`, `clip/…jpg` → `clips.audio_key/video_key/poster_key` | ffmpeg |
 | `transcriber.py` | File tập | `transcripts.words` (có thời gian và IPA) | faster-whisper (`WHISPER_MODEL`), CMUdict cho IPA |
+| `fetcher.py` (chạy trong `transcriber.py`) | Link video (`fetch_jobs.url`) | `source/…mp4`, `clip_sources` (key, tên video, kênh) + `transcribe_jobs` | yt-dlp (chỉ các trang yt-dlp biết tên, tắt extractor `generic`; host phải phân giải ra IP công khai), Deno cho YouTube, `FETCH_COOKIES_FILE` tuỳ chọn |
 | `dubber.py` | Video clip + bản ghi | `dub/…mp4` → `takes.dub_key` | ffmpeg |
 | `glosser.py` | — | `glosses` | CMUdict (phát âm), Merriam-Webster (`DICTIONARY_API_KEY`), Claude (`ANTHROPIC_API_KEY`) |
 
@@ -698,6 +703,16 @@ sequenceDiagram
   C->>D: clips.audio_key/video_key/poster_key, xoá job
 ```
 
+Thay cho hai bước tải file, quản trị viên có thể dán link video (YouTube, TikTok,
+Instagram, Facebook…): `POST /api/admin/uploads/link` ghi `clip_sources` với
+`upload_state='fetching'` và một `fetch_jobs` trong cùng transaction. Worker
+`transcribing` tải video bằng yt-dlp, lưu vào `source/<uuid>.mp4`, rồi trong một
+transaction đặt `upload_state='stored'`, ghi tên video và kênh
+(`source_credit`), xếp `transcribe_jobs` và xoá job tải. Studio hỏi lại
+`GET /api/admin/uploads/{id}` tới khi `stored`, lấy file qua
+`GET /api/admin/uploads/{id}/media` rồi mở như một file chọn từ máy (không gửi
+lên lại). Video được giữ nguyên như bản gốc; clip luôn ghi nguồn cho người học.
+
 ### 12.2 Người học luyện một câu
 
 ```mermaid
@@ -811,6 +826,7 @@ File `.env` không nằm trong git.
 | --- | --- |
 | `DATABASE_URL`, `DISK_ROOT` / các biến `S3_*` | Như API |
 | `WHISPER_MODEL`, `WHISPER_COMPUTE_TYPE` | Model Whisper cho chép lời và kiểm tra từ |
+| `FETCH_COOKIES_FILE` | Tuỳ chọn: file cookies (định dạng Netscape) cho yt-dlp, khi một trang (thường là YouTube) đòi đăng nhập với IP của máy chủ |
 | `WORD_CHECK` | Bật/tắt kiểm tra "có nói đúng từ" khi chấm |
 | `DICTIONARY_API_KEY` | Merriam-Webster Learner's |
 | `ANTHROPIC_API_KEY`, `GLOSS_MODEL` | Claude cho những từ từ điển không có |

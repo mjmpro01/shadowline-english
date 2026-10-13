@@ -107,7 +107,8 @@ def credit_of(info: dict) -> str:
 
 # What yt-dlp says about a video that will never download, whatever is tried.
 PERMANENT = re.compile(
-    r"private|unavailable|not available|removed|deleted|does not exist|unsupported url|"
+    r"private|unavailable|not available|not found|http error 404|http error 410|"
+    r"removed|deleted|does not exist|unsupported url|"
     r"members[- ]only|sign in to confirm your age|age[- ]restricted|copyright|"
     r"terminated|live event|is live|playlist|larger than|longer than",
     re.IGNORECASE,

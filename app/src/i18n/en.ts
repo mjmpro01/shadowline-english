@@ -237,6 +237,7 @@ export const en = {
   'playlist.practiceNext': (title: string) => `Practice next — ${title}`,
 
   // --- practice -------------------------------------------------------------
+  'practice.source': 'Source:',
   'practice.lineOf': (current: number, total: number) => `Line ${current} of ${total}`,
   'practice.hearClip': 'Hear clip again',
   'practice.watchClip': 'Watch clip again',

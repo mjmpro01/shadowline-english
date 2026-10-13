@@ -41,8 +41,14 @@ export interface Upload {
   hasVideo: boolean
   bytes: number
   seconds: number
-  uploadState: 'uploading' | 'stored' | 'failed'
+  uploadState: 'uploading' | 'fetching' | 'stored' | 'failed'
   error: string
+  /** The page a recording fetched from a link came from, and whose it is: the
+   *  channel's @handle or name. Both empty for a file. */
+  sourceUrl: string
+  sourceCredit: string
+  /** How many times the worker has tried the download. */
+  fetchAttempts: number
   published: boolean
   clips: number
   /** Clips in the library with no sound of their own: a take against one is kept
@@ -64,6 +70,7 @@ export interface Upload {
 /** The statuses an upload passes through, in order. */
 export type UploadStatus =
   | 'uploading'
+  | 'fetching'
   | 'upload-failed'
   | 'transcribing'
   | 'transcribe-failed'
@@ -251,6 +258,23 @@ export const repository = {
     return id
   },
 
+  /**
+   * Asks the server to download a video from its page, rather than sending a
+   * file. Answers with the upload's id; the transcribing worker fetches it, and
+   * `upload(id)` says when it has arrived.
+   */
+  async createLinkUpload(url: string) {
+    const { id, name } = await api.send<{ id: string; name: string }>('POST', '/api/admin/uploads/link', {
+      url,
+    })
+    return { id, name }
+  },
+
+  /** A stored recording, back from the server, for the studio to open. */
+  uploadMedia(id: string) {
+    return api.blob(`/api/admin/uploads/${id}/media`)
+  },
+
   /** Sends the recording itself. The server queues transcription once it lands. */
   async sendUpload(id: string, file: File) {
     await api.upload<{ ok: boolean }>('PUT', `/api/admin/uploads/${id}/file`, file)
@@ -315,7 +339,7 @@ export const repository = {
   /** Puts the work that gave up back on the queue. Answers with how much, so
    *  "nothing to retry" can be said rather than implied. */
   retryUpload(id: string) {
-    return api.send<{ transcribe: number; cuts: number }>(
+    return api.send<{ fetch: number; transcribe: number; cuts: number }>(
       'POST',
       `/api/admin/uploads/${id}/retry`,
       {},

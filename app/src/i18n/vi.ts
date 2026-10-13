@@ -257,6 +257,7 @@ export const vi: Messages = {
   'playlist.practiceNext': (title: string) => `Luyện tiếp — ${title}`,
 
   // --- practice -------------------------------------------------------------
+  'practice.source': 'Nguồn:',
   'practice.lineOf': (current: number, total: number) => `Câu ${current} / ${total}`,
   'practice.hearClip': 'Nghe lại clip',
   'practice.watchClip': 'Xem lại clip',
