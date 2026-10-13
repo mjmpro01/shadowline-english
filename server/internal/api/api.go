@@ -119,6 +119,9 @@ func (s *Server) Routes() http.Handler {
 			transfer(r)
 			r.Use(s.requireAdmin)
 			r.Put("/admin/uploads/{id}/file", s.handleUploadFile)
+			// The same recording on its way back, to a studio that opened it
+			// from a link.
+			r.Get("/admin/uploads/{id}/media", s.handleUploadMedia)
 		})
 
 		// The tutor's answer streams for as long as the model takes to write it.
@@ -182,6 +185,7 @@ func (s *Server) Routes() http.Handler {
 				r.Get("/admin/clips/next-number", s.handleNextClipNumber)
 				r.Get("/admin/uploads", s.handleListUploads)
 				r.Post("/admin/uploads", s.handleCreateUpload)
+				r.Post("/admin/uploads/link", s.handleCreateLinkUpload)
 				r.Get("/admin/uploads/{id}", s.handleGetUpload)
 				r.Post("/admin/uploads/{id}/retry", s.handleRetryUpload)
 				r.Get("/admin/uploads/{id}/transcript", s.handleSourceTranscript)

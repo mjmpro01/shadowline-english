@@ -184,7 +184,7 @@ func (s *Server) handleRetryUpload(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	transcribe, cuts, err := s.Store.RetryUpload(r.Context(), id)
+	retried, err := s.Store.RetryUpload(r.Context(), id)
 	if errors.Is(err, store.ErrNotStored) {
 		fail(w, http.StatusConflict, err.Error())
 		return
@@ -193,7 +193,7 @@ func (s *Server) handleRetryUpload(w http.ResponseWriter, r *http.Request) {
 		s.failErr(w, err, "retry an upload")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"transcribe": transcribe, "cuts": cuts})
+	writeJSON(w, http.StatusOK, retried)
 }
 
 // uploadFailure says why a recording did not reach the file store, in words an
