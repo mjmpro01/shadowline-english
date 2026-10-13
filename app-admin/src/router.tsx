@@ -5,6 +5,7 @@ import { PageError } from './components/PageError'
 import { Clips } from './pages/Clips'
 import { Cut } from './pages/Cut'
 import { Series } from './pages/Series'
+import { Shelves } from './pages/Shelves'
 import { Banners } from './pages/Banners'
 import { Tutor } from './pages/Tutor'
 import { Users } from './pages/Users'
@@ -34,6 +35,7 @@ export const router = createBrowserRouter(
             { path: 'cut', element: <Cut /> },
             { path: 'clips', element: <Clips /> },
             { path: 'series', element: <Series /> },
+            { path: 'shelves', element: <Shelves /> },
             { path: 'uploads', element: <Uploads /> },
             { path: 'tutor', element: <Tutor /> },
             { path: 'users', element: <Users /> },

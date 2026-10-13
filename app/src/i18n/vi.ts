@@ -223,6 +223,11 @@ export const vi: Messages = {
     `${episodes} tập · ${clips} clip`,
   'library.openSeries': (title: string) => `Mở ${title}`,
   'library.pages': 'Các trang series',
+  'library.allSeries': 'Tất cả series',
+  'library.seeAll': (n: number) => `Xem tất cả ${n}`,
+  'shelf.count': (n: number) => `${n} series`,
+  'shelf.empty': 'Kệ này chưa có series nào.',
+  'shelf.notFound': 'Không có kệ này trong thư viện.',
   'library.pagePrev': 'Trước',
   'library.pageNext': 'Sau',
   'library.pageGo': (n: number) => `Trang ${n}`,
@@ -252,6 +257,7 @@ export const vi: Messages = {
   'playlist.practiceNext': (title: string) => `Luyện tiếp — ${title}`,
 
   // --- practice -------------------------------------------------------------
+  'practice.source': 'Nguồn:',
   'practice.lineOf': (current: number, total: number) => `Câu ${current} / ${total}`,
   'practice.hearClip': 'Nghe lại clip',
   'practice.watchClip': 'Xem lại clip',

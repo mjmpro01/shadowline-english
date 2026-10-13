@@ -31,10 +31,16 @@ type Upload struct {
 
 	/* --- what only the transfer knows --- */
 
-	// UploadState is 'uploading', 'stored' or 'failed'.
+	// UploadState is 'uploading', 'fetching', 'stored' or 'failed'.
 	UploadState string `json:"uploadState"`
 	// Error is why it failed, when it did.
 	Error string `json:"error"`
+	// SourceURL is the page a linked recording was fetched from, and
+	// SourceCredit whose it is; both empty for one uploaded as a file.
+	SourceURL    string `json:"sourceUrl"`
+	SourceCredit string `json:"sourceCredit"`
+	// FetchAttempts is how many times the worker has tried the download.
+	FetchAttempts int `json:"fetchAttempts"`
 
 	/* --- read from the queues and the rows --- */
 
@@ -72,6 +78,8 @@ type Upload struct {
 const (
 	// The bytes are on their way.
 	UploadUploading = "uploading"
+	// A worker is downloading it from the link an admin gave.
+	UploadFetching = "fetching"
 	// They never arrived.
 	UploadFailed = "upload-failed"
 	// Stored, and the words are being fetched out of it.
@@ -97,6 +105,8 @@ func (u Upload) status() string {
 	switch u.UploadState {
 	case "uploading":
 		return UploadUploading
+	case "fetching":
+		return UploadFetching
 	case "failed":
 		return UploadFailed
 	}
@@ -143,6 +153,34 @@ func (s *Store) CreateUpload(
 	return out, mapErr(err)
 }
 
+// CreateLinkUpload writes the row for a recording that is to be downloaded
+// from a link, and queues the download, in one transaction: a row saying
+// 'fetching' with nothing coming to fetch it would say so for ever.
+//
+// It is taken to be a video — the links it is for are video pages — and the
+// worker that stores it fills in its size, length and type.
+func (s *Store) CreateLinkUpload(ctx context.Context, name, url string, createdBy uuid.UUID) (Source, error) {
+	var author *uuid.UUID
+	if createdBy != uuid.Nil {
+		author = &createdBy
+	}
+	var out Source
+	err := s.inTx(ctx, func(tx pgx.Tx) error {
+		if err := tx.QueryRow(ctx, `
+			insert into clip_sources (name, key, content_type, has_video, created_by,
+			                          upload_state, title, source_url)
+			values ($1, '', 'video/mp4', true, $2, 'fetching', $1, $3)
+			returning id, name, key, content_type, has_video`,
+			name, author, url).
+			Scan(&out.ID, &out.Name, &out.Key, &out.ContentType, &out.HasVideo); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `insert into fetch_jobs (source_id, url) values ($1, $2)`, out.ID, url)
+		return err
+	})
+	return out, mapErr(err)
+}
+
 // UploadStored records where the bytes went and schedules transcription, in one
 // transaction: a stored recording with nothing queued to read it would leave the
 // studio waiting for words that were never coming.
@@ -180,7 +218,7 @@ func (s *Store) UploadFailedWith(ctx context.Context, id uuid.UUID, reason strin
 // is a query nobody can read.
 const uploadColumns = `
 	s.id, s.name, s.title, s.has_video, s.bytes, s.duration_seconds,
-	s.upload_state, s.error, s.published, s.created_at,
+	s.upload_state, s.error, s.source_url, s.source_credit, s.published, s.created_at,
 	s.playlist_id, coalesce(p.title, ''),
 	(select count(*)::int from clips c where c.source_id = s.id),
 	(select count(*)::int from clips c where c.source_id = s.id and c.audio_key is null),
@@ -204,17 +242,18 @@ const uploadColumns = `
 	exists (select 1 from transcribe_jobs t where t.source_id = s.id and t.state <> 'failed'),
 	exists (select 1 from transcripts t where t.source_id = s.id),
 	coalesce((select t.attempts from transcribe_jobs t where t.source_id = s.id), 0),
-	coalesce((select t.error from transcribe_jobs t where t.source_id = s.id), '')`
+	coalesce((select t.error from transcribe_jobs t where t.source_id = s.id), ''),
+	coalesce((select f.attempts from fetch_jobs f where f.source_id = s.id), 0)`
 
 func scanUpload(row pgx.Row) (Upload, error) {
 	var u Upload
 	var queued, transcribed bool
 	if err := row.Scan(
 		&u.ID, &u.Name, &u.Title, &u.HasVideo, &u.Bytes, &u.Seconds,
-		&u.UploadState, &u.Error, &u.Published, &u.CreatedAt,
+		&u.UploadState, &u.Error, &u.SourceURL, &u.SourceCredit, &u.Published, &u.CreatedAt,
 		&u.PlaylistID, &u.PlaylistTitle,
 		&u.Clips, &u.ClipsWithoutAudio, &u.CutsLeft, &u.CutsFailed, &u.CutError,
-		&queued, &transcribed, &u.TranscribeAttempts, &u.TranscribeError,
+		&queued, &transcribed, &u.TranscribeAttempts, &u.TranscribeError, &u.FetchAttempts,
 	); err != nil {
 		return Upload{}, err
 	}
@@ -331,22 +370,47 @@ func (s *Store) UploadByID(ctx context.Context, id uuid.UUID) (Upload, error) {
 // worker to be retried against.
 var ErrNotStored = errors.New("the recording itself never arrived")
 
+// Retried is what RetryUpload put back on the queues.
+type Retried struct {
+	// Fetch is 1 when a download from a link that gave up was started again.
+	Fetch      int `json:"fetch"`
+	Transcribe int `json:"transcribe"`
+	Cuts       int `json:"cuts"`
+}
+
 // RetryUpload puts the work that gave up back on the queue.
 //
-// Transcription first: with no transcript and a failed job (or none at all) the
+// A recording that was to be downloaded from a link and never was is the one
+// case with no file to retry against and still something to retry: the
+// download itself, which goes back on its queue from the start.
+//
+// Otherwise transcription first: with no transcript and a failed job (or none at all) the
 // worker has given up, and resetting the job puts it back. Then the cuts, one job per clip that should have a
 // picture and has none. Answers how many of each it queued, because "nothing to
 // retry" is a real outcome and the console should say so rather than implying it
 // has started something.
-func (s *Store) RetryUpload(ctx context.Context, id uuid.UUID) (transcribe, cuts int, err error) {
+func (s *Store) RetryUpload(ctx context.Context, id uuid.UUID) (out Retried, err error) {
 	err = s.inTx(ctx, func(tx pgx.Tx) error {
-		var stored bool
+		var state, url string
 		if err := tx.QueryRow(ctx,
-			`select upload_state = 'stored' from clip_sources where id = $1`, id).
-			Scan(&stored); err != nil {
+			`select upload_state, source_url from clip_sources where id = $1 for update`, id).
+			Scan(&state, &url); err != nil {
 			return err
 		}
-		if !stored {
+		if state == "failed" && url != "" {
+			if _, err := tx.Exec(ctx, `
+				update clip_sources set upload_state = 'fetching', error = '' where id = $1`, id); err != nil {
+				return err
+			}
+			_, err := tx.Exec(ctx, `
+				insert into fetch_jobs (source_id, url) values ($1, $2)
+				on conflict (source_id) do update
+				set state = 'queued', attempts = 0, error = null, locked_at = null,
+				    created_at = now()`, id, url)
+			out.Fetch = 1
+			return err
+		}
+		if state != "stored" {
 			return ErrNotStored
 		}
 
@@ -364,7 +428,7 @@ func (s *Store) RetryUpload(ctx context.Context, id uuid.UUID) (transcribe, cuts
 		if err != nil {
 			return err
 		}
-		transcribe = int(tag.RowsAffected())
+		out.Transcribe = int(tag.RowsAffected())
 
 		tag, err = tx.Exec(ctx, `
 			insert into cut_jobs (clip_id)
@@ -378,8 +442,8 @@ func (s *Store) RetryUpload(ctx context.Context, id uuid.UUID) (transcribe, cuts
 		if err != nil {
 			return err
 		}
-		cuts = int(tag.RowsAffected())
+		out.Cuts = int(tag.RowsAffected())
 		return nil
 	})
-	return transcribe, cuts, mapErr(err)
+	return out, mapErr(err)
 }

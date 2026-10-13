@@ -2,6 +2,8 @@
     the prototype crashed when an icon runtime swapped nodes out underneath it. */
 const PATHS: Record<string, React.ReactNode> = {
   'chevron-left': <polyline points="15 18 9 12 15 6" />,
+  'chevron-up': <polyline points="18 15 12 9 6 15" />,
+  'chevron-down': <polyline points="6 9 12 15 18 9" />,
   flame: (
     <path d="M12 2c1 4 4 5 4 9a4 4 0 0 1-8 0c0-1.5.6-2.4 1.2-3.3C8.4 9.6 7 11.4 7 14a5 5 0 0 0 10 0c0-5-3-8-5-12z" />
   ),
@@ -23,6 +25,12 @@ const PATHS: Record<string, React.ReactNode> = {
     </>
   ),
   'chevron-right': <polyline points="9 18 15 12 9 6" />,
+  link: (
+    <>
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </>
+  ),
   library: (
     <>
       <path d="m16 6 4 14" />

@@ -91,12 +91,41 @@ func itoa(n int) string { return strconv.Itoa(n) }
 // series, on the index made for it. 37–48 ms became 3.1 ms on a library of
 // 12,650 clips (migration 00015 has the numbers).
 func (s *Store) ListPlaylists(ctx context.Context, offset, limit int) ([]Playlist, int, error) {
+	return s.listPlaylists(ctx, nil, offset, limit)
+}
+
+// SectionPlaylists is the series on one shelf of the library, in the order
+// the shelf gives them, a page at a time.
+func (s *Store) SectionPlaylists(ctx context.Context, section uuid.UUID, offset, limit int) ([]Playlist, int, error) {
+	return s.listPlaylists(ctx, &section, offset, limit)
+}
+
+// The whole library, or one shelf of it. The two differ only in which series
+// are on the page and in their order: a shelf has an order of its own.
+const (
+	everySeries = `select p.*, count(*) over () as total from playlists p
+			order by p.hot desc, p.position, p.title, p.id`
+	everySeriesOrder = `p.hot desc, p.position, p.title, p.id`
+	shelfSeries      = `select p.*, m.position as shelf_position, count(*) over () as total
+			from playlists p
+			join library_section_series m on m.playlist_id = p.id and m.section_id = $4
+			order by m.position, p.title, p.id`
+	shelfSeriesOrder = `p.shelf_position, p.title, p.id`
+)
+
+func (s *Store) listPlaylists(ctx context.Context, section *uuid.UUID, offset, limit int) ([]Playlist, int, error) {
 	if offset < 0 {
 		offset = 0
 	}
 	var lim *int
 	if limit > 0 {
 		lim = &limit
+	}
+	choose, order := everySeries, everySeriesOrder
+	args := []any{recentInterval(), offset, lim}
+	if section != nil {
+		choose, order = shelfSeries, shelfSeriesOrder
+		args = append(args, *section)
 	}
 	rows, err := s.pool.Query(ctx, `
 		with episodes as (
@@ -110,9 +139,7 @@ func (s *Store) ListPlaylists(ctx context.Context, offset, limit int) ([]Playlis
 			from takes t join clips c on c.id = t.clip_id
 			where t.recorded_at > now() - $1::interval and c.playlist_id is not null
 			group by c.playlist_id),
-		page as (
-			select p.*, count(*) over () as total from playlists p
-			order by p.hot desc, p.position, p.title, p.id
+		page as (`+choose+`
 			offset $2 limit $3)
 		select p.id, p.slug, p.title, p.description, p.hot, p.position,
 		       coalesce(e.n, 0), coalesce(cc.n, 0), coalesce(r.n, 0),
@@ -126,7 +153,7 @@ func (s *Store) ListPlaylists(ctx context.Context, offset, limit int) ([]Playlis
 			select c.poster_key from clips c
 			where p.cover_key is null and c.playlist_id = p.id and c.poster_key is not null
 			order by c.start_seconds, c.created_at limit 1) cover on true
-		order by p.hot desc, p.position, p.title, p.id`, recentInterval(), offset, lim)
+		order by `+order, args...)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -148,7 +175,13 @@ func (s *Store) ListPlaylists(ctx context.Context, offset, limit int) ([]Playlis
 	}
 	// A page past the end has no rows to carry the total on.
 	if len(out) == 0 && offset > 0 {
-		if err := s.pool.QueryRow(ctx, `select count(*) from playlists`).Scan(&total); err != nil {
+		count := `select count(*) from playlists`
+		var countArgs []any
+		if section != nil {
+			count = `select count(*) from library_section_series where section_id = $1`
+			countArgs = []any{*section}
+		}
+		if err := s.pool.QueryRow(ctx, count, countArgs...).Scan(&total); err != nil {
 			return nil, 0, err
 		}
 	}

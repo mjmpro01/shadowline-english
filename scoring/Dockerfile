@@ -1,9 +1,15 @@
+# Deno runs the JavaScript some video sites (YouTube above all) make a
+# downloader solve before they hand over a video; yt-dlp calls it.
+FROM denoland/deno:bin-2.5.6 AS deno
+
 FROM python:3.12-slim
 
 # ffmpeg decodes what MediaRecorder sends; libsndfile backs soundfile.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ffmpeg libsndfile1 \
  && rm -rf /var/lib/apt/lists/*
+
+COPY --from=deno /deno /usr/local/bin/deno
 
 WORKDIR /app
 COPY requirements.txt .

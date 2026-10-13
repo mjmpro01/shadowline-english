@@ -203,6 +203,11 @@ export const en = {
     `${episodes} ${episodes === 1 ? 'episode' : 'episodes'} · ${clips} ${clips === 1 ? 'clip' : 'clips'}`,
   'library.openSeries': (title: string) => `Open ${title}`,
   'library.pages': 'Pages of series',
+  'library.allSeries': 'All series',
+  'library.seeAll': (n: number) => `See all ${n}`,
+  'shelf.count': (n: number) => `${n} series`,
+  'shelf.empty': 'Nothing on this shelf yet.',
+  'shelf.notFound': 'There is no such shelf in the library.',
   'library.pagePrev': 'Previous',
   'library.pageNext': 'Next',
   'library.pageGo': (n: number) => `Page ${n}`,
@@ -232,6 +237,7 @@ export const en = {
   'playlist.practiceNext': (title: string) => `Practice next — ${title}`,
 
   // --- practice -------------------------------------------------------------
+  'practice.source': 'Source:',
   'practice.lineOf': (current: number, total: number) => `Line ${current} of ${total}`,
   'practice.hearClip': 'Hear clip again',
   'practice.watchClip': 'Watch clip again',
