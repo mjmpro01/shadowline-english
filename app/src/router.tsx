@@ -2,6 +2,7 @@ import { Navigate, createBrowserRouter } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
 import { RequireAuth } from './components/RequireAuth'
 import { AnalysisScreen } from './screens/AnalysisScreen'
+import { ArenaScreen } from './screens/ArenaScreen'
 import { DashboardScreen } from './screens/DashboardScreen'
 import { DubScreen } from './screens/DubScreen'
 import { EpisodeScreen } from './screens/EpisodeScreen'
@@ -46,6 +47,7 @@ export const router = createBrowserRouter([
       { path: 'library/:videoId', element: <AnalysisScreen /> },
       { path: 'library/:videoId/practice', element: <PracticeScreen /> },
       { path: 'library/:videoId/dub', element: <DubScreen /> },
+      { path: 'arena', element: <ArenaScreen /> },
       { path: 'vocabulary', element: <VocabularyScreen /> },
       { path: 'vocabulary/practice', element: <FlashcardsScreen /> },
       { path: 'progress', element: <ProgressScreen /> },

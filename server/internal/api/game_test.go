@@ -520,3 +520,19 @@ func TestMovingIsRemembered(t *testing.T) {
 		t.Fatalf("position %d,%d", got.X, got.Y)
 	}
 }
+
+// A spot sent before the farm was ever opened starts the farm there, rather
+// than being dropped and the player waking at the door.
+func TestGameMoveBeforeFirstLook(t *testing.T) {
+	h := newHarness(t)
+	learner := h.login("learner@example.com")
+	expectStatus(t, learner.json("POST", "/api/game/move", map[string]any{"map": "farm", "x": 224, "y": 156}),
+		http.StatusNoContent)
+	got := gameState(t, learner).Profile
+	if got.X != 224 || got.Y != 156 {
+		t.Fatalf("position %d,%d", got.X, got.Y)
+	}
+	if got.Gold != 50 {
+		t.Fatalf("a farm started by a move has %d gold, want the starting 50", got.Gold)
+	}
+}

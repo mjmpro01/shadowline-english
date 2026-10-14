@@ -1,0 +1,378 @@
+{
+  "tile_size": 16,
+  "atlas_columns": 16,
+  "tiles": {
+    "grass_1": {
+      "atlas_x": 0,
+      "atlas_y": 0,
+      "pixel_x": 0,
+      "pixel_y": 0
+    },
+    "grass_2": {
+      "atlas_x": 1,
+      "atlas_y": 0,
+      "pixel_x": 16,
+      "pixel_y": 0
+    },
+    "grass_3": {
+      "atlas_x": 2,
+      "atlas_y": 0,
+      "pixel_x": 32,
+      "pixel_y": 0
+    },
+    "grass_4": {
+      "atlas_x": 3,
+      "atlas_y": 0,
+      "pixel_x": 48,
+      "pixel_y": 0
+    },
+    "grass_5": {
+      "atlas_x": 4,
+      "atlas_y": 0,
+      "pixel_x": 64,
+      "pixel_y": 0
+    },
+    "bare_dirt": {
+      "atlas_x": 5,
+      "atlas_y": 0,
+      "pixel_x": 80,
+      "pixel_y": 0
+    },
+    "path_vertical": {
+      "atlas_x": 6,
+      "atlas_y": 0,
+      "pixel_x": 96,
+      "pixel_y": 0
+    },
+    "path_horizontal": {
+      "atlas_x": 7,
+      "atlas_y": 0,
+      "pixel_x": 112,
+      "pixel_y": 0
+    },
+    "path_corner": {
+      "atlas_x": 8,
+      "atlas_y": 0,
+      "pixel_x": 128,
+      "pixel_y": 0
+    },
+    "path_cross": {
+      "atlas_x": 9,
+      "atlas_y": 0,
+      "pixel_x": 144,
+      "pixel_y": 0
+    },
+    "stone_path": {
+      "atlas_x": 10,
+      "atlas_y": 0,
+      "pixel_x": 160,
+      "pixel_y": 0
+    },
+    "grass_dirt_outer_0": {
+      "atlas_x": 11,
+      "atlas_y": 0,
+      "pixel_x": 176,
+      "pixel_y": 0
+    },
+    "grass_dirt_outer_1": {
+      "atlas_x": 12,
+      "atlas_y": 0,
+      "pixel_x": 192,
+      "pixel_y": 0
+    },
+    "grass_dirt_outer_2": {
+      "atlas_x": 13,
+      "atlas_y": 0,
+      "pixel_x": 208,
+      "pixel_y": 0
+    },
+    "grass_dirt_outer_3": {
+      "atlas_x": 14,
+      "atlas_y": 0,
+      "pixel_x": 224,
+      "pixel_y": 0
+    },
+    "grass_dirt_outer_4": {
+      "atlas_x": 15,
+      "atlas_y": 0,
+      "pixel_x": 240,
+      "pixel_y": 0
+    },
+    "grass_dirt_outer_5": {
+      "atlas_x": 0,
+      "atlas_y": 1,
+      "pixel_x": 0,
+      "pixel_y": 16
+    },
+    "grass_dirt_outer_6": {
+      "atlas_x": 1,
+      "atlas_y": 1,
+      "pixel_x": 16,
+      "pixel_y": 16
+    },
+    "grass_dirt_outer_7": {
+      "atlas_x": 2,
+      "atlas_y": 1,
+      "pixel_x": 32,
+      "pixel_y": 16
+    },
+    "grass_dirt_inner_0": {
+      "atlas_x": 3,
+      "atlas_y": 1,
+      "pixel_x": 48,
+      "pixel_y": 16
+    },
+    "grass_dirt_inner_1": {
+      "atlas_x": 4,
+      "atlas_y": 1,
+      "pixel_x": 64,
+      "pixel_y": 16
+    },
+    "grass_dirt_inner_2": {
+      "atlas_x": 5,
+      "atlas_y": 1,
+      "pixel_x": 80,
+      "pixel_y": 16
+    },
+    "grass_dirt_inner_3": {
+      "atlas_x": 6,
+      "atlas_y": 1,
+      "pixel_x": 96,
+      "pixel_y": 16
+    },
+    "untilled": {
+      "atlas_x": 7,
+      "atlas_y": 1,
+      "pixel_x": 112,
+      "pixel_y": 16
+    },
+    "tilled_dry": {
+      "atlas_x": 8,
+      "atlas_y": 1,
+      "pixel_x": 128,
+      "pixel_y": 16
+    },
+    "tilled_wet": {
+      "atlas_x": 9,
+      "atlas_y": 1,
+      "pixel_x": 144,
+      "pixel_y": 16
+    },
+    "soil_level_1": {
+      "atlas_x": 10,
+      "atlas_y": 1,
+      "pixel_x": 160,
+      "pixel_y": 16
+    },
+    "soil_level_2": {
+      "atlas_x": 11,
+      "atlas_y": 1,
+      "pixel_x": 176,
+      "pixel_y": 16
+    },
+    "soil_level_3": {
+      "atlas_x": 12,
+      "atlas_y": 1,
+      "pixel_x": 192,
+      "pixel_y": 16
+    },
+    "soil_locked": {
+      "atlas_x": 13,
+      "atlas_y": 1,
+      "pixel_x": 208,
+      "pixel_y": 16
+    },
+    "pond_0": {
+      "atlas_x": 14,
+      "atlas_y": 1,
+      "pixel_x": 224,
+      "pixel_y": 16
+    },
+    "pond_1": {
+      "atlas_x": 15,
+      "atlas_y": 1,
+      "pixel_x": 240,
+      "pixel_y": 16
+    },
+    "pond_2": {
+      "atlas_x": 0,
+      "atlas_y": 2,
+      "pixel_x": 0,
+      "pixel_y": 32
+    },
+    "pond_3": {
+      "atlas_x": 1,
+      "atlas_y": 2,
+      "pixel_x": 16,
+      "pixel_y": 32
+    },
+    "pond_4": {
+      "atlas_x": 2,
+      "atlas_y": 2,
+      "pixel_x": 32,
+      "pixel_y": 32
+    },
+    "pond_5": {
+      "atlas_x": 3,
+      "atlas_y": 2,
+      "pixel_x": 48,
+      "pixel_y": 32
+    },
+    "pond_6": {
+      "atlas_x": 4,
+      "atlas_y": 2,
+      "pixel_x": 64,
+      "pixel_y": 32
+    },
+    "pond_7": {
+      "atlas_x": 5,
+      "atlas_y": 2,
+      "pixel_x": 80,
+      "pixel_y": 32
+    },
+    "pond_8": {
+      "atlas_x": 6,
+      "atlas_y": 2,
+      "pixel_x": 96,
+      "pixel_y": 32
+    },
+    "pond_9": {
+      "atlas_x": 7,
+      "atlas_y": 2,
+      "pixel_x": 112,
+      "pixel_y": 32
+    },
+    "pond_10": {
+      "atlas_x": 8,
+      "atlas_y": 2,
+      "pixel_x": 128,
+      "pixel_y": 32
+    },
+    "pond_11": {
+      "atlas_x": 9,
+      "atlas_y": 2,
+      "pixel_x": 144,
+      "pixel_y": 32
+    },
+    "pond_12": {
+      "atlas_x": 10,
+      "atlas_y": 2,
+      "pixel_x": 160,
+      "pixel_y": 32
+    },
+    "pond_13": {
+      "atlas_x": 11,
+      "atlas_y": 2,
+      "pixel_x": 176,
+      "pixel_y": 32
+    },
+    "pond_14": {
+      "atlas_x": 12,
+      "atlas_y": 2,
+      "pixel_x": 192,
+      "pixel_y": 32
+    },
+    "pond_15": {
+      "atlas_x": 13,
+      "atlas_y": 2,
+      "pixel_x": 208,
+      "pixel_y": 32
+    },
+    "fence_horizontal": {
+      "atlas_x": 14,
+      "atlas_y": 2,
+      "pixel_x": 224,
+      "pixel_y": 32
+    },
+    "fence_vertical": {
+      "atlas_x": 15,
+      "atlas_y": 2,
+      "pixel_x": 240,
+      "pixel_y": 32
+    },
+    "fence_corner_tl": {
+      "atlas_x": 0,
+      "atlas_y": 3,
+      "pixel_x": 0,
+      "pixel_y": 48
+    },
+    "fence_corner_tr": {
+      "atlas_x": 1,
+      "atlas_y": 3,
+      "pixel_x": 16,
+      "pixel_y": 48
+    },
+    "fence_corner_bl": {
+      "atlas_x": 2,
+      "atlas_y": 3,
+      "pixel_x": 32,
+      "pixel_y": 48
+    },
+    "fence_corner_br": {
+      "atlas_x": 3,
+      "atlas_y": 3,
+      "pixel_x": 48,
+      "pixel_y": 48
+    },
+    "fence_post": {
+      "atlas_x": 4,
+      "atlas_y": 3,
+      "pixel_x": 64,
+      "pixel_y": 48
+    },
+    "gate_closed": {
+      "atlas_x": 5,
+      "atlas_y": 3,
+      "pixel_x": 80,
+      "pixel_y": 48
+    },
+    "gate_open": {
+      "atlas_x": 6,
+      "atlas_y": 3,
+      "pixel_x": 96,
+      "pixel_y": 48
+    },
+    "small_rock": {
+      "atlas_x": 7,
+      "atlas_y": 3,
+      "pixel_x": 112,
+      "pixel_y": 48
+    },
+    "weeds": {
+      "atlas_x": 8,
+      "atlas_y": 3,
+      "pixel_x": 128,
+      "pixel_y": 48
+    },
+    "mushroom": {
+      "atlas_x": 9,
+      "atlas_y": 3,
+      "pixel_x": 144,
+      "pixel_y": 48
+    },
+    "log": {
+      "atlas_x": 10,
+      "atlas_y": 3,
+      "pixel_x": 160,
+      "pixel_y": 48
+    },
+    "flower_white": {
+      "atlas_x": 11,
+      "atlas_y": 3,
+      "pixel_x": 176,
+      "pixel_y": 48
+    },
+    "flower_pink": {
+      "atlas_x": 12,
+      "atlas_y": 3,
+      "pixel_x": 192,
+      "pixel_y": 48
+    },
+    "flower_purple": {
+      "atlas_x": 13,
+      "atlas_y": 3,
+      "pixel_x": 208,
+      "pixel_y": 48
+    }
+  }
+}

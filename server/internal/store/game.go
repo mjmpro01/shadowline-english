@@ -551,11 +551,17 @@ func (s *Store) ListenToWord(ctx context.Context, user uuid.UUID, word string) e
 }
 
 // MoveTo remembers where the player stands, so they come back to the same spot.
+// A farm not started yet is started here, rather than the spot being dropped.
 func (s *Store) MoveTo(ctx context.Context, user uuid.UUID, mapName string, x, y int) error {
-	_, err := s.pool.Exec(ctx, `
-		update game_profiles set map = $2, x = $3, y = $4 where user_id = $1`,
-		user, mapName, x, y)
-	return err
+	return s.inTx(ctx, func(tx pgx.Tx) error {
+		if err := ensureGame(ctx, tx, user); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `
+			update game_profiles set map = $2, x = $3, y = $4 where user_id = $1`,
+			user, mapName, x, y)
+		return err
+	})
 }
 
 // RipenAllCrops moves every planting a day into the past. For the browser
