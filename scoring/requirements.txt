@@ -5,6 +5,10 @@ minio>=7.2
 # Whisper on CPU through CTranslate2 — the same models, fast enough that a
 # lecture transcribes in minutes rather than hours.
 faster-whisper>=1.1
+# faster-whisper (1.2.1 included) opens audio with av.open(metadata_errors=…),
+# which PyAV 19 removed: every transcription failed with "unexpected keyword
+# argument". Held below 19 until faster-whisper stops passing it.
+av>=11,<19
 # IPA comes from a dictionary, not a model: same answer every run, no download.
 cmudict>=1.0
 # Definitions for tapped words. Optional at runtime: without an API key the
