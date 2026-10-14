@@ -39,12 +39,13 @@ func Init(ctx context.Context) (shutdown func(context.Context) error, err error)
 		service = "shadowline-api"
 	}
 
+	// Schemaless: resource.Default() carries the schema URL of the SDK's own
+	// semconv version, and merging it with a resource that names another one
+	// is an error. Every SDK upgrade moved that version and stopped the API
+	// at start-up, so the service name goes in without a schema of its own.
 	res, err := resource.Merge(
 		resource.Default(),
-		resource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceName(service),
-		),
+		resource.NewSchemaless(semconv.ServiceName(service)),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("otel resource: %w", err)

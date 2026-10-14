@@ -46,9 +46,12 @@ func run(log *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	// Telemetry is for watching the API, not part of what it does: one that
+	// cannot start is a warning, and the API serves without it.
 	otelShutdown, err := telemetry.Init(ctx)
 	if err != nil {
-		return err
+		log.Warn("telemetry off: it could not start", "error", err)
+		otelShutdown = func(context.Context) error { return nil }
 	}
 	defer func() {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
