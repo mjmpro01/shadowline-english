@@ -15,7 +15,7 @@
 export const en = {
   // --- navigation and shell -------------------------------------------------
   'nav.dashboard': 'Dashboard',
-  'nav.library': 'Library',
+  'nav.library': 'Shadowing',
   'nav.vocabulary': 'Vocabulary',
   'nav.progress': 'Progress',
   'nav.profile': 'Profile',
@@ -184,7 +184,7 @@ export const en = {
     `${takes} ${takes === 1 ? 'take' : 'takes'} · ${clips} ${clips === 1 ? 'clip' : 'clips'}`,
 
   // --- library --------------------------------------------------------------
-  'library.title': 'Library',
+  'library.title': 'Shadowing',
   'library.practice': 'Practice',
   'library.takes': (n: number) => `${n} ${n === 1 ? 'take' : 'takes'}`,
   'library.openAnalysis': (title: string) => `Open analysis for ${title}`,
@@ -220,7 +220,7 @@ export const en = {
   'library.searching': 'Searching…',
 
   // --- a series --------------------------------------------------------------
-  'series.back': 'Library',
+  'series.back': 'Shadowing',
   'series.noEpisodes': 'Nothing published in this series yet.',
   'series.episodeCounts': (clips: number, seconds: string) => `${clips} clips · ${seconds}`,
   'series.notFound': 'That series is not in the library — it may have been renamed.',
@@ -554,7 +554,7 @@ export const en = {
   'guide.practiceIntro': 'This is what you will do most. Once through and it is familiar.',
   'guide.pick.title': 'Pick a clip',
   'guide.pick.body':
-    'In the Library, open a series and then an episode, or type into the search box. Press Practice on a clip to start.',
+    'In Shadowing, open a series and then an episode, or type into the search box. Press Practice on a clip to start.',
   'guide.listen.title': 'Listen first',
   'guide.listen.body':
     'Play the clip once or twice before you speak. Notice where the voice rises and falls, what it stresses and where it pauses. The IPA line under the caption shows how to say it, and tapping a word saves it to your Vocabulary.',
@@ -609,7 +609,7 @@ export const en = {
     'Those are words that were not clear in your take — not necessarily words you said wrong. Say them a little slower and clearer, and record again.',
   'guide.readyTitle': 'Ready?',
   'guide.readyBody': 'Pick a clip you like and practise your first line.',
-  'guide.readyGo': 'Go to the Library',
+  'guide.readyGo': 'Go to Shadowing',
 
   // --- tour -----------------------------------------------------------------
   'tour.counter': (step: number, total: number) => `Step ${step} of ${total}`,
@@ -626,7 +626,7 @@ export const en = {
     'I will walk you through your first line: listen, say it back, and see how close you got. It takes about a minute.',
   'tour.start.title': 'Open your first line',
   'tour.start.body': 'Press this to open a line to practise.',
-  'tour.start.waiting': 'Go to the Dashboard or the Library to carry on with the tour.',
+  'tour.start.waiting': 'Go to the Dashboard or Shadowing to carry on with the tour.',
   'tour.practice.waiting': 'Open a clip and press Practice to carry on with the tour.',
   'tour.listen.title': 'Listen first',
   'tour.listen.body':

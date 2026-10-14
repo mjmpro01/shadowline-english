@@ -18,10 +18,10 @@ test('a plank per place, and the one you are on is lit', async ({ page }) => {
   await page.goto('/library')
 
   const planks = page.locator('.menu-plank')
-  // Dashboard, Library, Vocabulary, Progress, Guide, Profile.
+  // Dashboard, Shadowing, Vocabulary, Progress, Guide, Profile.
   await expect(planks).toHaveCount(6)
-  await expect(planks.filter({ hasText: 'Library' })).toHaveAttribute('aria-current', 'page')
-  await expect(planks.filter({ hasText: 'Library' }).getByText('HERE')).toBeVisible()
+  await expect(planks.filter({ hasText: 'Shadowing' })).toHaveAttribute('aria-current', 'page')
+  await expect(planks.filter({ hasText: 'Shadowing' }).getByText('HERE')).toBeVisible()
 
   // Only one of them.
   await expect(page.locator('.menu-plank[aria-current="page"]')).toHaveCount(1)
@@ -70,7 +70,7 @@ test('the phone gets the same menu lying down', async ({ page }) => {
   await expect(page.locator('.sidebar')).toBeHidden()
   const tabs = page.locator('.tabbar-link')
   await expect(tabs).toHaveCount(5)
-  await expect(tabs.filter({ hasText: 'Library' })).toHaveAttribute('aria-current', 'page')
+  await expect(tabs.filter({ hasText: 'Shadowing' })).toHaveAttribute('aria-current', 'page')
 })
 
 // Each name whole, on the narrow phones too: at 12px "Vocabulary" was wider

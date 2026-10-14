@@ -35,7 +35,7 @@ test('a new learner is walked through their first line, one button at a time', a
   // it is held off until it has been pressed.
   await expect(bubble(learner)).toContainText('Open your first line')
   await expect(bubble(learner)).toContainText('Press the lit-up button')
-  const library = learner.locator('.sidebar').getByRole('link', { name: 'Library' })
+  const library = learner.locator('.sidebar').getByRole('link', { name: 'Shadowing' })
   const box = await library.boundingBox()
   if (!box) throw new Error('no menu')
   await learner.mouse.click(box.x + box.width / 2, box.y + box.height / 2)

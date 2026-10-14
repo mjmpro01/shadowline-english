@@ -35,7 +35,8 @@ describe('locales', () => {
         english === (vi as Record<string, unknown>)[key] &&
         // The ones that are the same in both on purpose, each for its own
         // reason: a brand name is not translated, "Email", "Playlist" and
-        // "Series" are the Vietnamese words too, and an example address is an
+        // "Series" are the Vietnamese words too, "Shadowing" is what the
+        // practice tab is called in both, and an example address is an
         // example address. Everything else has to differ, which is what stops a
         // locale file being half-finished without anybody noticing.
         ![
@@ -46,6 +47,9 @@ describe('locales', () => {
           'login.brandAccent',
           'login.emailLabel',
           'login.emailPlaceholder',
+          'nav.library',
+          'library.title',
+          'series.back',
         ].includes(key),
     )
     expect(untranslated.map(([key]) => key)).toEqual([])
