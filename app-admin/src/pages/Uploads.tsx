@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useT } from '../i18n'
 import { Icon } from '../components/Icon'
 import { Loading } from '../components/LoadState'
@@ -21,7 +20,6 @@ const POLL_MS = 4000
 /** The statuses worth filtering by, in the order an upload passes through them. */
 const STATES: UploadStatus[] = [
   'uploading',
-  'fetching',
   'upload-failed',
   'transcribing',
   'transcribe-failed',
@@ -32,7 +30,7 @@ const STATES: UploadStatus[] = [
 ]
 
 /** Which statuses mean work is still happening, so the page refreshes itself. */
-const MOVING: UploadStatus[] = ['uploading', 'fetching', 'transcribing', 'cutting']
+const MOVING: UploadStatus[] = ['uploading', 'transcribing', 'cutting']
 
 /**
  * Every recording an admin has sent, and how far each one got.
@@ -44,7 +42,6 @@ const MOVING: UploadStatus[] = ['uploading', 'fetching', 'transcribing', 'cuttin
  */
 export function Uploads() {
   const t = useT()
-  const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const settled = useDebounced(query.trim(), 250)
   const [state, setState] = useState<UploadStatus | ''>('')
@@ -111,11 +108,9 @@ export function Uploads() {
     try {
       const queued = await repository.retryUpload(upload.id)
       setNote(
-        queued.fetch > 0
-          ? t('uploads.refetching')
-          : queued.transcribe + queued.cuts === 0
-            ? t('uploads.nothingToRetry')
-            : t('uploads.retried', queued.transcribe, queued.cuts),
+        queued.transcribe + queued.cuts === 0
+          ? t('uploads.nothingToRetry')
+          : t('uploads.retried', queued.transcribe, queued.cuts),
       )
       refresh()
     } catch (err) {
@@ -190,29 +185,12 @@ export function Uploads() {
                 {upload.seconds > 0 && ` · ${clock(upload.seconds)}`}
                 {upload.playlistTitle && ` · ${upload.playlistTitle}`}
               </span>
-              {upload.sourceUrl !== '' && <SourceLine upload={upload} />}
             </div>
             <div className="row gap-2">
               <StatusTag status={upload.status} />
-              {/* A video fetched from a link has no file on the admin's
-                  machine to choose again: the studio opens the server's copy. */}
-              {upload.sourceUrl !== '' && (upload.uploadState === 'stored' || upload.uploadState === 'fetching') && (
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => navigate(`/cut?upload=${encodeURIComponent(upload.id)}`)}
-                >
-                  <Icon name="scissors" size={15} />
-                  {t('uploads.openInStudio')}
-                </button>
-              )}
               {/* Only where there is something to put back. Offering it on a row
                   with nothing failed would promise work that never starts. */}
-              {(upload.status === 'transcribe-failed' ||
-                upload.status === 'cut-failed' ||
-                // A download that gave up can be asked for again; a file that
-                // never arrived has to be chosen again in the studio.
-                (upload.status === 'upload-failed' && upload.sourceUrl !== '')) && (
+              {(upload.status === 'transcribe-failed' || upload.status === 'cut-failed') && (
                 <button type="button" className="btn btn-secondary" onClick={() => void retry(upload)}>
                   {t('uploads.retry')}
                 </button>
@@ -283,9 +261,6 @@ function Details({ upload }: { upload: Upload }) {
     [t('uploads.clips'), upload.clips],
     [t('uploads.transcript'), t(`uploads.transcript.${upload.transcript}` as 'uploads.transcript.ready')],
   ]
-  if (upload.fetchAttempts > 0) {
-    rows.push([t('uploads.fetchAttempts'), upload.fetchAttempts])
-  }
   if (upload.transcribeAttempts > 0) {
     rows.push([t('uploads.attempts'), upload.transcribeAttempts])
   }
@@ -321,27 +296,6 @@ function Details({ upload }: { upload: Upload }) {
       )}
     </div>
   )
-}
-
-/** Where a recording fetched from a link came from, and whose it is. */
-function SourceLine({ upload }: { upload: Upload }) {
-  const t = useT()
-  return (
-    <span className="card-meta">
-      {upload.sourceCredit ? t('uploads.fromCredit', upload.sourceCredit) : t('uploads.fromLink')}{' '}
-      <a href={upload.sourceUrl} target="_blank" rel="noopener noreferrer">
-        {hostOf(upload.sourceUrl)}
-      </a>
-    </span>
-  )
-}
-
-function hostOf(link: string): string {
-  try {
-    return new URL(link).hostname.replace(/^www\./, '')
-  } catch {
-    return link
-  }
 }
 
 /** Sizes read in megabytes; a recording is identified in practice by being the

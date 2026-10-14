@@ -58,23 +58,8 @@ async function errorMessage(response: Response): Promise<string> {
   return response.statusText || `Request failed (${response.status})`
 }
 
-/** A file the server sends back, as it is, with the server's words on a failure. */
-async function blob(path: string): Promise<Blob> {
-  let response: Response
-  try {
-    response = await fetch(API_URL + path, { credentials: 'include' })
-  } catch {
-    throw new ApiError(0, 'Could not reach the server.')
-  }
-  if (!response.ok) {
-    throw new ApiError(response.status, await errorMessage(response))
-  }
-  return response.blob()
-}
-
 export const api = {
   get: <T>(path: string) => request<T>(path),
-  blob,
   del: (path: string) => request<void>(path, { method: 'DELETE' }),
 
   send: <T>(method: 'POST' | 'PATCH' | 'PUT', path: string, body: unknown) =>

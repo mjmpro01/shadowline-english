@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
 import { useRemote } from '../lib/remote'
 import { useT } from '../i18n'
 import { Icon } from '../components/Icon'
@@ -49,19 +48,6 @@ function clock(seconds: number): string {
 /** Floored to tenths like the timestamps beside it, so a boundary reads the same in both. */
 function lengthLabel(seconds: number): string {
   return (Math.floor(seconds * 10) / 10).toFixed(1)
-}
-
-/** How often to ask whether a linked video has arrived, and how long to keep
- *  asking before saying it is taking a while. The worker that downloads it also
- *  transcribes, and may be part way through something long. */
-const LINK_POLL_MS = 2000
-const LINK_WAIT_MS = 15 * 60 * 1000
-
-/** A name for a fetched recording that says what it is: its title, with the
- *  extension its type has, so the studio treats it as the video it is. */
-function fileNameFor(name: string, type: string): string {
-  const extension = type.includes('webm') ? '.webm' : type.includes('quicktime') ? '.mov' : '.mp4'
-  return /\.[a-z0-9]{2,4}$/i.test(name) ? name : name + extension
 }
 
 export function Cut() {
@@ -195,104 +181,8 @@ export function Cut() {
     await sendSource(sourceFile.file, sourceFile.seconds)
   }
 
-  /** Bumped by every new link or file, so a wait still running for an older
-   *  one stops rather than opening it over the newer. */
-  const linkRun = useRef(0)
-  const [linkOpen, setLinkOpen] = useState(false)
-  const [link, setLink] = useState('')
-  const [linkError, setLinkError] = useState<string | null>(null)
-  const [linkWaiting, setLinkWaiting] = useState(false)
-
-  /**
-   * Waits for the server to have a recording — downloading it from its link,
-   * usually — then opens it like a chosen file.
-   *
-   * Polls the upload rather than holding a request open: a short downloads in
-   * seconds, but the worker that downloads it may be part way through
-   * transcribing something long, and the upload's own row is what says why.
-   */
-  const openStored = async (id: string) => {
-    const run = ++linkRun.current
-    setLinkError(null)
-    setLinkWaiting(true)
-    const started = Date.now()
-    try {
-      for (;;) {
-        if (linkRun.current !== run) return
-        const { upload } = await repository.upload(id)
-        if (linkRun.current !== run) return
-        if (upload.uploadState === 'stored') {
-          setBusy(t('studio.linkOpening'))
-          const media = await repository.uploadMedia(id)
-          if (linkRun.current !== run) return
-          const type = media.type || 'video/mp4'
-          const file = new File([media], fileNameFor(upload.name, type), { type })
-          setLinkOpen(false)
-          setLink('')
-          setLinkWaiting(false)
-          await open(file, id)
-          return
-        }
-        if (upload.uploadState === 'failed') {
-          throw new Error(upload.error || t('studio.linkFailed'))
-        }
-        if (Date.now() - started > LINK_WAIT_MS) throw new Error(t('studio.linkSlow'))
-        setBusy(
-          upload.fetchAttempts > 1 ? t('studio.linkFetchingAgain', upload.fetchAttempts) : t('studio.linkFetching'),
-        )
-        await new Promise((resolve) => setTimeout(resolve, LINK_POLL_MS))
-      }
-    } catch (err) {
-      if (linkRun.current !== run) return
-      setBusy(null)
-      setLinkWaiting(false)
-      setLinkError(err instanceof Error ? err.message : String(err))
-    }
-  }
-
-  /** Hands the server a video's address to download, then waits for it. */
-  const fetchFromLink = async () => {
-    const address = link.trim()
-    if (!address) return
-    setLinkError(null)
-    setBusy(t('studio.linkSending'))
-    try {
-      const { id } = await repository.createLinkUpload(address)
-      await openStored(id)
-    } catch (err) {
-      setBusy(null)
-      setLinkError(err instanceof Error ? err.message : String(err))
-    }
-  }
-
-  /** Stops waiting. The download carries on, and shows in Uploads. */
-  const stopWaiting = () => {
-    linkRun.current++
-    setLinkWaiting(false)
-    setBusy(null)
-  }
-
-  // Opened from Uploads with an upload to cut: `/cut?upload=<id>`.
-  const [params, setParams] = useSearchParams()
-  const asked = params.get('upload')
-  useEffect(() => {
-    if (!asked) return
-    setParams({}, { replace: true })
-    void openStored(asked)
-    // openStored is a fresh closure each render; the id is what matters.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [asked])
-
-  /**
-   * Opens a recording: decodes it to draw and split, and sends it to the
-   * server — or, for one the server already has (fetched from a link), takes
-   * the id it already has rather than sending it back.
-   */
-  const open = async (file: File | undefined, storedId?: string) => {
+  const open = async (file: File | undefined) => {
     if (!file) return
-    // A file chosen while a link was still downloading replaces it.
-    linkRun.current++
-    setLinkError(null)
     setBusy(t('studio.decoding'))
     setSaved(null)
     // The strip's slots exist from the moment a video is chosen, so it shows
@@ -348,17 +238,8 @@ export function Cut() {
       //
       // The studio stays interactive throughout; Publish awaits the promise so a
       // quick split-and-publish cannot race past the id.
-      if (storedId) {
-        // Already on the server, and transcription already queued by the
-        // worker that stored it. Nothing to send, and nothing to send again.
-        setSourceFile(null)
-        setSourceId(storedId)
-        setSourceUploading(false)
-        sourceUpload.current = Promise.resolve(storedId)
-      } else {
-        setSourceFile({ file, seconds: samples.length / sampleRate })
-        sendSource(file, samples.length / sampleRate)
-      }
+      setSourceFile({ file, seconds: samples.length / sampleRate })
+      sendSource(file, samples.length / sampleRate)
     } catch {
       URL.revokeObjectURL(url)
       setBusy(null)
@@ -725,20 +606,12 @@ export function Cut() {
           hidden
           onChange={(e) => void open(e.target.files?.[0])}
         />
-        <button
-          type="button"
-          className="btn btn-secondary"
-          aria-expanded={linkOpen}
-          onClick={() => setLinkOpen((shown) => !shown)}
-        >
-          <Icon name="link" size={15} />
-          {t('studio.link')}
+        {/* Still not wired: fetching a video and stripping its audio is an
+            endpoint the API does not have, and the button says so rather than
+            failing when pressed. */}
+        <button type="button" className="btn btn-secondary" disabled title={t('studio.youtubeSoon')}>
+          {t('studio.youtube')}
         </button>
-        {linkWaiting && (
-          <button type="button" className="btn btn-ghost" onClick={stopWaiting}>
-            {t('studio.linkStop')}
-          </button>
-        )}
         {busy && (
           <span style={{ fontSize: 13, opacity: 0.7 }}>
             {progress
@@ -749,48 +622,6 @@ export function Cut() {
           </span>
         )}
       </div>
-
-      {/* A video from its page instead of a file. The server downloads it as
-          it was published and keeps whose it is, which every clip cut from it
-          shows the learner. */}
-      {linkOpen && (
-        <form
-          className="card elev-sm stack gap-2"
-          style={{ maxWidth: 640 }}
-          onSubmit={(e) => {
-            e.preventDefault()
-            void fetchFromLink()
-          }}
-        >
-          <label className="stack gap-1">
-            <span className="card-kicker">{t('studio.linkLabel')}</span>
-            <input
-              className="input"
-              type="url"
-              inputMode="url"
-              placeholder="https://www.youtube.com/shorts/…"
-              value={link}
-              disabled={linkWaiting}
-              onChange={(e) => setLink(e.target.value)}
-              autoFocus
-            />
-          </label>
-          <div className="card-meta">{t('studio.linkHint')}</div>
-          {linkError !== null && (
-            <div className="series-hint series-hint-warn" role="alert">
-              {linkError}
-            </div>
-          )}
-          <div className="row gap-2">
-            <button type="submit" className="btn btn-primary" disabled={!link.trim() || linkWaiting || busy !== null}>
-              {t('studio.linkFetch')}
-            </button>
-            <button type="button" className="btn btn-ghost" onClick={() => setLinkOpen(false)}>
-              {t('studio.linkCancel')}
-            </button>
-          </div>
-        </form>
-      )}
 
       {/* What the screen looked like before a file is chosen: two buttons on an
           empty page, with nothing saying what pressing one leads to. An admin
