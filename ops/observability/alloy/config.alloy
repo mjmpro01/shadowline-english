@@ -1,9 +1,5 @@
 // Grafana Alloy: OTLP in → Tempo / Prometheus / Loki; scrape API; Docker logs → Loki.
 
-livedebugging {
-	enabled = false
-}
-
 otelcol.receiver.otlp "default" {
 	grpc {
 		endpoint = "0.0.0.0:4317"
