@@ -35,7 +35,7 @@ test('the sign-in page is a main landmark with its heading', async ({ page }) =>
 
 test('the first Tab offers to skip the menu, and Enter lands on the screen', async ({ page }) => {
   await page.goto('/library')
-  await expect(page.getByRole('heading', { name: 'Library' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Shadowing' })).toBeVisible()
 
   await page.keyboard.press('Tab')
   const skip = page.getByRole('link', { name: 'Skip to content' })

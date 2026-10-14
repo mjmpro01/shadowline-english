@@ -19,7 +19,7 @@ import type { Messages } from './en'
 export const vi: Messages = {
   // --- navigation and shell -------------------------------------------------
   'nav.dashboard': 'Tổng quan',
-  'nav.library': 'Thư viện',
+  'nav.library': 'Shadowing',
   'nav.vocabulary': 'Từ vựng',
   'nav.progress': 'Tiến độ',
   'nav.profile': 'Hồ sơ',
@@ -208,7 +208,7 @@ export const vi: Messages = {
     `${takes} bản ghi · ${clips} clip`,
 
   // --- library --------------------------------------------------------------
-  'library.title': 'Thư viện',
+  'library.title': 'Shadowing',
   'library.practice': 'Luyện',
   'library.takes': (n: number) => `${n} bản ghi`,
   'library.openAnalysis': (title: string) => `Mở phân tích cho ${title}`,
@@ -240,7 +240,7 @@ export const vi: Messages = {
   'library.searching': 'Đang tìm…',
 
   // --- a series --------------------------------------------------------------
-  'series.back': 'Thư viện',
+  'series.back': 'Shadowing',
   'series.noEpisodes': 'Series này chưa có gì được đăng.',
   'series.episodeCounts': (clips: number, seconds: string) => `${clips} clip · ${seconds}`,
   'series.notFound': 'Series này không có trong thư viện — có thể nó đã được đổi tên.',
@@ -550,7 +550,7 @@ export const vi: Messages = {
   'guide.practiceIntro': 'Đây là việc bạn sẽ làm nhiều nhất. Làm thử một lần là quen.',
   'guide.pick.title': 'Chọn một clip',
   'guide.pick.body':
-    'Vào Thư viện, mở một series rồi một tập, hoặc gõ vào ô tìm kiếm. Bấm Luyện trên một clip để bắt đầu.',
+    'Vào Shadowing, mở một series rồi một tập, hoặc gõ vào ô tìm kiếm. Bấm Luyện trên một clip để bắt đầu.',
   'guide.listen.title': 'Nghe trước',
   'guide.listen.body':
     'Phát clip một hai lần trước khi nói. Để ý chỗ người nói lên giọng, xuống giọng, nhấn và ngắt. Dòng phiên âm IPA dưới phụ đề chỉ cách đọc, và chạm vào một từ sẽ lưu nó vào Từ vựng.',
@@ -605,7 +605,7 @@ export const vi: Messages = {
     'Đó là những từ app chưa nghe rõ trong bản ghi của bạn — không hẳn là bạn đọc sai. Nói chậm và rõ hơn ở những từ đó rồi ghi lại.',
   'guide.readyTitle': 'Sẵn sàng chưa?',
   'guide.readyBody': 'Chọn một clip bạn thích và luyện câu đầu tiên.',
-  'guide.readyGo': 'Tới Thư viện',
+  'guide.readyGo': 'Tới Shadowing',
 
   // --- tour -----------------------------------------------------------------
   'tour.counter': (step: number, total: number) => `Bước ${step}/${total}`,
@@ -622,7 +622,7 @@ export const vi: Messages = {
     'Mình sẽ dẫn bạn luyện câu đầu tiên: nghe, nói theo, rồi xem bạn giống bản gốc tới đâu. Chỉ mất khoảng một phút.',
   'tour.start.title': 'Mở câu đầu tiên',
   'tour.start.body': 'Bấm vào đây để mở một câu và luyện.',
-  'tour.start.waiting': 'Về Tổng quan hoặc Thư viện để tiếp tục hướng dẫn.',
+  'tour.start.waiting': 'Về Tổng quan hoặc Shadowing để tiếp tục hướng dẫn.',
   'tour.practice.waiting': 'Mở một clip và bấm Luyện để tiếp tục hướng dẫn.',
   'tour.listen.title': 'Nghe trước',
   'tour.listen.body':
