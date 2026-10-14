@@ -224,20 +224,6 @@ export function PracticeScreen() {
                 useful one. */}
             {!sourceVideoUrl && <ClipFace id={video.id} posterUrl="" line="" categories={video.categories} />}
           </div>
-          {/* Whose video this is, when it came from somebody's channel: the
-              clip is theirs, and the link goes back to the original. */}
-          {(video.sourceCredit || video.sourceUrl) && (
-            <div className="clip-credit">
-              {t('practice.source')}{' '}
-              {video.sourceUrl ? (
-                <a href={video.sourceUrl} target="_blank" rel="noopener noreferrer">
-                  {video.sourceCredit || hostOf(video.sourceUrl)}
-                </a>
-              ) : (
-                video.sourceCredit
-              )}
-            </div>
-          )}
 
           <div data-tour="caption" style={{ fontSize: 16, fontStyle: 'italic', textAlign: 'center' }}>
             “
@@ -533,13 +519,4 @@ export function PracticeScreen() {
       </div>
     </div>
   )
-}
-
-/** The site a link goes to, for a credit with no channel name. */
-function hostOf(link: string): string {
-  try {
-    return new URL(link).hostname.replace(/^www\./, '')
-  } catch {
-    return link
-  }
 }

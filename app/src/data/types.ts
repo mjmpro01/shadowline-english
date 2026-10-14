@@ -183,11 +183,6 @@ export interface Video {
   episodeId: string | null
   playlistId: string | null
   createdAt: string
-  /** Whose video this was cut from, when the studio fetched it from a link:
-   *  the channel's @handle or name, and the page it came from. Empty for a
-   *  recording an admin uploaded. */
-  sourceCredit?: string
-  sourceUrl?: string
 }
 
 /**

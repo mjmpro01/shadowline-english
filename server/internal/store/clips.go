@@ -61,12 +61,6 @@ type Clip struct {
 	StartSeconds float64   `json:"startSeconds"`
 	EndSeconds   float64   `json:"-"`
 	CreatedAt    time.Time `json:"createdAt"`
-	// Whose video this was cut from, when it was fetched from a link: the
-	// channel or account that published it, and the page it came from. The
-	// practice screen shows them under the clip. Empty for a recording an
-	// admin uploaded as a file.
-	SourceCredit string `json:"sourceCredit"`
-	SourceURL    string `json:"sourceUrl"`
 }
 
 // video_pending is derived: no picture yet, and a cut still owed. A job row
@@ -87,9 +81,7 @@ const clipColumns = `id, title, source, playlist, categories, featured, timestam
 	)),
 	(audio_key is null and exists (
 		select 1 from cut_jobs j where j.clip_id = clips.id and j.state <> 'failed'
-	)),
-	coalesce((select s.source_credit from clip_sources s where s.id = clips.source_id), ''),
-	coalesce((select s.source_url from clip_sources s where s.id = clips.source_id), '')`
+	))`
 
 func scanClip(row pgx.Row) (Clip, error) {
 	var c Clip
@@ -97,7 +89,7 @@ func scanClip(row pgx.Row) (Clip, error) {
 	err := row.Scan(&c.ID, &c.Title, &c.Source, &c.Playlist, &c.Categories, &c.Featured,
 		&c.TimestampLabel, &c.DurationSeconds, &c.Summary, &captions, &c.AudioKey, &c.VideoKey,
 		&c.PosterKey, &c.SourceID, &c.PlaylistID, &c.StartSeconds, &c.EndSeconds, &c.CreatedAt,
-		&c.VideoPending, &c.AudioPending, &c.SourceCredit, &c.SourceURL)
+		&c.VideoPending, &c.AudioPending)
 	if err != nil {
 		return c, mapErr(err)
 	}

@@ -7,9 +7,6 @@ corrects a transcript instead of typing one.
 One run per upload, not per clip: every clip cut from a recording reads the
 words falling inside its own boundaries, so transcribing an hour once serves
 however many lines come out of it.
-
-It also downloads the recordings an admin gave a link to (see ``fetcher``),
-first, since each one is transcribed straight after anyway.
 """
 
 from __future__ import annotations
@@ -26,8 +23,6 @@ import psycopg
 
 from . import ipa
 from . import telemetry
-from .fetcher import YtDlpDownloader, fetch_once
-from .fetchqueue import FetchQueue
 from .heartbeat import Heartbeat
 from .storage import ObjectMissing, Storage, from_env as storage_from_env
 from .transcribe import TranscribeFailed, Transcriber, WhisperTranscriber
@@ -119,7 +114,6 @@ def main() -> int:
 
     blobs = storage_from_env()
     transcriber = WhisperTranscriber()
-    downloader = YtDlpDownloader()
     running = True
     # Started before the model loads, so the console can tell "starting" from
     # "not running at all" — loading Whisper can take a minute.
@@ -141,15 +135,10 @@ def main() -> int:
             try:
                 with psycopg.connect(dsn, autocommit=True) as conn:
                     queue = TranscribeQueue(conn)
-                    fetches = FetchQueue(conn)
                     backoff = 1.0
                     while running:
                         heartbeat.busy = True
-                        # A download first: an admin is usually in the studio
-                        # waiting for it, and it is seconds against minutes.
-                        worked = fetch_once(fetches, blobs, downloader, workdir) or run_once(
-                            queue, blobs, transcriber, workdir
-                        )
+                        worked = run_once(queue, blobs, transcriber, workdir)
                         heartbeat.busy = False
                         if not worked:
                             time.sleep(IDLE_SLEEP)

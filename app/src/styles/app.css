@@ -742,21 +742,6 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
-/* Whose video a clip was cut from, under the player. Small and quiet: it is
-   for anyone who wants to find the original, not something to read first. */
-.clip-credit {
-  margin-top: calc(-1 * var(--space-2));
-  font-size: 13px;
-  color: var(--color-text-muted);
-  text-align: right;
-  overflow-wrap: anywhere;
-}
-
-.clip-credit a {
-  color: inherit;
-  font-weight: 600;
-}
-
 .practice-video {
   position: relative;
   width: 100%;

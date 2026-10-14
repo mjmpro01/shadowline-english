@@ -27,10 +27,6 @@ class Storage(Protocol):
 
     def put(self, bucket: str, key: str, path: Path, content_type: str) -> None: ...
 
-    def delete(self, bucket: str, key: str) -> None:
-        """Removes an object; one already gone is not an error."""
-        ...
-
 
 class DiskStorage:
     """A directory per bucket. Used by tests and by a run with no MinIO."""
@@ -63,9 +59,6 @@ class DiskStorage:
         target = self._resolve(bucket, key)
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(path, target)
-
-    def delete(self, bucket: str, key: str) -> None:
-        self._resolve(bucket, key).unlink(missing_ok=True)
 
 
 class S3Storage:
@@ -102,9 +95,6 @@ class S3Storage:
 
     def put(self, bucket: str, key: str, path: Path, content_type: str) -> None:
         self._client.fput_object(self._buckets[bucket], key, str(path), content_type=content_type)
-
-    def delete(self, bucket: str, key: str) -> None:
-        self._client.remove_object(self._buckets[bucket], key)
 
 
 def from_env() -> Storage:
