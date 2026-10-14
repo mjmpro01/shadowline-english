@@ -70,3 +70,13 @@ func (s *Server) handleTestTranscriptFail(w http.ResponseWriter, r *http.Request
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
+
+// handleTestRipen makes every crop in every farm ready to pick, so a browser
+// test does not wait out a growing time. Registered only when AUTH_FAKE=1.
+func (s *Server) handleTestRipen(w http.ResponseWriter, r *http.Request) {
+	if err := s.Store.RipenAllCrops(r.Context()); err != nil {
+		s.failErr(w, err, "ripen test crops")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
