@@ -146,15 +146,18 @@ export function ArenaScreen() {
     return () => window.clearTimeout(id)
   }, [toast])
 
-  /** Makes one move: the answer replaces the farm, the quests follow. */
+  /** Makes one move: the answer replaces the farm, the quests follow. True
+   *  when the server took it. */
   const move = useCallback(
-    async (fn: () => Promise<GameState>) => {
+    async (fn: () => Promise<GameState>): Promise<boolean> => {
       setBusy(true)
       try {
         take(await fn())
         void refreshQuests()
+        return true
       } catch (err) {
         setToast({ text: gameError(err, t) })
+        return false
       } finally {
         setBusy(false)
       }
@@ -162,13 +165,31 @@ export function ArenaScreen() {
     [refreshQuests, t, take],
   )
 
+  // The word card waits for the player to finish picking the crop.
+  const cardTimer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(cardTimer.current), [])
+
+  const plant = async (idx: number, seed: string) => {
+    if (await move(() => gameApi.plant(idx, seed))) {
+      setPanel(null)
+      bus.emit('planted', idx)
+    }
+  }
+
+  const sleep = async () => {
+    const slept = await move(() => gameApi.sleep())
+    setPanel(null)
+    if (slept) bus.emit('slept', undefined)
+  }
+
   const harvest = async (idx: number) => {
     setBusy(true)
     try {
       const res = await gameApi.harvest(idx)
       take(res.state)
+      setPanel(null)
       bus.emit('harvested', idx)
-      setPanel({ kind: 'word', word: res.word, gold: res.gold })
+      cardTimer.current = window.setTimeout(() => setPanel({ kind: 'word', word: res.word, gold: res.gold }), 600)
       void refreshQuests()
       if (res.word) void refreshVocab()
     } catch (err) {
@@ -272,7 +293,7 @@ export function ArenaScreen() {
         <PlotPanel
           {...common}
           idx={panel.idx}
-          onPlant={(seed) => void move(() => gameApi.plant(panel.idx, seed))}
+          onPlant={(seed) => void plant(panel.idx, seed)}
           onHarvest={() => void harvest(panel.idx)}
         />
       )}
@@ -287,7 +308,7 @@ export function ArenaScreen() {
         />
       )}
       {common && panel?.kind === 'house' && (
-        <HousePanel {...common} onSleep={() => void move(() => gameApi.sleep()).then(close)} />
+        <HousePanel {...common} onSleep={() => void sleep()} />
       )}
       {common && panel?.kind === 'bag' && (
         <BagPanel {...common} onUse={(item) => void move(() => gameApi.use(item))} />

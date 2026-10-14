@@ -237,8 +237,39 @@ function tileset(ctx: Ctx) {
     px(ctx, x + 6, y + 6, 4, 4, color)
     px(ctx, x + 7, y + 10, 2, 4, '#33691e')
   }
+  // Fence: rails and posts in wood, one piece per side and corner.
+  const wood = '#8d6e63'
+  const rail = (i: number, across: boolean, down: boolean, post = true) => {
+    const [x, y] = at(i)
+    if (across) {
+      px(ctx, x, y + 5, 16, 2, wood)
+      px(ctx, x, y + 10, 16, 2, wood)
+    }
+    if (down) px(ctx, x + 7, y, 2, 16, wood)
+    if (post) px(ctx, x + 6, y + 2, 4, 13, '#6d4c41')
+  }
+  rail(46, true, false)
+  rail(47, false, true)
+  for (const i of [48, 49, 50, 51]) rail(i, true, true)
+  rail(52, false, false)
+  rail(53, true, false, false)
+  {
+    const [x, y] = at(54)
+    px(ctx, x, y + 2, 3, 13, '#6d4c41')
+    px(ctx, x + 13, y + 2, 3, 13, '#6d4c41')
+  }
+  {
+    const [x, y] = at(55)
+    px(ctx, x + 5, y + 8, 6, 5, '#9e9e9e')
+    px(ctx, x + 6, y + 8, 3, 1, '#bdbdbd')
+  }
   dot(56, '#33691e')
   dot(57, '#e53935')
+  {
+    const [x, y] = at(58)
+    px(ctx, x + 2, y + 8, 12, 5, '#795548')
+    px(ctx, x + 12, y + 8, 2, 5, '#d7ccc8')
+  }
   dot(59, '#fafafa')
   dot(60, '#f48fb1')
   dot(61, '#ce93d8')
@@ -399,6 +430,27 @@ function sparkle(ctx: Ctx) {
   }
 }
 
+function dust(ctx: Ctx) {
+  for (let f = 0; f < 4; f++) {
+    const x = f * 16
+    const r = 1 + f
+    px(ctx, x + 8 - r, 13 - Math.floor(f / 2), r, r, f === 3 ? '#efebe9' : '#d7ccc8')
+    px(ctx, x + 8, 13 - Math.floor(f / 2), r, r, f === 3 ? '#efebe9' : '#d7ccc8')
+  }
+}
+
+function sleepZ(ctx: Ctx) {
+  for (let f = 0; f < 3; f++) {
+    const x = f * 16 + 3 + f
+    const y = 10 - f * 3
+    px(ctx, x, y, 5, 1, '#e3f2fd')
+    px(ctx, x + 3, y + 1, 1, 1, '#e3f2fd')
+    px(ctx, x + 2, y + 2, 1, 1, '#e3f2fd')
+    px(ctx, x + 1, y + 3, 1, 1, '#e3f2fd')
+    px(ctx, x, y + 4, 5, 1, '#e3f2fd')
+  }
+}
+
 const PAINTERS: Record<string, { w: number; h: number; draw: (ctx: Ctx) => void }> = {
   player: { w: 16 * CHAR_COLS, h: 32 * 17, draw: (c) => characterSheet(c, PEOPLE.player) },
   // People other than the player only stand and walk: eight rows.
@@ -421,6 +473,8 @@ const PAINTERS: Record<string, { w: number; h: number; draw: (ctx: Ctx) => void 
   interact: { w: 32, h: 16, draw: interact },
   harvest_pop: { w: 96, h: 16, draw: harvestPop },
   sparkle: { w: 64, h: 16, draw: sparkle },
+  dust: { w: 64, h: 16, draw: dust },
+  sleep_z: { w: 48, h: 16, draw: sleepZ },
 }
 
 /** Paints a placeholder for every picture the artist has not delivered yet. */

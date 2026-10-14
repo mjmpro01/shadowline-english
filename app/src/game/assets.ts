@@ -33,6 +33,9 @@ export const CROP_IDS = ['sprout', 'bloom', 'golden'] as const
 export const CROP_STAGES = 5
 /** Frames in fx/harvest_pop.png. */
 export const POP_FRAMES = 6
+/** Frames in fx/dust.png and fx/sleep_z.png. */
+export const DUST_FRAMES = 4
+export const ZZZ_FRAMES = 3
 /** Kinds of tree in objects/tree.png, side by side. */
 export const TREE_KINDS = 3
 
@@ -53,6 +56,8 @@ export const ASSETS: AssetSpec[] = [
   { key: 'interact', file: 'fx/interact.png', frame: { w: 16, h: 16 } },
   { key: 'harvest_pop', file: 'fx/harvest_pop.png', frame: { w: 16, h: 16 } },
   { key: 'sparkle', file: 'fx/sparkle.png', frame: { w: 16, h: 16 } },
+  { key: 'dust', file: 'fx/dust.png', frame: { w: 16, h: 16 } },
+  { key: 'sleep_z', file: 'fx/sleep_z.png', frame: { w: 16, h: 16 } },
 ]
 
 export const BASE = `${import.meta.env.BASE_URL}game/`

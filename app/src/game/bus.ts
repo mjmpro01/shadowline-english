@@ -43,6 +43,10 @@ interface Events {
   questGiver: { giver: string | null; done: boolean }
   /** A plot was just harvested: a little burst over it. */
   harvested: number
+  /** A seed just went into a plot: the player swings the hoe. */
+  planted: number
+  /** The player just slept: a nap where they stand. */
+  slept: undefined
 }
 
 type Listener<T> = (value: T) => void

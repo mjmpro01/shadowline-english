@@ -29,6 +29,8 @@ that came with the chapter-1 pack.
 | `fx/interact.png` | 32×16 | 2 frames of 16×16: the bouncing marker over what the player faces |
 | `fx/harvest_pop.png` | 96×16 | 6 frames of 16×16, played once on harvest |
 | `fx/sparkle.png` | 64×16 | 4 frames of 16×16, looped over a ripe crop |
+| `fx/dust.png` | 64×16 | 4 frames of 16×16, a puff at the player's heels while walking |
+| `fx/sleep_z.png` | 48×16 | 3 frames of 16×16, drifting up while the player naps |
 
 ### The tileset atlas
 
@@ -43,8 +45,12 @@ Names the map uses: `grass_1`…`grass_5`, `bare_dirt`, `path_vertical`,
 `path_horizontal`, `path_corner` (top-left corner; the other three are
 mirrored), `path_cross`, `untilled`, `tilled_dry`, `tilled_wet`,
 `soil_level_1`…`soil_level_3`, `soil_locked`, `pond_0`…`pond_15` (the 16
-edge pieces of the pond, chosen by which sides touch water), and the flower
-and grass decorations listed in `src/game/world/farm.ts` (`DEFAULT_TILES`).
+edge pieces of the pond, chosen by which sides touch water), `stone_path` (the
+stepping stones to the pond), the fence around the pond (`fence_horizontal`,
+`fence_vertical`, `fence_corner_tl/tr/bl/br`, `gate_open`), and the things
+dotted on the grass: `flower_white`, `flower_pink`, `flower_purple`,
+`mushroom`, `weeds`, `small_rock`, `log`. The player's hoe, harvest and sleep
+rows play when a seed goes in, a crop comes out, and the player naps.
 Without the atlas, the indexes in `DEFAULT_TILES` are used.
 
 ## Drawn by the page (HUD and panels)

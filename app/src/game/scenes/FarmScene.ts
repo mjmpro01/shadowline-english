@@ -1,6 +1,19 @@
 import Phaser from 'phaser'
 import type { GameState, Plot } from '../api'
-import { ASSETS, BASE, CHAR_COLS, CHAR_ROWS, CROP_STAGES, DIRS, NPC_IDS, POP_FRAMES, TREE_KINDS, type Dir } from '../assets'
+import {
+  ASSETS,
+  BASE,
+  CHAR_COLS,
+  CHAR_ROWS,
+  CROP_STAGES,
+  DIRS,
+  DUST_FRAMES,
+  NPC_IDS,
+  POP_FRAMES,
+  TREE_KINDS,
+  ZZZ_FRAMES,
+  type Dir,
+} from '../assets'
 import { paintPlaceholders } from '../art/placeholder'
 import { sameTarget, type GameBus, type Target } from '../bus'
 import { cropStage } from '../growth'
@@ -20,6 +33,7 @@ import {
   WIDTH,
   borderTrees,
   decor,
+  fence,
   ground,
   plotRect,
   solids,
@@ -75,6 +89,10 @@ export class FarmScene extends Phaser.Scene {
   /** Server clock minus this browser's, so growth is drawn by the server's time. */
   private clockSkew = 0
   private lastSaved = { x: 0, y: 0 }
+  /** Until when the player is busy with the hoe, a harvest or a nap and
+   *  stays put (scene time, ms). */
+  private busyUntil = 0
+  private lastDust = 0
   private unsubscribe: (() => void)[] = []
 
   constructor() {
@@ -129,6 +147,10 @@ export class FarmScene extends Phaser.Scene {
     }
     for (const d of decor(this.names)) {
       this.add.image(d.x * TILE, d.y * TILE, 'tiles', d.index).setOrigin(0, 0).setDepth(0.5)
+    }
+    // The fence stands up, so the player passes behind its top rail.
+    for (const f of fence(this.names)) {
+      this.add.image(f.x * TILE, (f.y + 1) * TILE, 'tiles', f.index).setOrigin(0, 1).setDepth((f.y + 1) * TILE)
     }
 
     // Things that stand on it, drawn in order of how far down the screen
@@ -235,7 +257,12 @@ export class FarmScene extends Phaser.Scene {
     this.unsubscribe.push(
       this.bus.on('state', (s) => this.applyState(s)),
       this.bus.on('questGiver', (g) => this.showQuestGiver(g.giver, g.done)),
-      this.bus.on('harvested', (idx) => this.burst(idx)),
+      this.bus.on('harvested', (idx) => {
+        this.burst(idx)
+        this.act('harvest')
+      }),
+      this.bus.on('planted', () => this.act('hoe')),
+      this.bus.on('slept', () => this.nap()),
     )
     const state = this.bus.latest('state')
     if (state) this.applyState(state)
@@ -282,8 +309,38 @@ export class FarmScene extends Phaser.Scene {
           frameRate: 8,
           repeat: -1,
         })
+        if (key !== 'player') return
+        // Only the player works the land: three frames each.
+        for (const action of ['hoe', 'harvest'] as const) {
+          this.anims.create({
+            key: `player-${action}-${dir}`,
+            frames: this.anims.generateFrameNumbers(key, {
+              frames: [0, 1, 2].map((f) => row(CHAR_ROWS[action]) + f),
+            }),
+            frameRate: 8,
+          })
+        }
       })
     }
+    this.anims.create({
+      key: 'player-sleep',
+      frames: this.anims.generateFrameNumbers('player', {
+        frames: [CHAR_ROWS.sleep * CHAR_COLS, CHAR_ROWS.sleep * CHAR_COLS + 1],
+      }),
+      frameRate: 2,
+      repeat: -1,
+    })
+    this.anims.create({
+      key: 'dust-puff',
+      frames: this.anims.generateFrameNumbers('dust', { frames: Array.from({ length: DUST_FRAMES }, (_, i) => i) }),
+      frameRate: 12,
+    })
+    this.anims.create({
+      key: 'sleep-z',
+      frames: this.anims.generateFrameNumbers('sleep_z', { frames: Array.from({ length: ZZZ_FRAMES }, (_, i) => i) }),
+      frameRate: 3,
+      repeat: -1,
+    })
     this.anims.create({
       key: 'interact-bob',
       frames: this.anims.generateFrameNumbers('interact', { frames: [0, 1] }),
@@ -339,6 +396,34 @@ export class FarmScene extends Phaser.Scene {
     const fx = this.add.sprite(view.crop.x, view.crop.y - 16, 'harvest_pop', 0).setDepth(10_002)
     fx.play('harvest-pop')
     fx.once('animationcomplete', () => fx.destroy())
+  }
+
+  /** The player swings the hoe or picks the crop in front of them. */
+  private act(action: 'hoe' | 'harvest') {
+    this.busyUntil = this.time.now + 420
+    this.player.setVelocity(0, 0)
+    this.player.play(`player-${action}-${this.facing}`)
+  }
+
+  /** A nap where the player stands, with Zs drifting up. */
+  private nap() {
+    const ms = 2200
+    this.busyUntil = this.time.now + ms
+    this.player.setVelocity(0, 0)
+    this.player.play('player-sleep')
+    const z = this.add.sprite(this.player.x + 6, this.player.y - 30, 'sleep_z', 0).setDepth(10_002)
+    z.play('sleep-z')
+    this.tweens.add({ targets: z, y: z.y - 12, alpha: 0, duration: ms, onComplete: () => z.destroy() })
+  }
+
+  /** A puff at the player's heels now and then while they walk. */
+  private kickDust() {
+    if (this.time.now - this.lastDust < 260) return
+    this.lastDust = this.time.now
+    const puff = this.add.sprite(this.player.x, this.player.y + 1, 'dust', 0).setOrigin(0.5, 1)
+    puff.setDepth(this.player.y - 1)
+    puff.play('dust-puff')
+    puff.once('animationcomplete', () => puff.destroy())
   }
 
   /** Puts the story's marker over whoever has something to say. */
@@ -410,6 +495,11 @@ export class FarmScene extends Phaser.Scene {
   }
 
   update() {
+    if (this.time.now < this.busyUntil) {
+      this.player.setVelocity(0, 0)
+      this.bus.actionPressed = false
+      return
+    }
     const k = this.keys
     let vx = 0
     let vy = 0
@@ -429,6 +519,7 @@ export class FarmScene extends Phaser.Scene {
       this.player.setVelocity(vx * scale, vy * scale)
       this.facing = Math.abs(vx) > Math.abs(vy) ? (vx < 0 ? 'left' : 'right') : vy < 0 ? 'up' : 'down'
       this.player.play(`player-walk-${this.facing}`, true)
+      this.kickDust()
     } else {
       this.player.setVelocity(0, 0)
       this.player.play(`player-idle-${this.facing}`, true)
