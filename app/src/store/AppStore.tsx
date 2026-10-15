@@ -278,6 +278,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [patchWord],
   )
 
+  // The Arena puts harvested words straight into the vocabulary on the server;
+  // this brings the app's copy level with it.
+  const refreshVocab = useCallback(async () => {
+    const vocab = await repository.listVocab()
+    setData((prev) => ({ ...prev, vocab }))
+  }, [])
+
   const updateProfile = useCallback(async (name: string, avatar: Blob | null) => {
     let profile = await repository.updateProfile(name)
     if (avatar) profile = await repository.uploadAvatar(avatar)
@@ -322,6 +329,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toggleVocabWord,
       setVocabStatus,
       reviewWord,
+      refreshVocab,
       updateProfile,
       setNativeLanguage,
       statsFor,
@@ -340,6 +348,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toggleVocabWord,
       setVocabStatus,
       reviewWord,
+      refreshVocab,
       updateProfile,
       setNativeLanguage,
       statsFor,

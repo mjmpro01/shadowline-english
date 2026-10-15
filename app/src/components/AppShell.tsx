@@ -19,10 +19,15 @@ interface Tab {
 
 const TABS: Tab[] = [
   { to: '/dashboard', label: 'nav.dashboard', icon: 'house-plus', short: 'nav.tab.dashboard' },
-  { to: '/library', label: 'nav.library', icon: 'book-open' },
+  { to: '/library', label: 'nav.library', icon: 'book-open', short: 'nav.tab.library' },
+  { to: '/arena', label: 'nav.arena', icon: 'sprout' },
   { to: '/vocabulary', label: 'nav.vocabulary', icon: 'message-square', short: 'nav.tab.vocabulary' },
   { to: '/progress', label: 'nav.progress', icon: 'chart-line' },
 ]
+
+/** The phone's tab bar holds five, so Progress stays in the side menu and is
+ *  reached from Profile there. */
+const PHONE_TABS = TABS.filter((tab) => tab.to !== '/progress')
 
 /** In the side menu, where there is room for a sixth plank; the tab bar on a
  *  phone is full, so there the guide is reached from the dashboard's first
@@ -49,7 +54,7 @@ const PROFILE: Tab = {
  * There is no plank for the admin console. It is a separate build at /admin/
  * that its few users open by address; the learner's menu is for learning.
  */
-const TILTS = ['-1.2deg', '1deg', '-0.8deg', '1.3deg', '-1deg', '0.7deg']
+const TILTS = ['-1.2deg', '1deg', '-0.8deg', '1.3deg', '-1deg', '0.7deg', '-0.6deg']
 
 export function AppShell() {
   const t = useT()
@@ -143,7 +148,7 @@ export function AppShell() {
         <TutorChat />
 
         <nav className="tabbar" aria-label={t('nav.main')}>
-          {[...TABS, PROFILE].map((tab) => (
+          {[...PHONE_TABS, PROFILE].map((tab) => (
             <NavLink
               key={tab.to}
               to={tab.to}

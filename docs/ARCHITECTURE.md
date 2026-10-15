@@ -185,7 +185,8 @@ buộc hai ngôn ngữ có cùng khoá.
 | `/library/:videoId` | Phân tích chi tiết một bản ghi |
 | `/library/:videoId/dub` | Nghe bản lồng tiếng (giọng mình trên hình clip) |
 | `/vocabulary`, `/vocabulary/practice` | Từ vựng đã lưu, ôn bằng thẻ (lặp lại ngắt quãng) |
-| `/progress` | Tiến độ theo thời gian, câu yếu nhất |
+| `/arena` | Trò chơi trang trại: trồng cây, thu hoạch ra từ mới, nhiệm vụ chính và nhiệm vụ ngày (xem 12.7) |
+| `/progress` | Tiến độ theo thời gian, câu yếu nhất (trên điện thoại, vào từ Hồ sơ vì ô Arena thay chỗ nó) |
 | `/guide` | Hướng dẫn sử dụng |
 | `/profile` | Hồ sơ, ngôn ngữ, giao diện sáng/tối, xuất dữ liệu, xoá tài khoản |
 
@@ -228,7 +229,7 @@ API.
 | GET | `/healthz` | Kiểm tra sống |
 | GET | `/metrics` | Số liệu Prometheus |
 | GET | `/files/{bucket}/*` | Phục vụ file khi dùng `DISK_ROOT`, có chữ ký HMAC và hỗ trợ range |
-| POST | `/test/reset`, `/test/transcript`, `/test/transcript/fail` | **Chỉ khi `AUTH_FAKE=1`** — dùng cho e2e |
+| POST | `/test/reset`, `/test/transcript`, `/test/transcript/fail`, `/test/game/ripen` | **Chỉ khi `AUTH_FAKE=1`** — dùng cho e2e |
 
 **Xác thực (`/auth`)**
 
@@ -253,6 +254,7 @@ API.
 | Hồ sơ | `GET /profile`, `PATCH /profile`, `PUT /profile/avatar` |
 | Tài khoản | `GET /account/export`, `POST /account/password`, `DELETE /account` |
 | Gia sư | `GET /tutor`, `POST /tutor/chat` (stream), `GET /tutor/conversations`, `GET/DELETE /tutor/conversations/{id}` |
+| Arena | `GET /game/state`, `GET /game/quests`, `POST /game/{plant,harvest,unlock,upgrade,buy,use,sleep,listen,move}`, `POST /game/quests/claim`. Từ chối có mã trả 409 `{error, code}` (`no_gold`, `no_stamina`, `not_ripe`…) |
 | Khác | `GET /leaderboard`, `GET /banners` |
 
 **Quản trị (`/api/admin`, cần quyền admin)**
@@ -489,7 +491,21 @@ Giới hạn mặc định:
 
 **`schema_migrations`**: `name` (PK, gồm cả `.sql`), `applied_at`.
 
-### 7.6 Lịch sử migration
+### 7.6 Arena
+
+| Bảng | Nội dung |
+| --- | --- |
+| `game_profiles` | Một dòng mỗi người chơi: `gold`, `stamina` + `stamina_at` (thể lực tính lại theo thời gian, không cần job), `slept_at`, vị trí `map`/`x`/`y`, bước truyện `main_step` + `main_step_at` |
+| `game_plots` | 12 ô đất mỗi người (`idx` 0–11): `unlocked`, `level` 0–3, `crop`, `planted_at` |
+| `game_inventory` | `item`, `qty` |
+| `game_events` | Nhật ký việc làm (`plant`, `harvest`, `buy`, `sleep`, `unlock`, `listen`…, kèm vàng đã tiêu) — nhiệm vụ đếm tiến độ từ đây |
+| `game_quest_claims` | Thưởng đã nhận: `(user_id, quest, day)` là khoá chính nên không nhận trùng |
+| `word_ranks` | Thứ hạng tần suất của từ (nạp một lần từ `common_words.txt`), để mỗi loại hạt ra từ ở độ khó của nó |
+
+Luật chơi (giá, thời gian lớn, thưởng, cốt truyện, mẫu nhiệm vụ ngày) nằm trong
+code ở `server/internal/game/`, không nằm trong DB.
+
+### 7.7 Lịch sử migration
 
 | File | Nội dung |
 | --- | --- |
@@ -516,6 +532,7 @@ Giới hạn mặc định:
 | `00023_library_sections` | `library_sections`, `library_section_series`: các kệ của Thư viện (Dành cho trẻ em, Phim ảnh, Anime, Luyện IPA được tạo sẵn, để trống) |
 | `00024_fetch_from_link` | Nhập video từ link (`fetching`, `source_url`, `source_credit`, `fetch_jobs`) — đã bỏ |
 | `00025_drop_fetch_from_link` | Gỡ những gì 00024 thêm; tập đang chờ tải chuyển `failed` |
+| `00026_game` | Các bảng Arena (7.6); `00026_word_ranks` ghi lại việc nạp `word_ranks` một lần |
 
 Số `00008` bị bỏ trống, không phải thiếu file. Việc giữ lại job cắt / chép lời
 thất bại (`state='failed'`) nằm trong code worker và API, không cần migration vì
@@ -783,6 +800,25 @@ Phiên bản lấy theo thứ tự:
 1. `SHADOWLINE_VERSION`;
 2. commit git (7 ký tự, thêm `-dirty` nếu có sửa đổi chưa commit);
 3. `unknown`.
+
+### 12.7 Arena
+
+Server giữ toàn bộ trạng thái và quyết định mọi kết quả; trình duyệt chỉ vẽ.
+
+1. Mỗi việc (`POST /api/game/…`) là một transaction khoá dòng `game_profiles`
+   (`select … for update`), kiểm tra luật trong `internal/game`, rồi trả lại
+   toàn bộ trạng thái mới.
+2. Thu hoạch chọn ngẫu nhiên một từ trong dải tần suất của hạt, chỉ lấy từ đã có
+   nghĩa và IPA trong `glosses` và chưa có trong Từ vựng của người học, rồi thêm
+   vào `vocab_words` ngay trong transaction đó.
+3. Tiến độ nhiệm vụ được đếm lúc hỏi từ `game_events`, `takes` (luyện Shadowing)
+   và `vocab_words.reviewed_at` (ôn thẻ), nên việc học ngoài game cũng được tính.
+   Ngày nhiệm vụ tính theo giờ Việt Nam; 3 việc của ngày được chọn cố định theo
+   (người dùng, ngày).
+4. App: `src/screens/ArenaScreen.tsx` giữ trạng thái và các bảng (React);
+   `src/game/` là cảnh Phaser, chỉ tải khi mở Arena. Hai bên nói chuyện qua
+   `GameBus`. Hình nằm ở `app/public/game/` (xem README ở đó); thiếu file nào
+   thì game tự vẽ hình tạm.
 
 ## 13. Cấu hình
 

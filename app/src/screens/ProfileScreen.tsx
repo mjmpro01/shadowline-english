@@ -171,6 +171,10 @@ export function ProfileScreen() {
             <Icon name="circle-help" size={16} />
             {t('guide.title')}
           </Link>
+          <Link className="btn btn-secondary" to="/progress">
+            <Icon name="chart-line" size={16} />
+            {t('profile.progressLink')}
+          </Link>
         </div>
       </div>
 

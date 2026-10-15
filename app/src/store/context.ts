@@ -43,6 +43,8 @@ export interface Store {
   ) => Promise<{ word: string; status: 'added' | 'removed' }>
   setVocabStatus: (id: string, status: VocabStatus) => Promise<void>
   reviewWord: (id: string, status: VocabStatus) => Promise<void>
+  /** Re-reads the vocabulary, after something on the server added to it. */
+  refreshVocab: () => Promise<void>
   updateProfile: (name: string, avatar: Blob | null) => Promise<void>
   /** Records the answer to the first-sign-in question: which language is theirs. */
   setNativeLanguage: (language: string) => Promise<void>

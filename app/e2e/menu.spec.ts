@@ -18,8 +18,8 @@ test('a plank per place, and the one you are on is lit', async ({ page }) => {
   await page.goto('/library')
 
   const planks = page.locator('.menu-plank')
-  // Dashboard, Shadowing, Vocabulary, Progress, Guide, Profile.
-  await expect(planks).toHaveCount(6)
+  // Dashboard, Shadowing, Arena, Vocabulary, Progress, Guide, Profile.
+  await expect(planks).toHaveCount(7)
   await expect(planks.filter({ hasText: 'Shadowing' })).toHaveAttribute('aria-current', 'page')
   await expect(planks.filter({ hasText: 'Shadowing' }).getByText('HERE')).toBeVisible()
 
@@ -70,7 +70,8 @@ test('the phone gets the same menu lying down', async ({ page }) => {
   await expect(page.locator('.sidebar')).toBeHidden()
   const tabs = page.locator('.tabbar-link')
   await expect(tabs).toHaveCount(5)
-  await expect(tabs.filter({ hasText: 'Shadowing' })).toHaveAttribute('aria-current', 'page')
+  // "Shadowing" is cut short on a narrow phone; the tab says "Shadow".
+  await expect(tabs.filter({ hasText: 'Shadow' })).toHaveAttribute('aria-current', 'page')
 })
 
 // Each name whole, on the narrow phones too: at 12px "Vocabulary" was wider

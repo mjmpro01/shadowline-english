@@ -82,6 +82,7 @@ func (s *Server) Routes() http.Handler {
 			r.Post("/test/reset", s.handleTestReset)
 			r.Post("/test/transcript", s.handleTestTranscript)
 			r.Post("/test/transcript/fail", s.handleTestTranscriptFail)
+			r.Post("/test/game/ripen", s.handleTestRipen)
 		}
 	})
 
@@ -175,6 +176,19 @@ func (s *Server) Routes() http.Handler {
 			r.Put("/profile/avatar", s.handleUploadAvatar)
 
 			r.Get("/leaderboard", s.handleLeaderboard)
+
+			r.Get("/game/state", s.handleGameState)
+			r.Post("/game/plant", s.handleGamePlant)
+			r.Post("/game/harvest", s.handleGameHarvest)
+			r.Post("/game/unlock", s.handleGameUnlock)
+			r.Post("/game/upgrade", s.handleGameUpgrade)
+			r.Post("/game/buy", s.handleGameBuy)
+			r.Post("/game/use", s.handleGameUse)
+			r.Post("/game/sleep", s.handleGameSleep)
+			r.Post("/game/listen", s.handleGameListen)
+			r.Post("/game/move", s.handleGameMove)
+			r.Get("/game/quests", s.handleGameQuests)
+			r.Post("/game/quests/claim", s.handleGameClaim)
 
 			r.Group(func(r chi.Router) {
 				r.Use(s.requireAdmin)
