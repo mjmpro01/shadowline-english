@@ -3,7 +3,7 @@ import type { GameState, Plot } from '../api'
 import {
   ASSETS,
   type CharacterSheet,
-  BASE,
+  art,
   CHAR_COLS,
   CHAR_ROWS,
   CROP_STAGES,
@@ -118,22 +118,23 @@ export class FarmScene extends Phaser.Scene {
     for (const asset of ASSETS) {
       if (!this.present.has(asset.key)) continue
       if (asset.key === 'player' && this.sheet) {
-        this.load.spritesheet('player', BASE + asset.file, {
+        this.load.spritesheet('player', art(asset.file), {
           frameWidth: this.sheet.frameWidth,
           frameHeight: this.sheet.frameHeight,
         })
       } else if (asset.frame) {
-        this.load.spritesheet(asset.key, BASE + asset.file, {
+        this.load.spritesheet(asset.key, art(asset.file), {
           frameWidth: asset.frame.w,
           frameHeight: asset.frame.h,
         })
       } else {
-        this.load.image(asset.key, BASE + asset.file)
+        this.load.image(asset.key, art(asset.file))
       }
     }
   }
 
   create() {
+    this.checkPlayerSheet()
     paintPlaceholders(this, this.present)
     this.makeAnimations()
 
@@ -305,6 +306,23 @@ export class FarmScene extends Phaser.Scene {
       this.scale.off('resize', this.fitZoom, this)
     })
     this.bus.emit('ready', undefined)
+  }
+
+  /**
+   * The player picture must hold the frames player.json describes. When it
+   * does not (a stale copy of either file), the picture is cut as plain 16×32
+   * frames instead, so the farm still draws rather than stopping on a sheet
+   * with no frames in it.
+   */
+  private checkPlayerSheet() {
+    if (!this.sheet || !this.textures.exists('player')) return
+    const texture = this.textures.get('player')
+    const frames = texture.frameTotal - 1 // less the whole picture
+    if (frames >= CHAR_COLS * (CHAR_ROWS.sleep + 1)) return
+    const picture = texture.getSourceImage() as HTMLImageElement
+    this.textures.remove('player')
+    this.textures.addSpriteSheet('player', picture, { frameWidth: 16, frameHeight: 32 })
+    this.sheet = null
   }
 
   private fitZoom() {

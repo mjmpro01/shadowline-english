@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from 'react'
 import type { Locale, Translate } from '../../i18n'
 import type { GameState, Reward } from '../api'
-import { BASE } from '../assets'
+import { art } from '../assets'
 import { pick } from './util'
 
 
@@ -10,7 +10,7 @@ export function ItemIcon({ id, size = 32 }: { id: string; size?: number }) {
   return (
     <img
       className="arena-icon"
-      src={`${BASE}items/${id}.png`}
+      src={art(`items/${id}.png`)}
       width={size}
       height={size}
       alt=""
@@ -32,7 +32,7 @@ export function Portrait({ id, mood = 0 }: { id: string; mood?: number }) {
     <div
       className="arena-portrait"
       style={{
-        backgroundImage: `url(${BASE}portraits/${id}.png)`,
+        backgroundImage: `url(${art(`portraits/${id}.png`)})`,
         backgroundPosition: `${(mood * 100) / 3}% 0`,
       }}
       aria-hidden="true"

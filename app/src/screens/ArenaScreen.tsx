@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useI18n } from '../i18n'
 import { Loading } from '../components/LoadState'
 import { useApp } from '../store/context'
 import { gameApi, type GameState, type HarvestedWord, type Quests, type Reward } from '../game/api'
+import { art } from '../game/assets'
 import { GameBus, type NpcId, type Target } from '../game/bus'
 import { idleLine } from '../game/npcs'
 import { Dialogue } from '../game/ui/Dialogue'
@@ -248,7 +249,17 @@ export function ArenaScreen() {
   }
 
   return (
-    <div className="arena" data-testid="arena" data-ready={ready}>
+    <div
+      className="arena"
+      data-testid="arena"
+      data-ready={ready}
+      style={
+        {
+          '--arena-panel': `url(${art('ui/panel.png')})`,
+          '--arena-dialog': `url(${art('ui/dialog_box.png')})`,
+        } as CSSProperties
+      }
+    >
       <div ref={holder} className="arena-canvas" />
 
       {failed && (

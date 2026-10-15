@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import type { Locale, Translate } from '../../i18n'
 import type { GameState, Quests } from '../api'
-import { BASE } from '../assets'
+import { art } from '../assets'
 import type { GameBus, Target } from '../bus'
 import { clock, secondsUntil } from '../growth'
 import { ItemIcon } from './common'
@@ -95,7 +95,7 @@ export function ActionButton({ focus, bus, t }: { focus: Target | null; bus: Gam
     <button
       type="button"
       className="arena-action"
-      style={{ backgroundImage: `url(${BASE}ui/button_action.png)` }}
+      style={{ backgroundImage: `url(${art('ui/button_action.png')})` }}
       onClick={() => bus.press()}
     >
       <span>{t(ACTION_LABEL[focus.kind])}</span>
@@ -132,7 +132,7 @@ export function Joystick({ bus }: { bus: GameBus }) {
     <div
       ref={base}
       className="arena-joystick"
-      style={{ backgroundImage: `url(${BASE}ui/joystick_base.png)` }}
+      style={{ backgroundImage: `url(${art('ui/joystick_base.png')})` }}
       onPointerDown={(e) => {
         e.currentTarget.setPointerCapture(e.pointerId)
         move(e.clientX, e.clientY)
@@ -147,7 +147,7 @@ export function Joystick({ bus }: { bus: GameBus }) {
       <span
         className="arena-knob"
         style={{
-          backgroundImage: `url(${BASE}ui/joystick_knob.png)`,
+          backgroundImage: `url(${art('ui/joystick_knob.png')})`,
           transform: `translate(${knob.x}px, ${knob.y}px)`,
         }}
       />

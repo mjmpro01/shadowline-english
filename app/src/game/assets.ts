@@ -62,6 +62,15 @@ export const ASSETS: AssetSpec[] = [
 
 export const BASE = `${import.meta.env.BASE_URL}game/`
 
+/** The pictures' fingerprint from the build (vite.config.ts); empty in tests. */
+const VERSION = typeof __GAME_ART__ === 'string' ? __GAME_ART__ : ''
+
+/** A file under public/game/, by a URL that changes when the pictures do, so
+ *  a browser never mixes an old picture with a new description of it. */
+export function art(file: string): string {
+  return VERSION ? `${BASE}${file}?v=${VERSION}` : BASE + file
+}
+
 /**
  * Which of the files are actually there.
  *
@@ -73,7 +82,7 @@ export async function presentAssets(): Promise<Set<string>> {
   const found = await Promise.all(
     ASSETS.map(async (a) => {
       try {
-        const res = await fetch(BASE + a.file, { method: 'HEAD' })
+        const res = await fetch(art(a.file), { method: 'HEAD' })
         return res.ok && (res.headers.get('content-type') ?? '').startsWith('image/') ? a.key : null
       } catch {
         return null
@@ -99,7 +108,7 @@ export interface CharacterSheet {
  *  plain 16×32 frames. */
 export async function playerSheet(): Promise<CharacterSheet | null> {
   try {
-    const res = await fetch(BASE + 'characters/player.json')
+    const res = await fetch(art('characters/player.json'))
     if (!res.ok || !(res.headers.get('content-type') ?? '').includes('json')) return null
     const sheet = (await res.json()) as CharacterSheet
     return sheet.frameWidth > 0 && sheet.frameHeight > 0 && sheet.bodyHeight > 0 ? sheet : null
@@ -116,7 +125,7 @@ export async function playerSheet(): Promise<CharacterSheet | null> {
  */
 export async function tileNames(): Promise<Record<string, number> | null> {
   try {
-    const res = await fetch(BASE + 'tiles/farm_atlas.json')
+    const res = await fetch(art('tiles/farm_atlas.json'))
     if (!res.ok || !(res.headers.get('content-type') ?? '').includes('json')) return null
     const atlas = (await res.json()) as {
       atlas_columns: number

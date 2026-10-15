@@ -1,5 +1,31 @@
 import react from '@vitejs/plugin-react'
+import { createHash } from 'node:crypto'
+import { readdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { defineConfig, loadEnv } from 'vite'
+
+/**
+ * A fingerprint of the Arena's pictures, put on their URLs (?v=…) so a new
+ * drawing reaches players on the next deploy. nginx lets browsers keep images
+ * for a week; without this a browser held the old player sheet next to the
+ * new player.json that describes a different one, and the farm did not draw.
+ */
+function gameArtVersion(dir = 'public/game'): string {
+  const hash = createHash('sha256')
+  const walk = (d: string) => {
+    for (const entry of readdirSync(d, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const path = join(d, entry.name)
+      if (entry.isDirectory()) walk(path)
+      else hash.update(path).update(readFileSync(path))
+    }
+  }
+  try {
+    walk(dir)
+  } catch {
+    return ''
+  }
+  return hash.digest('hex').slice(0, 10)
+}
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -25,6 +51,7 @@ then reload this page.`
 
   return {
     plugins: [react()],
+    define: { __GAME_ART__: JSON.stringify(gameArtVersion()) },
     server: {
       // One origin in development too, as nginx makes it in production: the
       // console is served under /admin/ beside the app. Without this the menu's
