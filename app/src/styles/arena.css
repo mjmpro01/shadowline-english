@@ -49,10 +49,12 @@
   z-index: 5;
 }
 
-/* The wooden frame, from ui/panel.png: 16px corners, drawn three times as large. */
+/* The wooden frame, from ui/panel.png: 16px corners, drawn three times as large.
+   The pictures' URLs are set on .arena (--arena-panel, --arena-dialog) so they
+   carry the art's fingerprint. */
 .arena-wood {
   border: 24px solid transparent;
-  border-image: url('/game/ui/panel.png') 16 fill / 24px / 0 stretch;
+  border-image: var(--arena-panel) 16 fill / 24px / 0 stretch;
   image-rendering: pixelated;
 }
 
@@ -268,7 +270,7 @@
   display: flex;
   flex-direction: column;
   border: 24px solid transparent;
-  border-image: url('/game/ui/dialog_box.png') 16 fill / 24px / 0 stretch;
+  border-image: var(--arena-dialog) 16 fill / 24px / 0 stretch;
   image-rendering: pixelated;
   color: #2b2119;
   background-clip: padding-box;
