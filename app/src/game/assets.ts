@@ -84,6 +84,31 @@ export async function presentAssets(): Promise<Set<string>> {
 }
 
 /**
+ * A player sheet drawn larger than the map's 16px grid, as
+ * scripts/slice-character.py lays it out: the cell size, how tall the figure
+ * stands in it, and where its feet are. The game scales it to the map.
+ */
+export interface CharacterSheet {
+  frameWidth: number
+  frameHeight: number
+  bodyHeight: number
+  feet: number
+}
+
+/** characters/player.json, when the player sheet has one; null for a sheet in
+ *  plain 16×32 frames. */
+export async function playerSheet(): Promise<CharacterSheet | null> {
+  try {
+    const res = await fetch(BASE + 'characters/player.json')
+    if (!res.ok || !(res.headers.get('content-type') ?? '').includes('json')) return null
+    const sheet = (await res.json()) as CharacterSheet
+    return sheet.frameWidth > 0 && sheet.frameHeight > 0 && sheet.bodyHeight > 0 ? sheet : null
+  } catch {
+    return null
+  }
+}
+
+/**
  * The tileset's names, from tiles/farm_atlas.json: name to tile index. Read so
  * a tileset the artist rearranges still draws the right tiles as long as the
  * names stay. Null without an atlas; the defaults in world/farm.ts match the
