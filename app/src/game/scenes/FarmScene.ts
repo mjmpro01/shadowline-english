@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import type { GameState, Plot } from '../api'
 import {
   ASSETS,
+  type CharacterSheet,
   BASE,
   CHAR_COLS,
   CHAR_ROWS,
@@ -49,9 +50,14 @@ export interface FarmSceneData {
   start: { x: number; y: number } | null
   /** The tileset's names, from its atlas when there is one. */
   tiles: TileNames
+  /** Set when the player is drawn larger than the grid and scaled down. */
+  playerSheet: CharacterSheet | null
 }
 
 const SPEED = 80
+/** How tall the player stands on the map, in map pixels: a little under two
+ *  tiles, like the people. */
+const PLAYER_HEIGHT = 28
 /** How far in front of the player's feet an action reaches. */
 const REACH = 12
 const PLOTS = 12
@@ -76,6 +82,7 @@ export class FarmScene extends Phaser.Scene {
   private present!: Set<string>
   private start: { x: number; y: number } | null = null
   private names: TileNames = {}
+  private sheet: CharacterSheet | null = null
 
   private player!: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody
   private facing: Dir = 'down'
@@ -104,12 +111,18 @@ export class FarmScene extends Phaser.Scene {
     this.present = data.present
     this.start = data.start
     this.names = data.tiles
+    this.sheet = data.playerSheet
   }
 
   preload() {
     for (const asset of ASSETS) {
       if (!this.present.has(asset.key)) continue
-      if (asset.frame) {
+      if (asset.key === 'player' && this.sheet) {
+        this.load.spritesheet('player', BASE + asset.file, {
+          frameWidth: this.sheet.frameWidth,
+          frameHeight: this.sheet.frameHeight,
+        })
+      } else if (asset.frame) {
         this.load.spritesheet(asset.key, BASE + asset.file, {
           frameWidth: asset.frame.w,
           frameHeight: asset.frame.h,
@@ -208,8 +221,22 @@ export class FarmScene extends Phaser.Scene {
 
     // The player.
     const from = this.start ?? SPAWN
-    this.player = this.physics.add.sprite(from.x, from.y, 'player', 0).setOrigin(0.5, 1)
-    this.player.body.setSize(10, 6).setOffset(3, 25)
+    this.player = this.physics.add.sprite(from.x, from.y, 'player', 0)
+    const sheet = this.sheet
+    if (sheet) {
+      // Drawn large and smooth: scaled down to the map, and filtered rather
+      // than blocky. The feet stand on the spot, and the body that bumps into
+      // things is the same 10×6 at the feet whatever the drawing's size.
+      const scale = PLAYER_HEIGHT / sheet.bodyHeight
+      this.textures.get('player').setFilter(Phaser.Textures.FilterMode.LINEAR)
+      this.player.setScale(scale).setOrigin(0.5, sheet.feet / sheet.frameHeight)
+      this.player.body
+        .setSize(10 / scale, 6 / scale)
+        .setOffset((sheet.frameWidth - 10 / scale) / 2, sheet.feet - 6 / scale)
+    } else {
+      this.player.setOrigin(0.5, 1)
+      this.player.body.setSize(10, 6).setOffset(3, 25)
+    }
     this.player.setCollideWorldBounds(true)
     this.physics.world.setBounds(0, 0, WIDTH * TILE, HEIGHT * TILE)
     this.physics.add.collider(this.player, walls)
@@ -411,6 +438,8 @@ export class FarmScene extends Phaser.Scene {
     this.busyUntil = this.time.now + ms
     this.player.setVelocity(0, 0)
     this.player.play('player-sleep')
+    // A drawn sheet has its own yawn and Zs in the sleep row.
+    if (this.sheet) return
     const z = this.add.sprite(this.player.x + 6, this.player.y - 30, 'sleep_z', 0).setDepth(10_002)
     z.play('sleep-z')
     this.tweens.add({ targets: z, y: z.y - 12, alpha: 0, duration: ms, onComplete: () => z.destroy() })

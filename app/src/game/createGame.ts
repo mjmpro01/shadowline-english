@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { presentAssets, tileNames } from './assets'
+import { playerSheet, presentAssets, tileNames } from './assets'
 import type { GameBus } from './bus'
 import { FarmScene } from './scenes/FarmScene'
 
@@ -13,7 +13,7 @@ export async function createGame(
   bus: GameBus,
   start: { x: number; y: number } | null,
 ): Promise<Phaser.Game> {
-  const [present, tiles] = await Promise.all([presentAssets(), tileNames()])
+  const [present, tiles, sheet] = await Promise.all([presentAssets(), tileNames(), playerSheet()])
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent,
@@ -28,6 +28,12 @@ export async function createGame(
     audio: { noAudio: true },
     banner: false,
   })
-  game.scene.add('farm', FarmScene, true, { bus, present, start, tiles: tiles ?? {} })
+  game.scene.add('farm', FarmScene, true, {
+    bus,
+    present,
+    start,
+    tiles: tiles ?? {},
+    playerSheet: present.has('player') ? sheet : null,
+  })
   return game
 }

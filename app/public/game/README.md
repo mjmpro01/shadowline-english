@@ -18,6 +18,7 @@ that came with the chapter-1 pack.
 | File | Size | Frames |
 |---|---|---|
 | `characters/player.png` | 64×544 | 16×32, 4 per row. Rows 0–3 idle (2 frames), 4–7 walk (4), 8–11 hoe (3), 12–15 harvest (3), each group down, up, left, right; row 16 sleep (2) |
+| `characters/player.json` | — | Only for a player drawn larger than 16×32: `frameWidth`, `frameHeight`, `bodyHeight` (head to feet) and `feet` (the feet's row in a cell). The game scales the figure to about 28 map pixels tall and smooths it. Written by `scripts/slice-character.py` |
 | `characters/{sir_shadow,mira,bram}.png` | 64×256 | 16×32. Rows 0–3 idle, 4–7 walk, down, up, left, right |
 | `tiles/farm.png` | 256×64 | 16×16 cells, named in `tiles/farm_atlas.json` |
 | `crops/{sprout,bloom,golden}.png` | 80×32 | 5 stages of 16×32: planted, sprout, growing, nearly, ripe |
@@ -66,3 +67,18 @@ Without the atlas, the indexes in `DEFAULT_TILES` are used.
 
 A new seed or item needs an icon here named after its id in
 `server/internal/game/catalog.go`.
+
+## A character drawn large
+
+`art/characters/player_start_pack.png` is the player as drawn: the same rows
+in the same order, but at about 128 px tall and not on a grid (the frames
+touch and overlap, and the harvest has no right-facing row). The game's sheet
+is made from it with
+
+```
+python3 scripts/slice-character.py art/characters/player_start_pack.png public/game/characters/player.png
+```
+
+which finds each frame, lines them all up by the hat and the feet, mirrors the
+left-facing harvest for the right, and writes `player.png` and `player.json`.
+Run it again after changing the drawing.
