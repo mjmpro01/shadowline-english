@@ -253,6 +253,13 @@ def people():
         for d, (x0, x1), n in zip(DIRS, groups, counts):
             frames[f"{key}-{d}"] = split_block(img, (x0, y0, x1, y1), 1, n)[0]
     frames["sleep"] = split_block(img, (360, 1240, 720, 1430), 1, 2)[0]
+    # The board's "left" groups for walking, the hoe and the harvest are not
+    # left: every walking frame there faces right, one hoe frame faces the
+    # viewer, and the harvest swaps sides from frame to frame. Its "right"
+    # groups are right throughout, so left is right turned over. (Standing
+    # still is drawn both ways, correctly, and stays as drawn.)
+    for key in ("walk1", "walk2", "hoe", "harvest1", "harvest2"):
+        frames[f"{key}-left"] = mirror(frames[f"{key}-right"])
     anims = {}
     for d in DIRS:
         anims[f"idle-{d}"] = [f"idle-{d}"]
