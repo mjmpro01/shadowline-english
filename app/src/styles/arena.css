@@ -28,12 +28,10 @@
   height: 100%;
 }
 .arena-canvas canvas {
-  image-rendering: pixelated;
   outline: none;
 }
 
 .arena-icon {
-  image-rendering: pixelated;
   flex: none;
 }
 
@@ -49,13 +47,12 @@
   z-index: 5;
 }
 
-/* The wooden frame, from ui/panel.png: 16px corners, drawn three times as large.
-   The pictures' URLs are set on .arena (--arena-panel, --arena-dialog) so they
-   carry the art's fingerprint. */
+/* The wooden frame, from ui/panel.png: its corner blocks are 52px of the
+   picture, shown at 26px. The pictures' URLs are set on .arena
+   (--arena-panel, --arena-dialog) so they carry the art's fingerprint. */
 .arena-wood {
-  border: 24px solid transparent;
-  border-image: var(--arena-panel) 16 fill / 24px / 0 stretch;
-  image-rendering: pixelated;
+  border: 26px solid transparent;
+  border-image: var(--arena-panel) 52 fill / 26px / 0 stretch;
 }
 
 /* — HUD — */
@@ -193,14 +190,12 @@
   display: none;
   place-content: center;
   background-size: 100% 100%;
-  image-rendering: pixelated;
   touch-action: none;
 }
 .arena-knob {
   width: 64px;
   height: 64px;
   background-size: 100% 100%;
-  image-rendering: pixelated;
   pointer-events: none;
 }
 .arena-controls {
@@ -269,9 +264,8 @@
   max-height: 100%;
   display: flex;
   flex-direction: column;
-  border: 24px solid transparent;
-  border-image: var(--arena-dialog) 16 fill / 24px / 0 stretch;
-  image-rendering: pixelated;
+  border: 26px solid transparent;
+  border-image: var(--arena-dialog) 52 fill / 26px / 0 stretch;
   color: #2b2119;
   background-clip: padding-box;
 }
@@ -405,7 +399,6 @@
   background-color: #f1e7d4;
   background-size: 400% 100%;
   background-repeat: no-repeat;
-  image-rendering: pixelated;
   border: 2px solid #6b4423;
 }
 .arena-portrait-letter {

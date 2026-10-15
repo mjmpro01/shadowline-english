@@ -1,84 +1,58 @@
 # Arena art — what the game reads
 
-Everything the Arena draws comes from this folder. A file is read by its path
-and cut into frames by the sizes below, so a new drawing replaces the old one
-with no code change as long as the path, the size and the frame order stay.
-
-Pixel art at native size (16 px tiles); the game enlarges it with
-nearest-neighbour scaling, 2× to 6× depending on the screen. PNG with real
-transparency.
-
-A missing file is not an error: the game paints a stand-in in code
-(`src/game/art/placeholder.ts`) with the same layout, so the farm is playable
-with any subset of this folder. `ARTIST_NOTES.md` is the artist's own note
-that came with the chapter-1 pack.
-
-## Drawn by the game (Phaser)
-
-| File | Size | Frames |
-|---|---|---|
-| `characters/player.png` | 64×544 | 16×32, 4 per row. Rows 0–3 idle (2 frames), 4–7 walk (4), 8–11 hoe (3), 12–15 harvest (3), each group down, up, left, right; row 16 sleep (2) |
-| `characters/player.json` | — | Only for a player drawn larger than 16×32: `frameWidth`, `frameHeight`, `bodyHeight` (head to feet) and `feet` (the feet's row in a cell). The game scales the figure to about 28 map pixels tall and smooths it. Written by `scripts/slice-character.py` |
-| `characters/{sir_shadow,mira,bram}.png` | 64×256 | 16×32. Rows 0–3 idle, 4–7 walk, down, up, left, right |
-| `tiles/farm.png` | 256×64 | 16×16 cells, named in `tiles/farm_atlas.json` |
-| `crops/{sprout,bloom,golden}.png` | 80×32 | 5 stages of 16×32: planted, sprout, growing, nearly, ripe |
-| `objects/farmhouse.png` | any | one image; its bottom edge stands on the house's last row |
-| `objects/shop_cart.png`, `workbench.png`, `quest_board.png` | any | one image each |
-| `objects/mailbox.png` | 32×32 | 2 frames of 16×32: empty, letter waiting |
-| `objects/tree.png` | 96×48 | 3 kinds of tree, 32×48 each |
-| `objects/rock_big.png`, `bush.png`, `stump.png` | any | one image each |
-| `fx/interact.png` | 32×16 | 2 frames of 16×16: the bouncing marker over what the player faces |
-| `fx/harvest_pop.png` | 96×16 | 6 frames of 16×16, played once on harvest |
-| `fx/sparkle.png` | 64×16 | 4 frames of 16×16, looped over a ripe crop |
-| `fx/dust.png` | 64×16 | 4 frames of 16×16, a puff at the player's heels while walking |
-| `fx/sleep_z.png` | 48×16 | 3 frames of 16×16, drifting up while the player naps |
-
-### The tileset atlas
-
-`tiles/farm_atlas.json` names each cell:
-
-```json
-{ "atlas_columns": 16, "tiles": { "grass_1": { "atlas_x": 0, "atlas_y": 0 }, … } }
-```
-
-The map asks for tiles by name, so cells can move around the sheet freely.
-Names the map uses: `grass_1`…`grass_5`, `bare_dirt`, `path_vertical`,
-`path_horizontal`, `path_corner` (top-left corner; the other three are
-mirrored), `path_cross`, `untilled`, `tilled_dry`, `tilled_wet`,
-`soil_level_1`…`soil_level_3`, `soil_locked`, `pond_0`…`pond_15` (the 16
-edge pieces of the pond, chosen by which sides touch water), `stone_path` (the
-stepping stones to the pond), the fence around the pond (`fence_horizontal`,
-`fence_vertical`, `fence_corner_tl/tr/bl/br`, `gate_open`), and the things
-dotted on the grass: `flower_white`, `flower_pink`, `flower_purple`,
-`mushroom`, `weeds`, `small_rock`, `log`. The player's hoe, harvest and sleep
-rows play when a seed goes in, a crop comes out, and the player naps.
-Without the atlas, the indexes in `DEFAULT_TILES` are used.
-
-## Drawn by the page (HUD and panels)
-
-| File | Size | Use |
-|---|---|---|
-| `portraits/{sir_shadow,mira,bram}.png` | 256×64 | 4 faces of 64×64: neutral, happy, thinking, worried |
-| `items/*.png` | 16×16 (any square) | icons: `coin`, `stamina`, `quest_book`, `letter`, `word_scroll`, `chest_closed`, `chest_open`, `ginger_tea`, `seed_sprout`, `seed_bloom`, `seed_golden` |
-| `ui/dialog_box.png` | 48×48 | 9-slice frame of every panel (3×3 cells of 16) |
-| `ui/panel.png` | 48×48 | 9-slice, spare panel frame |
-| `ui/button_action.png` | 64×32 | the action button |
-| `ui/joystick_base.png`, `ui/joystick_knob.png` | any | the touch joystick |
-
-A new seed or item needs an icon here named after its id in
-`server/internal/game/catalog.go`.
-
-## A character drawn large
-
-`art/characters/player_start_pack.png` is the player as drawn: the same rows
-in the same order, but at about 128 px tall and not on a grid (the frames
-touch and overlap, and the harvest has no right-facing row). The game's sheet
-is made from it with
+Everything the Arena draws comes from this folder, and all of it is made by
+`scripts/build-art.py` from the Echo Farm pack in `art/echo_farm_full/`:
 
 ```
-python3 scripts/slice-character.py art/characters/player_start_pack.png public/game/characters/player.png
+python3 scripts/build-art.py     # from app/; needs Pillow, numpy and scipy
 ```
 
-which finds each frame, lines them all up by the hat and the feet, mirrors the
-left-facing harvest for the right, and writes `player.png` and `player.json`.
-Run it again after changing the drawing.
+Change a drawing in the pack, run the script again, commit what it writes
+here. Do not edit these files by hand: the next run overwrites them.
+
+## How the pictures are sized
+
+The map is laid out in 16 px tiles. The pictures are drawn at four times
+that (`art.json`: `"scale": 4`), so a tile is 64 px here, and the game shrinks
+them as it draws, smoothing as it goes. On a phone the canvas has two screen
+pixels to each CSS pixel, so they stay sharp.
+
+`art.json` also says how each strip of frames is cut (`frames`: width,
+height and count). Without `art.json` the game treats the pictures as drawn
+at the map's own size and cut as `src/game/assets.ts` lists, and a missing
+picture is painted in code instead (`src/game/art/placeholder.ts`), so the
+farm is playable with any subset of this folder.
+
+## The files
+
+| File | What it is |
+|---|---|
+| `characters/{player,sir_shadow,mira,bram}.png` + `.json` | One animation per row in equal cells. The `.json` gives the cell size, how tall the figure stands (`bodyHeight`, shown 28 map px tall), where its feet are (`feet`) and each animation's frames (`anims`: `idle-down`, `walk-left`, `hoe-up`, `harvest-right`, `sleep`…) |
+| `tiles/farm.png` + `farm_atlas.json` | 64 px tiles, each with 2 px of its own edge repeated around it (`margin`, `spacing`), named in the atlas: grass, dirt, paths, tilled soil, framed (upgraded) soil, the locked plot, the pond's pieces, the fence, flowers and other small things |
+| `objects/*.png` | The house, Mira's cart, Bram's bench, the quest board, trees (3 kinds), the bush, rocks, a stump; `mailbox.png` is two frames, empty and with a letter |
+| `crops/{sprout,bloom,golden}.png` | 5 growth stages each, the last one ripe |
+| `fx/*.png` | The harvest burst, dust at the player's heels, the sparkle over a ripe crop, the "!" over what the player faces, Zs |
+| `items/*.png` | 96 px icons: coin, stamina, the seeds, tea, chests, the quest book, the letter, the word scroll. A new seed or item needs one named after its id in `server/internal/game/catalog.go` |
+| `portraits/*.png` | Four faces side by side: neutral, happy, thinking, worried |
+| `ui/*.png` | The wooden frames of the panels (`dialog_box`, `panel`; their corner blocks are 52 px), the joystick, the action button |
+
+## What the script does to the pack
+
+The pack's boards are drawn freely, so the script:
+
+- cuts each figure out even where it touches its neighbour (a hat brim, a
+  raised hoe), following the gap between them, and gives loose bits (dust,
+  seeds, Zs) to the figure nearest them;
+- lines every frame of a character up by the top of the head and the feet, so
+  it does not jump between frames;
+- crops each tile inside its dark rounded rim, and blends grass, dirt and
+  water so tiles laid side by side show no seam;
+- draws the dirt paths from the pack's own grass and dirt, since its path
+  pieces do not cover every join, and turns the pond's top pieces over for
+  its bottom ones;
+- sizes each object for its place on the map (the house is 88 map px wide,
+  a tree 44).
+
+Two of the pack's files were swapped as delivered: `characters/npcs.png` held
+the buildings and `objects/large_objects.png` the people. In `art/echo_farm_full/`
+they are `objects.png` and `npcs.png`.

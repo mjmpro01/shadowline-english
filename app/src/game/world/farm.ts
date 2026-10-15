@@ -200,7 +200,7 @@ export function ground(names: TileNames): Cell[][] {
 
 /** Small things scattered on the grass, which the player walks over. */
 export function decor(names: TileNames): { x: number; y: number; index: number }[] {
-  const kinds = ['flower_white', 'flower_pink', 'flower_purple', 'flower_pink', 'mushroom', 'weeds', 'small_rock', 'log']
+  const kinds = ['flower_white', 'flower_pink', 'flower_purple', 'flower_yellow', 'flower_red', 'mushroom', 'weeds', 'small_rock', 'log']
   const out: { x: number; y: number; index: number }[] = []
   const blocked = (x: number, y: number) =>
     isPath(x, y) ||

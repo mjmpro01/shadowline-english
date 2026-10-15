@@ -93,50 +93,71 @@ export async function presentAssets(): Promise<Set<string>> {
 }
 
 /**
- * A player sheet drawn larger than the map's 16px grid, as
- * scripts/slice-character.py lays it out: the cell size, how tall the figure
- * stands in it, and where its feet are. The game scales it to the map.
+ * A character drawn larger than the map's 16px grid, as scripts/build-art.py
+ * lays it out: the cell size, how tall the figure stands in it, and where its
+ * feet are. The game scales it to the map.
+ * `anims` names each animation's frames (idle-down, walk-left, hoe-up,
+ * sleep…); without it the rows follow CHAR_ROWS.
  */
 export interface CharacterSheet {
   frameWidth: number
   frameHeight: number
   bodyHeight: number
   feet: number
+  anims?: Record<string, number[]>
 }
 
-/** characters/player.json, when the player sheet has one; null for a sheet in
- *  plain 16×32 frames. */
-export async function playerSheet(): Promise<CharacterSheet | null> {
+async function json<T>(file: string): Promise<T | null> {
   try {
-    const res = await fetch(art('characters/player.json'))
+    const res = await fetch(art(file))
     if (!res.ok || !(res.headers.get('content-type') ?? '').includes('json')) return null
-    const sheet = (await res.json()) as CharacterSheet
-    return sheet.frameWidth > 0 && sheet.frameHeight > 0 && sheet.bodyHeight > 0 ? sheet : null
+    return (await res.json()) as T
   } catch {
     return null
   }
+}
+
+/** characters/<id>.json, when that sheet has one; null for a sheet in plain
+ *  16×32 frames. */
+export async function characterSheet(id: string): Promise<CharacterSheet | null> {
+  const sheet = await json<CharacterSheet>(`characters/${id}.json`)
+  return sheet && sheet.frameWidth > 0 && sheet.frameHeight > 0 && sheet.bodyHeight > 0 ? sheet : null
+}
+
+/**
+ * art.json: the pictures are drawn `scale` times the map's resolution (a 16px
+ * tile is 64px at 4), and how each strip of frames is cut. Null for pictures
+ * at the map's own size, cut as ASSETS says.
+ */
+export interface ArtManifest {
+  scale: number
+  frames: Record<string, { w: number; h: number; count: number }>
+}
+
+export async function artManifest(): Promise<ArtManifest | null> {
+  const manifest = await json<ArtManifest>('art.json')
+  return manifest && manifest.scale > 0 && manifest.frames ? manifest : null
 }
 
 /**
  * The tileset's names, from tiles/farm_atlas.json: name to tile index. Read so
  * a tileset the artist rearranges still draws the right tiles as long as the
- * names stay. Null without an atlas; the defaults in world/farm.ts match the
- * delivered layout, and so does the placeholder tileset.
+ * names stay, and the size of its cells. Null without an atlas; the defaults
+ * in world/farm.ts match the first pack's layout, and so does the placeholder
+ * tileset.
  */
-export async function tileNames(): Promise<Record<string, number> | null> {
-  try {
-    const res = await fetch(art('tiles/farm_atlas.json'))
-    if (!res.ok || !(res.headers.get('content-type') ?? '').includes('json')) return null
-    const atlas = (await res.json()) as {
-      atlas_columns: number
-      tiles: Record<string, { atlas_x: number; atlas_y: number }>
-    }
-    const out: Record<string, number> = {}
-    for (const [name, t] of Object.entries(atlas.tiles)) {
-      out[name] = t.atlas_y * atlas.atlas_columns + t.atlas_x
-    }
-    return out
-  } catch {
-    return null
+export async function tileNames(): Promise<{ names: Record<string, number>; size: number; margin: number; spacing: number } | null> {
+  const atlas = await json<{
+    tile_size?: number
+    margin?: number
+    spacing?: number
+    atlas_columns: number
+    tiles: Record<string, { atlas_x: number; atlas_y: number }>
+  }>('tiles/farm_atlas.json')
+  if (!atlas) return null
+  const names: Record<string, number> = {}
+  for (const [name, t] of Object.entries(atlas.tiles)) {
+    names[name] = t.atlas_y * atlas.atlas_columns + t.atlas_x
   }
+  return { names, size: atlas.tile_size ?? 16, margin: atlas.margin ?? 0, spacing: atlas.spacing ?? 0 }
 }
