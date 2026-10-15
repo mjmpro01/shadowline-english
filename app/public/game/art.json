@@ -1,0 +1,55 @@
+{
+ "scale": 4,
+ "frames": {
+  "mailbox": {
+   "w": 87,
+   "h": 144,
+   "count": 2
+  },
+  "tree": {
+   "w": 176,
+   "h": 208,
+   "count": 3
+  },
+  "crop-sprout": {
+   "w": 119,
+   "h": 105,
+   "count": 5
+  },
+  "crop-bloom": {
+   "w": 123,
+   "h": 94,
+   "count": 5
+  },
+  "crop-golden": {
+   "w": 126,
+   "h": 93,
+   "count": 5
+  },
+  "harvest_pop": {
+   "w": 127,
+   "h": 112,
+   "count": 5
+  },
+  "dust": {
+   "w": 85,
+   "h": 50,
+   "count": 4
+  },
+  "sparkle": {
+   "w": 70,
+   "h": 63,
+   "count": 4
+  },
+  "sleep_z": {
+   "w": 33,
+   "h": 40,
+   "count": 3
+  },
+  "interact": {
+   "w": 56,
+   "h": 63,
+   "count": 2
+  }
+ }
+}

@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import type { GameState, Plot } from '../api'
 import {
   ASSETS,
+  type ArtManifest,
   type CharacterSheet,
   art,
   CHAR_COLS,
@@ -50,17 +51,28 @@ export interface FarmSceneData {
   start: { x: number; y: number } | null
   /** The tileset's names, from its atlas when there is one. */
   tiles: TileNames
-  /** Set when the player is drawn larger than the grid and scaled down. */
-  playerSheet: CharacterSheet | null
+  /** The tileset's cell size: 16, or 64 for pictures drawn at 4×. */
+  tileSize: number
+  /** Space around and between the tileset's cells. */
+  tileGap: { margin: number; spacing: number }
+  /** Set when the pictures are drawn finer than the map (art.json). */
+  art: ArtManifest | null
+  /** Per character texture (player, npc-mira…): set when it is drawn larger
+   *  than the grid and scaled down. */
+  sheets: Record<string, CharacterSheet | null>
+  /** Screen pixels per CSS pixel the canvas is drawn at. */
+  density: number
 }
 
 const SPEED = 80
-/** How tall the player stands on the map, in map pixels: a little under two
- *  tiles, like the people. */
-const PLAYER_HEIGHT = 28
+/** How tall a person drawn large stands on the map, in map pixels: a little
+ *  under two tiles. */
+const PERSON_HEIGHT = 28
 /** How far in front of the player's feet an action reaches. */
 const REACH = 12
 const PLOTS = 12
+/** Frames a second for each kind of animation in a drawn sheet. */
+const FRAME_RATE: Record<string, number> = { idle: 2, walk: 9, hoe: 6, harvest: 8, sleep: 1.5 }
 
 interface PlotView {
   soil: Phaser.GameObjects.Image
@@ -82,7 +94,11 @@ export class FarmScene extends Phaser.Scene {
   private present!: Set<string>
   private start: { x: number; y: number } | null = null
   private names: TileNames = {}
-  private sheet: CharacterSheet | null = null
+  private tileSize = TILE
+  private tileGap = { margin: 0, spacing: 0 }
+  private artInfo: ArtManifest | null = null
+  private sheets: Record<string, CharacterSheet | null> = {}
+  private density = 1
 
   private player!: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody
   private facing: Dir = 'down'
@@ -111,17 +127,31 @@ export class FarmScene extends Phaser.Scene {
     this.present = data.present
     this.start = data.start
     this.names = data.tiles
-    this.sheet = data.playerSheet
+    this.tileSize = data.tileSize
+    this.tileGap = data.tileGap
+    this.artInfo = data.art
+    this.sheets = { ...data.sheets }
+    this.density = data.density
   }
 
   preload() {
     for (const asset of ASSETS) {
       if (!this.present.has(asset.key)) continue
-      if (asset.key === 'player' && this.sheet) {
-        this.load.spritesheet('player', art(asset.file), {
-          frameWidth: this.sheet.frameWidth,
-          frameHeight: this.sheet.frameHeight,
+      const sheet = this.sheets[asset.key]
+      const fine = this.artInfo?.frames[asset.key]
+      if (sheet) {
+        this.load.spritesheet(asset.key, art(asset.file), {
+          frameWidth: sheet.frameWidth,
+          frameHeight: sheet.frameHeight,
         })
+      } else if (asset.key === 'tiles') {
+        this.load.spritesheet('tiles', art(asset.file), {
+          frameWidth: this.tileSize,
+          frameHeight: this.tileSize,
+          ...this.tileGap,
+        })
+      } else if (fine) {
+        this.load.spritesheet(asset.key, art(asset.file), { frameWidth: fine.w, frameHeight: fine.h })
       } else if (asset.frame) {
         this.load.spritesheet(asset.key, art(asset.file), {
           frameWidth: asset.frame.w,
@@ -133,21 +163,56 @@ export class FarmScene extends Phaser.Scene {
     }
   }
 
+  /** How much a picture is shrunk to sit on the map: 1 for one drawn at the
+   *  map's size (and for every stand-in painted in code). */
+  private shrink(key: string): number {
+    const sheet = this.sheets[key]
+    if (sheet) return PERSON_HEIGHT / sheet.bodyHeight
+    if (key === 'tiles') return TILE / this.tileSize
+    return this.artInfo && this.present.has(key) ? 1 / this.artInfo.scale : 1
+  }
+
+  /** Frames in a strip: the art's count when it is drawn fine, else ours. */
+  private count(key: string, fallback: number): number {
+    return (this.present.has(key) && this.artInfo?.frames[key]?.count) || fallback
+  }
+
+  /** 0, 1, … for each frame in a strip. */
+  private strip(key: string, fallback: number): number[] {
+    return Array.from({ length: this.count(key, fallback) }, (_, i) => i)
+  }
+
+  /** Puts a picture on the map at the map's size. */
+  private sized<T extends Phaser.GameObjects.Image | Phaser.GameObjects.Sprite>(obj: T): T {
+    const k = this.shrink(obj.texture.key)
+    if (k !== 1) obj.setScale(k)
+    return obj
+  }
+
   create() {
-    this.checkPlayerSheet()
+    this.checkSheets()
     paintPlaceholders(this, this.present)
+    // Pictures drawn finer than the map are smoothed as they shrink; the
+    // map-sized ones and the painted stand-ins stay crisp.
+    for (const asset of ASSETS) {
+      if (this.present.has(asset.key) && this.shrink(asset.key) !== 1) {
+        this.textures.get(asset.key).setFilter(Phaser.Textures.FilterMode.LINEAR)
+      }
+    }
     this.makeAnimations()
 
     // The ground, and the flowers and mushrooms dotted on it.
     const cells = ground(this.names)
+    const ts = this.tileSize
     const map = this.make.tilemap({
       data: cells.map((row) => row.map((c) => c.index)),
-      tileWidth: TILE,
-      tileHeight: TILE,
+      tileWidth: ts,
+      tileHeight: ts,
     })
-    const tiles = map.addTilesetImage('tiles', 'tiles', TILE, TILE, 0, 0)
+    const tiles = map.addTilesetImage('tiles', 'tiles', ts, ts, this.tileGap.margin, this.tileGap.spacing)
     const layer = tiles ? map.createLayer(0, tiles, 0, 0) : null
     if (layer) {
+      layer.setScale(TILE / ts)
       cells.forEach((row, y) =>
         row.forEach((c, x) => {
           if (!c.flipX && !c.flipY) return
@@ -160,17 +225,19 @@ export class FarmScene extends Phaser.Scene {
       )
     }
     for (const d of decor(this.names)) {
-      this.add.image(d.x * TILE, d.y * TILE, 'tiles', d.index).setOrigin(0, 0).setDepth(0.5)
+      this.sized(this.add.image(d.x * TILE, d.y * TILE, 'tiles', d.index).setOrigin(0, 0).setDepth(0.5))
     }
     // The fence stands up, so the player passes behind its top rail.
     for (const f of fence(this.names)) {
-      this.add.image(f.x * TILE, (f.y + 1) * TILE, 'tiles', f.index).setOrigin(0, 1).setDepth((f.y + 1) * TILE)
+      this.sized(this.add.image(f.x * TILE, (f.y + 1) * TILE, 'tiles', f.index))
+        .setOrigin(0, 1)
+        .setDepth((f.y + 1) * TILE)
     }
 
     // Things that stand on it, drawn in order of how far down the screen
     // their feet are, so the player walks behind a tree and in front of it.
     const stand = (key: string, x: number, y: number, frame?: number) => {
-      const img = this.add.image(x, y, key, frame).setOrigin(0.5, 1)
+      const img = this.sized(this.add.image(x, y, key, frame).setOrigin(0.5, 1))
       img.setDepth(y)
       return img
     }
@@ -180,7 +247,7 @@ export class FarmScene extends Phaser.Scene {
     stand('quest_board', (BOARD.x + BOARD.w / 2) * TILE, (BOARD.y + BOARD.h) * TILE)
     stand('mailbox', (MAILBOX.x + 0.5) * TILE, (MAILBOX.y + 1) * TILE, 0)
     ;[...TREES, ...borderTrees()].forEach((t, i) =>
-      stand('tree', (t.x + 0.5) * TILE, (t.y + 1) * TILE, (t.x * 7 + t.y * 3 + i) % TREE_KINDS),
+      stand('tree', (t.x + 0.5) * TILE, (t.y + 1) * TILE, (t.x * 7 + t.y * 3 + i) % this.count('tree', TREE_KINDS)),
     )
     ROCKS.forEach((r, i) => stand(i % 2 ? 'stump' : 'rock_big', (r.x + 0.5) * TILE, (r.y + 1) * TILE))
 
@@ -205,14 +272,19 @@ export class FarmScene extends Phaser.Scene {
         .setOrigin(0.5, 1)
         .setVisible(false)
       crop.setDepth(crop.y)
-      const ripe = this.add.sprite(cx + 6, rect.y * TILE + 2, 'sparkle', 0).setDepth(crop.y + 1).setVisible(false)
+      const ripe = this.sized(this.add.sprite(cx + 8, rect.y * TILE + 4, 'sparkle', 0))
+        .setDepth(crop.y + 1)
+        .setVisible(false)
       ripe.play('sparkle-twinkle')
       this.plots.push({ soil, crop, ripe, rect })
     }
 
     // The people.
     for (const npc of NPCS) {
-      const sprite = this.add.sprite((npc.x + 0.5) * TILE, (npc.y + 1) * TILE, `npc-${npc.id}`, 0).setOrigin(0.5, 1)
+      const key = `npc-${npc.id}`
+      const sheet = this.sheets[key]
+      const sprite = this.sized(this.add.sprite((npc.x + 0.5) * TILE, (npc.y + 1) * TILE, key, 0))
+      sprite.setOrigin(0.5, sheet ? sheet.feet / sheet.frameHeight : 1)
       sprite.setDepth(sprite.y)
       sprite.play(`npc-${npc.id}-idle-down`)
       this.npcs.set(npc.id, sprite)
@@ -223,13 +295,12 @@ export class FarmScene extends Phaser.Scene {
     // The player.
     const from = this.start ?? SPAWN
     this.player = this.physics.add.sprite(from.x, from.y, 'player', 0)
-    const sheet = this.sheet
+    const sheet = this.sheets.player
     if (sheet) {
-      // Drawn large and smooth: scaled down to the map, and filtered rather
-      // than blocky. The feet stand on the spot, and the body that bumps into
-      // things is the same 10×6 at the feet whatever the drawing's size.
-      const scale = PLAYER_HEIGHT / sheet.bodyHeight
-      this.textures.get('player').setFilter(Phaser.Textures.FilterMode.LINEAR)
+      // Drawn large: scaled down to the map. The feet stand on the spot, and
+      // the body that bumps into things is the same 10×6 at the feet whatever
+      // the drawing's size.
+      const scale = this.shrink('player')
       this.player.setScale(scale).setOrigin(0.5, sheet.feet / sheet.frameHeight)
       this.player.body
         .setSize(10 / scale, 6 / scale)
@@ -243,12 +314,16 @@ export class FarmScene extends Phaser.Scene {
     this.physics.add.collider(this.player, walls)
     this.lastSaved = { x: from.x, y: from.y }
 
-    this.focusMarker = this.add.sprite(0, 0, 'interact', 0).setVisible(false).setDepth(10_000)
+    this.focusMarker = this.sized(this.add.sprite(0, 0, 'interact', 0)).setVisible(false).setDepth(10_000)
     this.focusMarker.play('interact-bob')
-    this.questMarker = this.add.sprite(0, 0, 'interact', 0).setVisible(false).setDepth(10_001).setTint(0xffd54f)
+    this.questMarker = this.sized(this.add.sprite(0, 0, 'interact', 0))
+      .setVisible(false)
+      .setDepth(10_001)
+      .setTint(0xffd54f)
     this.questMarker.play('interact-bob')
 
-    // The camera follows, at a whole-number zoom so the pixels stay square.
+    // The camera follows, at a whole number of screen pixels per map pixel so
+    // the map-sized pictures stay square.
     const camera = this.cameras.main
     camera.setBounds(0, 0, WIDTH * TILE, HEIGHT * TILE)
     camera.startFollow(this.player, true, 0.15, 0.15)
@@ -309,35 +384,56 @@ export class FarmScene extends Phaser.Scene {
   }
 
   /**
-   * The player picture must hold the frames player.json describes. When it
+   * A character picture must hold the frames its .json describes. When it
    * does not (a stale copy of either file), the picture is cut as plain 16×32
    * frames instead, so the farm still draws rather than stopping on a sheet
    * with no frames in it.
    */
-  private checkPlayerSheet() {
-    if (!this.sheet || !this.textures.exists('player')) return
-    const texture = this.textures.get('player')
-    const frames = texture.frameTotal - 1 // less the whole picture
-    if (frames >= CHAR_COLS * (CHAR_ROWS.sleep + 1)) return
-    const picture = texture.getSourceImage() as HTMLImageElement
-    this.textures.remove('player')
-    this.textures.addSpriteSheet('player', picture, { frameWidth: 16, frameHeight: 32 })
-    this.sheet = null
+  private checkSheets() {
+    for (const [key, sheet] of Object.entries(this.sheets)) {
+      if (!sheet || !this.textures.exists(key)) continue
+      const texture = this.textures.get(key)
+      const frames = texture.frameTotal - 1 // less the whole picture
+      const needed = sheet.anims
+        ? Math.max(...Object.values(sheet.anims).flat()) + 1
+        : CHAR_COLS * (key === 'player' ? CHAR_ROWS.sleep + 1 : CHAR_ROWS.walk + 4)
+      if (frames >= needed) continue
+      const picture = texture.getSourceImage() as HTMLImageElement
+      this.textures.remove(key)
+      this.textures.addSpriteSheet(key, picture, { frameWidth: 16, frameHeight: 32 })
+      this.sheets[key] = null
+    }
   }
 
   private fitZoom() {
-    const { width, height } = this.scale
-    // About 16×11 tiles in view, but never so few pixels that the map stops
-    // short of the screen's edge (a tall phone is taller than the map at 2×).
+    // In CSS pixels: about 16×11 tiles in view, but never so few pixels that
+    // the map stops short of the screen's edge (a tall phone is taller than
+    // the map at 2×). The canvas has `density` screen pixels to each of those.
+    const width = this.scale.width / this.density
+    const height = this.scale.height / this.density
     const view = Math.min(4, Math.floor(Math.min(width / (16 * TILE), height / (11 * TILE))))
     const cover = Math.ceil(Math.max(width / (WIDTH * TILE), height / (HEIGHT * TILE)))
-    this.cameras.main.setZoom(Math.min(6, Math.max(2, view, cover)))
+    this.cameras.main.setZoom(Math.min(6, Math.max(2, view, cover)) * this.density)
   }
 
   private makeAnimations() {
     const sheets = ['player', ...NPC_IDS.map((id) => `npc-${id}`)]
     for (const key of sheets) {
       const name = key === 'player' ? 'player' : key
+      const anims = this.sheets[key]?.anims
+      if (anims) {
+        // A drawn sheet names its own animations and how many frames each has.
+        for (const [anim, frames] of Object.entries(anims)) {
+          const kind = anim.split('-')[0]
+          this.anims.create({
+            key: `${name}-${anim}`,
+            frames: this.anims.generateFrameNumbers(key, { frames }),
+            frameRate: FRAME_RATE[kind] ?? 6,
+            repeat: kind === 'hoe' || kind === 'harvest' ? 0 : -1,
+          })
+        }
+        continue
+      }
       DIRS.forEach((dir, d) => {
         const row = (r: number) => (r + d) * CHAR_COLS
         this.anims.create({
@@ -367,7 +463,7 @@ export class FarmScene extends Phaser.Scene {
         }
       })
     }
-    this.anims.create({
+    if (!this.anims.exists('player-sleep')) this.anims.create({
       key: 'player-sleep',
       frames: this.anims.generateFrameNumbers('player', {
         frames: [CHAR_ROWS.sleep * CHAR_COLS, CHAR_ROWS.sleep * CHAR_COLS + 1],
@@ -377,12 +473,12 @@ export class FarmScene extends Phaser.Scene {
     })
     this.anims.create({
       key: 'dust-puff',
-      frames: this.anims.generateFrameNumbers('dust', { frames: Array.from({ length: DUST_FRAMES }, (_, i) => i) }),
+      frames: this.anims.generateFrameNumbers('dust', { frames: this.strip('dust', DUST_FRAMES) }),
       frameRate: 12,
     })
     this.anims.create({
       key: 'sleep-z',
-      frames: this.anims.generateFrameNumbers('sleep_z', { frames: Array.from({ length: ZZZ_FRAMES }, (_, i) => i) }),
+      frames: this.anims.generateFrameNumbers('sleep_z', { frames: this.strip('sleep_z', ZZZ_FRAMES) }),
       frameRate: 3,
       repeat: -1,
     })
@@ -394,14 +490,12 @@ export class FarmScene extends Phaser.Scene {
     })
     this.anims.create({
       key: 'harvest-pop',
-      frames: this.anims.generateFrameNumbers('harvest_pop', {
-        frames: Array.from({ length: POP_FRAMES }, (_, i) => i),
-      }),
+      frames: this.anims.generateFrameNumbers('harvest_pop', { frames: this.strip('harvest_pop', POP_FRAMES) }),
       frameRate: 14,
     })
     this.anims.create({
       key: 'sparkle-twinkle',
-      frames: this.anims.generateFrameNumbers('sparkle', { frames: [0, 1, 2, 3] }),
+      frames: this.anims.generateFrameNumbers('sparkle', { frames: this.strip('sparkle', 4) }),
       frameRate: 5,
       repeat: -1,
     })
@@ -426,7 +520,7 @@ export class FarmScene extends Phaser.Scene {
       view.soil.setFrame(tile(this.names, soil))
       if (plot.crop && plot.plantedAt && plot.ripeAt) {
         const stage = cropStage(Date.parse(plot.plantedAt), Date.parse(plot.ripeAt), now, CROP_STAGES)
-        view.crop.setTexture(`crop-${plot.crop}`, stage).setVisible(true)
+        this.sized(view.crop.setTexture(`crop-${plot.crop}`, stage)).setVisible(true)
         view.ripe.setVisible(stage === CROP_STAGES - 1)
       } else {
         view.crop.setVisible(false)
@@ -438,16 +532,17 @@ export class FarmScene extends Phaser.Scene {
   private burst(idx: number) {
     const view = this.plots[idx]
     if (!view) return
-    const fx = this.add.sprite(view.crop.x, view.crop.y - 16, 'harvest_pop', 0).setDepth(10_002)
+    const fx = this.sized(this.add.sprite(view.crop.x, view.crop.y - 16, 'harvest_pop', 0)).setDepth(10_002)
     fx.play('harvest-pop')
     fx.once('animationcomplete', () => fx.destroy())
   }
 
   /** The player swings the hoe or picks the crop in front of them. */
   private act(action: 'hoe' | 'harvest') {
-    this.busyUntil = this.time.now + 420
+    const key = `player-${action}-${this.facing}`
+    this.busyUntil = this.time.now + Math.max(420, this.anims.get(key)?.duration ?? 0)
     this.player.setVelocity(0, 0)
-    this.player.play(`player-${action}-${this.facing}`)
+    this.player.play(key)
   }
 
   /** A nap where the player stands, with Zs drifting up. */
@@ -457,8 +552,8 @@ export class FarmScene extends Phaser.Scene {
     this.player.setVelocity(0, 0)
     this.player.play('player-sleep')
     // A drawn sheet has its own yawn and Zs in the sleep row.
-    if (this.sheet) return
-    const z = this.add.sprite(this.player.x + 6, this.player.y - 30, 'sleep_z', 0).setDepth(10_002)
+    if (this.sheets.player) return
+    const z = this.sized(this.add.sprite(this.player.x + 6, this.player.y - 30, 'sleep_z', 0)).setDepth(10_002)
     z.play('sleep-z')
     this.tweens.add({ targets: z, y: z.y - 12, alpha: 0, duration: ms, onComplete: () => z.destroy() })
   }
@@ -467,7 +562,7 @@ export class FarmScene extends Phaser.Scene {
   private kickDust() {
     if (this.time.now - this.lastDust < 260) return
     this.lastDust = this.time.now
-    const puff = this.add.sprite(this.player.x, this.player.y + 1, 'dust', 0).setOrigin(0.5, 1)
+    const puff = this.sized(this.add.sprite(this.player.x, this.player.y + 1, 'dust', 0)).setOrigin(0.5, 1)
     puff.setDepth(this.player.y - 1)
     puff.play('dust-puff')
     puff.once('animationcomplete', () => puff.destroy())
