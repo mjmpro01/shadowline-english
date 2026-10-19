@@ -66,6 +66,10 @@ pipeline {
           sh 'npm test'
           sh 'npm run build'
         }
+        // The landing page has nothing to build, but /vi/ is generated from
+        // index.html: fail here rather than ship a Vietnamese page that has
+        // fallen behind the English one.
+        sh 'node landing/scripts/build-vi.mjs --check'
       }
     }
 

@@ -267,19 +267,16 @@ p {
   background: rgba(20, 14, 12, 0.6);
 }
 
-.lang button {
-  border: 0;
+.lang a {
   border-radius: 999px;
   padding: 5px 10px;
-  background: transparent;
   color: var(--muted);
-  font: inherit;
   font-size: 12px;
   font-weight: 800;
-  cursor: pointer;
+  text-decoration: none;
 }
 
-.lang button[aria-pressed='true'] {
+.lang a[aria-current='page'] {
   background: var(--gold);
   color: var(--ink);
 }

@@ -145,6 +145,11 @@ in `landing/`, which every deploy rsyncs to `/opt/shadowline/landing`, and the
 host's nginx serves them from there: no container, nothing to build. The app
 stays on `app.<domain>`.
 
+The Vietnamese page, `landing/vi/index.html`, is generated from the English
+`landing/index.html` and the dictionary in `landing/scripts/vi.mjs`. After
+editing either, run `node landing/scripts/build-vi.mjs` and commit the result;
+CI fails while it is out of date.
+
 1. Add the landing page's `listen 80` block (bare domain and `www.`) from
    `ops/nginx/vhost.example.conf`; reload nginx.
 2. `sudo certbot certonly --webroot -w /var/www/html -d <domain> -d www.<domain>`

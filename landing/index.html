@@ -9,6 +9,9 @@
       content="Practise spoken English by shadowing short video clips. Record yourself, get instant feedback on pronunciation, rhythm and intonation — free, in your browser."
     />
     <link rel="canonical" href="https://shadowline-english.com/" />
+    <link rel="alternate" hreflang="en" href="https://shadowline-english.com/" />
+    <link rel="alternate" hreflang="vi" href="https://shadowline-english.com/vi/" />
+    <link rel="alternate" hreflang="x-default" href="https://shadowline-english.com/" />
     <meta name="theme-color" content="#120b0a" />
     <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png" />
     <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
@@ -93,10 +96,10 @@
         </nav>
 
         <div class="nav-end">
-          <div class="lang" role="group" aria-label="Language">
-            <button type="button" data-lang="en" aria-pressed="true" lang="en">EN</button>
-            <button type="button" data-lang="vi" aria-pressed="false" lang="vi">VI</button>
-          </div>
+          <nav class="lang" aria-label="Language">
+            <a href="/" hreflang="en" lang="en" data-lang="en" aria-current="page">EN</a>
+            <a href="/vi/" hreflang="vi" lang="vi" data-lang="vi">VI</a>
+          </nav>
           <a class="btn btn-ghost nav-signin" href="https://app.shadowline-english.com/login" data-i18n="nav.signIn"
             >Sign in</a
           >
