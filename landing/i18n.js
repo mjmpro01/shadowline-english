@@ -121,7 +121,7 @@
     vi: {
       title: 'Shadowline English — Luyện nói tiếng Anh bằng cách nhại theo phim',
       description:
-        'Shadowline English giúp bạn luyện nói tiếng Anh bằng cách nhại theo các đoạn video ngắn: nghe người bản xứ, ghi âm giọng bạn và nhận phản hồi ngay về phát âm, nhịp và ngữ điệu — miễn phí, ngay trên trình duyệt.',
+        'Luyện nói tiếng Anh bằng cách nhại theo video ngắn. Ghi âm giọng bạn, nhận phản hồi ngay về phát âm, nhịp và ngữ điệu — miễn phí, trên trình duyệt.',
     },
   }
 

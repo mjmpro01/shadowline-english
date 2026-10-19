@@ -1,0 +1,16 @@
+# app.shadowline-english.com: the signed-in app. The public pages are the
+# sign-in screen and the legal pages; everything else needs an account and,
+# to a crawler, is the same empty shell. The home page for search is the
+# landing site, shadowline-english.com.
+User-agent: *
+Disallow: /admin/
+Disallow: /api/
+Disallow: /auth/
+Disallow: /files/
+Disallow: /dashboard
+Disallow: /library
+Disallow: /arena
+Disallow: /vocabulary
+Disallow: /progress
+Disallow: /guide
+Disallow: /profile

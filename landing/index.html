@@ -6,7 +6,7 @@
     <title>Shadowline English — Speak English by shadowing real clips</title>
     <meta
       name="description"
-      content="Shadowline English helps you practise spoken English by shadowing short video clips. Listen to a native speaker, record yourself, and get instant feedback on pronunciation, rhythm and intonation — free, in your browser."
+      content="Practise spoken English by shadowing short video clips. Record yourself, get instant feedback on pronunciation, rhythm and intonation — free, in your browser."
     />
     <link rel="canonical" href="https://shadowline-english.com/" />
     <meta name="theme-color" content="#120b0a" />
@@ -21,8 +21,13 @@
       property="og:description"
       content="Listen, shadow, and hear exactly how close you got. Free pronunciation practice in your browser."
     />
-    <meta property="og:image" content="https://shadowline-english.com/assets/icon-512.png" />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="vi_VN" />
+    <meta property="og:image" content="https://shadowline-english.com/assets/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Shadowline English — speak English by shadowing real clips" />
+    <meta name="twitter:card" content="summary_large_image" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -35,14 +40,37 @@
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "name": "Shadowline English",
-        "url": "https://shadowline-english.com/",
-        "applicationCategory": "EducationalApplication",
-        "operatingSystem": "Web browser",
-        "description": "Practise spoken English by shadowing short video clips and get feedback on pronunciation, rhythm and intonation.",
-        "inLanguage": ["en", "vi"],
-        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://shadowline-english.com/#org",
+            "name": "Shadowline English",
+            "url": "https://shadowline-english.com/",
+            "logo": "https://shadowline-english.com/assets/icon-512.png",
+            "email": "support@shadowline-english.com"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://shadowline-english.com/#website",
+            "name": "Shadowline English",
+            "url": "https://shadowline-english.com/",
+            "inLanguage": ["en", "vi"],
+            "publisher": { "@id": "https://shadowline-english.com/#org" }
+          },
+          {
+            "@type": "WebApplication",
+            "name": "Shadowline English",
+            "url": "https://app.shadowline-english.com/",
+            "applicationCategory": "EducationalApplication",
+            "operatingSystem": "Web browser",
+            "browserRequirements": "Requires a microphone and a modern browser",
+            "description": "Practise spoken English by shadowing short video clips and get feedback on pronunciation, rhythm and intonation.",
+            "inLanguage": ["en", "vi"],
+            "image": "https://shadowline-english.com/assets/og-image.jpg",
+            "publisher": { "@id": "https://shadowline-english.com/#org" },
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+          }
+        ]
       }
     </script>
   </head>
