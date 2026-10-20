@@ -19,5 +19,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["test", "e2e", "playwright.config.ts"]
+  "include": ["test", "e2e", "playwright.config.ts", "src/game/env.d.ts"]
 }

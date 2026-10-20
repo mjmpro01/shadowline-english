@@ -830,6 +830,10 @@
   .arena-battle-body {
     min-height: 0;
   }
+  .arena-fighter-info strong {
+    white-space: normal;
+    line-height: 1.15;
+  }
   .arena-question-word {
     font-size: 24px;
   }

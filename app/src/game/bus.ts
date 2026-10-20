@@ -41,8 +41,8 @@ interface Events {
   blocked: 'woods_locked'
   /** Put the player somewhere, on whichever map (after fainting: home). */
   goto: { map: MapName; x: number; y: number }
-  /** The scene finished building and is drawing. */
-  ready: undefined
+  /** A map's scene finished building and is drawing. */
+  ready: MapName
   /** The farm as the server last sent it, for the scene to draw. */
   state: GameState
   /** Who has something to say about the story: a "!" over their head, or a

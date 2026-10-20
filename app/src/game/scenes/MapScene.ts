@@ -10,7 +10,9 @@ import {
   DIRS,
   DUST_FRAMES,
   MONSTER_FRAMES,
-  MONSTER_IDS,
+  MONSTER_MOVE_ROW,
+  MONSTER_ROWS,
+  MONSTER_SHEETS,
   NPC_IDS,
   POP_FRAMES,
   ZZZ_FRAMES,
@@ -314,7 +316,7 @@ export abstract class MapScene extends Phaser.Scene {
       this.unsubscribe = []
       this.scale.off('resize', this.fitZoom, this)
     })
-    this.bus.emit('ready', undefined)
+    this.bus.emit('ready', this.mapName)
   }
 
   /**
@@ -432,14 +434,17 @@ export abstract class MapScene extends Phaser.Scene {
       frameRate: 5,
       repeat: -1,
     })
-    for (const id of MONSTER_IDS) {
-      const key = `monster-${id}`
-      make({
-        key: `${key}-bob`,
-        frames: this.anims.generateFrameNumbers(key, { frames: this.strip(key, MONSTER_FRAMES) }),
-        frameRate: 6,
-        repeat: -1,
-      })
+    for (const { key, id } of MONSTER_SHEETS) {
+      if (!this.textures.exists(key)) continue
+      // A sheet of four rows; the stand-in's few frames serve every row.
+      const total = this.count(key, MONSTER_FRAMES)
+      const cols = total >= MONSTER_ROWS * 2 ? total / MONSTER_ROWS : total
+      const row = (r: number) =>
+        this.anims.generateFrameNumbers(key, { frames: Array.from({ length: cols }, (_, i) => (cols < total ? r * cols : 0) + i) })
+      make({ key: `${key}-idle`, frames: row(0), frameRate: 6, repeat: -1 })
+      make({ key: `${key}-move`, frames: row(MONSTER_MOVE_ROW[id]), frameRate: 8, repeat: -1 })
+      make({ key: `${key}-hurt`, frames: row(2), frameRate: 10 })
+      make({ key: `${key}-down`, frames: row(3), frameRate: 8 })
     }
   }
 

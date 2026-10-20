@@ -559,6 +559,99 @@ def effects(frames):
     frames_sheet(buttons, "ui/button_action.png", align="middle")
 
 
+# --- Monsters (the chapter 2 pack) ---------------------------------------------------
+#
+# art/echo_chapter2_monsters/ holds one board per monster: rows of frames on a
+# transparent ground (two of them with a faint glow behind), each frame drawn
+# where it fell rather than in a cell. Every board's rows are the same four:
+# standing, moving (the bat and the troll: attacking), hit, and going down. The
+# slime's board is three of those, one per colour.
+
+MONSTERS = os.path.join(HERE, "..", "art", "echo_chapter2_monsters", "monsters")
+
+
+def board_frames(img, rows, cols):
+    """The frames of a board, row by row: each one every drawn pixel of the
+    figure plus the bits around it (sparkles, a shadow, a puff of dust)."""
+    a = np.array(img)
+    solid = a[..., 3] >= 128
+    labels, n = ndimage.label(solid, structure=np.ones((3, 3)))
+    boxes = ndimage.find_objects(labels)
+    areas = ndimage.sum(solid, labels, range(1, n + 1))
+    comps = [
+        {"id": k + 1, "box": b, "area": areas[k], "cx": (b[1].start + b[1].stop) / 2, "cy": (b[0].start + b[0].stop) / 2}
+        for k, b in enumerate(boxes)
+    ]
+    biggest = sorted(c["area"] for c in comps)[-rows * cols :]
+    cores = [c for c in comps if c["area"] >= 0.3 * np.median(biggest)]
+    width = np.median([c["box"][1].stop - c["box"][1].start for c in cores])
+    # Two figures drawn touching are one piece: cut it in even widths.
+    pieces = []
+    for c in cores:
+        x0, x1 = c["box"][1].start, c["box"][1].stop
+        k = max(1, round((x1 - x0) / width))
+        for i in range(k):
+            lo, hi = x0 + (x1 - x0) * i // k, x0 + (x1 - x0) * (i + 1) // k
+            pieces.append({**c, "x": (lo, hi), "cx": (lo + hi) / 2})
+    # Rows: split where the figures' centres jump furthest down the board.
+    pieces.sort(key=lambda c: c["cy"])
+    gaps = sorted(range(1, len(pieces)), key=lambda i: pieces[i]["cy"] - pieces[i - 1]["cy"])[-(rows - 1) :]
+    bands, start = [], 0
+    for cut in sorted(gaps) + [len(pieces)]:
+        bands.append(pieces[start:cut])
+        start = cut
+    # Columns: where the figures stand in the rows that have them all.
+    full = [sorted(b, key=lambda c: c["cx"]) for b in bands if len(b) == cols]
+    centres = [np.mean([b[i]["cx"] for b in full]) for i in range(cols)]
+    row_y = [np.mean([c["cy"] for c in b]) for b in bands]
+    near = lambda v, vs: int(np.argmin([abs(v - x) for x in vs]))
+    parts = [[[] for _ in range(cols)] for _ in range(rows)]
+    for r, band in enumerate(bands):
+        for c in band:
+            parts[r][near(c["cx"], centres)].append((c["id"], c["x"]))
+    taken = {c["id"] for c in cores}
+    for c in comps:
+        if c["id"] not in taken:
+            r = near(c["cy"], row_y)
+            parts[r][near(c["cx"], centres)].append((c["id"], (c["box"][1].start, c["box"][1].stop)))
+    frames = []
+    for r in range(rows):
+        row = []
+        for bits in parts[r]:
+            mask = np.zeros(solid.shape, bool)
+            for cid, (x0, x1) in bits:
+                mask[:, x0:x1] |= labels[:, x0:x1] == cid
+            out = a.copy()
+            out[..., 3] = np.where(mask, 255, 0)
+            row.append(trim(Image.fromarray(out)))
+        frames.append(row)
+    return frames
+
+
+def monster(frames, key, rows, height, path):
+    """One monster's rows as a single strip, sized so it stands `height` map
+    pixels tall, and its picture for the fight panel."""
+    scale = height * SCALE / np.median([f.height for f in rows[0]])
+    strip = [f.resize((max(1, round(f.width * scale)), max(1, round(f.height * scale))), Image.LANCZOS) for row in rows for f in row]
+    frames[key] = frames_sheet(strip, f"monsters/{path}.png")
+    return rows[0][0]
+
+
+def monsters(frames):
+    load_board = lambda name: Image.open(os.path.join(MONSTERS, f"{name}.png")).convert("RGBA")
+    slimes = board_frames(load_board("word_slime"), 12, 4)
+    for k, colour in enumerate(["green", "blue", "purple"]):
+        rows = slimes[k * 4 : k * 4 + 4]
+        key = "monster-word_slime" if colour == "green" else f"monster-word_slime-{colour}"
+        path = "word_slime" if colour == "green" else f"word_slime_{colour}"
+        standing = monster(frames, key, rows, 14, path)
+        save(fit(standing, h=192), f"monsters/{path}_battle.png")
+    # Heights in map pixels; the bat's is with its wings out.
+    for name, cols, height in [("echo_bat", 4, 16), ("thorn_mushroom", 4, 22), ("mumble_troll", 6, 36)]:
+        standing = monster(frames, f"monster-{name}", board_frames(load_board(name), 4, cols), height, name)
+        save(fit(standing, h=192), f"monsters/{name}_battle.png")
+
+
 def main():
     frames = {}
     people()
@@ -568,6 +661,7 @@ def main():
     items()
     portraits()
     effects(frames)
+    monsters(frames)
     manifest = {"scale": SCALE, "frames": frames}
     with open(os.path.join(OUT, "art.json"), "w") as f:
         json.dump(manifest, f, indent=1)

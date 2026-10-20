@@ -175,6 +175,7 @@ test('a fight left half-way goes on after a reload, and fainting sends the farme
   await fight.getByRole('button', { name: 'Go home' }).click()
 
   // Home: the house door is right above.
+  await expect(page.getByTestId('arena')).toHaveAttribute('data-map', 'farm')
   await page.locator('.arena canvas').click({ position: { x: 20, y: 300 } })
   await page.keyboard.down('ArrowUp')
   await page.waitForTimeout(60)

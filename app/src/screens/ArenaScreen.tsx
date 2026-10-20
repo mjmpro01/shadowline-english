@@ -52,6 +52,8 @@ export function ArenaScreen() {
   const [focus, setFocus] = useState<Target | null>(null)
   /** The scene is drawn and taking keys. */
   const [ready, setReady] = useState(false)
+  /** The map on screen, once it is drawn. */
+  const [map, setMap] = useState<MapName | null>(null)
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState<{ text: string; reward?: Reward } | null>(null)
 
@@ -122,8 +124,9 @@ export function ArenaScreen() {
   useEffect(() => {
     const offs = [
       bus.on('focus', setFocus),
-      bus.on('ready', () => {
+      bus.on('ready', (drawn) => {
         setReady(true)
+        setMap(drawn)
         const to = pendingGoto.current
         pendingGoto.current = null
         if (to) bus.emit('goto', to)
@@ -332,6 +335,7 @@ export function ArenaScreen() {
       className="arena"
       data-testid="arena"
       data-ready={ready}
+      data-map={map ?? undefined}
       style={
         {
           '--arena-panel': `url(${art('ui/panel.png')})`,

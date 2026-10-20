@@ -3,6 +3,7 @@ import { clock, cropStage, secondsUntil } from '../src/game/growth'
 import { DEFAULT_TILES, FARM_GATE, FROM_WOODS, TILE, ground, plotRect, solids, tile, type Rect } from '../src/game/world/farm'
 import { FROM_FARM, WOODS_GATE, woodsSolids } from '../src/game/world/woods'
 import { sameTarget } from '../src/game/bus'
+import { monsterColour } from '../src/game/assets'
 
 describe('a crop growing', () => {
   const planted = 1_000_000
@@ -87,5 +88,15 @@ describe('the woods', () => {
     expect(blocks(woodsSolids(), ...tileOf(FROM_FARM))).toBe(false)
     expect(blocks([FARM_GATE], ...tileOf(FROM_WOODS))).toBe(false)
     expect(blocks([WOODS_GATE], ...tileOf(FROM_FARM))).toBe(false)
+  })
+})
+
+describe("a slime's colour", () => {
+  it('goes with its spot, the same each time', () => {
+    expect(monsterColour('slime_1', 'word_slime')).toBe(null)
+    expect(monsterColour('slime_2', 'word_slime')).toBe('blue')
+    expect(monsterColour('slime_3', 'word_slime')).toBe('purple')
+    expect(monsterColour('slime_4', 'word_slime')).toBe(null)
+    expect(monsterColour('bat_1', 'echo_bat')).toBe(null)
   })
 })

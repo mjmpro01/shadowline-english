@@ -31,8 +31,9 @@ farm is playable with any subset of this folder.
 | `tiles/farm.png` + `farm_atlas.json` | 64 px tiles, each with 2 px of its own edge repeated around it (`margin`, `spacing`), named in the atlas: grass, dirt, paths, tilled soil, framed (upgraded) soil, the locked plot, the pond's pieces, the fence, flowers and other small things |
 | `objects/*.png` | The house, Mira's cart, Bram's bench, the quest board, trees (3 kinds), the bush, rocks, a stump; `mailbox.png` is two frames, empty and with a letter |
 | `crops/{sprout,bloom,golden}.png` | 5 growth stages each, the last one ripe |
-| `monsters/{word_slime,echo_bat}.png` | The woods' monsters on the map: 4 frames of 24×24 side by side, a bob that loops. Not in the pack yet — the game paints stand-ins |
-| `monsters/{word_slime,echo_bat}_battle.png` | The same monster drawn larger for the fight panel (shown 72 px, 52 px on a phone). Not in the pack yet — an SVG stand-in until then |
+| `monsters/<id>.png` | A monster on the map: one strip of four rows of frames — standing, moving (the bat's and the troll's second row is an attack), hit, going down — 4 frames a row (the troll 6), cell size in `art.json`. Shown 14 map px tall for the slime, 16 the bat, 22 the mushroom, 36 the troll. Without the file the game paints 4 frames of 24×24 and uses them for every row |
+| `monsters/word_slime_{blue,purple}.png` | The slime's other colours. Each spot keeps one: `slime_1` green, `slime_2` blue, `slime_3` purple, then round again |
+| `monsters/<id>_battle.png`, `word_slime_{blue,purple}_battle.png` | The monster standing, 192 px tall, for the fight panel (shown 72 px, 52 px on a phone); an SVG stand-in without it |
 | `fx/*.png` | The harvest burst, dust at the player's heels, the sparkle over a ripe crop, the "!" over what the player faces, Zs |
 | `items/*.png` | 96 px icons: coin, stamina, the seeds, tea, chests, the quest book, the letter, the word scroll. A new seed or item needs one named after its id in `server/internal/game/catalog.go` |
 | `portraits/*.png` | Four faces side by side: neutral, happy, thinking, worried |
@@ -54,6 +55,15 @@ The pack's boards are drawn freely, so the script:
   its bottom ones;
 - sizes each object for its place on the map (the house is 88 map px wide,
   a tree 44).
+
+The chapter 2 monsters (`art/echo_chapter2_monsters/`) are boards of four
+rows on a transparent ground, two of them with a faint glow behind. The script
+drops the glow (anything less than half opaque), finds the figures, sorts them
+into the rows and columns, cuts two figures drawn touching in half, gives the
+loose bits (a shadow, sparkles, the bat's last puff) to the frame they sit by,
+and sizes every frame of a monster by the same amount so a slime going flat
+gets lower rather than larger. `thorn_mushroom` and `mumble_troll` are cut too,
+ready for the second half of chapter 2; the game does not show them yet.
 
 Two of the pack's files were swapped as delivered: `characters/npcs.png` held
 the buildings and `objects/large_objects.png` the people. In `art/echo_farm_full/`
