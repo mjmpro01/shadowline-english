@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/shadowline/server/internal/auth"
 	"github.com/shadowline/server/internal/store"
 )
 
@@ -79,4 +80,44 @@ func (s *Server) handleTestRipen(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// handleTestRespawn brings every beaten monster back at once. Registered only
+// when AUTH_FAKE=1.
+func (s *Server) handleTestRespawn(w http.ResponseWriter, r *http.Request) {
+	if err := s.Store.RespawnAll(r.Context()); err != nil {
+		s.failErr(w, err, "respawn test monsters")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// handleTestBattleAnswer tells a browser test the answer to the question in
+// play, so it can win (or lose) on purpose. Registered only when AUTH_FAKE=1.
+func (s *Server) handleTestBattleAnswer(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	answer, err := s.Store.BattleAnswerKey(r.Context(), u.ID)
+	if err != nil {
+		s.failErr(w, err, "test answer key")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"answer": answer})
+}
+
+// handleTestGameStep moves the signed-in player's story to a step, so a test
+// can start in the woods without playing chapter 1. AUTH_FAKE=1 only.
+func (s *Server) handleTestGameStep(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	var body struct {
+		Step int `json:"step"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		fail(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := s.Store.SetMainStep(r.Context(), u.ID, body.Step); err != nil {
+		s.failErr(w, err, "test story step")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

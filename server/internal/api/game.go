@@ -175,14 +175,14 @@ func (s *Server) handleGameMove(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if body.Map != "farm" {
+	if body.Map != "farm" && body.Map != "woods" {
 		fail(w, http.StatusBadRequest, "there is no such map")
 		return
 	}
 	body.X = max(0, min(body.X, maxCoord))
 	body.Y = max(0, min(body.Y, maxCoord))
 	if err := s.Store.MoveTo(r.Context(), u.ID, body.Map, body.X, body.Y); err != nil {
-		s.failErr(w, err, "move")
+		s.gameFail(w, err, "move")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -213,4 +213,70 @@ func (s *Server) handleGameClaim(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"reward": given, "state": state, "quests": quests})
+}
+
+// Fights in the woods. Each answers with the fight as it now stands and the
+// farm after it, so the screen never has to guess what changed.
+
+func (s *Server) handleBattleStart(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	var body struct {
+		Spawn string `json:"spawn"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		fail(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	battle, state, err := s.Store.StartBattle(r.Context(), u.ID, body.Spawn)
+	if err != nil {
+		s.gameFail(w, err, "start battle")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"battle": battle, "state": state})
+}
+
+func (s *Server) handleBattleAnswer(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	var body struct {
+		Battle int64  `json:"battle"`
+		Answer string `json:"answer"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		fail(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	turn, battle, state, err := s.Store.AnswerBattle(r.Context(), u.ID, body.Battle, body.Answer)
+	if err != nil {
+		s.gameFail(w, err, "answer")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"turn": turn, "battle": battle, "state": state})
+}
+
+func (s *Server) handleBattleFlee(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	var body struct {
+		Battle int64 `json:"battle"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		fail(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	battle, state, err := s.Store.FleeBattle(r.Context(), u.ID, body.Battle)
+	if err != nil {
+		s.gameFail(w, err, "flee")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"battle": battle, "state": state})
+}
+
+// handleBattle is the fight in progress, or null.
+func (s *Server) handleBattle(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	battle, err := s.Store.ActiveBattle(r.Context(), u.ID)
+	if err != nil {
+		s.gameFail(w, err, "battle")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"battle": battle})
 }

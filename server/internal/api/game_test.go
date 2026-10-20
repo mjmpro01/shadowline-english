@@ -405,8 +405,31 @@ func TestTheStoryOpensBloomSeeds(t *testing.T) {
 		t.Fatalf("the chapter's end: %+v", q.Main)
 	}
 	claim(t, learner, "main")
-	if q := gameQuests(t, learner); q.Main != nil {
+	// Chapter 2 begins with the Knights' Guild, which only asks to be heard,
+	// and its salves; then the woods are open.
+	if q := gameQuests(t, learner); q.Main == nil || q.Main.ID != "guild" || !q.Main.Done {
 		t.Fatalf("after the chapter: %+v", q.Main)
+	}
+	claim(t, learner, "main")
+	state = gameState(t, learner)
+	if state.Inventory["herb_salve"] != 2 {
+		t.Fatalf("the guild's salves: %v", state.Inventory)
+	}
+	if q := gameQuests(t, learner); q.Main == nil || q.Main.ID != "enter_woods" || q.Main.Done {
+		t.Fatalf("into the woods: %+v", q.Main)
+	}
+}
+
+func TestTheStoryEnds(t *testing.T) {
+	h := newHarness(t)
+	learner := h.login("learner@example.com")
+	gameState(t, learner)
+	if _, err := h.pool.Exec(context.Background(),
+		`update game_profiles set main_step = (select 1000)`); err != nil {
+		t.Fatal(err)
+	}
+	if q := gameQuests(t, learner); q.Main != nil {
+		t.Fatalf("past the last step: %+v", q.Main)
 	}
 	expectCode(t, learner.json("POST", "/api/game/quests/claim", map[string]any{"quest": "main"}),
 		http.StatusConflict, "no_quest")

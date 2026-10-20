@@ -11,13 +11,16 @@ import (
 // remember to bump.
 type Counter struct {
 	// Kind is one of:
-	//   "event"   — game events of kind Item (plant, harvest, buy, sleep, unlock, listen…)
+	//   "event"   — game events of kind Item (plant, harvest, buy, sleep, unlock,
+	//               listen, enter_woods, win, win_clean, answer_right…), of Of
+	//               when it is set (win of word_slime)
 	//   "words"   — words harvested
 	//   "takes"   — Shadowing lines practised, scoring at least MinScore when set
 	//   "reviews" — flashcards reviewed
 	//   "spent"   — gold spent
 	Kind     string `json:"-"`
 	Item     string `json:"-"`
+	Of       string `json:"-"`
 	MinScore int    `json:"-"`
 	// Ever counts from the start of the game rather than from when the quest
 	// began: "collect ten words" means ten in all.
@@ -44,14 +47,17 @@ type Step struct {
 	Reward    Reward  `json:"reward"`
 }
 
-// The main-quest steps that open the better seeds in the shop.
+// The main-quest steps that open things: the better seeds in the shop, and
+// the woods (and what is sold for them).
 const (
 	BloomStep  = 8
 	GoldenStep = 9
+	WoodsStep  = 10
 )
 
-// MainQuests is the story so far: chapter 1, the farm. It doubles as the
+// MainQuests is the story so far. Chapter 1, the farm, doubles as the
 // tutorial — each step asks for the next thing a new farmer needs to learn.
+// Chapter 2 goes into the woods, where the Silence is.
 var MainQuests = []Step{
 	{
 		ID: "letter", Chapter: 1, Giver: "grandma",
@@ -155,6 +161,63 @@ var MainQuests = []Step{
 		Target:    0,
 		Reward:    Reward{Gold: 50, Items: map[string]int{"seed_golden": 1}},
 	},
+	{
+		ID: "guild", Chapter: 2, Giver: "sir_shadow",
+		Title: Text{"The Knights' Guild", "Hội Hiệp sĩ"},
+		Lines: []Text{
+			{"The Silence has reached the woods.", "Màn Im Lặng đã tràn tới khu rừng."},
+			{"Monsters there steal words. We fight them with words.", "Lũ quái ở đó cướp ngôn từ. Ta đánh chúng bằng chính ngôn từ."},
+			{"Answer right, and you strike. Answer wrong, and they strike you.", "Trả lời đúng là cậu ra đòn. Trả lời sai thì chúng đánh lại."},
+			{"Take these salves. Join the guild, farmer.", "Cầm lấy thuốc này. Gia nhập hội đi, bác nông dân."},
+		},
+		Objective: Text{"Join the Knights' Guild", "Gia nhập Hội Hiệp sĩ"},
+		Target:    0,
+		Reward:    Reward{Items: map[string]int{"herb_salve": 2}},
+	},
+	{
+		ID: "enter_woods", Chapter: 2, Giver: "sir_shadow",
+		Title: Text{"Into the woods", "Bước vào rừng"},
+		Lines: []Text{
+			{"The gate to the woods is east of the farm.", "Cổng vào rừng ở phía đông trang trại."},
+			{"Go in and look around. Be careful.", "Vào trong xem thử. Cẩn thận đấy."},
+		},
+		Objective: Text{"Go into the woods", "Đi vào rừng"},
+		Counter:   Counter{Kind: "event", Item: "enter_woods"}, Target: 1,
+		Reward: Reward{Gold: 10},
+	},
+	{
+		ID: "first_win", Chapter: 2, Giver: "sir_shadow",
+		Title: Text{"Your first fight", "Trận đầu tiên"},
+		Lines: []Text{
+			{"See that slime? It is full of stolen words.", "Thấy con slime kia không? Nó đầy những từ bị cướp."},
+			{"Walk up to it and press the action button.", "Đi tới gần nó rồi bấm nút hành động."},
+		},
+		Objective: Text{"Win a fight", "Thắng một trận"},
+		Counter:   Counter{Kind: "event", Item: "win"}, Target: 1,
+		Reward: Reward{Gold: 20},
+	},
+	{
+		ID: "five_slimes", Chapter: 2, Giver: "sir_shadow",
+		Title: Text{"Slime hunt", "Săn slime"},
+		Lines: []Text{
+			{"Well fought! But there are many more.", "Đánh hay lắm! Nhưng chúng còn nhiều lắm."},
+			{"Beat five Word-slimes and the path will be safer.", "Hạ năm con Slime chữ thì đường đi sẽ an toàn hơn."},
+		},
+		Objective: Text{"Beat 5 Word-slimes", "Hạ 5 Slime chữ"},
+		Counter:   Counter{Kind: "event", Item: "win", Of: "word_slime"}, Target: 5,
+		Reward: Reward{Gold: 60},
+	},
+	{
+		ID: "sharp_ears", Chapter: 2, Giver: "sir_shadow",
+		Title: Text{"Sharp ears", "Tai thính"},
+		Lines: []Text{
+			{"The bats speak in echoes. Listen closely.", "Lũ dơi nói bằng tiếng vọng. Hãy nghe thật kỹ."},
+			{"Answer fifteen questions right in battle.", "Trả lời đúng mười lăm câu trong trận."},
+		},
+		Objective: Text{"Answer 15 questions right in battle", "Trả lời đúng 15 câu trong trận"},
+		Counter:   Counter{Kind: "event", Item: "answer_right"}, Target: 15,
+		Reward: Reward{Gold: 40, Items: map[string]int{"seed_bloom": 1}},
+	},
 }
 
 // Daily is one of the day's three small tasks.
@@ -165,6 +228,8 @@ type Daily struct {
 	Target   int     `json:"target"`
 	Reward   Reward  `json:"reward"`
 	Learning bool    `json:"learning"`
+	// Woods tasks are only drawn once the woods are open.
+	Woods bool `json:"woods"`
 }
 
 // DailyPool is what the day's tasks are drawn from. The learning ones are
@@ -185,6 +250,12 @@ var DailyPool = []Daily{
 		Counter: Counter{Kind: "takes", MinScore: 75}, Target: 1, Reward: Reward{Gold: 50}},
 	{ID: "review5", Title: Text{"Review 5 flashcards", "Ôn 5 thẻ ghi nhớ"}, Learning: true,
 		Counter: Counter{Kind: "reviews"}, Target: 5, Reward: Reward{Gold: 40, Stamina: 5}},
+	{ID: "win3", Title: Text{"Win 3 fights", "Thắng 3 trận"}, Woods: true,
+		Counter: Counter{Kind: "event", Item: "win"}, Target: 3, Reward: Reward{Gold: 40, Items: map[string]int{"herb_salve": 1}}},
+	{ID: "answer10", Title: Text{"Answer 10 questions right in battle", "Trả lời đúng 10 câu trong trận"}, Woods: true,
+		Learning: true, Counter: Counter{Kind: "event", Item: "answer_right"}, Target: 10, Reward: Reward{Gold: 40, Stamina: 5}},
+	{ID: "clean1", Title: Text{"Win a fight without being hit", "Thắng một trận không bị trúng đòn"}, Woods: true,
+		Counter: Counter{Kind: "event", Item: "win_clean"}, Target: 1, Reward: Reward{Gold: 50}},
 }
 
 // DailyCount is how many tasks a day holds.
@@ -195,13 +266,17 @@ var DailyChest = Reward{Gold: 60, Items: map[string]int{"seed_bloom": 1, "ginger
 
 // DailyFor is the day's tasks for one player: random, but the same every time
 // that player asks on that day, and always with at least one in the app itself.
-func DailyFor(user, day string) []Daily {
+// Tasks in the woods come into the draw once the woods are open.
+func DailyFor(user, day string, woods bool) []Daily {
 	h := fnv.New64a()
 	_, _ = h.Write([]byte(user + "|" + day))
 	r := rand.New(rand.NewSource(int64(h.Sum64())))
 
 	var learning, other []Daily
 	for _, d := range DailyPool {
+		if d.Woods && !woods {
+			continue
+		}
 		if d.Learning {
 			learning = append(learning, d)
 		} else {

@@ -62,8 +62,8 @@ func countFor(ctx context.Context, tx pgx.Tx, user uuid.UUID, c game.Counter, fr
 	switch c.Kind {
 	case "event":
 		sql = `select count(*)::int from game_events
-		       where user_id = $1 and at >= $2 and at < $3 and kind = $4`
-		args = append(args, c.Item)
+		       where user_id = $1 and at >= $2 and at < $3 and kind = $4 and ($5 = '' or item = $5)`
+		args = append(args, c.Item, c.Of)
 	case "words":
 		sql = `select count(*)::int from game_events
 		       where user_id = $1 and at >= $2 and at < $3 and kind = 'harvest' and item <> ''`
@@ -169,7 +169,7 @@ func readQuests(ctx context.Context, tx pgx.Tx, user uuid.UUID, p profileRow, no
 		return out, err
 	}
 	allClaimed := true
-	for _, d := range game.DailyFor(user.String(), day) {
+	for _, d := range game.DailyFor(user.String(), day, p.woodsOpen()) {
 		n, err := countFor(ctx, tx, user, d.Counter, start, end)
 		if err != nil {
 			return out, err
