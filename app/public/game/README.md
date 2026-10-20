@@ -31,6 +31,8 @@ farm is playable with any subset of this folder.
 | `tiles/farm.png` + `farm_atlas.json` | 64 px tiles, each with 2 px of its own edge repeated around it (`margin`, `spacing`), named in the atlas: grass, dirt, paths, tilled soil, framed (upgraded) soil, the locked plot, the pond's pieces, the fence, flowers and other small things |
 | `objects/*.png` | The house, Mira's cart, Bram's bench, the quest board, trees (3 kinds), the bush, rocks, a stump; `mailbox.png` is two frames, empty and with a letter |
 | `crops/{sprout,bloom,golden}.png` | 5 growth stages each, the last one ripe |
+| `monsters/{word_slime,echo_bat}.png` | The woods' monsters on the map: 4 frames of 24×24 side by side, a bob that loops. Not in the pack yet — the game paints stand-ins |
+| `monsters/{word_slime,echo_bat}_battle.png` | The same monster drawn larger for the fight panel (shown 72 px, 52 px on a phone). Not in the pack yet — an SVG stand-in until then |
 | `fx/*.png` | The harvest burst, dust at the player's heels, the sparkle over a ripe crop, the "!" over what the player faces, Zs |
 | `items/*.png` | 96 px icons: coin, stamina, the seeds, tea, chests, the quest book, the letter, the word scroll. A new seed or item needs one named after its id in `server/internal/game/catalog.go` |
 | `portraits/*.png` | Four faces side by side: neutral, happy, thinking, worried |

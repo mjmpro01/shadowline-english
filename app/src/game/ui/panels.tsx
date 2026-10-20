@@ -108,7 +108,9 @@ export function ShopPanel({
                 <span className="arena-muted">
                   {crop
                     ? t('arena.shop.grows', Math.round(crop.growSeconds / 60), crop.gold)
-                    : t('arena.shop.restores', item.stamina ?? 0)}
+                    : item.hp
+                      ? t('arena.shop.heals', item.hp)
+                      : t('arena.shop.restores', item.stamina ?? 0)}
                 </span>
                 <span className="arena-muted">{t('arena.shop.owned', state.inventory[item.id] ?? 0)}</span>
               </div>

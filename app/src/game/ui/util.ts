@@ -22,6 +22,7 @@ export function useNow(ms = 1000): number {
 const REFUSALS = [
   'no_stamina', 'no_gold', 'not_ripe', 'occupied', 'locked', 'no_seed', 'empty', 'rested',
   'full', 'no_item', 'unlocked', 'max_level', 'not_done', 'claimed', 'no_quest',
+  'woods_locked', 'no_hp', 'in_battle', 'respawning', 'battle_over',
 ]
 
 export function gameError(err: unknown, t: Translate): string {

@@ -26,6 +26,7 @@ export function Hud({
   const now = useNow() + skew
   const p = state.profile
   const next = secondsUntil(p.staminaNextAt, now)
+  const hpNext = secondsUntil(p.hpNextAt, now)
   return (
     <div className="arena-hud">
       <div className="arena-stat" title={t('arena.gold')}>
@@ -43,6 +44,20 @@ export function Hud({
           <span className="arena-stat-small" data-testid="arena-stamina">
             {p.stamina}/{p.staminaMax}
             {next > 0 && ` · ${t('arena.staminaNext', clock(next))}`}
+          </span>
+        </div>
+      </div>
+      <div className="arena-stat" title={t('arena.hp')}>
+        <span className="arena-heart" aria-hidden="true">
+          ♥
+        </span>
+        <div className="arena-stamina">
+          <div className="arena-bar arena-bar-hp" aria-hidden="true">
+            <span style={{ width: `${(p.hp / p.hpMax) * 100}%` }} />
+          </div>
+          <span className="arena-stat-small" data-testid="arena-hp">
+            {p.hp}/{p.hpMax}
+            {hpNext > 0 && ` · ${t('arena.staminaNext', clock(hpNext))}`}
           </span>
         </div>
       </div>
@@ -86,6 +101,7 @@ const ACTION_LABEL = {
   house: 'arena.act.house',
   mailbox: 'arena.act.mailbox',
   board: 'arena.act.board',
+  monster: 'arena.act.monster',
 } as const
 
 /** The action button: what pressing E (or tapping it) would do right now. */

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { clock, cropStage, secondsUntil } from '../src/game/growth'
-import { DEFAULT_TILES, ground, plotRect, solids, tile } from '../src/game/world/farm'
+import { DEFAULT_TILES, FARM_GATE, FROM_WOODS, TILE, ground, plotRect, solids, tile, type Rect } from '../src/game/world/farm'
+import { FROM_FARM, WOODS_GATE, woodsSolids } from '../src/game/world/woods'
 import { sameTarget } from '../src/game/bus'
 
 describe('a crop growing', () => {
@@ -57,5 +58,34 @@ describe('targets', () => {
     expect(sameTarget({ kind: 'npc', id: 'mira' }, { kind: 'npc', id: 'bram' })).toBe(false)
     expect(sameTarget(null, null)).toBe(true)
     expect(sameTarget({ kind: 'house' }, null)).toBe(false)
+  })
+})
+
+describe('the woods', () => {
+  const blocks = (rects: Rect[], x: number, y: number) =>
+    rects.some((b) => x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h)
+
+  it('leaves room at every monster spot the server has', () => {
+    // server/internal/game/monsters.go, Spawns.
+    const spawns = [
+      [9, 7],
+      [15, 12],
+      [7, 15],
+      [20, 6],
+      [24, 15],
+      [27, 8],
+    ]
+    const walls = woodsSolids()
+    for (const [x, y] of spawns) expect(blocks(walls, x, y), `spawn ${x},${y}`).toBe(false)
+  })
+
+  it('keeps both gates open and lands the player off them', () => {
+    expect(blocks(solids(), FARM_GATE.x, FARM_GATE.y)).toBe(false)
+    expect(blocks(woodsSolids(), WOODS_GATE.x, WOODS_GATE.y)).toBe(false)
+    const tileOf = (p: { x: number; y: number }) => [Math.floor(p.x / TILE), Math.floor((p.y - 1) / TILE)] as const
+    expect(blocks(solids(), ...tileOf(FROM_WOODS))).toBe(false)
+    expect(blocks(woodsSolids(), ...tileOf(FROM_FARM))).toBe(false)
+    expect(blocks([FARM_GATE], ...tileOf(FROM_WOODS))).toBe(false)
+    expect(blocks([WOODS_GATE], ...tileOf(FROM_FARM))).toBe(false)
   })
 })

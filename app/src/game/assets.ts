@@ -38,6 +38,10 @@ export const DUST_FRAMES = 4
 export const ZZZ_FRAMES = 3
 /** Kinds of tree in objects/tree.png, side by side. */
 export const TREE_KINDS = 3
+/** The monsters of the woods, and the frames of each one's sheet: a few of
+ *  it bobbing in place, which is also how it moves. */
+export const MONSTER_IDS = ['word_slime', 'echo_bat'] as const
+export const MONSTER_FRAMES = 4
 
 export const ASSETS: AssetSpec[] = [
   { key: 'player', file: 'characters/player.png', frame: { w: 16, h: 32 } },
@@ -58,6 +62,7 @@ export const ASSETS: AssetSpec[] = [
   { key: 'sparkle', file: 'fx/sparkle.png', frame: { w: 16, h: 16 } },
   { key: 'dust', file: 'fx/dust.png', frame: { w: 16, h: 16 } },
   { key: 'sleep_z', file: 'fx/sleep_z.png', frame: { w: 16, h: 16 } },
+  ...MONSTER_IDS.map((id) => ({ key: `monster-${id}`, file: `monsters/${id}.png`, frame: { w: 24, h: 24 } })),
 ]
 
 export const BASE = `${import.meta.env.BASE_URL}game/`

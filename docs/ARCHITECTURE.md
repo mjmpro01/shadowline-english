@@ -254,7 +254,7 @@ API.
 | Hồ sơ | `GET /profile`, `PATCH /profile`, `PUT /profile/avatar` |
 | Tài khoản | `GET /account/export`, `POST /account/password`, `DELETE /account` |
 | Gia sư | `GET /tutor`, `POST /tutor/chat` (stream), `GET /tutor/conversations`, `GET/DELETE /tutor/conversations/{id}` |
-| Arena | `GET /game/state`, `GET /game/quests`, `POST /game/{plant,harvest,unlock,upgrade,buy,use,sleep,listen,move}`, `POST /game/quests/claim`. Từ chối có mã trả 409 `{error, code}` (`no_gold`, `no_stamina`, `not_ripe`…) |
+| Arena | `GET /game/state`, `GET /game/quests`, `POST /game/{plant,harvest,unlock,upgrade,buy,use,sleep,listen,move}`, `POST /game/quests/claim`; trận đánh: `GET /game/battle` (trận đang dở, hoặc `null`), `POST /game/battle/{start,answer,flee}`. Từ chối có mã trả 409 `{error, code}` (`no_gold`, `no_stamina`, `not_ripe`, `woods_locked`, `no_hp`, `in_battle`, `respawning`, `battle_over`…) |
 | Khác | `GET /leaderboard`, `GET /banners` |
 
 **Quản trị (`/api/admin`, cần quyền admin)**
@@ -495,11 +495,13 @@ Giới hạn mặc định:
 
 | Bảng | Nội dung |
 | --- | --- |
-| `game_profiles` | Một dòng mỗi người chơi: `gold`, `stamina` + `stamina_at` (thể lực tính lại theo thời gian, không cần job), `slept_at`, vị trí `map`/`x`/`y`, bước truyện `main_step` + `main_step_at` |
+| `game_profiles` | Một dòng mỗi người chơi: `gold`, `stamina` + `stamina_at` (thể lực tính lại theo thời gian, không cần job), máu `hp` + `hp_at` (cùng cách), `slept_at`, vị trí `map` (`farm`/`woods`)/`x`/`y`, bước truyện `main_step` + `main_step_at` |
 | `game_plots` | 12 ô đất mỗi người (`idx` 0–11): `unlocked`, `level` 0–3, `crop`, `planted_at` |
 | `game_inventory` | `item`, `qty` |
 | `game_events` | Nhật ký việc làm (`plant`, `harvest`, `buy`, `sleep`, `unlock`, `listen`…, kèm vàng đã tiêu) — nhiệm vụ đếm tiến độ từ đây |
 | `game_quest_claims` | Thưởng đã nhận: `(user_id, quest, day)` là khoá chính nên không nhận trùng |
+| `game_battles` | Một dòng mỗi trận: quái, máu quái, lượt, số câu đúng/sai, câu hỏi đang hỏi (`question`, kèm `q_word`/`q_answer` — đáp án không bao giờ gửi về trình duyệt), `issued_at`/`deadline`, các từ đã hỏi (`asked`) và đã cập nhật lịch ôn (`reviewed`), `state` (`active`/`won`/`lost`/`fled`), vàng, đồ rơi, tiền phạt. Mỗi người tối đa một trận `active` (unique index một phần) |
+| `game_spawns` | Điểm quái nào bị hạ lúc nào; quái về chỗ sau 10 phút |
 | `word_ranks` | Thứ hạng tần suất của từ (nạp một lần từ `common_words.txt`), để mỗi loại hạt ra từ ở độ khó của nó |
 
 Luật chơi (giá, thời gian lớn, thưởng, cốt truyện, mẫu nhiệm vụ ngày) nằm trong
@@ -533,6 +535,7 @@ code ở `server/internal/game/`, không nằm trong DB.
 | `00024_fetch_from_link` | Nhập video từ link (`fetching`, `source_url`, `source_credit`, `fetch_jobs`) — đã bỏ |
 | `00025_drop_fetch_from_link` | Gỡ những gì 00024 thêm; tập đang chờ tải chuyển `failed` |
 | `00026_game` | Các bảng Arena (7.6); `00026_word_ranks` ghi lại việc nạp `word_ranks` một lần |
+| `00027_battles` | Máu (`game_profiles.hp`, `hp_at`), `game_battles`, `game_spawns` |
 
 Số `00008` bị bỏ trống, không phải thiếu file. Việc giữ lại job cắt / chép lời
 thất bại (`state='failed'`) nằm trong code worker và API, không cần migration vì
@@ -818,7 +821,25 @@ Server giữ toàn bộ trạng thái và quyết định mọi kết quả; tr�
 4. App: `src/screens/ArenaScreen.tsx` giữ trạng thái và các bảng (React);
    `src/game/` là cảnh Phaser, chỉ tải khi mở Arena. Hai bên nói chuyện qua
    `GameBus`. Hình nằm ở `app/public/game/` (xem README ở đó); thiếu file nào
-   thì game tự vẽ hình tạm.
+   thì game tự vẽ hình tạm. `MapScene` là phần chung (người chơi, camera, phím,
+   cổng); `FarmScene` và `WoodsScene` kế thừa nó. Rừng mở từ bước chương 2
+   (`game.WoodsStep`); trước đó cổng đẩy người chơi lại.
+5. Trận đánh (chương 2), theo lượt:
+   - `start`: kiểm tra rừng đã mở, quái còn ở đó, máu ≥ 6, không có trận dở;
+     trừ 3 thể lực, chọn từ, ra câu hỏi đầu.
+   - Từ được chọn trong Từ vựng của người học (đến hạn ôn trước); Từ vựng ít hơn
+     8 từ thì xen từ `word_ranks` trong dải độ khó của quái. 4 kiểu câu: chọn
+     nghĩa, nghe chọn từ, xếp chữ, nhìn IPA chọn từ.
+   - `answer`: quá `deadline` + 1,5s là trễ (tính sai). Đúng thì quái mất 1 máu
+     (2 nếu trả lời trong 1/3 thời gian đầu); sai thì người chơi mất máu theo sức
+     đánh của quái. Lần trả lời đầu cho mỗi từ trong Từ vựng cập nhật lịch ôn như
+     ôn thẻ (`Recalled`/`Forgotten`).
+   - Thắng: vàng (thêm nếu không trúng đòn nào), có thể rơi đồ, ghi `game_spawns`.
+     Thua: về cửa nhà với 15 máu, mất `min(50, 10% vàng)`.
+   - Mỗi lượt ghi `game_events` (`fight`, `answer_right`/`answer_wrong`, `win`
+     kèm loại quái, `win_clean`, `faint`), nên nhiệm vụ chương 2 và nhiệm vụ ngày
+     của rừng đếm từ đó như mọi nhiệm vụ khác.
+   - Tải lại trang giữa trận thì `GET /game/battle` mở lại đúng câu đang hỏi.
 
 ## 13. Cấu hình
 

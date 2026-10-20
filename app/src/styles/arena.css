@@ -511,6 +511,273 @@
   font-size: 15px;
 }
 
+/* — health — */
+.arena-heart {
+  color: #e53935;
+  font-size: 16px;
+  line-height: 1;
+}
+.arena-bar-hp > span {
+  background: #e53935;
+}
+
+/* — a fight —
+   The monster faces the player across the top; the question takes the rest.
+   A hit shakes whoever took it. */
+.arena-battle {
+  max-height: 100%;
+}
+.arena-battle-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: -6px 0 var(--space-2);
+}
+.arena-fighter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1;
+}
+.arena-fighter-you {
+  justify-content: flex-end;
+  text-align: right;
+}
+.arena-fighter-info {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+  max-width: 180px;
+}
+.arena-fighter-info strong {
+  font-family: var(--font-heading);
+  font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.arena-fighter[data-hurt] {
+  animation: arena-shake 0.35s;
+}
+.arena-fighter[data-hurt] .arena-monster-img {
+  animation: arena-flash 0.35s;
+}
+@keyframes arena-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  50% {
+    transform: translateX(5px);
+  }
+  75% {
+    transform: translateX(-3px);
+  }
+}
+@keyframes arena-flash {
+  40% {
+    filter: brightness(2.2) saturate(0.4);
+  }
+}
+.arena-health {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 6px;
+}
+.arena-health .arena-bar {
+  height: 10px;
+}
+.arena-health[data-kind='you'] .arena-bar > span {
+  background: #e53935;
+}
+.arena-health[data-kind='monster'] .arena-bar > span {
+  background: #8e24aa;
+}
+.arena-health .arena-stat-small {
+  opacity: 1;
+  color: #6b5c4c;
+}
+.arena-monster-img {
+  width: 72px;
+  height: 72px;
+  flex: none;
+  image-rendering: pixelated;
+  object-fit: contain;
+  animation: arena-bob 1.6s ease-in-out infinite;
+}
+@keyframes arena-bob {
+  50% {
+    transform: translateY(-3px);
+  }
+}
+.arena-battle-body {
+  min-height: 220px;
+}
+.arena-battle-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.arena-question {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.arena-clock {
+  height: 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, #2b2119 18%, transparent);
+  overflow: hidden;
+}
+.arena-clock > span {
+  display: block;
+  height: 100%;
+  background: #8bc34a;
+  transition: width 0.1s linear;
+}
+.arena-clock[data-low='true'] > span {
+  background: #e53935;
+}
+.arena-question-word {
+  font-family: var(--font-heading);
+  font-size: 30px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+}
+.arena-question-word.arena-ipa {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: 26px;
+}
+.arena-question-hint {
+  font-style: italic;
+  text-align: center;
+}
+.arena-hear {
+  align-self: center;
+}
+.arena-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+.arena-options[data-long='true'] {
+  grid-template-columns: 1fr;
+}
+.arena-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 2px solid #6b4423;
+  background: #fffaf0;
+  color: #2b2119;
+  font: inherit;
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 2px 0 #6b4423;
+}
+.arena-option:hover:not(:disabled) {
+  background: #fff3d6;
+}
+.arena-option:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+.arena-option .arena-kbd {
+  flex: none;
+}
+.arena-keys {
+  text-align: center;
+}
+
+.arena-scramble {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: center;
+}
+.arena-spelled,
+.arena-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+.arena-slot,
+.arena-tile {
+  width: 38px;
+  height: 42px;
+  display: grid;
+  place-content: center;
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 700;
+  text-transform: lowercase;
+}
+.arena-slot {
+  border-bottom: 3px solid #6b4423;
+  background: color-mix(in srgb, #2b2119 8%, transparent);
+}
+.arena-tile {
+  border: 2px solid #6b4423;
+  background: #fffaf0;
+  color: #2b2119;
+  cursor: pointer;
+  box-shadow: 0 2px 0 #6b4423;
+}
+.arena-tile:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.arena-turn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.arena-turn-verdict {
+  font-family: var(--font-heading);
+  font-size: 22px;
+  font-weight: 700;
+}
+.arena-turn[data-right='true'] .arena-turn-verdict {
+  color: #2e7d32;
+}
+.arena-turn[data-right='false'] .arena-turn-verdict {
+  color: #c62828;
+}
+.arena-turn-hit {
+  font-size: 15px;
+}
+.arena-turn .btn,
+.arena-outcome .btn {
+  align-self: flex-start;
+}
+.arena-outcome[data-state='won'] .arena-turn-verdict {
+  color: #2e7d32;
+}
+.arena-outcome[data-state='lost'] .arena-turn-verdict {
+  color: #c62828;
+}
+.arena-word-list {
+  font-family: var(--font-mono);
+}
+
 @media (max-width: 760px) {
   .app-content:has(> .arena) {
     padding: var(--space-2) var(--space-2) 84px;
@@ -525,10 +792,17 @@
     gap: 4px;
   }
   .arena-stamina {
-    min-width: 64px;
+    min-width: 40px;
+  }
+  .arena-stat,
+  .arena-hud-btn {
+    padding: 4px 6px;
   }
   .arena-stat-small {
     display: none;
+  }
+  .arena-health .arena-stat-small {
+    display: inline;
   }
   .arena-tracker {
     top: 58px;
@@ -548,5 +822,21 @@
   .arena-portrait {
     width: 64px;
     height: 64px;
+  }
+  .arena-monster-img {
+    width: 52px;
+    height: 52px;
+  }
+  .arena-battle-body {
+    min-height: 0;
+  }
+  .arena-question-word {
+    font-size: 24px;
+  }
+  .arena-slot,
+  .arena-tile {
+    width: 32px;
+    height: 38px;
+    font-size: 18px;
   }
 }

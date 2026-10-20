@@ -451,6 +451,45 @@ function sleepZ(ctx: Ctx) {
   }
 }
 
+/** A green slime, squashing and stretching as it bobs. */
+function slime(ctx: Ctx) {
+  for (let f = 0; f < 4; f++) {
+    const x = f * 24
+    const squash = [0, 1, 2, 1][f]
+    const w = 16 + squash * 2
+    const h = 12 - squash
+    const left = x + 12 - w / 2
+    const top = 22 - h
+    px(ctx, left + 2, top, w - 4, h, '#7cb342')
+    px(ctx, left, top + 3, w, h - 3, '#7cb342')
+    px(ctx, left + 1, 22, w - 2, 1, '#33691e')
+    px(ctx, left + 3, top + 1, 4, 2, '#c5e1a5')
+    px(ctx, x + 9, top + 4, 2, 3, '#1b1b1b')
+    px(ctx, x + 14, top + 4, 2, 3, '#1b1b1b')
+    px(ctx, x + 11, top + 8, 3, 1, '#33691e')
+  }
+}
+
+/** A purple bat, flapping. */
+function bat(ctx: Ctx) {
+  for (let f = 0; f < 4; f++) {
+    const x = f * 24
+    const lift = [0, 3, 5, 3][f]
+    const y = 8 + (f % 2)
+    px(ctx, x + 9, y, 6, 7, '#5e35b1')
+    px(ctx, x + 10, y - 2, 1, 2, '#5e35b1')
+    px(ctx, x + 13, y - 2, 1, 2, '#5e35b1')
+    px(ctx, x + 10, y + 2, 1, 1, '#ffeb3b')
+    px(ctx, x + 13, y + 2, 1, 1, '#ffeb3b')
+    // Wings: up on the beat, out between.
+    px(ctx, x + 2, y + 2 - lift, 7, 3, '#7e57c2')
+    px(ctx, x + 15, y + 2 - lift, 7, 3, '#7e57c2')
+    px(ctx, x + 1, y + 4 - lift, 3, 2, '#7e57c2')
+    px(ctx, x + 20, y + 4 - lift, 3, 2, '#7e57c2')
+    px(ctx, x + 9, 21, 6, 1, 'rgba(0,0,0,0.25)')
+  }
+}
+
 const PAINTERS: Record<string, { w: number; h: number; draw: (ctx: Ctx) => void }> = {
   player: { w: 16 * CHAR_COLS, h: 32 * 17, draw: (c) => characterSheet(c, PEOPLE.player) },
   // People other than the player only stand and walk: eight rows.
@@ -475,6 +514,8 @@ const PAINTERS: Record<string, { w: number; h: number; draw: (ctx: Ctx) => void 
   sparkle: { w: 64, h: 16, draw: sparkle },
   dust: { w: 64, h: 16, draw: dust },
   sleep_z: { w: 48, h: 16, draw: sleepZ },
+  'monster-word_slime': { w: 96, h: 24, draw: slime },
+  'monster-echo_bat': { w: 96, h: 24, draw: bat },
 }
 
 /** Paints a placeholder for every picture the artist has not delivered yet. */
