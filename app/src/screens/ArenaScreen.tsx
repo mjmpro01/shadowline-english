@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { useI18n } from '../i18n'
 import { Loading } from '../components/LoadState'
 import { useApp } from '../store/context'
-import { gameApi, type GameState, type HarvestedWord, type Quests, type Reward } from '../game/api'
+import { gameApi, type Battle, type GameState, type HarvestedWord, type Quests, type Reward, type Turn } from '../game/api'
 import { art } from '../game/assets'
-import { GameBus, type NpcId, type Target } from '../game/bus'
+import { GameBus, type MapName, type NpcId, type Target } from '../game/bus'
 import { idleLine } from '../game/npcs'
+import { BattlePanel } from '../game/ui/BattlePanel'
 import { Dialogue } from '../game/ui/Dialogue'
 import { ActionButton, Hud, Joystick, Tracker } from '../game/ui/Hud'
 import { BagPanel, BramPanel, HousePanel, PlotPanel, ShopPanel, WordCard } from '../game/ui/panels'
@@ -23,6 +24,7 @@ type Panel =
   | { kind: 'bag' }
   | { kind: 'quests'; tab: 'main' | 'daily' }
   | { kind: 'word'; word: HarvestedWord | null; gold: number }
+  | { kind: 'battle'; battle: Battle; turn: Turn | null }
 
 type Game = { destroy: (removeCanvas: boolean) => void }
 
@@ -70,15 +72,18 @@ export function ArenaScreen() {
   const load = useCallback(async () => {
     setFailed(false)
     try {
-      const [s, q] = await Promise.all([gameApi.state(), gameApi.quests()])
+      const [s, q, b] = await Promise.all([gameApi.state(), gameApi.quests(), gameApi.battle()])
       take(s)
       setQuests(q)
-      // A new farmer's first sight is Grandma's letter.
-      if (q.main?.id === 'letter') setPanel({ kind: 'talk', who: 'grandma' })
+      // A fight left half-way goes on where it was; a new farmer's first
+      // sight is Grandma's letter.
+      if (b.battle) setPanel({ kind: 'battle', battle: b.battle, turn: null })
+      else if (q.main?.id === 'letter') setPanel({ kind: 'talk', who: 'grandma' })
       const parent = holder.current
       if (parent && !game.current) {
         const start = s.profile.x || s.profile.y ? { x: s.profile.x, y: s.profile.y } : null
-        game.current = import('../game/createGame').then(({ createGame }) => createGame(parent, bus, start))
+        const map = s.profile.map === 'woods' && s.profile.woodsOpen ? 'woods' : 'farm'
+        game.current = import('../game/createGame').then(({ createGame }) => createGame(parent, bus, start, map))
         await game.current
       }
     } catch {
@@ -108,6 +113,8 @@ export function ArenaScreen() {
   }, [bus, panel])
 
   // What the scene says back.
+  /** Where the scene is sent once it is up, when it was sent before. */
+  const pendingGoto = useRef<{ map: MapName; x: number; y: number } | null>(null)
   const questsRef = useRef(quests)
   useEffect(() => {
     questsRef.current = quests
@@ -115,8 +122,14 @@ export function ArenaScreen() {
   useEffect(() => {
     const offs = [
       bus.on('focus', setFocus),
-      bus.on('ready', () => setReady(true)),
-      bus.on('moved', ({ x, y }) => void gameApi.move(x, y).catch(() => {})),
+      bus.on('ready', () => {
+        setReady(true)
+        const to = pendingGoto.current
+        pendingGoto.current = null
+        if (to) bus.emit('goto', to)
+      }),
+      bus.on('moved', ({ map, x, y }) => void gameApi.move(map, x, y).catch(() => {})),
+      bus.on('blocked', () => setToast({ text: t('arena.woods.locked') })),
       bus.on('interact', (target) => {
         switch (target.kind) {
           case 'plot':
@@ -212,6 +225,72 @@ export function ArenaScreen() {
       setToast({ text: gameError(err, t) })
     } finally {
       setBusy(false)
+    }
+  }
+
+  /** Walks into a fight with the monster at this spot. */
+  const starting = useRef(false)
+  const fight = useCallback(
+    async (spawn: string) => {
+      if (starting.current) return
+      starting.current = true
+      setBusy(true)
+      try {
+        const res = await gameApi.startBattle(spawn)
+        take(res.state)
+        setPanel({ kind: 'battle', battle: res.battle, turn: null })
+      } catch (err) {
+        setToast({ text: gameError(err, t) })
+      } finally {
+        starting.current = false
+        setBusy(false)
+      }
+    },
+    [t, take],
+  )
+  useEffect(() => bus.on('interact', (target) => target.kind === 'monster' && void fight(target.spawn)), [bus, fight])
+
+  const answer = async (battle: Battle, said: string) => {
+    setBusy(true)
+    try {
+      const res = await gameApi.answer(battle.id, said)
+      take(res.state)
+      setPanel({ kind: 'battle', battle: res.battle, turn: res.turn })
+      void refreshQuests()
+    } catch (err) {
+      setToast({ text: gameError(err, t) })
+      // The fight may have ended elsewhere; show it as the server has it.
+      const now = await gameApi.battle().catch(() => null)
+      if (now && !now.battle) setPanel(null)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const flee = async (battle: Battle) => {
+    setBusy(true)
+    try {
+      const res = await gameApi.flee(battle.id)
+      take(res.state)
+      setPanel({ kind: 'battle', battle: res.battle, turn: null })
+    } catch (err) {
+      setToast({ text: gameError(err, t) })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** After the fight: the words just practised are in Vocabulary, and a
+   *  farmer who fainted wakes at home. */
+  const leaveBattle = (battle: Battle) => {
+    setPanel(null)
+    void refreshQuests()
+    if (battle.words.length > 0) void refreshVocab()
+    if (battle.state === 'lost' && state) {
+      // A fight reopened on loading can end before the scene is drawn.
+      const home = { map: 'farm' as const, x: state.profile.x, y: state.profile.y }
+      if (ready) bus.emit('goto', home)
+      else pendingGoto.current = home
     }
   }
 
@@ -334,6 +413,21 @@ export function ArenaScreen() {
         />
       )}
       {panel?.kind === 'talk' && talk(panel.who)}
+      {panel?.kind === 'battle' && (
+        <BattlePanel
+          battle={panel.battle}
+          turn={panel.turn}
+          state={state}
+          locale={locale}
+          t={t}
+          busy={busy}
+          skew={skew}
+          onAnswer={(said) => void answer(panel.battle, said)}
+          onNext={() => setPanel({ kind: 'battle', battle: panel.battle, turn: null })}
+          onFlee={() => void flee(panel.battle)}
+          onClose={() => leaveBattle(panel.battle)}
+        />
+      )}
       {quests && panel?.kind === 'quests' && (
         <QuestBook
           quests={quests}

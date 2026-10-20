@@ -43,12 +43,17 @@ type GameProfile struct {
 	Stamina       int        `json:"stamina"`
 	StaminaMax    int        `json:"staminaMax"`
 	StaminaNextAt *time.Time `json:"staminaNextAt"`
+	HP            int        `json:"hp"`
+	HPMax         int        `json:"hpMax"`
+	HPNextAt      *time.Time `json:"hpNextAt"`
 	// CanSleepAt is when sleeping will next refill stamina; null when it would now.
 	CanSleepAt *time.Time `json:"canSleepAt"`
 	Map        string     `json:"map"`
 	X          int        `json:"x"`
 	Y          int        `json:"y"`
 	MainStep   int        `json:"mainStep"`
+	// WoodsOpen: the story has reached the woods.
+	WoodsOpen bool `json:"woodsOpen"`
 }
 
 type GamePlot struct {
@@ -77,6 +82,17 @@ type GameState struct {
 	UnlockCost   int            `json:"unlockCost"`
 	UpgradeCosts []int          `json:"upgradeCosts"`
 	Words        int            `json:"words"`
+	// The woods: what lives there, and where, with when each beaten one comes
+	// back. Empty until the woods are open.
+	Monsters []game.Monster `json:"monsters"`
+	Spawns   []SpawnView    `json:"spawns"`
+}
+
+// SpawnView is a place in the woods, and when its monster is back if it was
+// beaten (null: it is there now).
+type SpawnView struct {
+	game.Spawn
+	RespawnAt *time.Time `json:"respawnAt"`
 }
 
 // HarvestedWord is the word a crop yielded, with what it means and how it sounds.
@@ -95,7 +111,11 @@ type profileRow struct {
 	x, y       int
 	mainStep   int
 	mainStepAt time.Time
+	hp         int
+	hpAt       time.Time
 }
+
+func (p profileRow) woodsOpen() bool { return p.mainStep >= game.WoodsStep }
 
 // ensureGame gives a player a farm the first time they arrive: the starting
 // gold, the first plots cleared, a few seeds in the bag.
@@ -129,10 +149,11 @@ func lockGame(ctx context.Context, tx pgx.Tx, user uuid.UUID) (profileRow, time.
 	var p profileRow
 	var now time.Time
 	err := tx.QueryRow(ctx, `
-		select gold, stamina, stamina_at, slept_at, map, x, y, main_step, main_step_at, now()
+		select gold, stamina, stamina_at, slept_at, map, x, y, main_step, main_step_at,
+		       hp, hp_at, now()
 		from game_profiles where user_id = $1 for update`, user).
 		Scan(&p.gold, &p.stamina, &p.staminaAt, &p.sleptAt, &p.mapName, &p.x, &p.y,
-			&p.mainStep, &p.mainStepAt, &now)
+			&p.mainStep, &p.mainStepAt, &p.hp, &p.hpAt, &now)
 	return p, now, err
 }
 
@@ -140,9 +161,11 @@ func saveProfile(ctx context.Context, tx pgx.Tx, user uuid.UUID, p profileRow) e
 	_, err := tx.Exec(ctx, `
 		update game_profiles
 		set gold = $2, stamina = $3, stamina_at = $4, slept_at = $5,
-		    main_step = $6, main_step_at = $7
+		    main_step = $6, main_step_at = $7, hp = $8, hp_at = $9,
+		    map = $10, x = $11, y = $12
 		where user_id = $1`,
-		user, p.gold, p.stamina, p.staminaAt, p.sleptAt, p.mainStep, p.mainStepAt)
+		user, p.gold, p.stamina, p.staminaAt, p.sleptAt, p.mainStep, p.mainStepAt,
+		p.hp, p.hpAt, p.mapName, p.x, p.y)
 	return err
 }
 
@@ -203,18 +226,39 @@ func (s *Store) GameState(ctx context.Context, user uuid.UUID) (GameState, error
 
 func readState(ctx context.Context, tx pgx.Tx, user uuid.UUID, p profileRow, now time.Time) (GameState, error) {
 	stamina, next := game.Stamina(p.stamina, p.staminaAt, now)
+	hp, hpNext := game.HP(p.hp, p.hpAt, now)
 	out := GameState{
 		Now: now,
 		Profile: GameProfile{
 			Gold: p.gold, Stamina: stamina, StaminaMax: game.StaminaMax,
-			Map: p.mapName, X: p.x, Y: p.y, MainStep: p.mainStep,
+			HP: hp, HPMax: game.HPMax,
+			Map: p.mapName, X: p.x, Y: p.y, MainStep: p.mainStep, WoodsOpen: p.woodsOpen(),
 		},
 		Inventory:    map[string]int{},
 		Crops:        game.Crops,
 		UpgradeCosts: []int{},
+		Monsters:     []game.Monster{},
+		Spawns:       []SpawnView{},
 	}
 	if !next.IsZero() {
 		out.Profile.StaminaNextAt = &next
+	}
+	if !hpNext.IsZero() {
+		out.Profile.HPNextAt = &hpNext
+	}
+	if p.woodsOpen() {
+		out.Monsters = game.Monsters
+		back, err := respawns(ctx, tx, user, now)
+		if err != nil {
+			return out, err
+		}
+		for _, sp := range game.Spawns {
+			view := SpawnView{Spawn: sp}
+			if at, ok := back[sp.ID]; ok {
+				view.RespawnAt = &at
+			}
+			out.Spawns = append(out.Spawns, view)
+		}
 	}
 	if p.sleptAt != nil {
 		if again := p.sleptAt.Add(game.SleepEvery); again.After(now) {
@@ -449,12 +493,13 @@ func (s *Store) Buy(ctx context.Context, user uuid.UUID, item string, qty int) (
 func (s *Store) UseItem(ctx context.Context, user uuid.UUID, item string) (GameState, error) {
 	return s.gameAction(ctx, user, func(tx pgx.Tx, p *profileRow, now time.Time) error {
 		it, ok := game.ItemByID(item)
-		if !ok || it.Stamina == 0 {
+		if !ok || (it.Stamina == 0 && it.HP == 0) {
 			return badMove("not_usable", "that cannot be used")
 		}
-		current, _ := game.Stamina(p.stamina, p.staminaAt, now)
-		if current >= game.StaminaMax {
-			return refuse("full", "stamina is already full")
+		stamina, _ := game.Stamina(p.stamina, p.staminaAt, now)
+		hp, _ := game.HP(p.hp, p.hpAt, now)
+		if (it.Stamina == 0 || stamina >= game.StaminaMax) && (it.HP == 0 || hp >= game.HPMax) {
+			return refuse("full", "already full")
 		}
 		had, err := takeItem(ctx, tx, user, item)
 		if err != nil {
@@ -463,18 +508,24 @@ func (s *Store) UseItem(ctx context.Context, user uuid.UUID, item string) (GameS
 		if !had {
 			return refuse("no_item", "none left")
 		}
-		p.stamina, p.staminaAt = game.SetStamina(p.stamina, p.staminaAt, now, current+it.Stamina)
+		if it.Stamina > 0 {
+			p.stamina, p.staminaAt = game.SetStamina(p.stamina, p.staminaAt, now, stamina+it.Stamina)
+		}
+		if it.HP > 0 {
+			p.hp, p.hpAt = game.SetHP(p.hp, p.hpAt, now, hp+it.HP)
+		}
 		return logEvent(ctx, tx, user, "use", item, 0)
 	})
 }
 
-// Sleep refills stamina, once every few hours.
+// Sleep refills stamina and health, once every few hours.
 func (s *Store) Sleep(ctx context.Context, user uuid.UUID) (GameState, error) {
 	return s.gameAction(ctx, user, func(tx pgx.Tx, p *profileRow, now time.Time) error {
 		if p.sleptAt != nil && p.sleptAt.Add(game.SleepEvery).After(now) {
 			return refuse("rested", "you are not sleepy yet")
 		}
 		p.stamina, p.staminaAt = game.StaminaMax, now
+		p.hp, p.hpAt = game.HPMax, now
 		p.sleptAt = &now
 		return logEvent(ctx, tx, user, "sleep", "", 0)
 	})
@@ -552,15 +603,24 @@ func (s *Store) ListenToWord(ctx context.Context, user uuid.UUID, word string) e
 
 // MoveTo remembers where the player stands, so they come back to the same spot.
 // A farm not started yet is started here, rather than the spot being dropped.
+// The woods are only walked into once the story has opened them, and walking
+// in is written down: the story asks for it.
 func (s *Store) MoveTo(ctx context.Context, user uuid.UUID, mapName string, x, y int) error {
 	return s.inTx(ctx, func(tx pgx.Tx) error {
-		if err := ensureGame(ctx, tx, user); err != nil {
+		p, _, err := lockGame(ctx, tx, user)
+		if err != nil {
 			return err
 		}
-		_, err := tx.Exec(ctx, `
-			update game_profiles set map = $2, x = $3, y = $4 where user_id = $1`,
-			user, mapName, x, y)
-		return err
+		if mapName == "woods" && !p.woodsOpen() {
+			return refuse("woods_locked", "the woods are not open yet")
+		}
+		if mapName == "woods" && p.mapName != "woods" {
+			if err := logEvent(ctx, tx, user, "enter_woods", "", 0); err != nil {
+				return err
+			}
+		}
+		p.mapName, p.x, p.y = mapName, x, y
+		return saveProfile(ctx, tx, user, p)
 	})
 }
 

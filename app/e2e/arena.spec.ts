@@ -90,3 +90,94 @@ test('a finished story step pays, and the next one begins', async ({ page }) => 
   // The next step starts at nothing done.
   await expect(page.locator('.arena-tracker')).toContainText('0/1')
 })
+
+/* — Chapter 2: the woods and their fights — */
+
+/** The first story step of chapter 2, where the woods open. */
+const WOODS_STEP = 10
+/** Just west of the first Word-slime's spot (server: slime_1 at tile 9,7). */
+const BY_THE_SLIME = { map: 'woods', x: 136, y: 128 }
+
+async function openWoods(page: Page) {
+  expect((await page.request.post(`${API_URL}/api/test/game/step`, { data: { step: WOODS_STEP } })).status()).toBe(204)
+  expect((await page.request.post(`${API_URL}/api/game/move`, { data: BY_THE_SLIME })).status()).toBe(204)
+  await openFarm(page)
+}
+
+/** Answers the question in play, rightly or not, the way a player would. */
+async function answer(page: Page, right: boolean) {
+  const fight = page.locator('.arena-battle')
+  const key = ((await (await page.request.get(`${API_URL}/api/test/game/battle/answer`)).json()) as { answer: string })
+    .answer
+  const question = fight.locator('.arena-question')
+  if ((await question.getAttribute('data-kind')) === 'scramble') {
+    // Typed on the keyboard, where a full spelling is checked by itself;
+    // Enter on nothing spelled is a wrong answer.
+    if (right) for (const letter of key) await page.keyboard.press(letter)
+    else await page.keyboard.press('Enter')
+  } else {
+    const options = await fight.locator('.arena-option span').allInnerTexts()
+    const i = options.findIndex((o) => (o.trim() === key) === right)
+    await page.keyboard.press(String(i + 1))
+  }
+  await expect(fight.locator('.arena-turn')).toBeVisible()
+  await expect(fight.locator('.arena-turn')).toHaveAttribute('data-right', String(right))
+  await page.keyboard.press('Enter')
+}
+
+test('the woods open with chapter 2, and a fight is won with words', async ({ page }) => {
+  await openWoods(page)
+  const gold = Number(await page.getByTestId('arena-gold').innerText())
+
+  // A step east faces the slime.
+  await page.locator('.arena canvas').click({ position: { x: 20, y: 300 } })
+  await page.keyboard.down('ArrowRight')
+  await page.waitForTimeout(60)
+  await page.keyboard.up('ArrowRight')
+  await expect(page.locator('.arena-action')).toContainText('Fight')
+  await page.keyboard.press('e')
+
+  const fight = page.getByRole('dialog', { name: 'A wild Word-slime!' })
+  await expect(fight).toBeVisible()
+  await expect(page.getByTestId('arena-stamina')).toContainText('27/30')
+
+  // Three hits beat a slime (fewer, when one is quick enough to be critical).
+  for (let i = 0; i < 3 && !(await fight.locator('.arena-outcome').isVisible()); i++) await answer(page, true)
+  await expect(fight.locator('.arena-outcome')).toContainText('You won!')
+  // 8 gold, and 4 more for a fight with no hit taken.
+  await expect(page.getByTestId('arena-gold')).toHaveText(String(gold + 12))
+  await expect(fight.locator('.arena-word-list')).not.toBeEmpty()
+  await fight.getByRole('button', { name: 'Back to the woods' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+
+  // The slime is gone until it comes back.
+  await expect(page.locator('.arena-action')).toHaveCount(0)
+  const again = await page.request.post(`${API_URL}/api/game/battle/start`, { data: { spawn: 'slime_1' } })
+  expect(again.status()).toBe(409)
+})
+
+test('a fight left half-way goes on after a reload, and fainting sends the farmer home', async ({ page }) => {
+  await openWoods(page)
+  const started = await page.request.post(`${API_URL}/api/game/battle/start`, { data: { spawn: 'bat_1' } })
+  expect(started.ok()).toBe(true)
+  const gold = Number(((await started.json()) as { state: { profile: { gold: number } } }).state.profile.gold)
+
+  await page.reload()
+  const fight = page.getByRole('dialog', { name: 'A wild Echo-bat!' })
+  await expect(fight).toBeVisible()
+
+  // An Echo-bat hits for 4: 30 health lasts eight wrong answers.
+  for (let i = 0; i < 8; i++) await answer(page, false)
+  await expect(fight.locator('.arena-outcome')).toContainText('You fainted')
+  const fine = Math.min(50, Math.floor(gold / 10))
+  await expect(page.getByTestId('arena-gold')).toHaveText(String(gold - fine))
+  await expect(page.getByTestId('arena-hp')).toContainText('15/30')
+  await fight.getByRole('button', { name: 'Go home' }).click()
+
+  // Home: the house door is right above.
+  await page.locator('.arena canvas').click({ position: { x: 20, y: 300 } })
+  await page.keyboard.down('ArrowUp')
+  await page.waitForTimeout(60)
+  await page.keyboard.up('ArrowUp')
+  await expect(page.locator('.arena-action')).toContainText('Go inside')
+})

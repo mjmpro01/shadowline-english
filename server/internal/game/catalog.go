@@ -27,7 +27,8 @@ type Crop struct {
 	GrowSeconds int `json:"growSeconds"`
 }
 
-// Item is anything that sits in the bag: seeds, and things that restore stamina.
+// Item is anything that sits in the bag: seeds, and things that restore stamina
+// or health.
 type Item struct {
 	ID    string `json:"id"`
 	Name  Text   `json:"name"`
@@ -35,6 +36,8 @@ type Item struct {
 	Price int    `json:"price"`
 	// Stamina a food restores.
 	Stamina int `json:"stamina,omitempty"`
+	// HP a food restores.
+	HP int `json:"hp,omitempty"`
 	// UnlockStep is the main-quest step from which the shop sells it: the story
 	// opens the better seeds as it goes.
 	UnlockStep int `json:"unlockStep"`
@@ -74,6 +77,7 @@ var Items = []Item{
 	{ID: "seed_bloom", Name: Text{"Bloom seeds", "Hạt Hoa nở"}, Kind: "seed", Price: 40, UnlockStep: BloomStep},
 	{ID: "seed_golden", Name: Text{"Golden seeds", "Hạt Cây vàng"}, Kind: "seed", Price: 120, UnlockStep: GoldenStep},
 	{ID: "ginger_tea", Name: Text{"Ginger tea", "Trà gừng"}, Kind: "food", Price: 25, Stamina: 10},
+	{ID: "herb_salve", Name: Text{"Herb salve", "Thuốc thảo mộc"}, Kind: "food", Price: 30, HP: 15, UnlockStep: WoodsStep},
 }
 
 func init() {
@@ -129,30 +133,49 @@ func GrowTime(c Crop, level int) time.Duration {
 // StaminaRegen, up to the maximum. next is when the next point arrives, or the
 // zero time when it is already full.
 func Stamina(stored int, at, now time.Time) (value int, next time.Time) {
-	if stored >= StaminaMax {
-		return stored, time.Time{}
-	}
-	gained := 0
-	if now.After(at) {
-		gained = int(now.Sub(at) / StaminaRegen)
-	}
-	value = stored + gained
-	if value >= StaminaMax {
-		return StaminaMax, time.Time{}
-	}
-	return value, at.Add(time.Duration(gained+1) * StaminaRegen)
+	return regen(stored, at, now, StaminaMax, StaminaRegen)
 }
 
 // SetStamina is the (stored, at) pair to write for a new current value,
 // keeping the part of a point already regained so spending does not reset the
 // clock.
 func SetStamina(stored int, at, now time.Time, value int) (int, time.Time) {
-	value = max(0, min(value, StaminaMax))
-	_, next := Stamina(stored, at, now)
-	if next.IsZero() || value >= StaminaMax {
+	return setRegen(stored, at, now, value, StaminaMax, StaminaRegen)
+}
+
+// HP is health worked forward to now, the way Stamina is: a point back every
+// HPRegen, up to HPMax.
+func HP(stored int, at, now time.Time) (value int, next time.Time) {
+	return regen(stored, at, now, HPMax, HPRegen)
+}
+
+// SetHP is SetStamina for health.
+func SetHP(stored int, at, now time.Time, value int) (int, time.Time) {
+	return setRegen(stored, at, now, value, HPMax, HPRegen)
+}
+
+func regen(stored int, at, now time.Time, top int, every time.Duration) (value int, next time.Time) {
+	if stored >= top {
+		return stored, time.Time{}
+	}
+	gained := 0
+	if now.After(at) {
+		gained = int(now.Sub(at) / every)
+	}
+	value = stored + gained
+	if value >= top {
+		return top, time.Time{}
+	}
+	return value, at.Add(time.Duration(gained+1) * every)
+}
+
+func setRegen(stored int, at, now time.Time, value, top int, every time.Duration) (int, time.Time) {
+	value = max(0, min(value, top))
+	_, next := regen(stored, at, now, top, every)
+	if next.IsZero() || value >= top {
 		return value, now
 	}
-	return value, next.Add(-StaminaRegen)
+	return value, next.Add(-every)
 }
 
 // vietnam is the day boundary for daily quests. Vietnam keeps no daylight

@@ -83,6 +83,7 @@ func (s *Server) Routes() http.Handler {
 			r.Post("/test/transcript", s.handleTestTranscript)
 			r.Post("/test/transcript/fail", s.handleTestTranscriptFail)
 			r.Post("/test/game/ripen", s.handleTestRipen)
+			r.Post("/test/game/respawn", s.handleTestRespawn)
 		}
 	})
 
@@ -189,6 +190,16 @@ func (s *Server) Routes() http.Handler {
 			r.Post("/game/move", s.handleGameMove)
 			r.Get("/game/quests", s.handleGameQuests)
 			r.Post("/game/quests/claim", s.handleGameClaim)
+			r.Get("/game/battle", s.handleBattle)
+			r.Post("/game/battle/start", s.handleBattleStart)
+			r.Post("/game/battle/answer", s.handleBattleAnswer)
+			r.Post("/game/battle/flee", s.handleBattleFlee)
+			if s.Cfg.AuthFake {
+				// For the browser tests: the signed-in player's answer key and
+				// story step. Absent from a normal deployment.
+				r.Get("/test/game/battle/answer", s.handleTestBattleAnswer)
+				r.Post("/test/game/step", s.handleTestGameStep)
+			}
 
 			r.Group(func(r chi.Router) {
 				r.Use(s.requireAdmin)

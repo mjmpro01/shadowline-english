@@ -94,6 +94,13 @@ export const NPCS: { id: NpcId; x: number; y: number }[] = [
 /** Where a new farmer appears: just outside the front door. */
 export const SPAWN = { x: HOUSE_DOOR.x * TILE + TILE / 2, y: (HOUSE_DOOR.y + 1) * TILE }
 
+/** The gap in the trees at the east end of the main path: the way to the
+ *  woods. Walking into it goes there, once the story has opened them. */
+export const FARM_GATE: Rect = { x: WIDTH - 1, y: 8, w: 1, h: 1 }
+/** Where a player coming back from the woods appears: on the path, just
+ *  inside the gate. */
+export const FROM_WOODS = { x: (WIDTH - 2) * TILE + TILE / 2, y: (FARM_GATE.y + 1) * TILE }
+
 /** Decoration that blocks the way, beyond the border of trees. */
 export const TREES: { x: number; y: number }[] = [
   { x: 10, y: 1 },
@@ -115,8 +122,8 @@ export const ROCKS: { x: number; y: number }[] = [
 const PATHS: Rect[] = [
   // From the door down to the main path.
   { x: 5, y: 7, w: 1, h: 2 },
-  // The main path, east to the cart.
-  { x: 5, y: 8, w: 23, h: 1 },
+  // The main path, east past the cart to the gate to the woods.
+  { x: 5, y: 8, w: WIDTH - 5, h: 1 },
   // Down the west side of the field, and along its foot.
   { x: 12, y: 8, w: 1, h: 11 },
   { x: 12, y: 18, w: 13, h: 1 },
@@ -125,12 +132,12 @@ const PATHS: Rect[] = [
   { x: 24, y: 14, w: 3, h: 1 },
 ]
 
-function inRect(x: number, y: number, r: Rect) {
+export function inRect(x: number, y: number, r: Rect) {
   return x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h
 }
 
 /** A stable pseudo-random number for a tile, so grass looks the same each visit. */
-function hash(x: number, y: number) {
+export function hash(x: number, y: number) {
   const n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453
   return n - Math.floor(n)
 }
@@ -140,11 +147,16 @@ const isStone = (x: number, y: number) => STONES.some((s) => s.x === x && s.y ==
 const isWater = (x: number, y: number) => inRect(x, y, POND)
 
 /** A path tile that joins up with the path around it. */
-function pathCell(names: TileNames, x: number, y: number): Cell {
-  const n = isPath(x, y - 1)
-  const s = isPath(x, y + 1)
-  const w = isPath(x - 1, y)
-  const e = isPath(x + 1, y)
+export function pathCell(
+  names: TileNames,
+  x: number,
+  y: number,
+  onPath: (x: number, y: number) => boolean = isPath,
+): Cell {
+  const n = onPath(x, y - 1)
+  const s = onPath(x, y + 1)
+  const w = onPath(x - 1, y)
+  const e = onPath(x + 1, y)
   const links = [n, s, w, e].filter(Boolean).length
   if (links >= 3) return { index: tile(names, 'path_cross') }
   // The corner piece runs north and east; mirrored, it does the other three.
@@ -178,6 +190,13 @@ function waterCell(names: TileNames, x: number, y: number): Cell {
   return pond(h > 0.85 ? 13 + Math.floor((h - 0.85) * 20) : 0)
 }
 
+/** Grass, in its few kinds, the same at a spot every visit. */
+export function grassCell(names: TileNames, x: number, y: number): Cell {
+  const h = hash(x, y)
+  const grass = h > 0.9 ? (h > 0.95 ? 'grass_5' : 'grass_4') : `grass_${1 + Math.floor(h * 3.3)}`
+  return { index: tile(names, grass) }
+}
+
 /** The ground layer: grass, paths, the pond. */
 export function ground(names: TileNames): Cell[][] {
   const rows: Cell[][] = []
@@ -187,11 +206,7 @@ export function ground(names: TileNames): Cell[][] {
       if (isWater(x, y)) row.push(waterCell(names, x, y))
       else if (isPath(x, y)) row.push(pathCell(names, x, y))
       else if (isStone(x, y)) row.push({ index: tile(names, 'stone_path') })
-      else {
-        const h = hash(x, y)
-        const grass = h > 0.9 ? (h > 0.95 ? 'grass_5' : 'grass_4') : `grass_${1 + Math.floor(h * 3.3)}`
-        row.push({ index: tile(names, grass) })
-      }
+      else row.push(grassCell(names, x, y))
     }
     rows.push(row)
   }
@@ -244,16 +259,27 @@ export function fence(names: TileNames): { x: number; y: number; index: number; 
   return out
 }
 
-/** Tiles the player cannot walk into, as rectangles. */
-export function solids(): Rect[] {
-  const border: Rect[] = [
+/** The edge of a map, as rectangles, with gaps where gates are. */
+export function border(gates: Rect[]): Rect[] {
+  const edges: Rect[] = [
     { x: 0, y: 0, w: WIDTH, h: 1 },
     { x: 0, y: HEIGHT - 1, w: WIDTH, h: 1 },
-    { x: 0, y: 0, w: 1, h: HEIGHT },
-    { x: WIDTH - 1, y: 0, w: 1, h: HEIGHT },
   ]
+  for (const x of [0, WIDTH - 1]) {
+    let from = 0
+    for (const g of gates.filter((g) => g.x === x).sort((a, b) => a.y - b.y)) {
+      edges.push({ x, y: from, w: 1, h: g.y - from })
+      from = g.y + g.h
+    }
+    edges.push({ x, y: from, w: 1, h: HEIGHT - from })
+  }
+  return edges.filter((r) => r.w > 0 && r.h > 0)
+}
+
+/** Tiles the player cannot walk into, as rectangles. */
+export function solids(): Rect[] {
   return [
-    ...border,
+    ...border([FARM_GATE]),
     HOUSE,
     POND,
     CART,
@@ -268,14 +294,15 @@ export function solids(): Rect[] {
   ]
 }
 
-/** The trees along the edge of the map, for drawing. */
-export function borderTrees(): { x: number; y: number }[] {
+/** The trees along the edge of a map, for drawing, clear of its gates. */
+export function borderTrees(gates: Rect[] = [FARM_GATE]): { x: number; y: number }[] {
   const out: { x: number; y: number }[] = []
+  const nearGate = (x: number, y: number) => gates.some((g) => g.x === x && Math.abs(g.y - y) <= 1)
   for (let x = 0; x < WIDTH; x += 2) {
     out.push({ x, y: 0 }, { x, y: HEIGHT - 1 })
   }
   for (let y = 2; y < HEIGHT - 1; y += 2) {
-    out.push({ x: 0, y }, { x: WIDTH - 1, y })
+    for (const x of [0, WIDTH - 1]) if (!nearGate(x, y)) out.push({ x, y })
   }
   return out
 }

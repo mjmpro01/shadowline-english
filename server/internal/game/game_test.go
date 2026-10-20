@@ -75,11 +75,18 @@ func TestTheQuestDayTurnsAtMidnightInVietnam(t *testing.T) {
 }
 
 func TestTheDaysTasksAreFixedForTheDayAndIncludeLearning(t *testing.T) {
+	for _, woods := range []bool{false, true} {
+		checkDailies(t, woods)
+	}
+}
+
+func checkDailies(t *testing.T, woods bool) {
+	t.Helper()
 	seen := map[string]bool{}
 	for d := 1; d <= 28; d++ {
 		day := time.Date(2026, 10, d, 0, 0, 0, 0, time.UTC).Format("2006-01-02")
-		first := DailyFor("user-1", day)
-		again := DailyFor("user-1", day)
+		first := DailyFor("user-1", day, woods)
+		again := DailyFor("user-1", day, woods)
 		if len(first) != DailyCount {
 			t.Fatalf("%s: %d tasks", day, len(first))
 		}
@@ -94,14 +101,84 @@ func TestTheDaysTasksAreFixedForTheDayAndIncludeLearning(t *testing.T) {
 			ids[q.ID] = true
 			learning = learning || q.Learning
 			seen[q.ID] = true
+			if q.Woods && !woods {
+				t.Fatalf("%s: %s is in the woods, which are not open", day, q.ID)
+			}
 		}
 		if !learning {
 			t.Fatalf("%s: nothing to practise in the app: %v", day, first)
 		}
 	}
-	// Over four weeks every task should come up at least once.
-	if len(seen) != len(DailyPool) {
-		t.Fatalf("only %d of %d tasks ever came up", len(seen), len(DailyPool))
+	// Over four weeks every task that can come up should, at least once.
+	want := 0
+	for _, d := range DailyPool {
+		if woods || !d.Woods {
+			want++
+		}
+	}
+	if len(seen) != want {
+		t.Fatalf("woods %v: only %d of %d tasks ever came up", woods, len(seen), want)
+	}
+}
+
+func TestTheDaysTasksDoNotChangeForFarmersBeforeTheWoods(t *testing.T) {
+	// The woods tasks joined the pool later; a farmer who has not reached the
+	// woods draws from exactly the pool they drew from before.
+	got := DailyFor("user-7", "2026-10-20", false)
+	for _, q := range got {
+		if q.Woods {
+			t.Fatalf("drew %s", q.ID)
+		}
+	}
+}
+
+func TestHealthComesBackLikeStamina(t *testing.T) {
+	got, next := HP(10, t0, t0.Add(3*HPRegen+time.Second))
+	if got != 13 || !next.Equal(t0.Add(4*HPRegen)) {
+		t.Fatalf("got %d, next %v", got, next)
+	}
+	if got, next := HP(HPMax-1, t0, t0.Add(time.Hour)); got != HPMax || !next.IsZero() {
+		t.Fatalf("full: %d %v", got, next)
+	}
+	stored, at := SetHP(HPMax, t0, t0.Add(time.Minute), HPMax-4)
+	if stored != HPMax-4 || !at.Equal(t0.Add(time.Minute)) {
+		t.Fatalf("hit from full: %d at %v", stored, at)
+	}
+}
+
+func TestQuickAnswersStrikeTwice(t *testing.T) {
+	allowed := 12 * time.Second
+	if Strike(3*time.Second, allowed) != 2 || Strike(5*time.Second, allowed) != 1 {
+		t.Fatal("a third of the time is the line between a double strike and a single")
+	}
+	if FaintFine(1000) != 50 || FaintFine(120) != 12 || FaintFine(5) != 0 {
+		t.Fatal("fainting costs a tenth of the gold, at most 50")
+	}
+}
+
+func TestTheWoodsHoldTogether(t *testing.T) {
+	ids := map[string]bool{}
+	for _, s := range Spawns {
+		if ids[s.ID] {
+			t.Errorf("spawn %s twice", s.ID)
+		}
+		ids[s.ID] = true
+		if _, ok := MonsterByID(s.Monster); !ok {
+			t.Errorf("spawn %s holds %s, which is not a monster", s.ID, s.Monster)
+		}
+	}
+	for _, m := range Monsters {
+		if m.HP <= 0 || m.Hit <= 0 || len(m.Games) == 0 || m.Seconds <= 0 {
+			t.Errorf("monster %s is missing its numbers", m.ID)
+		}
+		if m.Drop != "" {
+			if _, ok := ItemByID(m.Drop); !ok {
+				t.Errorf("monster %s drops %s, which is not an item", m.ID, m.Drop)
+			}
+		}
+	}
+	if WoodsStep > len(MainQuests) || MainQuests[WoodsStep].ID != "enter_woods" {
+		t.Errorf("the woods open at the step that sends the player into them")
 	}
 }
 

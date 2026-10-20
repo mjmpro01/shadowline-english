@@ -16,14 +16,17 @@ export type Target =
   | { kind: 'house' }
   | { kind: 'mailbox' }
   | { kind: 'board' }
+  | { kind: 'monster'; spawn: string; monster: string }
 
 export type NpcId = 'sir_shadow' | 'mira' | 'bram'
+export type MapName = 'farm' | 'woods'
 
 export function sameTarget(a: Target | null, b: Target | null): boolean {
   if (a === null || b === null) return a === b
   if (a.kind !== b.kind) return false
   if (a.kind === 'plot' && b.kind === 'plot') return a.idx === b.idx
   if (a.kind === 'npc' && b.kind === 'npc') return a.id === b.id
+  if (a.kind === 'monster' && b.kind === 'monster') return a.spawn === b.spawn
   return true
 }
 
@@ -32,8 +35,12 @@ interface Events {
   focus: Target | null
   /** The player pressed the action key or button. */
   interact: Target
-  /** The player has walked somewhere worth remembering. */
-  moved: { x: number; y: number }
+  /** The player has walked somewhere worth remembering, on which map. */
+  moved: { map: MapName; x: number; y: number }
+  /** The player walked into a gate that will not open yet. */
+  blocked: 'woods_locked'
+  /** Put the player somewhere, on whichever map (after fainting: home). */
+  goto: { map: MapName; x: number; y: number }
   /** The scene finished building and is drawing. */
   ready: undefined
   /** The farm as the server last sent it, for the scene to draw. */
