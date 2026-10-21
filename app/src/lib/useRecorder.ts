@@ -25,7 +25,7 @@ export function useRecorder({
 }: {
   onComplete?: (recording: Blob | null, levels: number[]) => void
   /** How long the take may run. Defaults to the clip ceiling; Practice passes
-   *  the clip's own duration so a one-second line does not wait out thirty. */
+   *  the clip's own duration so a one-second line does not wait out a song. */
   maxSeconds?: number
 } = {}) {
   const [status, setStatus] = useState<RecorderStatus>('idle')

@@ -85,7 +85,7 @@ export function PracticeScreen() {
   const attempt = useRef(0)
 
   const { clip: video, loading: clipLoading } = useClip(videoId)
-  // Match the clip's own length so a one-second line does not wait out thirty.
+  // Match the clip's own length so a one-second line does not wait out a song.
   // Floor at half a second so a zero/missing duration still stops itself.
   const recordLimit = Math.min(
     Math.max(video?.durationSeconds || MAX_CLIP_SECONDS, 0.5),

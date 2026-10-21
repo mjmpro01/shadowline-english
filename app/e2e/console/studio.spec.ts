@@ -107,25 +107,26 @@ test('a line longer than speech, as a line of a song is, still publishes', async
   // for a song.
   await page.getByRole('button', { name: 'Merge next' }).nth(2).click()
   await expect(page.locator('.waveform-segment')).toHaveCount(3)
-  await expect(page.getByText(/longer than \d+s/)).toHaveCount(0)
+  await expect(page.getByText(/longer than/)).toHaveCount(0)
   await expect(page.getByRole('button', { name: /Publish 3 clips/ })).toBeEnabled()
 })
 
-test('a merge that overruns the limit blocks publishing until it is fixed', async ({ page }) => {
+test('a song can be taken whole, as one clip from start to end', async ({ page }) => {
   await openStudio(page)
 
-  // Two eighteen-second lines: each a clip, the two together past the limit.
+  // Two eighteen-second lines with a pause between: proposed as two clips.
   await page.locator('input[type=file]').setInputFiles(SONG_LINES)
-  await expect(page.locator('.waveform-segment')).toHaveCount(2, { timeout: 15_000 })
-  await expect(page.getByRole('button', { name: /Publish 2 clips/ })).toBeEnabled()
+  const segments = page.locator('.waveform-segment')
+  await expect(segments).toHaveCount(2, { timeout: 15_000 })
 
-  await page.getByRole('button', { name: 'Merge next' }).first().click()
-  await expect(page.getByText(/longer than 30s/)).toBeVisible()
-  await expect(page.getByRole('button', { name: /Publish/ })).toBeDisabled()
+  page.once('dialog', (dialog) => void dialog.accept())
+  await page.getByRole('button', { name: 'Whole video as one clip' }).click()
 
-  // Unticked, the long one is left out and the rest can go.
-  await page.getByRole('checkbox', { name: 'Publish clip 1' }).uncheck()
-  await expect(page.getByText(/longer than 30s/)).toHaveCount(0)
+  await expect(segments).toHaveCount(1)
+  const label = await page.locator('.card .card-meta.mono').first().innerText()
+  expect(label).toMatch(/^0:00\.0–0:3\d\.\d · 3\d\.\ds$/)
+  await expect(page.getByText(/longer than/)).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /Publish 1 clip/ })).toBeEnabled()
 })
 
 test('clips get a name, a playlist and categories, and stay editable after publishing', async ({ page }) => {

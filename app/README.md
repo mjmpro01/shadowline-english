@@ -195,10 +195,11 @@ clips screens have asked for rather than a library to manage.
 
 ## Clip length
 
-A clip is one line to shadow, capped at `MAX_CLIP_SECONDS` (30) in
-`src/data/types.ts`. A spoken line is a few seconds; the cap is set for a line
-of a song, which runs longer, so karaoke can be cut a line at a time. Recording
-stops itself at the clip's own length, never past the cap, with a countdown on
+A clip is usually one line to shadow: a spoken line of a few seconds, or a
+line of a song, and the studio proposes cuts of at most 30 seconds. A karaoke
+video can also be taken whole, a song sung through, so the cap,
+`MAX_CLIP_SECONDS` in `src/data/types.ts`, is six minutes. Recording stops
+itself at the clip's own length, never past the cap, with a countdown on
 screen. The console holds its own copy of the same number, and the server
 refuses a longer clip regardless of what either of them allowed.
 

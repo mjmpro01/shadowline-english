@@ -36,8 +36,8 @@ export const SOURCE_CLIP = join(FIXTURE_DIR, 'source-clip.wav')
 /** A second clip with a flat delivery, for checking one clip's contour is not
     reused to score another. */
 export const FLAT_CLIP = join(FIXTURE_DIR, 'flat-clip.wav')
-/** Two long lines, as a song's are: each fits in a clip, and the two together
-    run past the limit. */
+/** Two long lines, as a song's are, with a pause between: proposed as two
+    clips, and taken whole as one. */
 export const SONG_LINES = join(FIXTURE_DIR, 'song-lines.wav')
 /** A recording of four lines with pauses between them, for the clip studio.
     Lines alternate between melodic and flat so the published clips differ. */

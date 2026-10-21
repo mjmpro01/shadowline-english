@@ -7,10 +7,15 @@
  * are what hold the server to it.
  */
 
-/** A clip is one line to shadow, not a passage: a spoken line, or a line of a
- *  song, which runs longer. The server enforces the same number; this copy is
- *  what the studio checks before anything is sent. */
-export const MAX_CLIP_SECONDS = 30
+/** The longest a clip may be: a whole song, when a karaoke video is taken as
+ *  one clip. The server enforces the same number; this copy is what the studio
+ *  checks before anything is sent. */
+export const MAX_CLIP_SECONDS = 360
+
+/** The longest line the studio proposes on its own. A clip is usually one line
+ *  to shadow — a spoken line, or a line of a song, which runs longer — and a
+ *  recording is cut into those at its pauses unless it is taken whole. */
+export const LINE_SECONDS = 30
 
 export interface CaptionLine {
   text: string

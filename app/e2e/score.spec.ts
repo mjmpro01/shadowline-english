@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { asLearner, startFresh } from './session'
-import { publishLesson } from './seed'
+import { SONG_TITLE, publishLesson, publishSong } from './seed'
 
 /** Long enough for the fake microphone to play through most of the clip. */
 const RECORD_MS = 2600
@@ -199,6 +199,23 @@ test('both voices play on one timeline in dub review', async ({ page }) => {
   expect(after.paused).toBe(false)
   // Switching voices keeps your place rather than restarting the line.
   expect(after.time).toBeGreaterThanOrEqual(before.time - 0.2)
+})
+
+// A karaoke video taken whole is one clip past half a minute, so its alignment
+// is the one the scorer thins before it walks it. It still comes back scored.
+test('a whole song is one clip, and a take against it is scored', async ({ page }) => {
+  await publishSong(page)
+  await asLearner(page)
+  await practise(page, SONG_TITLE)
+  await expect(page.getByRole('button', { name: 'Hear clip again' })).toBeEnabled()
+
+  // A take needs a fifth of the song's singing to be measured at all, so this
+  // one runs well past the few seconds a line gets. The fake microphone loops.
+  await page.getByRole('button', { name: 'Record', exact: true }).click()
+  await page.waitForTimeout(12_000)
+  await page.getByRole('button', { name: 'Stop' }).click()
+  await expect(page.locator('.card', { hasText: 'PITCH MATCH SCORE' })).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByRole('button', { name: 'See analysis' })).toBeEnabled()
 })
 
 test('recording stops itself at the clip limit', async ({ page }) => {

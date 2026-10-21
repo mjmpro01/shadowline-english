@@ -16,6 +16,10 @@ from .pitch import Contour, Track, semitone_track
 
 # Frames of local drift the band allows — 3 seconds at a 10ms hop.
 MAX_BAND = 300
+# The band is filled a cell at a time in Python, so past this many frames — a
+# line never gets near it, a whole song sung through does — a track is thinned
+# before it is aligned. Unthinned, six minutes is twenty million cells.
+MAX_DTW_FRAMES = 3000
 SHAPE_POINTS = 200
 METRIC_NAMES = ("Intonation", "Rhythm", "Stress", "Variation")
 
@@ -88,6 +92,24 @@ def _resample(track: Track, count: int) -> np.ndarray:
 
 
 def _dtw(a: np.ndarray, b: np.ndarray, band_ratio: float = 0.35) -> np.ndarray:
+    """The alignment of two tracks, thinned first when either is long.
+
+    Every ``step``-th frame of each is aligned, and the path is put back on the
+    full tracks' frames, ending where they end. A line is never thinned, so its
+    score is exactly what it was; a whole song is aligned at a coarser grain,
+    which is all its drift needs.
+    """
+    step = -(-max(len(a), len(b)) // MAX_DTW_FRAMES)
+    if step <= 1:
+        return _banded_dtw(a, b, band_ratio)
+    path = _banded_dtw(a[::step], b[::step], band_ratio) * step
+    last = np.array([[len(a) - 1, len(b) - 1]], dtype=np.int64)
+    if not np.array_equal(path[-1], last[0]):
+        path = np.concatenate([path, last])
+    return path
+
+
+def _banded_dtw(a: np.ndarray, b: np.ndarray, band_ratio: float = 0.35) -> np.ndarray:
     """Dynamic time warping constrained to a Sakoe-Chiba band.
 
     The band is centred on the diagonal between the two lengths, so an overall
