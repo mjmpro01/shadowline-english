@@ -7,9 +7,10 @@
  * are what hold the server to it.
  */
 
-/** A clip is one line to shadow, not a passage. The server enforces the same
- *  number; this copy is what the studio checks before anything is sent. */
-export const MAX_CLIP_SECONDS = 6
+/** A clip is one line to shadow, not a passage: a spoken line, or a line of a
+ *  song, which runs longer. The server enforces the same number; this copy is
+ *  what the studio checks before anything is sent. */
+export const MAX_CLIP_SECONDS = 30
 
 export interface CaptionLine {
   text: string

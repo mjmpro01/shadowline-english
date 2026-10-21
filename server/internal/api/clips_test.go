@@ -76,11 +76,24 @@ func TestTheServerRefusesAClipOverTheLimit(t *testing.T) {
 	admin := h.login("admin@example.com")
 
 	long := aClip("Far too long")
-	long["durationSeconds"] = 12.0
+	long["durationSeconds"] = 31.0
 	expectStatus(t, admin.json("POST", "/api/admin/clips", map[string]any{"clips": []map[string]any{long}}), http.StatusBadRequest)
 
 	if listed := everyClip(t, admin); len(listed) != 0 {
 		t.Fatalf("the rejected clip was published anyway: %+v", listed)
+	}
+}
+
+// A line of a song runs longer than a spoken one, and karaoke is cut a line at
+// a time: one well past the few seconds of speech still goes up.
+func TestALineOfASongIsNotTooLong(t *testing.T) {
+	h := newHarness(t)
+	admin := h.login("admin@example.com")
+
+	line := aClip("A line of a song")
+	line["durationSeconds"] = 24.0
+	if created := publishClips(t, admin, line); len(created) != 1 || created[0].DurationSeconds != 24 {
+		t.Fatalf("published %+v, want one clip of 24s", created)
 	}
 }
 
