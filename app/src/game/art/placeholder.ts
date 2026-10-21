@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { ASSETS, CHAR_COLS, CHAR_ROWS, CROP_STAGES, DIRS, type Dir } from '../assets'
+import { ASSETS, CHAR_COLS, CHAR_ROWS, CROP_STAGES, DIRS, TOWN_NPC_IDS, type Dir } from '../assets'
 
 /**
  * Stand-in art, painted pixel by pixel in code.
@@ -86,6 +86,59 @@ const PEOPLE: Record<string, Palette> = {
     boots: '#2e2218',
     extra: (ctx, ox, oy, dir) => {
       if (dir !== 'up') px(ctx, ox + 5, oy + 11, 6, 3, '#3b2a1a') // beard
+    },
+  },
+  // Echo Town, until they are drawn.
+  elsa: {
+    skin: '#f2c9a0',
+    hair: '#e8d9a8',
+    top: '#6a4c93',
+    bottom: '#3d2f57',
+    boots: '#2b2233',
+    extra: (ctx, ox, oy, dir) => {
+      if (dir !== 'up') px(ctx, ox + 4, oy + 13, 8, 2, '#e0b94f') // the mayor's sash
+    },
+  },
+  orin: {
+    skin: '#e8c19a',
+    hair: '#f0f0f0',
+    top: '#2f5d8a',
+    bottom: '#24486b',
+    boots: '#1d2b3a',
+    extra: (ctx, ox, oy) => {
+      // A tall pointed hat.
+      px(ctx, ox + 3, oy + 3, 10, 2, '#2f5d8a')
+      px(ctx, ox + 6, oy - 1, 4, 4, '#2f5d8a')
+    },
+  },
+  lina: {
+    skin: '#f5d0b0',
+    hair: '#2b1d14',
+    top: '#4f8a6a',
+    bottom: '#2e4d3c',
+    boots: '#3a2a1a',
+    extra: (ctx, ox, oy, dir) => {
+      if (dir === 'down') px(ctx, ox + 5, oy + 7, 6, 1, '#1b1b1b') // glasses
+    },
+  },
+  hugo: {
+    skin: '#c99772',
+    hair: '#1f1a17',
+    top: '#f4f1e6',
+    bottom: '#3a3a3a',
+    boots: '#2a2018',
+    extra: (ctx, ox, oy, dir) => {
+      if (dir !== 'up') px(ctx, ox + 5, oy + 15, 6, 9, '#7a4a2a') // apron
+    },
+  },
+  vy: {
+    skin: '#f2c9a0',
+    hair: '#151515',
+    top: '#fafafa',
+    bottom: '#5b8fb9',
+    boots: '#3a3a3a',
+    extra: (ctx, ox, oy, dir) => {
+      if (dir !== 'up') px(ctx, ox + 7, oy + 13, 2, 3, '#d64545') // a red cross
     },
   },
 }
@@ -534,6 +587,9 @@ const PAINTERS: Record<string, { w: number; h: number; draw: (ctx: Ctx) => void 
   'npc-sir_shadow': { w: 16 * CHAR_COLS, h: 32 * 8, draw: (c) => characterSheet(c, PEOPLE.sir_shadow) },
   'npc-mira': { w: 16 * CHAR_COLS, h: 32 * 8, draw: (c) => characterSheet(c, PEOPLE.mira) },
   'npc-bram': { w: 16 * CHAR_COLS, h: 32 * 8, draw: (c) => characterSheet(c, PEOPLE.bram) },
+  ...Object.fromEntries(
+    TOWN_NPC_IDS.map((id) => [`npc-${id}`, { w: 16 * CHAR_COLS, h: 32 * 8, draw: (c: Ctx) => characterSheet(c, PEOPLE[id]) }]),
+  ),
   tiles: { w: 256, h: 64, draw: tileset },
   farmhouse: { w: 80, h: 80, draw: farmhouse },
   shop_cart: { w: 48, h: 32, draw: cart },

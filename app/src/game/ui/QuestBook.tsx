@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import type { Locale, Translate } from '../../i18n'
 import type { GameState, Quests } from '../api'
 import { clock, secondsUntil } from '../growth'
-import { ItemIcon, RewardChips, Sheet } from './common'
+import { MAX_HEARTS } from '../town'
+import { ItemIcon, Portrait, RewardChips, Sheet } from './common'
 import { pick, useNow } from './util'
 
 /** Where in the app a learning task is done. */
@@ -31,18 +32,21 @@ export function QuestBook({
   t: Translate
   busy: boolean
   skew: number
-  start: 'main' | 'daily'
+  start: 'main' | 'daily' | 'town'
   onClose: () => void
   onClaim: (quest: string) => void
 }) {
   const [tab, setTab] = useState(start)
+  // The townsfolk tab, once there is a town.
+  const tabs = state?.profile.townOpen ? (['main', 'daily', 'town'] as const) : (['main', 'daily'] as const)
+  const tabName = { main: t('arena.quest.main'), daily: t('arena.quest.daily'), town: t('arena.quest.town') }
   const left = secondsUntil(quests.endsAt, useNow() + skew)
   const main = quests.main
 
   return (
     <Sheet title={t('arena.quests')} onClose={onClose} t={t} wide>
       <div className="arena-tabs" role="tablist">
-        {(['main', 'daily'] as const).map((which) => (
+        {tabs.map((which) => (
           <button
             key={which}
             type="button"
@@ -51,12 +55,33 @@ export function QuestBook({
             className="arena-tab"
             onClick={() => setTab(which)}
           >
-            {which === 'main' ? t('arena.quest.main') : t('arena.quest.daily')}
+            {tabName[which]}
           </button>
         ))}
       </div>
 
-      {tab === 'main' ? (
+      {tab === 'town' && state ? (
+        <ul className="arena-list">
+          {state.friends.map((f) => (
+            <li key={f.id} className="arena-list-row arena-friend" data-testid={`friend-${f.id}`}>
+              <Portrait id={f.id} />
+              <div className="arena-list-text">
+                <strong>{pick(f.name, locale)}</strong>
+                <span className="arena-muted">{pick(f.role, locale)}</span>
+                <span className="arena-friend-hearts" aria-label={t('arena.talk.hearts', f.hearts)}>
+                  {'♥'.repeat(f.hearts)}
+                  <span className="arena-muted">{'♡'.repeat(MAX_HEARTS - f.hearts)}</span>
+                </span>
+                <span className="arena-muted">
+                  {f.talkedToday ? `✓ ${t('arena.town.chatted')}` : ''}
+                  {f.talkedToday && f.giftedToday ? ' · ' : ''}
+                  {f.giftedToday ? `✓ ${t('arena.town.gifted')}` : ''}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : tab === 'main' ? (
         main ? (
           <div className="arena-quest">
             <div className="arena-quest-head">

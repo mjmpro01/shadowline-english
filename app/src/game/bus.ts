@@ -20,8 +20,8 @@ export type Target =
   /** The troll's lair, while nothing lives in it yet. */
   | { kind: 'lair' }
 
-export type NpcId = 'sir_shadow' | 'mira' | 'bram'
-export type MapName = 'farm' | 'woods'
+export type NpcId = 'sir_shadow' | 'mira' | 'bram' | 'elsa' | 'orin' | 'lina' | 'hugo' | 'vy'
+export type MapName = 'farm' | 'woods' | 'town'
 
 export function sameTarget(a: Target | null, b: Target | null): boolean {
   if (a === null || b === null) return a === b
@@ -40,7 +40,7 @@ interface Events {
   /** The player has walked somewhere worth remembering, on which map. */
   moved: { map: MapName; x: number; y: number }
   /** The player walked into a gate that will not open yet. */
-  blocked: 'woods_locked'
+  blocked: 'woods_locked' | 'town_locked'
   /** Put the player somewhere, on whichever map (after fainting: home). */
   goto: { map: MapName; x: number; y: number }
   /** A map's scene finished building and is drawing. */

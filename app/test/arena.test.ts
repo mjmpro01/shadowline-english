@@ -1,6 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import { clock, cropStage, secondsUntil } from '../src/game/growth'
-import { DEFAULT_TILES, FARM_GATE, FROM_WOODS, TILE, ground, plotRect, solids, tile, type Rect } from '../src/game/world/farm'
+import {
+  DEFAULT_TILES,
+  FARM_GATE,
+  FARM_TOWN_GATE,
+  FROM_TOWN,
+  FROM_WOODS,
+  TILE,
+  ground,
+  plotRect,
+  solids,
+  tile,
+  type Rect,
+} from '../src/game/world/farm'
+import { BUILDINGS, FROM_FARM_TO_TOWN, TOWN_GATE, TOWN_NPCS, door, townSolids } from '../src/game/world/town'
+import { giftsInBag, replyKey } from '../src/game/town'
+import type { GameState } from '../src/game/api'
 import { FROM_FARM, WOODS_GATE, woodsSolids } from '../src/game/world/woods'
 import { sameTarget } from '../src/game/bus'
 import { monsterColour } from '../src/game/assets'
@@ -101,5 +116,47 @@ describe("a slime's colour", () => {
     expect(monsterColour('slime_3', 'word_slime')).toBe('purple')
     expect(monsterColour('slime_4', 'word_slime')).toBe(null)
     expect(monsterColour('bat_1', 'echo_bat')).toBe(null)
+  })
+})
+
+describe('Echo Town', () => {
+  const blocks = (rects: Rect[], x: number, y: number) =>
+    rects.some((b) => x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h)
+  const tileOf = (p: { x: number; y: number }) => [Math.floor(p.x / TILE), Math.floor((p.y - 1) / TILE)] as const
+
+  it('has a way in from the farm and back', () => {
+    expect(blocks(solids(), FARM_TOWN_GATE.x, FARM_TOWN_GATE.y)).toBe(false)
+    expect(blocks(townSolids(), TOWN_GATE.x, TOWN_GATE.y)).toBe(false)
+    expect(blocks(solids(), ...tileOf(FROM_TOWN))).toBe(false)
+    expect(blocks([FARM_TOWN_GATE], ...tileOf(FROM_TOWN))).toBe(false)
+    expect(blocks(townSolids(), ...tileOf(FROM_FARM_TO_TOWN))).toBe(false)
+    expect(blocks([TOWN_GATE], ...tileOf(FROM_FARM_TO_TOWN))).toBe(false)
+  })
+
+  it('leaves everyone standing in the open, by their own door', () => {
+    expect(TOWN_NPCS.map((n) => n.id).sort()).toEqual(['elsa', 'hugo', 'lina', 'orin', 'vy'])
+    for (const n of TOWN_NPCS) expect(blocks(townSolids(), n.x, n.y), n.id).toBe(false)
+    for (const b of BUILDINGS) {
+      const d = door(b)
+      expect(blocks(townSolids(), d.x, d.y), b.id).toBe(false)
+    }
+  })
+
+  it('finds the gifts in the bag', () => {
+    const shop = [
+      { id: 'flowers', kind: 'gift', name: { en: 'Flowers', vi: 'Hoa' } },
+      { id: 'coffee', kind: 'food', name: { en: 'Coffee', vi: 'Cà phê' } },
+      { id: 'old_book', kind: 'gift', name: { en: 'Book', vi: 'Sách' } },
+    ] as GameState['shop']
+    expect(giftsInBag({ shop, inventory: { flowers: 2, coffee: 3, old_book: 0 } })).toEqual([
+      { id: 'flowers', name: { en: 'Flowers', vi: 'Hoa' }, qty: 2 },
+    ])
+  })
+
+  it('picks a reply with keys 1 to 3', () => {
+    expect(replyKey('1', 3)).toBe(0)
+    expect(replyKey('3', 3)).toBe(2)
+    expect(replyKey('4', 3)).toBe(-1)
+    expect(replyKey('x', 3)).toBe(-1)
   })
 })

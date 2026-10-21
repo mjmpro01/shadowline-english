@@ -511,6 +511,96 @@
   font-size: 15px;
 }
 
+/* — Echo Town: chats, gifts, friends — */
+.arena-town {
+  border-top: 2px dashed color-mix(in srgb, #6b4423 35%, transparent);
+  padding-top: var(--space-3);
+  margin-top: var(--space-2);
+}
+.arena-hearts {
+  display: grid;
+  gap: 4px;
+}
+.arena-heart-pip {
+  color: color-mix(in srgb, #6b4423 30%, transparent);
+  font-size: 16px;
+  margin-right: 1px;
+}
+.arena-heart-pip[data-on='true'] {
+  color: #e53935;
+}
+.arena-bar-friend > span {
+  background: #f06292;
+}
+.arena-chat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.arena-link-btn {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  padding: 0;
+  color: #6b4423;
+  text-decoration: underline;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.arena-option .arena-line-vi {
+  display: block;
+}
+.arena-gift {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.arena-gift[data-taste='loved'] .arena-turn-verdict {
+  color: #c2185b;
+}
+.arena-gift[data-taste='disliked'] .arena-turn-verdict {
+  color: #6b5c4c;
+}
+.arena-gift-open {
+  align-self: flex-start;
+}
+.arena-chip-btn {
+  cursor: pointer;
+  font: inherit;
+}
+.arena-heart-event {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: 10px;
+  background: color-mix(in srgb, #f06292 14%, #fffaf0);
+  border: 2px solid #f06292;
+}
+.arena-heart-event .btn {
+  align-self: flex-start;
+}
+.arena-portrait-initial {
+  display: grid;
+  place-content: center;
+  color: #fffaf0;
+  font-family: var(--font-heading);
+  font-size: 40px;
+  font-weight: 700;
+  border-radius: 12px;
+}
+.arena-friend .arena-portrait {
+  width: 48px;
+  height: 48px;
+  font-size: 24px;
+  flex: none;
+}
+.arena-friend-hearts {
+  color: #e53935;
+  letter-spacing: 1px;
+}
+
 /* — health — */
 .arena-heart {
   color: #e53935;

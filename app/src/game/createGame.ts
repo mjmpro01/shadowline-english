@@ -1,7 +1,8 @@
 import Phaser from 'phaser'
-import { NPC_IDS, artManifest, characterSheet, presentAssets, tileNames, type CharacterSheet } from './assets'
-import type { GameBus } from './bus'
+import { ALL_NPC_IDS, artManifest, characterSheet, presentAssets, tileNames, type CharacterSheet } from './assets'
+import type { GameBus, MapName } from './bus'
 import { FarmScene } from './scenes/FarmScene'
+import { TownScene } from './scenes/TownScene'
 import { WoodsScene } from './scenes/WoodsScene'
 
 /**
@@ -16,9 +17,9 @@ export async function createGame(
   parent: HTMLElement,
   bus: GameBus,
   start: { x: number; y: number } | null,
-  map: 'farm' | 'woods' = 'farm',
+  map: MapName = 'farm',
 ): Promise<Phaser.Game> {
-  const people = ['player', ...NPC_IDS]
+  const people = ['player', ...ALL_NPC_IDS]
   const [present, tiles, manifest, ...sheets] = await Promise.all([
     presentAssets(),
     tileNames(),
@@ -58,6 +59,7 @@ export async function createGame(
 
   game.scene.add('farm', FarmScene, false)
   game.scene.add('woods', WoodsScene, false)
+  game.scene.add('town', TownScene, false)
   game.scene.start(map, {
     bus,
     present,

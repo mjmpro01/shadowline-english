@@ -97,11 +97,12 @@ export function ShopPanel({
   onClose,
   busy,
   onBuy,
-}: Base & { onBuy: (item: string) => void }) {
+  seller,
+}: Base & { onBuy: (item: string) => void; seller: 'mira' | 'hugo' }) {
   return (
-    <Sheet title={t('arena.shop.title')} onClose={onClose} t={t}>
+    <Sheet title={seller === 'hugo' ? t('arena.town.cafe') : t('arena.shop.title')} onClose={onClose} t={t}>
       <ul className="arena-list">
-        {state.shop.filter((item) => item.kind !== 'tool').map((item) => {
+        {state.shop.filter((item) => item.kind !== 'tool' && (item.seller || 'mira') === seller).map((item) => {
           const crop = state.crops.find((c) => c.seed === item.id)
           return (
             <li key={item.id} className="arena-list-row" data-locked={!item.unlocked}>

@@ -23,6 +23,7 @@ const REFUSALS = [
   'no_stamina', 'no_gold', 'not_ripe', 'occupied', 'locked', 'no_seed', 'empty', 'rested',
   'full', 'no_item', 'unlocked', 'max_level', 'not_done', 'claimed', 'no_quest',
   'woods_locked', 'no_hp', 'in_battle', 'respawning', 'battle_over', 'lair_closed',
+  'town_locked', 'talked_today', 'gifted_today', 'not_gift',
 ]
 
 export function gameError(err: unknown, t: Translate): string {

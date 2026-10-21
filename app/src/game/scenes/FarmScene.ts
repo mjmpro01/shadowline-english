@@ -8,6 +8,7 @@ import {
   BOARD,
   CART,
   FARM_GATE,
+  FARM_TOWN_GATE,
   HOUSE,
   HOUSE_DOOR,
   MAILBOX,
@@ -25,6 +26,7 @@ import {
   tile,
   type Rect,
 } from '../world/farm'
+import { FROM_FARM_TO_TOWN } from '../world/town'
 import { FROM_FARM } from '../world/woods'
 import { MapScene } from './MapScene'
 
@@ -62,7 +64,10 @@ export class FarmScene extends MapScene {
   }
 
   protected gates() {
-    return [{ rect: FARM_GATE, to: 'woods' as const, at: FROM_FARM }]
+    return [
+      { rect: FARM_GATE, to: 'woods' as const, at: FROM_FARM },
+      { rect: FARM_TOWN_GATE, to: 'town' as const, at: FROM_FARM_TO_TOWN },
+    ]
   }
 
   protected buildWorld() {

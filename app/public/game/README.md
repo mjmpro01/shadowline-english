@@ -39,6 +39,21 @@ farm is playable with any subset of this folder.
 | `portraits/*.png` | Four faces side by side: neutral, happy, thinking, worried |
 | `ui/*.png` | The wooden frames of the panels (`dialog_box`, `panel`; their corner blocks are 52 px), the joystick, the action button |
 
+### Still to draw: Echo Town (chapter 3)
+
+Until these arrive the town is made of what is already here: the farmhouse
+tinted for each house, painted stand-ins for the people, and an initial in
+place of each portrait.
+
+| File | What it is |
+|---|---|
+| `characters/{elsa,orin,lina,hugo,vy}.png` + `.json` | The five townsfolk, laid out like the farm's people (they only stand and walk): Mayor Elsa (a sash), Sage Orin (a tall pointed hat), Lina the librarian (glasses), Hugo at the café (an apron), Dr. Vy (a white coat) |
+| `portraits/{elsa,orin,lina,hugo,vy}.png` | Four faces each, as for the farm's people |
+| `objects/{town_hall,clinic,tower,library,cafe}.png` | The five houses, each about the farmhouse's size (5×5 tiles, door at the middle of the foot), a sign over the door |
+| `objects/fountain.png` | The fountain in the middle of the square, 2×2 tiles |
+| `tiles/` additions | Paving for the square (the farm's `stone_path` stands in), flower beds |
+| `items/{flowers,old_book,wool_scarf,honey_cake,coffee,soup}.png` | Icons for the gifts and Hugo's café |
+
 ## What the script does to the pack
 
 The pack's boards are drawn freely, so the script:
