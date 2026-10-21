@@ -6,6 +6,9 @@ import { clock, secondsUntil } from '../growth'
 import { ItemIcon, Sheet } from './common'
 import { pick, useNow } from './util'
 
+/** The story step where Bram asks for his hammer (server: game.TrollStep). */
+const HAMMER_HINT_STEP = 15
+
 /**
  * The panels the farm opens over itself. Each only shows the farm as the
  * server sent it and says which move the player chose; the screen around them
@@ -98,7 +101,7 @@ export function ShopPanel({
   return (
     <Sheet title={t('arena.shop.title')} onClose={onClose} t={t}>
       <ul className="arena-list">
-        {state.shop.map((item) => {
+        {state.shop.filter((item) => item.kind !== 'tool').map((item) => {
           const crop = state.crops.find((c) => c.seed === item.id)
           return (
             <li key={item.id} className="arena-list-row" data-locked={!item.unlocked}>
@@ -144,6 +147,7 @@ export function BramPanel({
 }: Base & { onUnlock: (idx: number) => void; onUpgrade: (idx: number) => void }) {
   const nextLocked = state.plots.find((p) => !p.unlocked)
   const upgradable = state.plots.filter((p) => p.unlocked && p.level < state.upgradeCosts.length)
+  const hammer = (state.inventory.bram_hammer ?? 0) > 0
   return (
     <Sheet title={t('arena.bram.title')} onClose={onClose} t={t}>
       <div className="stack gap-3">
@@ -160,6 +164,14 @@ export function BramPanel({
           <p>{t('arena.bram.allClear')}</p>
         )}
         <p className="arena-muted">{t('arena.bram.upgrade')}</p>
+        {/* Once the story has sent the player after it, what the hammer would do. */}
+        {hammer ? (
+          <p className="arena-bram-hammer">
+            <ItemIcon id="bram_hammer" size={24} /> {t('arena.bram.hammerBack')}
+          </p>
+        ) : (
+          state.profile.mainStep >= HAMMER_HINT_STEP && <p className="arena-muted">{t('arena.bram.hammerLost')}</p>
+        )}
         {upgradable.length === 0 ? (
           <p>{t('arena.bram.maxed')}</p>
         ) : (

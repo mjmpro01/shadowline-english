@@ -182,3 +182,39 @@ test('a fight left half-way goes on after a reload, and fainting sends the farme
   await page.keyboard.up('ArrowUp')
   await expect(page.locator('.arena-action')).toContainText('Go inside')
 })
+
+/** Bram's step, where the troll is home (server: game.TrollStep). */
+const TROLL_STEP = 15
+
+test("the troll fights in three phases and gives back Bram's hammer", async ({ page }) => {
+  await openWoods(page)
+  // Before Bram asks, the lair is empty.
+  expect((await page.request.post(`${API_URL}/api/test/game/step`, { data: { step: TROLL_STEP - 1 } })).status()).toBe(204)
+  const closed = await page.request.post(`${API_URL}/api/game/battle/start`, { data: { spawn: 'troll_lair' } })
+  expect(closed.status()).toBe(409)
+  expect(((await closed.json()) as { code: string }).code).toBe('lair_closed')
+
+  expect((await page.request.post(`${API_URL}/api/test/game/step`, { data: { step: TROLL_STEP } })).status()).toBe(204)
+  expect((await page.request.post(`${API_URL}/api/game/battle/start`, { data: { spawn: 'troll_lair' } })).ok()).toBe(true)
+  // The fight reopens on loading.
+  await page.reload()
+  await expect(page.getByTestId('arena')).toHaveAttribute('data-ready', 'true')
+  const fight = page.getByRole('dialog', { name: 'A wild Mumble Troll!' })
+  await expect(fight).toBeVisible()
+  await expect(fight.getByTestId('battle-phase')).toHaveText('Phase 1 of 3')
+
+  const seen = new Set<string>()
+  for (let i = 0; i < 12 && !(await fight.locator('.arena-outcome').isVisible()); i++) {
+    seen.add(await fight.getByTestId('battle-phase').innerText())
+    await answer(page, true)
+  }
+  await expect(fight.locator('.arena-outcome')).toContainText('You won!')
+  expect([...seen].sort()).toEqual(['Phase 1 of 3', 'Phase 2 of 3', 'Phase 3 of 3'])
+  await fight.getByRole('button', { name: 'Back to the woods' }).click()
+
+  // Bram's step is done: his hammer comes with the reward.
+  expect((await page.request.post(`${API_URL}/api/game/quests/claim`, { data: { quest: 'main' } })).ok()).toBe(true)
+  await openFarm(page)
+  await page.getByRole('button', { name: 'Bag' }).click()
+  await expect(page.getByRole('dialog', { name: 'Your bag' })).toContainText("Bram's hammer")
+})

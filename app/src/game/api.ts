@@ -22,7 +22,7 @@ export interface Crop {
 export interface ShopItem {
   id: string
   name: Bilingual
-  kind: 'seed' | 'food'
+  kind: 'seed' | 'food' | 'tool'
   price: number
   stamina?: number
   hp?: number
@@ -73,6 +73,8 @@ export interface Monster {
   hp: number
   hit: number
   gold: number
+  /** The one the story builds up to. */
+  boss?: boolean
 }
 
 export interface Spawn {
@@ -113,6 +115,9 @@ export interface Battle {
   right: number
   wrong: number
   hitsTaken: number
+  /** Which part of the fight this is, from 1, of how many: a boss changes as it tires. */
+  phase: number
+  phases: number
   gold: number
   drop: string
   fine: number

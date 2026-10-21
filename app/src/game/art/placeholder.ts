@@ -490,6 +490,44 @@ function bat(ctx: Ctx) {
   }
 }
 
+/** A red-capped mushroom with thorns, hopping. */
+function shroom(ctx: Ctx) {
+  for (let f = 0; f < 4; f++) {
+    const x = f * 24
+    const up = [0, 1, 2, 1][f]
+    px(ctx, x + 8, 15 - up, 8, 7, '#f3d9b1')
+    px(ctx, x + 10, 17 - up, 1, 2, '#1b1b1b')
+    px(ctx, x + 13, 17 - up, 1, 2, '#1b1b1b')
+    px(ctx, x + 4, 9 - up, 16, 6, '#b23b2e')
+    px(ctx, x + 7, 6 - up, 10, 3, '#b23b2e')
+    px(ctx, x + 11, 3 - up, 2, 3, '#f3d9b1')
+    px(ctx, x + 3, 8 - up, 2, 2, '#f3d9b1')
+    px(ctx, x + 19, 8 - up, 2, 2, '#f3d9b1')
+    px(ctx, x + 8, 10 - up, 2, 2, '#f08a5d')
+    px(ctx, x + 14, 11 - up, 2, 2, '#f08a5d')
+    px(ctx, x + 8, 22, 8, 1, 'rgba(0,0,0,0.25)')
+  }
+}
+
+/** A big mossy troll, breathing. */
+function troll(ctx: Ctx) {
+  for (let f = 0; f < 4; f++) {
+    const x = f * 48
+    const up = [0, 1, 2, 1][f]
+    px(ctx, x + 10, 14 - up, 28, 26 + up, '#a0673a')
+    px(ctx, x + 4, 20 - up, 8, 14, '#8a5530')
+    px(ctx, x + 36, 20 - up, 8, 14, '#8a5530')
+    px(ctx, x + 12, 10 - up, 24, 8, '#6d9b3a')
+    px(ctx, x + 22, 6 - up, 4, 5, '#9aa3b0')
+    px(ctx, x + 16, 22 - up, 16, 6, '#2b1a12')
+    px(ctx, x + 18, 22 - up, 2, 2, '#fff5d6')
+    px(ctx, x + 28, 22 - up, 2, 2, '#fff5d6')
+    px(ctx, x + 14, 40, 8, 6, '#5a3820')
+    px(ctx, x + 26, 40, 8, 6, '#5a3820')
+    px(ctx, x + 10, 46, 28, 1, 'rgba(0,0,0,0.25)')
+  }
+}
+
 const PAINTERS: Record<string, { w: number; h: number; draw: (ctx: Ctx) => void }> = {
   player: { w: 16 * CHAR_COLS, h: 32 * 17, draw: (c) => characterSheet(c, PEOPLE.player) },
   // People other than the player only stand and walk: eight rows.
@@ -516,6 +554,8 @@ const PAINTERS: Record<string, { w: number; h: number; draw: (ctx: Ctx) => void 
   sleep_z: { w: 48, h: 16, draw: sleepZ },
   'monster-word_slime': { w: 96, h: 24, draw: slime },
   'monster-echo_bat': { w: 96, h: 24, draw: bat },
+  'monster-thorn_mushroom': { w: 96, h: 24, draw: shroom },
+  'monster-mumble_troll': { w: 192, h: 48, draw: troll },
 }
 
 /** Paints a placeholder for every picture the artist has not delivered yet. */

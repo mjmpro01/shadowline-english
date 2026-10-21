@@ -32,7 +32,7 @@ type Crop struct {
 type Item struct {
 	ID    string `json:"id"`
 	Name  Text   `json:"name"`
-	Kind  string `json:"kind"` // "seed" or "food"
+	Kind  string `json:"kind"` // "seed", "food", or "tool" (kept, never sold)
 	Price int    `json:"price"`
 	// Stamina a food restores.
 	Stamina int `json:"stamina,omitempty"`
@@ -78,6 +78,23 @@ var Items = []Item{
 	{ID: "seed_golden", Name: Text{"Golden seeds", "Hạt Cây vàng"}, Kind: "seed", Price: 120, UnlockStep: GoldenStep},
 	{ID: "ginger_tea", Name: Text{"Ginger tea", "Trà gừng"}, Kind: "food", Price: 25, Stamina: 10},
 	{ID: "herb_salve", Name: Text{"Herb salve", "Thuốc thảo mộc"}, Kind: "food", Price: 30, HP: 15, UnlockStep: WoodsStep},
+	// Bram's hammer, won back from the troll: with it he can work soil one
+	// level further. The shop never has it.
+	{ID: "bram_hammer", Name: Text{"Bram's hammer", "Búa của Bram"}, Kind: "tool", UnlockStep: Never},
+}
+
+// Never is an unlock step no story reaches: what is never in the shop.
+const Never = 1 << 30
+
+// HammerLevel is how rich soil gets once Bram has his hammer back.
+const HammerLevel = MaxLevel + 1
+
+// MaxLevelFor is the richest soil Bram can make, with or without his hammer.
+func MaxLevelFor(hasHammer bool) int {
+	if hasHammer {
+		return HammerLevel
+	}
+	return MaxLevel
 }
 
 func init() {
@@ -119,8 +136,12 @@ func UnlockCost(unlocked int) int {
 	return 80 + 40*(unlocked-StartPlots)
 }
 
-// UpgradeCost is what raising a plot's soil from this level costs.
+// UpgradeCost is what raising a plot's soil from this level costs. The last
+// level, the hammer's, costs a good deal more.
 func UpgradeCost(level int) int {
+	if level >= MaxLevel {
+		return 600
+	}
 	return 60 * (level + 1)
 }
 

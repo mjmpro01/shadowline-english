@@ -26,9 +26,21 @@ export const WOODS_GATE: Rect = { x: 0, y: 11, w: 1, h: 1 }
 /** Where a player coming from the farm appears: on the path, just inside. */
 export const FROM_FARM = { x: TILE + TILE / 2, y: (WOODS_GATE.y + 1) * TILE }
 
+/** The troll's lair at the east end: bare earth, ringed with rocks. */
+export const LAIR: Rect = { x: 26, y: 10, w: 4, h: 4 }
+export const LAIR_ROCKS: { x: number; y: number }[] = [
+  { x: 25, y: 10 },
+  { x: 30, y: 11 },
+  { x: 29, y: 14 },
+]
+
 const PATHS: Rect[] = [
-  // In from the gate and across.
-  { x: 0, y: 11, w: 26, h: 1 },
+  // In from the gate and across, to the lair.
+  { x: 0, y: 11, w: 27, h: 1 },
+  LAIR,
+  // West to the thorn-shrooms' corner, south to their dell.
+  { x: 5, y: 4, w: 7, h: 1 },
+  { x: 12, y: 18, w: 4, h: 1 },
   // North to the slimes' clearing, south to the bats' hollow.
   { x: 12, y: 4, w: 1, h: 15 },
   { x: 12, y: 4, w: 10, h: 1 },
@@ -47,6 +59,9 @@ export const CLEARINGS: Rect[] = [
   { x: 18, y: 5, w: 4, h: 3 },
   { x: 23, y: 14, w: 4, h: 4 },
   { x: 25, y: 6, w: 4, h: 4 },
+  { x: 2, y: 2, w: 5, h: 3 },
+  { x: 15, y: 17, w: 5, h: 3 },
+  LAIR,
 ]
 
 const isPath = (x: number, y: number) => PATHS.some((p) => inRect(x, y, p))
@@ -94,7 +109,7 @@ export function woodsDecor(names: TileNames): { x: number; y: number; index: num
   for (let y = 1; y < HEIGHT - 1; y++) {
     for (let x = 1; x < WIDTH - 1; x++) {
       const h = hash(x * 7 + 5, y * 11 + 3)
-      if (h > 0.9 && !isPath(x, y) && !trees.has(`${x},${y}`)) {
+      if (h > 0.9 && !isPath(x, y) && !trees.has(`${x},${y}`) && !LAIR_ROCKS.some((r) => r.x === x && r.y === y)) {
         out.push({ x, y, index: tile(names, kinds[Math.floor((h - 0.9) * 100) % kinds.length]) })
       }
     }
@@ -104,5 +119,8 @@ export function woodsDecor(names: TileNames): { x: number; y: number; index: num
 
 /** What the player cannot walk through. */
 export function woodsSolids(): Rect[] {
-  return [...border([WOODS_GATE]), ...WOOD_TREES.map((t) => ({ x: t.x, y: t.y, w: 1, h: 1 }))]
+  return [
+    ...border([WOODS_GATE]),
+    ...[...WOOD_TREES, ...LAIR_ROCKS].map((t) => ({ x: t.x, y: t.y, w: 1, h: 1 })),
+  ]
 }

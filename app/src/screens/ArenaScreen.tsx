@@ -3,7 +3,7 @@ import { useI18n } from '../i18n'
 import { Loading } from '../components/LoadState'
 import { useApp } from '../store/context'
 import { gameApi, type Battle, type GameState, type HarvestedWord, type Quests, type Reward, type Turn } from '../game/api'
-import { art } from '../game/assets'
+import { art, artManifest, type ArtManifest } from '../game/assets'
 import { GameBus, type MapName, type NpcId, type Target } from '../game/bus'
 import { idleLine } from '../game/npcs'
 import { BattlePanel } from '../game/ui/BattlePanel'
@@ -56,6 +56,11 @@ export function ArenaScreen() {
   const [map, setMap] = useState<MapName | null>(null)
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState<{ text: string; reward?: Reward } | null>(null)
+  /** How the art's strips are cut, for the monster in the fight panel. */
+  const [artInfo, setArtInfo] = useState<ArtManifest | null>(null)
+  useEffect(() => {
+    void artManifest().then(setArtInfo)
+  }, [])
 
   const take = useCallback((next: GameState) => {
     setState(next)
@@ -150,6 +155,9 @@ export function ArenaScreen() {
             break
           case 'board':
             setPanel({ kind: 'quests', tab: 'daily' })
+            break
+          case 'lair':
+            setToast({ text: t('arena.woods.lair') })
             break
         }
       }),
@@ -430,6 +438,7 @@ export function ArenaScreen() {
           onNext={() => setPanel({ kind: 'battle', battle: panel.battle, turn: null })}
           onFlee={() => void flee(panel.battle)}
           onClose={() => leaveBattle(panel.battle)}
+          artInfo={artInfo}
         />
       )}
       {quests && panel?.kind === 'quests' && (

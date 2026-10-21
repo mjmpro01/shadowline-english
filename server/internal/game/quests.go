@@ -53,6 +53,8 @@ const (
 	BloomStep  = 8
 	GoldenStep = 9
 	WoodsStep  = 10
+	// TrollStep is Bram's request, from which the troll is in its lair.
+	TrollStep = 15
 )
 
 // MainQuests is the story so far. Chapter 1, the farm, doubles as the
@@ -218,6 +220,44 @@ var MainQuests = []Step{
 		Counter:   Counter{Kind: "event", Item: "answer_right"}, Target: 15,
 		Reward: Reward{Gold: 40, Items: map[string]int{"seed_bloom": 1}},
 	},
+	{
+		ID: "thorns", Chapter: 2, Giver: "sir_shadow",
+		Title: Text{"Thorns in the dark", "Gai trong bóng tối"},
+		Lines: []Text{
+			{"Your ears are sharp now. Good.", "Tai cậu đã thính rồi. Tốt lắm."},
+			{"Deeper in, mushrooms grow thorns and hard words.", "Sâu hơn trong rừng, lũ nấm mọc gai và nói toàn từ khó."},
+			{"They ask in every way at once. Beat three of them.", "Chúng hỏi đủ mọi kiểu. Hạ ba con xem nào."},
+		},
+		Objective: Text{"Beat 3 Thorn-shrooms", "Hạ 3 Nấm gai"},
+		Counter:   Counter{Kind: "event", Item: "win", Of: "thorn_mushroom"}, Target: 3,
+		Reward: Reward{Gold: 50, Items: map[string]int{"herb_salve": 2}},
+	},
+	{
+		ID: "brams_hammer", Chapter: 2, Giver: "bram",
+		Title: Text{"Bram's hammer", "Chiếc búa của Bram"},
+		Lines: []Text{
+			{"Farmer! A troll came out of the woods last night.", "Bác nông dân! Tối qua có một con quỷ từ trong rừng mò ra."},
+			{"It mumbled and mumbled, and it took my hammer.", "Nó cứ lầm bầm mãi, rồi cuỗm mất chiếc búa của tôi."},
+			{"It hides in a lair at the east end of the woods.", "Nó trốn trong hang ở cuối phía đông khu rừng."},
+			{"Bring it back and I can work your soil richer than ever.", "Lấy lại được búa thì tôi sẽ làm đất cho cậu tốt hơn bao giờ hết."},
+		},
+		Objective: Text{"Beat the Mumble Troll", "Hạ Quỷ Lầm Bầm"},
+		Counter:   Counter{Kind: "event", Item: "win", Of: "mumble_troll"}, Target: 1,
+		Reward: Reward{Gold: 100, Items: map[string]int{"bram_hammer": 1, "seed_golden": 1}},
+	},
+	{
+		ID: "smoke", Chapter: 2, Giver: "sir_shadow",
+		Title: Text{"Smoke on the hill", "Khói trên đồi"},
+		Lines: []Text{
+			{"The woods are quieter now. You did that.", "Khu rừng giờ đã yên hơn. Là nhờ cậu đấy."},
+			{"But look, past the trees. Smoke, over Echo town.", "Nhưng nhìn kìa, phía sau rặng cây. Có khói bốc lên trên thị trấn Echo."},
+			{"The Silence did not stop at the woods.", "Màn Im Lặng không dừng lại ở khu rừng."},
+			{"Rest well, farmer. Soon we go to Echo.", "Nghỉ ngơi đi, bác nông dân. Chẳng bao lâu nữa ta sẽ tới Echo."},
+		},
+		Objective: Text{"Listen to Sir Shadow", "Nghe Hiệp sĩ Shadow kể"},
+		Target:    0,
+		Reward:    Reward{Gold: 30},
+	},
 }
 
 // Daily is one of the day's three small tasks.
@@ -256,6 +296,8 @@ var DailyPool = []Daily{
 		Learning: true, Counter: Counter{Kind: "event", Item: "answer_right"}, Target: 10, Reward: Reward{Gold: 40, Stamina: 5}},
 	{ID: "clean1", Title: Text{"Win a fight without being hit", "Thắng một trận không bị trúng đòn"}, Woods: true,
 		Counter: Counter{Kind: "event", Item: "win_clean"}, Target: 1, Reward: Reward{Gold: 50}},
+	{ID: "shroom1", Title: Text{"Beat a Thorn-shroom", "Hạ một Nấm gai"}, Woods: true,
+		Counter: Counter{Kind: "event", Item: "win", Of: "thorn_mushroom"}, Target: 1, Reward: Reward{Gold: 50, Stamina: 5}},
 }
 
 // DailyCount is how many tasks a day holds.

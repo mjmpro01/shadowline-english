@@ -555,14 +555,13 @@
 .arena-fighter-info strong {
   font-family: var(--font-heading);
   font-size: 16px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.15;
 }
 .arena-fighter[data-hurt] {
   animation: arena-shake 0.35s;
 }
-.arena-fighter[data-hurt] .arena-monster-img {
+.arena-fighter[data-hurt] .arena-monster-img,
+.arena-fighter[data-hurt] .arena-monster-sprite {
   animation: arena-flash 0.35s;
 }
 @keyframes arena-shake {
@@ -611,6 +610,48 @@
   image-rendering: pixelated;
   object-fit: contain;
   animation: arena-bob 1.6s ease-in-out infinite;
+}
+.arena-monster-sprite {
+  width: 80px;
+  flex: none;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+.arena-monster-sprite[data-boss] {
+  width: 120px;
+}
+.arena-boss-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  margin-right: 2px;
+  border-radius: 6px;
+  background: #8e2b1f;
+  color: #fff3e0;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+.arena-phase {
+  font-size: 12px;
+  font-weight: 700;
+  color: #8e2b1f;
+}
+.arena-battle[data-boss] .arena-health[data-kind='monster'] .arena-bar > span {
+  background: #c62828;
+}
+.arena-bram-hammer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+.arena-icon-standin {
+  display: inline-grid;
+  place-content: center;
+  line-height: 1;
 }
 @keyframes arena-bob {
   50% {
@@ -827,12 +868,14 @@
     width: 52px;
     height: 52px;
   }
+  .arena-monster-sprite {
+    width: 60px;
+  }
+  .arena-monster-sprite[data-boss] {
+    width: 84px;
+  }
   .arena-battle-body {
     min-height: 0;
-  }
-  .arena-fighter-info strong {
-    white-space: normal;
-    line-height: 1.15;
   }
   .arena-question-word {
     font-size: 24px;

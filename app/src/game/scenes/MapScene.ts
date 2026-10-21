@@ -9,7 +9,9 @@ import {
   CHAR_ROWS,
   DIRS,
   DUST_FRAMES,
+  MONSTER_DOWN_ROW,
   MONSTER_FRAMES,
+  MONSTER_HURT_ROW,
   MONSTER_MOVE_ROW,
   MONSTER_ROWS,
   MONSTER_SHEETS,
@@ -443,8 +445,8 @@ export abstract class MapScene extends Phaser.Scene {
         this.anims.generateFrameNumbers(key, { frames: Array.from({ length: cols }, (_, i) => (cols < total ? r * cols : 0) + i) })
       make({ key: `${key}-idle`, frames: row(0), frameRate: 6, repeat: -1 })
       make({ key: `${key}-move`, frames: row(MONSTER_MOVE_ROW[id]), frameRate: 8, repeat: -1 })
-      make({ key: `${key}-hurt`, frames: row(2), frameRate: 10 })
-      make({ key: `${key}-down`, frames: row(3), frameRate: 8 })
+      make({ key: `${key}-hurt`, frames: row(MONSTER_HURT_ROW), frameRate: 10 })
+      make({ key: `${key}-down`, frames: row(MONSTER_DOWN_ROW), frameRate: 8 })
     }
   }
 

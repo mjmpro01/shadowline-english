@@ -44,6 +44,9 @@ type BattleView struct {
 	Words        []string      `json:"words"`
 	ServerNow    time.Time     `json:"now"`
 	MonsterHPMax int           `json:"monsterHpMax"`
+	// Phase of the fight, from 1, of Phases: a boss changes as it tires.
+	Phase  int `json:"phase"`
+	Phases int `json:"phases"`
 }
 
 // Turn is what one answer did.
@@ -109,7 +112,10 @@ func (b battleRow) view(p profileRow, now time.Time) BattleView {
 		IssuedAt: b.issuedAt, Deadline: b.deadline, Right: b.right, Wrong: b.wrong,
 		HitsTaken: b.hitsTaken, Gold: b.gold, Drop: b.drop, Fine: b.fine,
 		Words: b.asked, ServerNow: now,
+		Phases: max(1, len(m.Phases)),
 	}
+	phase, _ := game.PhaseOf(m, b.monsterHP)
+	v.Phase = phase + 1
 	if v.Words == nil {
 		v.Words = []string{}
 	}
@@ -125,10 +131,15 @@ func (b battleRow) view(p profileRow, now time.Time) BattleView {
 }
 
 // respawns is when each beaten monster comes back, for those not back yet.
+// Each monster stays away its own time: minutes for most, a day for the troll.
 func respawns(ctx context.Context, tx pgx.Tx, user uuid.UUID, now time.Time) (map[string]time.Time, error) {
+	longest := game.RespawnDefault
+	for _, m := range game.Monsters {
+		longest = max(longest, game.RespawnOf(m))
+	}
 	rows, err := tx.Query(ctx, `
 		select spawn, defeated_at from game_spawns
-		where user_id = $1 and defeated_at > $2`, user, now.Add(-game.Respawn))
+		where user_id = $1 and defeated_at > $2`, user, now.Add(-longest))
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +151,14 @@ func respawns(ctx context.Context, tx pgx.Tx, user uuid.UUID, now time.Time) (ma
 		if err := rows.Scan(&spawn, &at); err != nil {
 			return nil, err
 		}
-		out[spawn] = at.Add(game.Respawn)
+		sp, ok := game.SpawnByID(spawn)
+		if !ok {
+			continue
+		}
+		m, _ := game.MonsterByID(sp.Monster)
+		if back := at.Add(game.RespawnOf(m)); back.After(now) {
+			out[spawn] = back
+		}
 	}
 	return out, rows.Err()
 }
@@ -225,7 +243,7 @@ func wrongAnswers(ctx context.Context, tx pgx.Tx, m game.Monster, target string)
 
 // ask makes the next question: a word, and one of the monster's kinds of
 // question that the word and the wrong answers can make.
-func ask(ctx context.Context, tx pgx.Tx, user uuid.UUID, m game.Monster, asked []string, round int, r *rand.Rand) (game.Question, error) {
+func ask(ctx context.Context, tx pgx.Tx, user uuid.UUID, m game.Monster, phase game.Phase, asked []string, round int, r *rand.Rand) (game.Question, error) {
 	for try := 0; try < 6; try++ {
 		target, ok, err := nextWord(ctx, tx, user, m, asked, round, r)
 		if err != nil {
@@ -240,8 +258,8 @@ func ask(ctx context.Context, tx pgx.Tx, user uuid.UUID, m game.Monster, asked [
 		if err != nil {
 			return game.Question{}, err
 		}
-		for _, i := range r.Perm(len(m.Games)) {
-			if q, ok := game.NewQuestion(m.Games[i], target, pool, r); ok {
+		for _, i := range r.Perm(len(phase.Games)) {
+			if q, ok := game.NewQuestion(phase.Games[i], target, pool, r); ok {
 				return q, nil
 			}
 		}
@@ -269,6 +287,9 @@ func (s *Store) StartBattle(ctx context.Context, user uuid.UUID, spawn string) (
 		if !ok {
 			return badMove("no_spawn", "there is nothing there")
 		}
+		if p.mainStep < sp.Step {
+			return refuse("lair_closed", "nothing lives there yet")
+		}
 		m, _ := game.MonsterByID(sp.Monster)
 		if b, err := activeBattle(ctx, tx, user); err != nil {
 			return err
@@ -288,7 +309,8 @@ func (s *Store) StartBattle(ctx context.Context, user uuid.UUID, spawn string) (
 		if err := spendStamina(&p, now, game.FightCost); err != nil {
 			return err
 		}
-		q, err := ask(ctx, tx, user, m, nil, 1, newRand())
+		_, phase := game.PhaseOf(m, m.HP)
+		q, err := ask(ctx, tx, user, m, phase, nil, 1, newRand())
 		if err != nil {
 			return err
 		}
@@ -298,7 +320,7 @@ func (s *Store) StartBattle(ctx context.Context, user uuid.UUID, spawn string) (
 			                          issued_at, deadline, asked)
 			values ($1, $2, $3, $4, $5, $6, $7, $8, $9, array[$6])
 			returning `+battleColumns,
-			user, spawn, m.ID, m.HP, qJSON, q.Word, q.Answer, now, now.Add(game.TimeFor(m, q.Kind))))
+			user, spawn, m.ID, m.HP, qJSON, q.Word, q.Answer, now, now.Add(game.TimeFor(phase, q.Kind))))
 		if err != nil {
 			return err
 		}
@@ -441,13 +463,14 @@ func (s *Store) AnswerBattle(ctx context.Context, user uuid.UUID, id int64, answ
 			}
 		default:
 			b.round++
-			next, err := ask(ctx, tx, user, m, b.asked, b.round, newRand())
+			_, phase := game.PhaseOf(m, b.monsterHP)
+			next, err := ask(ctx, tx, user, m, phase, b.asked, b.round, newRand())
 			if err != nil {
 				return err
 			}
 			b.question = next
 			b.issuedAt = now
-			b.deadline = now.Add(game.TimeFor(m, next.Kind))
+			b.deadline = now.Add(game.TimeFor(phase, next.Kind))
 			if !slices.Contains(b.asked, next.Word) {
 				b.asked = append(b.asked, next.Word)
 			}

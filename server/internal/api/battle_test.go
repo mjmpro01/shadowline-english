@@ -3,7 +3,9 @@ package api_test
 import (
 	"context"
 	"net/http"
+	"slices"
 	"testing"
+	"time"
 
 	"github.com/shadowline/server/internal/game"
 )
@@ -23,6 +25,10 @@ type battleJSON struct {
 	Wrong     int    `json:"wrong"`
 	Gold      int    `json:"gold"`
 	Fine      int    `json:"fine"`
+	Phase     int    `json:"phase"`
+	Phases    int    `json:"phases"`
+	IssuedAt  string `json:"issuedAt"`
+	Deadline  string `json:"deadline"`
 	Question  struct {
 		Kind    string   `json:"kind"`
 		Prompt  string   `json:"prompt"`
@@ -47,7 +53,8 @@ type battleStateJSON struct {
 			ID        string  `json:"id"`
 			RespawnAt *string `json:"respawnAt"`
 		} `json:"spawns"`
-		Inventory map[string]int `json:"inventory"`
+		UpgradeCosts []int          `json:"upgradeCosts"`
+		Inventory    map[string]int `json:"inventory"`
 	} `json:"state"`
 	Turn struct {
 		Right  bool   `json:"right"`
@@ -339,5 +346,115 @@ func TestChapterTwoCountsFightsAndAnswers(t *testing.T) {
 	q := gameQuests(t, learner)
 	if q.Main == nil || q.Main.ID != "five_slimes" || q.Main.Progress != 1 {
 		t.Fatalf("slimes since the step began: %+v", q.Main)
+	}
+}
+
+// setStep puts a player's story at a main-quest step.
+func (h *harness) setStep(t *testing.T, step int) {
+	t.Helper()
+	if _, err := h.pool.Exec(context.Background(),
+		`update game_profiles set main_step = $1, main_step_at = now()`, step); err != nil {
+		t.Fatalf("set step: %v", err)
+	}
+}
+
+func TestTheTrollFightsInPhasesAndGivesBackTheHammer(t *testing.T) {
+	h := newHarness(t)
+	learner := h.login("learner@example.com")
+	h.openWoods(t, learner)
+
+	// Before Bram asks, the lair is empty.
+	h.setStep(t, game.TrollStep-1)
+	for _, sp := range startBattle(t, learner, "shroom_1").State.Spawns {
+		if sp.ID == "troll_lair" {
+			t.Fatal("the troll is in its lair before the story sends the player there")
+		}
+	}
+	var shroom int64
+	if err := h.pool.QueryRow(context.Background(),
+		`select id from game_battles where state = 'active'`).Scan(&shroom); err != nil {
+		t.Fatal(err)
+	}
+	expectStatus(t, learner.json("POST", "/api/game/battle/flee", map[string]any{"battle": shroom}), http.StatusOK)
+	expectCode(t, learner.json("POST", "/api/game/battle/start", map[string]any{"spawn": "troll_lair"}),
+		http.StatusConflict, "lair_closed")
+
+	h.setStep(t, game.TrollStep)
+	start := startBattle(t, learner, "troll_lair")
+	b := start.Battle
+	if b.Phases != 3 || b.Phase != 1 || b.MonsterHP != 12 {
+		t.Fatalf("the troll's fight begins: %+v", b)
+	}
+	// Quick right answers strike twice: 12, 10 in the first phase, 8, 6 in
+	// the second, 4, 2 in the last — each asking its own kinds, faster.
+	kinds := map[int][]string{
+		1: {game.GameMeaning, game.GameListen},
+		2: {game.GameListen, game.GameIPA},
+		3: {game.GameScramble, game.GameIPA},
+	}
+	for b.State == "active" {
+		want := 1 + (12-b.MonsterHP)/4
+		if b.Phase != want || !slices.Contains(kinds[want], b.Question.Kind) {
+			t.Fatalf("at %d health: phase %d asking %s", b.MonsterHP, b.Phase, b.Question.Kind)
+		}
+		if want == 3 && b.Question.Kind == game.GameIPA {
+			issued, _ := time.Parse(time.RFC3339Nano, b.IssuedAt)
+			deadline, _ := time.Parse(time.RFC3339Nano, b.Deadline)
+			if deadline.Sub(issued) != 8*time.Second {
+				t.Fatalf("the last phase gives %v", deadline.Sub(issued))
+			}
+		}
+		right, _ := h.answerKey(t)
+		b = answer(t, learner, b.ID, right).Battle
+	}
+	if b.State != "won" || b.Gold != 60+20 {
+		t.Fatalf("the troll beaten: %+v", b)
+	}
+	// It is back tomorrow, not in ten minutes.
+	after := expect[struct {
+		Spawns []struct {
+			ID        string  `json:"id"`
+			RespawnAt *string `json:"respawnAt"`
+		} `json:"spawns"`
+	}](t, learner.json("GET", "/api/game/state", nil), http.StatusOK)
+	for _, sp := range after.Spawns {
+		if sp.ID == "troll_lair" {
+			back, _ := time.Parse(time.RFC3339Nano, *sp.RespawnAt)
+			if until := time.Until(back); until < 23*time.Hour || until > 25*time.Hour {
+				t.Fatalf("the troll is back in %v", until)
+			}
+		}
+	}
+
+	// Bram's request is done; his hammer comes with the reward, and with it
+	// a fourth level of soil.
+	if q := gameQuests(t, learner); q.Main == nil || q.Main.ID != "brams_hammer" || !q.Main.Done {
+		t.Fatalf("after the troll: %+v", q.Main)
+	}
+	h.setGold(t, 2000)
+	if _, err := h.pool.Exec(context.Background(), `update game_plots set level = 3 where idx = 0`); err != nil {
+		t.Fatal(err)
+	}
+	expectCode(t, learner.json("POST", "/api/game/upgrade", map[string]any{"plot": 0}),
+		http.StatusConflict, "max_level")
+	claim(t, learner, "main")
+	got := gameState(t, learner)
+	if got.Inventory["bram_hammer"] != 1 || got.Inventory["seed_golden"] < 1 {
+		t.Fatalf("Bram's reward: %v", got.Inventory)
+	}
+	up := expect[gameStateJSON](t, learner.json("POST", "/api/game/upgrade", map[string]any{"plot": 0}), http.StatusOK)
+	if up.Plots[0].Level != game.HammerLevel || up.Profile.Gold != 2000+100-game.UpgradeCost(3) {
+		t.Fatalf("with the hammer: level %d, gold %d", up.Plots[0].Level, up.Profile.Gold)
+	}
+	expectCode(t, learner.json("POST", "/api/game/upgrade", map[string]any{"plot": 0}),
+		http.StatusConflict, "max_level")
+
+	// The chapter ends with Sir Shadow and the smoke over Echo.
+	if q := gameQuests(t, learner); q.Main == nil || q.Main.ID != "smoke" || !q.Main.Done {
+		t.Fatalf("the chapter's end: %+v", q.Main)
+	}
+	claim(t, learner, "main")
+	if q := gameQuests(t, learner); q.Main != nil {
+		t.Fatalf("after chapter 2: %+v", q.Main)
 	}
 }

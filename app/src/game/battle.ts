@@ -40,3 +40,28 @@ export function optionKey(key: string, options: number): number {
   const n = Number(key)
   return Number.isInteger(n) && n >= 1 && n <= options ? n - 1 : -1
 }
+
+/** What the monster in the fight panel is doing: breathing, striking the
+ *  player, taking a hit, going down. */
+export type SpriteMove = 'idle' | 'attack' | 'hurt' | 'down'
+
+/**
+ * The frame of a monster's strip to show: its rows are standing, moving or
+ * attacking, hit, and going down, `cols` frames each. Standing loops; the rest
+ * play once, after which a hit or an attack goes back to standing and going
+ * down stays down.
+ */
+export function spriteFrame(
+  move: SpriteMove,
+  cols: number,
+  rows: { attack: number; hurt: number; down: number },
+  elapsedMs: number,
+  fps: number,
+): number {
+  const step = Math.max(0, Math.floor((elapsedMs * fps) / 1000))
+  if (move === 'down') return rows.down * cols + Math.min(step, cols - 1)
+  if (move !== 'idle' && step < cols) return rows[move] * cols + step
+  // Standing, from where the move ended.
+  const since = move === 'idle' ? step : step - cols
+  return since % cols
+}
