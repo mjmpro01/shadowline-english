@@ -75,6 +75,9 @@ describe('the woods', () => {
       [20, 6],
       [24, 15],
       [27, 8],
+      [4, 3],
+      [17, 18],
+      [28, 12],
     ]
     const walls = woodsSolids()
     for (const [x, y] of spawns) expect(blocks(walls, x, y), `spawn ${x},${y}`).toBe(false)

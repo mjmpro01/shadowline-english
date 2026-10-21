@@ -41,13 +41,22 @@ export const TREE_KINDS = 3
 /** The monsters of the woods. A sheet from scripts/build-art.py is four
  *  rows of frames in one strip — standing, moving (or attacking), hit, going
  *  down; the painted stand-in is four frames of it bobbing, used for all. */
-export const MONSTER_IDS = ['word_slime', 'echo_bat'] as const
+export const MONSTER_IDS = ['word_slime', 'echo_bat', 'thorn_mushroom', 'mumble_troll'] as const
 export type MonsterId = (typeof MONSTER_IDS)[number]
 export const MONSTER_FRAMES = 4
 export const MONSTER_ROWS = 4
 /** The row each monster moves with: the bat flaps the same way standing or
- *  flying, its second row being a dive. */
-export const MONSTER_MOVE_ROW: Record<MonsterId, number> = { word_slime: 1, echo_bat: 0 }
+ *  flying, and the troll stomps as it stands — their second rows are attacks. */
+export const MONSTER_MOVE_ROW: Record<MonsterId, number> = {
+  word_slime: 1,
+  echo_bat: 0,
+  thorn_mushroom: 1,
+  mumble_troll: 0,
+}
+/** The row a monster strikes with, in the fight panel. */
+export const MONSTER_ATTACK_ROW = 1
+export const MONSTER_HURT_ROW = 2
+export const MONSTER_DOWN_ROW = 3
 /** The slime comes in more colours than its own green; each spot keeps one. */
 export const SLIME_COLOURS = ['blue', 'purple'] as const
 /** A slime's colour goes with its spot (slime_1 green, slime_2 blue…), so it
@@ -85,7 +94,11 @@ export const ASSETS: AssetSpec[] = [
   { key: 'dust', file: 'fx/dust.png', frame: { w: 16, h: 16 } },
   { key: 'sleep_z', file: 'fx/sleep_z.png', frame: { w: 16, h: 16 } },
   // The colours have no stand-in: without their file a slime is green.
-  ...MONSTER_SHEETS.map(({ key, file }) => ({ key, file, frame: { w: 24, h: 24 } })),
+  ...MONSTER_SHEETS.map(({ key, id, file }) => ({
+    key,
+    file,
+    frame: id === 'mumble_troll' ? { w: 48, h: 48 } : { w: 24, h: 24 },
+  })),
 ]
 
 export const BASE = `${import.meta.env.BASE_URL}game/`

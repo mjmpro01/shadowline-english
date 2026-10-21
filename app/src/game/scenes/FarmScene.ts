@@ -29,12 +29,16 @@ import { FROM_FARM } from '../world/woods'
 import { MapScene } from './MapScene'
 
 const PLOTS = 12
+/** The richest soil the tileset draws; the hammer's level is that, glowing. */
+const MAX_DRAWN_LEVEL = 3
 
 interface PlotView {
   soil: Phaser.GameObjects.Image
   crop: Phaser.GameObjects.Sprite
   /** Twinkles over a crop that is ready to pick. */
   ripe: Phaser.GameObjects.Sprite
+  /** A golden rim on soil worked with Bram's hammer. */
+  rich: Phaser.GameObjects.Rectangle
   rect: Rect
 }
 
@@ -105,7 +109,14 @@ export class FarmScene extends MapScene {
         .setDepth(crop.y + 1)
         .setVisible(false)
       ripe.play('sparkle-twinkle')
-      this.plots.push({ soil, crop, ripe, rect })
+      const rich = this.add
+        .rectangle(rect.x * TILE + 1, rect.y * TILE + 1, rect.w * TILE - 2, rect.h * TILE - 2)
+        .setOrigin(0, 0)
+        .setStrokeStyle(1.5, 0xffd54f, 1)
+        .setDepth(1.1)
+        .setVisible(false)
+      this.tweens.add({ targets: rich, alpha: 0.35, duration: 900, yoyo: true, repeat: -1 })
+      this.plots.push({ soil, crop, ripe, rich, rect })
     }
 
     // The people.
@@ -150,9 +161,15 @@ export class FarmScene extends MapScene {
       if (!view) return
       let soil: string
       if (!plot.unlocked) soil = 'soil_locked'
-      else if (plot.level > 0) soil = `soil_level_${plot.level}`
+      else if (plot.level > 0) soil = `soil_level_${Math.min(plot.level, MAX_DRAWN_LEVEL)}`
       else soil = plot.crop ? 'tilled_wet' : 'tilled_dry'
       view.soil.setFrame(tile(this.names, soil))
+      // Soil worked with Bram's hammer is the richest drawn, warmer, in a
+      // golden rim.
+      const rich = plot.level > MAX_DRAWN_LEVEL
+      if (rich) view.soil.setTint(0xffd98a)
+      else view.soil.clearTint()
+      view.rich.setVisible(rich)
       if (plot.crop && plot.plantedAt && plot.ripeAt) {
         const stage = cropStage(Date.parse(plot.plantedAt), Date.parse(plot.ripeAt), now, CROP_STAGES)
         this.sized(view.crop.setTexture(`crop-${plot.crop}`, stage)).setVisible(true)

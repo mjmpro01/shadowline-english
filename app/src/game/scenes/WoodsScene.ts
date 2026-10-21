@@ -3,7 +3,8 @@ import type { GameState } from '../api'
 import { TREE_KINDS, monsterColour } from '../assets'
 import type { Target } from '../bus'
 import { FROM_WOODS, TILE } from '../world/farm'
-import { FROM_FARM, WOOD_TREES, WOODS_GATE, woodsDecor, woodsGround, woodsSolids } from '../world/woods'
+import { inRect } from '../world/farm'
+import { FROM_FARM, LAIR, LAIR_ROCKS, WOOD_TREES, WOODS_GATE, woodsDecor, woodsGround, woodsSolids } from '../world/woods'
 import { MapScene } from './MapScene'
 
 /** How far a monster wanders from its spot, in map pixels. */
@@ -59,6 +60,7 @@ export class WoodsScene extends MapScene {
         0xd4e4cc,
       ),
     )
+    LAIR_ROCKS.forEach((r) => this.stand('rock_big', (r.x + 0.5) * TILE, (r.y + 1) * TILE).setTint(0xb8c4b0))
     for (const r of woodsSolids()) this.wall(r)
     // Monsters come from the state; it may already be here.
     if (this.state) this.placeMonsters(this.state)
@@ -139,9 +141,11 @@ export class WoodsScene extends MapScene {
 
   /** A little walk near home, a pause, another. */
   private wander(m: MonsterView) {
+    // The troll keeps to its lair.
+    const range = m.monster === 'mumble_troll' ? WANDER / 3 : WANDER
     const to = {
-      x: m.home.x + Phaser.Math.Between(-WANDER, WANDER),
-      y: m.home.y + Phaser.Math.Between(-WANDER / 2, WANDER / 2),
+      x: m.home.x + Phaser.Math.Between(-range, range),
+      y: m.home.y + Phaser.Math.Between(-range / 2, range / 2),
     }
     this.tweens.add({
       targets: m.sprite,
@@ -162,9 +166,14 @@ export class WoodsScene extends MapScene {
   }
 
   protected targetAt(rx: number, ry: number): Target | null {
+    // Until the story sends the player after it, the troll's lair is empty.
+    const lairEmpty = !this.monsters.some((m) => m.monster === 'mumble_troll')
+    if (lairEmpty && inRect(rx / TILE, ry / TILE, LAIR)) return { kind: 'lair' }
     for (const m of this.monsters) {
       if (!m.sprite.visible || m.backAt) continue
-      if (Math.hypot(rx - m.sprite.x, ry - (m.sprite.y - 6)) <= 24) {
+      // A big monster is reached anywhere in front of it.
+      const reach = Math.max(24, m.sprite.displayWidth / 2)
+      if (Math.hypot(rx - m.sprite.x, ry - (m.sprite.y - 6)) <= reach) {
         return { kind: 'monster', spawn: m.spawn, monster: m.monster }
       }
     }
@@ -176,6 +185,7 @@ export class WoodsScene extends MapScene {
       const m = this.monsters.find((v) => v.spawn === target.spawn)
       if (m) return { x: m.sprite.x, y: m.sprite.y - m.sprite.displayHeight - 6 }
     }
+    if (target.kind === 'lair') return { x: (LAIR.x + LAIR.w / 2) * TILE, y: LAIR.y * TILE - 4 }
     return { x: 0, y: 0 }
   }
 

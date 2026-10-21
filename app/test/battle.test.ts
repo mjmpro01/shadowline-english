@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { optionKey, pickLetter, pickTile, spelled, timeLeft, timeShare } from '../src/game/battle'
+import { optionKey, pickLetter, pickTile, spelled, spriteFrame, timeLeft, timeShare } from '../src/game/battle'
 
 describe('the fight clock', () => {
   const issued = '2026-10-20T10:00:00.000Z'
@@ -54,5 +54,26 @@ describe('number keys', () => {
     expect(optionKey('0', 4)).toBe(-1)
     expect(optionKey('a', 4)).toBe(-1)
     expect(optionKey(' ', 4)).toBe(-1)
+  })
+})
+
+describe('the monster in the fight panel', () => {
+  const rows = { attack: 1, hurt: 2, down: 3 }
+  const at = (frames: number) => (frames * 1000) / 8
+
+  it('breathes in a loop', () => {
+    expect([0, 1, 2, 3, 4, 5].map((f) => spriteFrame('idle', 4, rows, at(f), 8))).toEqual([0, 1, 2, 3, 0, 1])
+  })
+
+  it('takes a hit once, then stands again', () => {
+    expect([0, 3, 4, 5].map((f) => spriteFrame('hurt', 4, rows, at(f), 8))).toEqual([8, 11, 0, 1])
+  })
+
+  it('strikes with its second row', () => {
+    expect(spriteFrame('attack', 6, rows, 0, 8)).toBe(6)
+  })
+
+  it('goes down and stays down', () => {
+    expect([0, 3, 10].map((f) => spriteFrame('down', 4, rows, at(f), 8))).toEqual([12, 15, 15])
   })
 })

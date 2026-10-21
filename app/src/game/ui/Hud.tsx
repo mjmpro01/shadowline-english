@@ -102,6 +102,7 @@ const ACTION_LABEL = {
   mailbox: 'arena.act.mailbox',
   board: 'arena.act.board',
   monster: 'arena.act.monster',
+  lair: 'arena.act.lair',
 } as const
 
 /** The action button: what pressing E (or tapping it) would do right now. */

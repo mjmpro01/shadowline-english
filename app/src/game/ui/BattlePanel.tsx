@@ -3,8 +3,26 @@ import { Link } from 'react-router-dom'
 import type { Locale, Translate } from '../../i18n'
 import { canSpeak, speak } from '../../lib/speak'
 import type { Battle, GameState, Turn } from '../api'
-import { art, monsterColour } from '../assets'
-import { optionKey, pickLetter, pickTile, spelled, timeLeft, timeShare, type Picks } from '../battle'
+import {
+  MONSTER_ATTACK_ROW,
+  MONSTER_DOWN_ROW,
+  MONSTER_HURT_ROW,
+  MONSTER_ROWS,
+  art,
+  monsterColour,
+  type ArtManifest,
+} from '../assets'
+import {
+  optionKey,
+  pickLetter,
+  pickTile,
+  spelled,
+  spriteFrame,
+  timeLeft,
+  timeShare,
+  type Picks,
+  type SpriteMove,
+} from '../battle'
 import { ItemIcon } from './common'
 import { pick, useNow } from './util'
 
@@ -26,6 +44,7 @@ export function BattlePanel({
   onNext,
   onFlee,
   onClose,
+  artInfo,
 }: {
   battle: Battle
   /** What the last answer did, shown until the player moves on. */
@@ -39,19 +58,48 @@ export function BattlePanel({
   onNext: () => void
   onFlee: () => void
   onClose: () => void
+  /** How the monsters' strips are cut, when the art is drawn. */
+  artInfo: ArtManifest | null
 }) {
   const over = battle.state !== 'active'
   const name = pick(battle.monster.name, locale)
+  const colour = monsterColour(battle.spawn, battle.monster.id)
+  // What the monster does: goes down when beaten; takes the hit of a right
+  // answer, strikes for a wrong one; otherwise it stands and breathes.
+  const cue: { move: SpriteMove; key: string } =
+    battle.state === 'won'
+      ? { move: 'down', key: 'won' }
+      : turn
+        ? { move: turn.right ? 'hurt' : 'attack', key: `${battle.round}-${turn.right}` }
+        : { move: 'idle', key: 'idle' }
 
   return (
     <div className="arena-sheet-wrap arena-battle-wrap">
-      <section className="arena-sheet arena-sheet-wide arena-battle" role="dialog" aria-label={t('arena.battle.title', name)}>
+      <section
+        className="arena-sheet arena-sheet-wide arena-battle"
+        role="dialog"
+        aria-label={t('arena.battle.title', name)}
+        data-boss={battle.monster.boss || undefined}
+      >
         <header className="arena-battle-head">
           <div className="arena-fighter" data-hurt={turn?.right ? 'monster' : undefined} key={`m${battle.round}`}>
-            <MonsterPicture id={battle.monster.id} colour={monsterColour(battle.spawn, battle.monster.id)} />
+            <MonsterSprite
+              id={battle.monster.id}
+              colour={colour}
+              artInfo={artInfo}
+              cue={cue}
+              boss={battle.monster.boss ?? false}
+            />
             <div className="arena-fighter-info">
-              <strong>{name}</strong>
+              <strong>
+                {battle.monster.boss && <span className="arena-boss-tag">{t('arena.battle.boss')}</span>} {name}
+              </strong>
               <HealthBar value={battle.monsterHp} max={battle.monsterHpMax} kind="monster" />
+              {battle.phases > 1 && (
+                <span className="arena-phase" data-testid="battle-phase">
+                  {t('arena.battle.phase', battle.phase, battle.phases)}
+                </span>
+              )}
             </div>
           </div>
           <div className="arena-fighter arena-fighter-you" data-hurt={turn && !turn.right ? 'you' : undefined}>
@@ -102,6 +150,64 @@ function HealthBar({ value, max, kind }: { value: number; max: number; kind: 'mo
         {Math.max(0, value)}/{max}
       </span>
     </div>
+  )
+}
+
+/** Frames a second for the fight panel's monster. */
+const SPRITE_FPS = 8
+
+/**
+ * The monster from its strip on the map, larger, acting out the turn: the
+ * art's own frames when they are drawn, the still picture otherwise.
+ */
+function MonsterSprite({
+  id,
+  colour,
+  artInfo,
+  cue,
+  boss,
+}: {
+  id: string
+  colour: string | null
+  artInfo: ArtManifest | null
+  cue: { move: SpriteMove; key: string }
+  boss: boolean
+}) {
+  const key = colour ? `monster-${id}-${colour}` : `monster-${id}`
+  const strip = artInfo?.frames[key]
+  const [failed, setFailed] = useState(false)
+  const now = useNow(1000 / SPRITE_FPS)
+  const file = art(`monsters/${colour ? `${id}_${colour}` : id}.png`)
+  // The strip is drawn as a background, which says nothing when it is
+  // missing: load it once to find out.
+  useEffect(() => {
+    const probe = new Image()
+    probe.onerror = () => setFailed(true)
+    probe.src = file
+    return () => {
+      probe.onerror = null
+    }
+  }, [file])
+  // When the current move began, restarted by each new cue.
+  const [since, setSince] = useState(() => ({ key: cue.key, at: now }))
+  if (since.key !== cue.key) setSince({ key: cue.key, at: now })
+  if (!strip || failed || strip.count < MONSTER_ROWS * 2) return <MonsterPicture id={id} colour={colour} />
+
+  const cols = strip.count / MONSTER_ROWS
+  const rows = { attack: MONSTER_ATTACK_ROW, hurt: MONSTER_HURT_ROW, down: MONSTER_DOWN_ROW }
+  const frame = spriteFrame(cue.move, cols, rows, Math.max(0, now - since.at), SPRITE_FPS)
+  return (
+    <div
+      className="arena-monster-sprite"
+      data-boss={boss || undefined}
+      data-move={cue.move}
+      style={{
+        backgroundImage: `url(${file})`,
+        backgroundSize: `${strip.count * 100}% 100%`,
+        backgroundPosition: `${(frame / (strip.count - 1)) * 100}% 0`,
+        aspectRatio: `${strip.w} / ${strip.h}`,
+      }}
+    />
   )
 }
 

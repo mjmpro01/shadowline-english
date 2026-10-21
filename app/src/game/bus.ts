@@ -17,6 +17,8 @@ export type Target =
   | { kind: 'mailbox' }
   | { kind: 'board' }
   | { kind: 'monster'; spawn: string; monster: string }
+  /** The troll's lair, while nothing lives in it yet. */
+  | { kind: 'lair' }
 
 export type NpcId = 'sir_shadow' | 'mira' | 'bram'
 export type MapName = 'farm' | 'woods'
