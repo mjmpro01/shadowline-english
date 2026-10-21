@@ -218,3 +218,86 @@ test("the troll fights in three phases and gives back Bram's hammer", async ({ p
   await page.getByRole('button', { name: 'Bag' }).click()
   await expect(page.getByRole('dialog', { name: 'Your bag' })).toContainText("Bram's hammer")
 })
+
+/* — Chapter 3: Echo Town — */
+
+/** The first step of chapter 3, where the town opens (server: game.TownStep). */
+const TOWN_STEP = 17
+/** On the farm's road south, just above the gate to town. */
+const ABOVE_TOWN_GATE = { map: 'farm', x: 18 * 16 + 8, y: 20 * 16 }
+/** In town, just right of Mayor Elsa at the town hall's door. */
+const BY_ELSA = { map: 'town', x: 7 * 16 + 4, y: 8 * 16 }
+
+async function setStep(page: Page, step: number) {
+  expect((await page.request.post(`${API_URL}/api/test/game/step`, { data: { step } })).status()).toBe(204)
+}
+
+/** Faces west, one short step, then acts on what is there. */
+async function actLeft(page: Page) {
+  await page.locator('.arena canvas').click({ position: { x: 20, y: 300 } })
+  await page.keyboard.down('ArrowLeft')
+  await page.waitForTimeout(60)
+  await page.keyboard.up('ArrowLeft')
+  await expect(page.locator('.arena-action')).toContainText('Talk')
+  await page.keyboard.press('e')
+}
+
+test('the road south opens with chapter 3 and leads to Echo Town', async ({ page }) => {
+  await setStep(page, TOWN_STEP - 1)
+  expect((await page.request.post(`${API_URL}/api/game/move`, { data: ABOVE_TOWN_GATE })).status()).toBe(204)
+  await openFarm(page)
+  // Closed: the farmer is turned back, with a word about why.
+  await page.locator('.arena canvas').click({ position: { x: 20, y: 300 } })
+  await page.keyboard.down('ArrowDown')
+  await page.waitForTimeout(1500)
+  await page.keyboard.up('ArrowDown')
+  await expect(page.locator('.arena-toast')).toContainText('road to town is closed')
+  await expect(page.getByTestId('arena')).toHaveAttribute('data-map', 'farm')
+
+  await setStep(page, TOWN_STEP)
+  expect((await page.request.post(`${API_URL}/api/game/move`, { data: ABOVE_TOWN_GATE })).status()).toBe(204)
+  await openFarm(page)
+  await page.locator('.arena canvas').click({ position: { x: 20, y: 300 } })
+  await page.keyboard.down('ArrowDown')
+  await page.waitForTimeout(1500)
+  await page.keyboard.up('ArrowDown')
+  await expect(page.getByTestId('arena')).toHaveAttribute('data-map', 'town')
+  await expect(page.locator('.arena-tracker')).toContainText('1/1')
+})
+
+test('a chat a day and a gift they love make a friend in town', async ({ page }) => {
+  await setStep(page, TOWN_STEP)
+  expect((await page.request.post(`${API_URL}/api/game/move`, { data: BY_ELSA })).status()).toBe(204)
+  await openFarm(page)
+  await actLeft(page)
+
+  const talk = page.getByRole('dialog', { name: 'Mayor Elsa' })
+  const chat = talk.locator('.arena-chat')
+  await expect(chat.locator('.arena-option')).toHaveCount(3)
+  // The right reply is the server's to know; the test asks it, then uses the keys.
+  const { reply } = (await (await page.request.get(`${API_URL}/api/test/game/talk/answer?npc=elsa`)).json()) as {
+    reply: number
+  }
+  await page.keyboard.press(String(reply + 1))
+  await expect(chat.locator('.arena-turn')).toHaveAttribute('data-right', 'true')
+  await expect(chat).toContainText('+30 with Mayor Elsa')
+
+  // A honey cake from Hugo, which Elsa loves, given with the right words.
+  expect((await page.request.post(`${API_URL}/api/game/buy`, { data: { item: 'honey_cake', qty: 1 } })).ok()).toBe(true)
+  await page.keyboard.press('Escape')
+  await openFarm(page)
+  await actLeft(page)
+  await expect(talk.locator('.arena-chat')).toContainText('You have chatted today')
+  await talk.getByRole('button', { name: /Give a gift/ }).click()
+  await talk.getByRole('button', { name: /Honey cake/ }).click()
+  await talk.getByRole('button', { name: 'This is for you. I hope you like it!' }).click()
+  await expect(talk.locator('.arena-gift')).toContainText('Mayor Elsa loves it!')
+  await expect(talk.getByTestId('friend-hearts')).toHaveAttribute('aria-label', '1 hearts')
+
+  // The quest book's townsfolk.
+  await page.keyboard.press('Escape')
+  await page.locator('.arena-tracker').click()
+  await page.getByRole('tab', { name: 'Townsfolk' }).click()
+  await expect(page.getByTestId('friend-elsa')).toContainText('Chatted today')
+  await expect(page.getByTestId('friend-elsa')).toContainText('Gift given today')
+})

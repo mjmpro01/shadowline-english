@@ -2,8 +2,20 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { useI18n } from '../i18n'
 import { Loading } from '../components/LoadState'
 import { useApp } from '../store/context'
-import { gameApi, type Battle, type GameState, type HarvestedWord, type Quests, type Reward, type Turn } from '../game/api'
-import { art, artManifest, type ArtManifest } from '../game/assets'
+import {
+  gameApi,
+  type Battle,
+  type Chat,
+  type GameState,
+  type GiftResult,
+  type HarvestedWord,
+  type HeartEvent,
+  type Quests,
+  type Reward,
+  type TalkResult,
+  type Turn,
+} from '../game/api'
+import { TOWN_NPC_IDS, art, artManifest, type ArtManifest } from '../game/assets'
 import { GameBus, type MapName, type NpcId, type Target } from '../game/bus'
 import { idleLine } from '../game/npcs'
 import { BattlePanel } from '../game/ui/BattlePanel'
@@ -11,22 +23,37 @@ import { Dialogue } from '../game/ui/Dialogue'
 import { ActionButton, Hud, Joystick, Tracker } from '../game/ui/Hud'
 import { BagPanel, BramPanel, HousePanel, PlotPanel, ShopPanel, WordCard } from '../game/ui/panels'
 import { QuestBook } from '../game/ui/QuestBook'
+import { TownChat } from '../game/ui/TownChat'
 import { RewardChips } from '../game/ui/common'
 import { gameError } from '../game/ui/util'
 import '../styles/arena.css'
 
 type Panel =
   | { kind: 'plot'; idx: number }
-  | { kind: 'talk'; who: NpcId | 'grandma' }
-  | { kind: 'shop' }
+  | {
+      kind: 'talk'
+      who: NpcId | 'grandma'
+      /** In town: the day's chat, and what was just said or given. */
+      chat?: Chat
+      result?: TalkResult
+      gift?: GiftResult
+      story?: HeartEvent
+    }
+  | { kind: 'shop'; seller: 'mira' | 'hugo' }
   | { kind: 'bram' }
   | { kind: 'house' }
   | { kind: 'bag' }
-  | { kind: 'quests'; tab: 'main' | 'daily' }
+  | { kind: 'quests'; tab: 'main' | 'daily' | 'town' }
   | { kind: 'word'; word: HarvestedWord | null; gold: number }
   | { kind: 'battle'; battle: Battle; turn: Turn | null }
 
 type Game = { destroy: (removeCanvas: boolean) => void }
+
+/** What Dr. Vy asks for a check-up (server: game.ClinicCost). */
+const CLINIC_COST = 20
+
+const isTownsperson = (who: string): who is (typeof TOWN_NPC_IDS)[number] =>
+  (TOWN_NPC_IDS as readonly string[]).includes(who)
 
 /**
  * The Arena: a farm where every harvest is a word.
@@ -89,7 +116,13 @@ export function ArenaScreen() {
       const parent = holder.current
       if (parent && !game.current) {
         const start = s.profile.x || s.profile.y ? { x: s.profile.x, y: s.profile.y } : null
-        const map = s.profile.map === 'woods' && s.profile.woodsOpen ? 'woods' : 'farm'
+        const map =
+          s.profile.map === 'woods' && s.profile.woodsOpen
+            ? 'woods'
+            : s.profile.map === 'town' && s.profile.townOpen
+              ? 'town'
+              : 'farm'
+        lastMap.current = map
         game.current = import('../game/createGame').then(({ createGame }) => createGame(parent, bus, start, map))
         await game.current
       }
@@ -120,6 +153,8 @@ export function ArenaScreen() {
   }, [bus, panel])
 
   // What the scene says back.
+  /** The map the player was last on, to notice going somewhere new. */
+  const lastMap = useRef<MapName | null>(null)
   /** Where the scene is sent once it is up, when it was sent before. */
   const pendingGoto = useRef<{ map: MapName; x: number; y: number } | null>(null)
   const questsRef = useRef(quests)
@@ -136,8 +171,18 @@ export function ArenaScreen() {
         pendingGoto.current = null
         if (to) bus.emit('goto', to)
       }),
-      bus.on('moved', ({ map, x, y }) => void gameApi.move(map, x, y).catch(() => {})),
-      bus.on('blocked', () => setToast({ text: t('arena.woods.locked') })),
+      bus.on('moved', ({ map, x, y }) => {
+        // Going somewhere new can be what the story asked for.
+        const arrived = map !== lastMap.current
+        lastMap.current = map
+        void gameApi.move(map, x, y).then(
+          () => {
+            if (arrived) void refreshQuests()
+          },
+          () => {},
+        )
+      }),
+      bus.on('blocked', (why) => setToast({ text: why === 'town_locked' ? t('arena.town.locked') : t('arena.woods.locked') })),
       bus.on('interact', (target) => {
         switch (target.kind) {
           case 'plot':
@@ -163,7 +208,7 @@ export function ArenaScreen() {
       }),
     ]
     return () => offs.forEach((off) => off())
-  }, [bus, t])
+  }, [bus, t, refreshQuests])
 
   useEffect(() => {
     if (!toast) return
@@ -308,20 +353,65 @@ export function ArenaScreen() {
   const close = useCallback(() => setPanel(null), [])
   const common = state ? { state, locale, t, onClose: close, busy, skew } : null
 
-  const talk = (who: NpcId | 'grandma') => {
+  // Someone in town: fetch the day's chat once their panel opens.
+  const talkingTo = panel?.kind === 'talk' && isTownsperson(panel.who) && !panel.chat ? panel.who : null
+  useEffect(() => {
+    if (!talkingTo) return
+    let live = true
+    gameApi.chat(talkingTo).then(
+      (chat) => {
+        if (live) setPanel((p) => (p?.kind === 'talk' && p.who === talkingTo ? { ...p, chat } : p))
+      },
+      (err: unknown) => live && setToast({ text: gameError(err, t) }),
+    )
+    return () => {
+      live = false
+    }
+  }, [talkingTo, t])
+
+  /** Says, gives or listens to someone in town, and shows what it did. */
+  const townMove = async (
+    who: NpcId,
+    call: () => Promise<{ state: GameState } & Partial<{ result: TalkResult | GiftResult; event: HeartEvent }>>,
+    show: (res: Awaited<ReturnType<typeof call>>) => Partial<Extract<Panel, { kind: 'talk' }>>,
+  ) => {
+    setBusy(true)
+    try {
+      const res = await call()
+      take(res.state)
+      setPanel((p) => (p?.kind === 'talk' && p.who === who ? { ...p, ...show(res) } : p))
+      void refreshQuests()
+    } catch (err) {
+      setToast({ text: gameError(err, t) })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const talk = (p: Extract<Panel, { kind: 'talk' }>) => {
+    const { who } = p
     const main = quests?.main ?? null
     const quest = main && main.giver === who ? main : null
     const lines = quest ? quest.lines : [idleLine(who)]
     const actions =
       who === 'mira' ? (
-        <button type="button" className="btn btn-secondary" onClick={() => setPanel({ kind: 'shop' })}>
+        <button type="button" className="btn btn-secondary" onClick={() => setPanel({ kind: 'shop', seller: 'mira' })}>
           {t('arena.shopOpen')}
         </button>
       ) : who === 'bram' ? (
         <button type="button" className="btn btn-secondary" onClick={() => setPanel({ kind: 'bram' })}>
           {t('arena.bramOpen')}
         </button>
+      ) : who === 'hugo' ? (
+        <button type="button" className="btn btn-secondary" onClick={() => setPanel({ kind: 'shop', seller: 'hugo' })}>
+          {t('arena.town.order')}
+        </button>
+      ) : who === 'vy' ? (
+        <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => void move(() => gameApi.clinic())}>
+          {t('arena.town.clinic', CLINIC_COST)}
+        </button>
       ) : null
+    const friend = isTownsperson(who) ? state?.friends.find((f) => f.id === who) : undefined
     return (
       <Dialogue
         speaker={who}
@@ -334,7 +424,28 @@ export function ArenaScreen() {
         onClose={close}
         onClaim={() => void claim('main')}
         actions={actions}
-      />
+      >
+        {friend && state && isTownsperson(who) && (
+          <TownChat
+            friend={friend}
+            chat={p.chat ?? null}
+            result={p.result ?? null}
+            gift={p.gift ?? null}
+            story={p.story ?? null}
+            state={state}
+            locale={locale}
+            t={t}
+            busy={busy}
+            onReply={(reply) =>
+              void townMove(who, () => gameApi.talk(who, reply), (res) => ({ result: res.result as TalkResult }))
+            }
+            onGift={(item, words) =>
+              void townMove(who, () => gameApi.gift(who, item, words), (res) => ({ gift: res.result as GiftResult }))
+            }
+            onHeart={(hearts) => void townMove(who, () => gameApi.heart(who, hearts), (res) => ({ story: res.event }))}
+          />
+        )}
+      </Dialogue>
     )
   }
 
@@ -400,7 +511,7 @@ export function ArenaScreen() {
         />
       )}
       {common && panel?.kind === 'shop' && (
-        <ShopPanel {...common} onBuy={(item) => void move(() => gameApi.buy(item, 1))} />
+        <ShopPanel {...common} seller={panel.seller} onBuy={(item) => void move(() => gameApi.buy(item, 1))} />
       )}
       {common && panel?.kind === 'bram' && (
         <BramPanel
@@ -424,7 +535,7 @@ export function ArenaScreen() {
           onListen={(word) => void gameApi.listen(word).then(refreshQuests, () => {})}
         />
       )}
-      {panel?.kind === 'talk' && talk(panel.who)}
+      {panel?.kind === 'talk' && talk(panel)}
       {panel?.kind === 'battle' && (
         <BattlePanel
           battle={panel.battle}

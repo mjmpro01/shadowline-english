@@ -32,7 +32,7 @@ type Crop struct {
 type Item struct {
 	ID    string `json:"id"`
 	Name  Text   `json:"name"`
-	Kind  string `json:"kind"` // "seed", "food", or "tool" (kept, never sold)
+	Kind  string `json:"kind"` // "seed", "food", "gift", or "tool" (kept, never sold)
 	Price int    `json:"price"`
 	// Stamina a food restores.
 	Stamina int `json:"stamina,omitempty"`
@@ -41,6 +41,8 @@ type Item struct {
 	// UnlockStep is the main-quest step from which the shop sells it: the story
 	// opens the better seeds as it goes.
 	UnlockStep int `json:"unlockStep"`
+	// Seller is who sells it: Mira, or Hugo at the café in town.
+	Seller string `json:"seller"`
 }
 
 const (
@@ -73,11 +75,18 @@ var Crops = []Crop{
 }
 
 var Items = []Item{
-	{ID: "seed_sprout", Name: Text{"Sprout seeds", "Hạt Mầm xanh"}, Kind: "seed", Price: 10},
-	{ID: "seed_bloom", Name: Text{"Bloom seeds", "Hạt Hoa nở"}, Kind: "seed", Price: 40, UnlockStep: BloomStep},
-	{ID: "seed_golden", Name: Text{"Golden seeds", "Hạt Cây vàng"}, Kind: "seed", Price: 120, UnlockStep: GoldenStep},
-	{ID: "ginger_tea", Name: Text{"Ginger tea", "Trà gừng"}, Kind: "food", Price: 25, Stamina: 10},
-	{ID: "herb_salve", Name: Text{"Herb salve", "Thuốc thảo mộc"}, Kind: "food", Price: 30, HP: 15, UnlockStep: WoodsStep},
+	{ID: "seed_sprout", Name: Text{"Sprout seeds", "Hạt Mầm xanh"}, Kind: "seed", Price: 10, Seller: "mira"},
+	{ID: "seed_bloom", Name: Text{"Bloom seeds", "Hạt Hoa nở"}, Kind: "seed", Price: 40, UnlockStep: BloomStep, Seller: "mira"},
+	{ID: "seed_golden", Name: Text{"Golden seeds", "Hạt Cây vàng"}, Kind: "seed", Price: 120, UnlockStep: GoldenStep, Seller: "mira"},
+	{ID: "ginger_tea", Name: Text{"Ginger tea", "Trà gừng"}, Kind: "food", Price: 25, Stamina: 10, Seller: "mira"},
+	{ID: "herb_salve", Name: Text{"Herb salve", "Thuốc thảo mộc"}, Kind: "food", Price: 30, HP: 15, UnlockStep: WoodsStep, Seller: "mira"},
+	// Gifts for the people in town, and what Hugo's café serves.
+	{ID: "flowers", Name: Text{"Bunch of flowers", "Bó hoa"}, Kind: "gift", Price: 20, UnlockStep: TownStep, Seller: "mira"},
+	{ID: "old_book", Name: Text{"Old book", "Sách cũ"}, Kind: "gift", Price: 30, UnlockStep: TownStep, Seller: "mira"},
+	{ID: "wool_scarf", Name: Text{"Wool scarf", "Khăn len"}, Kind: "gift", Price: 35, UnlockStep: TownStep, Seller: "mira"},
+	{ID: "honey_cake", Name: Text{"Honey cake", "Bánh mật ong"}, Kind: "gift", Price: 25, UnlockStep: TownStep, Seller: "hugo"},
+	{ID: "coffee", Name: Text{"Coffee", "Cà phê"}, Kind: "food", Price: 20, Stamina: 12, UnlockStep: TownStep, Seller: "hugo"},
+	{ID: "soup", Name: Text{"Warm soup", "Súp nóng"}, Kind: "food", Price: 35, HP: 20, UnlockStep: TownStep, Seller: "hugo"},
 	// Bram's hammer, won back from the troll: with it he can work soil one
 	// level further. The shop never has it.
 	{ID: "bram_hammer", Name: Text{"Bram's hammer", "Búa của Bram"}, Kind: "tool", UnlockStep: Never},

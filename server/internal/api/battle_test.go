@@ -454,7 +454,8 @@ func TestTheTrollFightsInPhasesAndGivesBackTheHammer(t *testing.T) {
 		t.Fatalf("the chapter's end: %+v", q.Main)
 	}
 	claim(t, learner, "main")
-	if q := gameQuests(t, learner); q.Main != nil {
+	// And chapter 3 sends the farmer to town.
+	if q := gameQuests(t, learner); q.Main == nil || q.Main.ID != "to_town" {
 		t.Fatalf("after chapter 2: %+v", q.Main)
 	}
 }

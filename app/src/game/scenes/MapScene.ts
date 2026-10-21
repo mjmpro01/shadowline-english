@@ -15,7 +15,7 @@ import {
   MONSTER_MOVE_ROW,
   MONSTER_ROWS,
   MONSTER_SHEETS,
-  NPC_IDS,
+  ALL_NPC_IDS,
   POP_FRAMES,
   ZZZ_FRAMES,
   type Dir,
@@ -359,7 +359,7 @@ export abstract class MapScene extends Phaser.Scene {
     const make = (config: Phaser.Types.Animations.Animation) => {
       if (config.key && !this.anims.exists(config.key)) this.anims.create(config)
     }
-    const sheets = ['player', ...NPC_IDS.map((id) => `npc-${id}`)]
+    const sheets = ['player', ...ALL_NPC_IDS.map((id) => `npc-${id}`)]
     for (const key of sheets) {
       const anims = this.sheets[key]?.anims
       if (anims) {
@@ -510,12 +510,18 @@ export abstract class MapScene extends Phaser.Scene {
   private checkGates() {
     for (const gate of this.gates()) {
       if (!inRect(this.player.x / TILE, (this.player.y - 2) / TILE, gate.rect)) continue
-      if (gate.to === 'woods' && !this.state?.profile.woodsOpen) {
-        // Not yet: a step back, and a word about why, once in a while.
-        this.player.x -= 6
+      const closed =
+        (gate.to === 'woods' && !this.state?.profile.woodsOpen) || (gate.to === 'town' && !this.state?.profile.townOpen)
+      if (closed) {
+        // Not yet: a step back from the edge, and a word about why, once in a while.
+        const { x, y } = gate.rect
+        if (x === 0) this.player.x += 6
+        else if (x >= WIDTH - 1) this.player.x -= 6
+        else if (y === 0) this.player.y += 6
+        else this.player.y -= 6
         if (this.time.now - this.blockedAt > 2500) {
           this.blockedAt = this.time.now
-          this.bus.emit('blocked', 'woods_locked')
+          this.bus.emit('blocked', gate.to === 'town' ? 'town_locked' : 'woods_locked')
         }
         return
       }

@@ -26,6 +26,7 @@ export function Dialogue({
   onClose,
   onClaim,
   actions,
+  children,
 }: {
   speaker: string
   lines: Bilingual[]
@@ -37,6 +38,8 @@ export function Dialogue({
   onClose: () => void
   onClaim: () => void
   actions?: ReactNode
+  /** More to do with this person, under what they say: a chat in town. */
+  children?: ReactNode
 }) {
   const [shown, setShown] = useState<Set<number>>(new Set())
   const toggle = (i: number) =>
@@ -72,6 +75,7 @@ export function Dialogue({
           <p className="arena-muted arena-hint">{t('arena.tapToTranslate')}</p>
         </div>
       </div>
+      {children}
 
       {quest && (
         <div className="arena-objective">

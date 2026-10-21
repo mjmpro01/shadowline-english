@@ -194,11 +194,17 @@ func (s *Server) Routes() http.Handler {
 			r.Post("/game/battle/start", s.handleBattleStart)
 			r.Post("/game/battle/answer", s.handleBattleAnswer)
 			r.Post("/game/battle/flee", s.handleBattleFlee)
+			r.Get("/game/talk/{npc}", s.handleTalkExchange)
+			r.Post("/game/talk", s.handleTalk)
+			r.Post("/game/gift", s.handleGift)
+			r.Post("/game/heart", s.handleHeart)
+			r.Post("/game/clinic", s.handleClinic)
 			if s.Cfg.AuthFake {
 				// For the browser tests: the signed-in player's answer key and
 				// story step. Absent from a normal deployment.
 				r.Get("/test/game/battle/answer", s.handleTestBattleAnswer)
 				r.Post("/test/game/step", s.handleTestGameStep)
+				r.Get("/test/game/talk/answer", s.handleTestTalkAnswer)
 			}
 
 			r.Group(func(r chi.Router) {

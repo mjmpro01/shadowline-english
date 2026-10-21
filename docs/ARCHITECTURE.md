@@ -254,7 +254,7 @@ API.
 | Hồ sơ | `GET /profile`, `PATCH /profile`, `PUT /profile/avatar` |
 | Tài khoản | `GET /account/export`, `POST /account/password`, `DELETE /account` |
 | Gia sư | `GET /tutor`, `POST /tutor/chat` (stream), `GET /tutor/conversations`, `GET/DELETE /tutor/conversations/{id}` |
-| Arena | `GET /game/state`, `GET /game/quests`, `POST /game/{plant,harvest,unlock,upgrade,buy,use,sleep,listen,move}`, `POST /game/quests/claim`; trận đánh: `GET /game/battle` (trận đang dở, hoặc `null`), `POST /game/battle/{start,answer,flee}`. Từ chối có mã trả 409 `{error, code}` (`no_gold`, `no_stamina`, `not_ripe`, `woods_locked`, `no_hp`, `in_battle`, `respawning`, `battle_over`, `lair_closed`…) |
+| Arena | `GET /game/state`, `GET /game/quests`, `POST /game/{plant,harvest,unlock,upgrade,buy,use,sleep,listen,move}`, `POST /game/quests/claim`; trận đánh: `GET /game/battle` (trận đang dở, hoặc `null`), `POST /game/battle/{start,answer,flee}`. Từ chối có mã trả 409 `{error, code}` (`no_gold`, `no_stamina`, `not_ripe`, `woods_locked`, `no_hp`, `in_battle`, `respawning`, `battle_over`, `lair_closed`, `town_locked`, `talked_today`, `gifted_today`…); thị trấn: `GET /game/talk/{npc}` (đoạn hội thoại hôm nay, không kèm đáp án), `POST /game/{talk,gift,heart,clinic}` |
 | Khác | `GET /leaderboard`, `GET /banners` |
 
 **Quản trị (`/api/admin`, cần quyền admin)**
@@ -502,6 +502,7 @@ Giới hạn mặc định:
 | `game_quest_claims` | Thưởng đã nhận: `(user_id, quest, day)` là khoá chính nên không nhận trùng |
 | `game_battles` | Một dòng mỗi trận: quái, máu quái, lượt, số câu đúng/sai, câu hỏi đang hỏi (`question`, kèm `q_word`/`q_answer` — đáp án không bao giờ gửi về trình duyệt), `issued_at`/`deadline`, các từ đã hỏi (`asked`) và đã cập nhật lịch ôn (`reviewed`), `state` (`active`/`won`/`lost`/`fled`), vàng, đồ rơi, tiền phạt. Mỗi người tối đa một trận `active` (unique index một phần) |
 | `game_spawns` | Điểm quái nào bị hạ lúc nào; quái về chỗ sau 10 phút (troll: 24 giờ) |
+| `game_friendship` | Thân thiết với từng người trong thị trấn: `points` (100 điểm một tim, tối đa 10), ngày trò chuyện và ngày tặng quà gần nhất (`talked_on`, `gifted_on`, mỗi thứ một lần một ngày), các sự kiện tim đã nghe (`heart_claims`) |
 | `word_ranks` | Thứ hạng tần suất của từ (nạp một lần từ `common_words.txt`), để mỗi loại hạt ra từ ở độ khó của nó |
 
 Luật chơi (giá, thời gian lớn, thưởng, cốt truyện, mẫu nhiệm vụ ngày) nằm trong
@@ -537,6 +538,7 @@ code ở `server/internal/game/`, không nằm trong DB.
 | `00026_game` | Các bảng Arena (7.6); `00026_word_ranks` ghi lại việc nạp `word_ranks` một lần |
 | `00027_battles` | Máu (`game_profiles.hp`, `hp_at`), `game_battles`, `game_spawns` |
 | `00028_hammer_soil` | `game_plots.level` cho phép tới 4 (đất làm bằng búa của Bram) |
+| `00029_townsfolk` | `game_friendship` (thị trấn Echo, 7.6) |
 
 Số `00008` bị bỏ trống, không phải thiếu file. Việc giữ lại job cắt / chép lời
 thất bại (`state='failed'`) nằm trong code worker và API, không cần migration vì
@@ -847,6 +849,19 @@ Server giữ toàn bộ trạng thái và quyết định mọi kết quả; tr�
      `game.TrollStep` (`lair_closed`), và quái về chỗ theo `Monster.Respawn`.
    - Hạ troll là bước truyện của Bram; thưởng là `bram_hammer`, có nó thì
      `UpgradePlot` cho lên cấp 4 (`game.MaxLevelFor`).
+6. Thị trấn Echo (chương 3), mở từ `game.TownStep`:
+   - 5 người dân (`game.Townsfolk`), mỗi người một mảng tiếng Anh. Mỗi ngày
+     trò chuyện một lần: họ nói một câu, người chơi chọn 1 trong 3 câu đáp (một
+     câu hợp ngữ cảnh, một câu đúng ngữ pháp nhưng lạc đề, một câu sai ngữ pháp)
+     và được giải thích vì sao.
+   - Đoạn hội thoại của ngày và thứ tự câu đáp tính lại từ (người chơi, ngày,
+     người dân) ở mỗi request (`game.ChatFor`), nên đáp án không lưu và không
+     gửi về trình duyệt.
+   - Tặng quà mỗi ngày một lần, kèm một trong 3 cách nói khi tặng; điểm tính
+     theo sở thích (`game.Taste`, `game.GiftPoints`). Ở 2 tim, người dân kể
+     chuyện và tặng quà một lần (`ClaimHeart`).
+   - Nhiệm vụ đếm từ `game_events` (`enter_town`, `talk`, `gift`, `gift_loved`)
+     và từ `game_friendship` (số tim cao nhất).
 
 ## 13. Cấu hình
 

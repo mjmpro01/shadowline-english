@@ -27,7 +27,10 @@ export const CHAR_ROWS = {
   sleep: 16, // 2 frames (the player only)
 } as const
 
+/** The people on the farm, and in Echo Town. */
 export const NPC_IDS = ['sir_shadow', 'mira', 'bram'] as const
+export const TOWN_NPC_IDS = ['elsa', 'orin', 'lina', 'hugo', 'vy'] as const
+export const ALL_NPC_IDS = [...NPC_IDS, ...TOWN_NPC_IDS] as const
 export const CROP_IDS = ['sprout', 'bloom', 'golden'] as const
 /** Growth stages a crop sheet holds: planted, sprout, growing, nearly, ripe. */
 export const CROP_STAGES = 5
@@ -76,7 +79,7 @@ export const MONSTER_SHEETS: { key: string; id: MonsterId; file: string }[] = [
 
 export const ASSETS: AssetSpec[] = [
   { key: 'player', file: 'characters/player.png', frame: { w: 16, h: 32 } },
-  ...NPC_IDS.map((id) => ({ key: `npc-${id}`, file: `characters/${id}.png`, frame: { w: 16, h: 32 } })),
+  ...ALL_NPC_IDS.map((id) => ({ key: `npc-${id}`, file: `characters/${id}.png`, frame: { w: 16, h: 32 } })),
   { key: 'tiles', file: 'tiles/farm.png', frame: { w: 16, h: 16 } },
   { key: 'farmhouse', file: 'objects/farmhouse.png' },
   { key: 'shop_cart', file: 'objects/shop_cart.png' },

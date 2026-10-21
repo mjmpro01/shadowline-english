@@ -34,6 +34,15 @@ const ICON_STAND_INS: Record<string, string> = { bram_hammer: '🔨', herb_salve
 
 /** One of a character's four faces: neutral, happy, thinking, worried. */
 export function Portrait({ id, mood = 0 }: { id: string; mood?: number }) {
+  if (id in STAND_IN_FACES) {
+    // Not drawn yet: their initial, in their colour.
+    const [letter, colour] = STAND_IN_FACES[id]
+    return (
+      <div className="arena-portrait arena-portrait-initial" style={{ background: colour }} aria-hidden="true">
+        {letter}
+      </div>
+    )
+  }
   if (id === 'grandma') {
     return (
       <div className="arena-portrait arena-portrait-letter">
@@ -51,6 +60,15 @@ export function Portrait({ id, mood = 0 }: { id: string; mood?: number }) {
       aria-hidden="true"
     />
   )
+}
+
+/** The people of Echo Town have no portraits yet. */
+const STAND_IN_FACES: Record<string, [string, string]> = {
+  elsa: ['E', '#6a4c93'],
+  orin: ['O', '#2f5d8a'],
+  lina: ['L', '#4f8a6a'],
+  hugo: ['H', '#7a4a2a'],
+  vy: ['V', '#5b8fb9'],
 }
 
 /** A panel over the farm, framed in the game's own wood. */

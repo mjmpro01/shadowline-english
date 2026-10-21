@@ -104,6 +104,18 @@ func (s *Server) handleTestBattleAnswer(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, map[string]any{"answer": answer})
 }
 
+// handleTestTalkAnswer tells a browser test which of today's replies to a
+// townsperson is right. Registered only when AUTH_FAKE=1.
+func (s *Server) handleTestTalkAnswer(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	reply, err := s.Store.TalkAnswerKey(r.Context(), u.ID, r.URL.Query().Get("npc"))
+	if err != nil {
+		fail(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"reply": reply})
+}
+
 // handleTestGameStep moves the signed-in player's story to a step, so a test
 // can start in the woods without playing chapter 1. AUTH_FAKE=1 only.
 func (s *Server) handleTestGameStep(w http.ResponseWriter, r *http.Request) {

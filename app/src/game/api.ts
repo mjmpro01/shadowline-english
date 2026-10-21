@@ -22,12 +22,14 @@ export interface Crop {
 export interface ShopItem {
   id: string
   name: Bilingual
-  kind: 'seed' | 'food' | 'tool'
+  kind: 'seed' | 'food' | 'gift' | 'tool'
   price: number
   stamina?: number
   hp?: number
   unlockStep: number
   unlocked: boolean
+  /** Who sells it: Mira on the farm, or Hugo at the café in town. */
+  seller: 'mira' | 'hugo' | ''
 }
 
 export interface Plot {
@@ -50,11 +52,12 @@ export interface GameState {
     hpMax: number
     hpNextAt: string | null
     canSleepAt: string | null
-    map: 'farm' | 'woods'
+    map: 'farm' | 'woods' | 'town'
     x: number
     y: number
     mainStep: number
     woodsOpen: boolean
+    townOpen: boolean
   }
   plots: Plot[]
   inventory: Record<string, number>
@@ -65,6 +68,52 @@ export interface GameState {
   words: number
   monsters: Monster[]
   spawns: Spawn[]
+  /** The people of Echo Town; empty until the town is open. */
+  friends: Friend[]
+}
+
+export interface HeartEvent {
+  hearts: number
+  lines: Bilingual[]
+  reward: Reward
+}
+
+export interface Friend {
+  id: string
+  name: Bilingual
+  role: Bilingual
+  points: number
+  hearts: number
+  talkedToday: boolean
+  giftedToday: boolean
+  /** A heart event reached and not yet opened. */
+  event: HeartEvent | null
+}
+
+/** Today's chat with someone in town: what they say, three replies, and three
+ *  ways of handing them a gift. Which is right stays on the server. */
+export interface Chat {
+  npc: string
+  line: Bilingual
+  replies: Bilingual[]
+  talked: boolean
+  giftWords: Bilingual[]
+}
+
+export interface TalkResult {
+  right: boolean
+  why: Bilingual
+  answer: Bilingual
+  points: number
+  friend: Friend
+}
+
+export interface GiftResult {
+  taste: 'loved' | 'liked' | 'neutral' | 'disliked'
+  rightWords: boolean
+  why: Bilingual
+  points: number
+  friend: Friend
 }
 
 export interface Monster {
@@ -191,7 +240,16 @@ export const gameApi = {
   use: (item: string) => api.send<GameState>('POST', '/api/game/use', { item }),
   sleep: () => api.send<GameState>('POST', '/api/game/sleep', {}),
   listen: (word: string) => api.send<void>('POST', '/api/game/listen', { word }),
-  move: (map: 'farm' | 'woods', x: number, y: number) => api.send<void>('POST', '/api/game/move', { map, x, y }),
+  move: (map: 'farm' | 'woods' | 'town', x: number, y: number) =>
+    api.send<void>('POST', '/api/game/move', { map, x, y }),
+  chat: (npc: string) => api.get<Chat>(`/api/game/talk/${encodeURIComponent(npc)}`),
+  talk: (npc: string, reply: number) =>
+    api.send<{ result: TalkResult; state: GameState }>('POST', '/api/game/talk', { npc, reply }),
+  gift: (npc: string, item: string, words: number) =>
+    api.send<{ result: GiftResult; state: GameState }>('POST', '/api/game/gift', { npc, item, words }),
+  heart: (npc: string, hearts: number) =>
+    api.send<{ event: HeartEvent; state: GameState }>('POST', '/api/game/heart', { npc, hearts }),
+  clinic: () => api.send<GameState>('POST', '/api/game/clinic', {}),
   battle: () => api.get<{ battle: Battle | null }>('/api/game/battle'),
   startBattle: (spawn: string) =>
     api.send<{ battle: Battle; state: GameState }>('POST', '/api/game/battle/start', { spawn }),

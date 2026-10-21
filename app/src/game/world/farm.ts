@@ -100,6 +100,10 @@ export const FARM_GATE: Rect = { x: WIDTH - 1, y: 8, w: 1, h: 1 }
 /** Where a player coming back from the woods appears: on the path, just
  *  inside the gate. */
 export const FROM_WOODS = { x: (WIDTH - 2) * TILE + TILE / 2, y: (FARM_GATE.y + 1) * TILE }
+/** The road south, below the field: the way to Echo Town. */
+export const FARM_TOWN_GATE: Rect = { x: 18, y: HEIGHT - 1, w: 1, h: 1 }
+/** Where a player coming back from town appears: on the road, just inside. */
+export const FROM_TOWN = { x: FARM_TOWN_GATE.x * TILE + TILE / 2, y: (HEIGHT - 1) * TILE - 2 }
 
 /** Decoration that blocks the way, beyond the border of trees. */
 export const TREES: { x: number; y: number }[] = [
@@ -130,6 +134,8 @@ const PATHS: Rect[] = [
   // Out to the carpenter's bench.
   { x: 24, y: 8, w: 1, h: 7 },
   { x: 24, y: 14, w: 3, h: 1 },
+  // South from the foot of the field, the road to town.
+  { x: 18, y: 18, w: 1, h: 4 },
 ]
 
 export function inRect(x: number, y: number, r: Rect) {
@@ -261,10 +267,15 @@ export function fence(names: TileNames): { x: number; y: number; index: number; 
 
 /** The edge of a map, as rectangles, with gaps where gates are. */
 export function border(gates: Rect[]): Rect[] {
-  const edges: Rect[] = [
-    { x: 0, y: 0, w: WIDTH, h: 1 },
-    { x: 0, y: HEIGHT - 1, w: WIDTH, h: 1 },
-  ]
+  const edges: Rect[] = []
+  for (const y of [0, HEIGHT - 1]) {
+    let from = 0
+    for (const g of gates.filter((g) => g.y === y).sort((a, b) => a.x - b.x)) {
+      edges.push({ x: from, y, w: g.x - from, h: 1 })
+      from = g.x + g.w
+    }
+    edges.push({ x: from, y, w: WIDTH - from, h: 1 })
+  }
   for (const x of [0, WIDTH - 1]) {
     let from = 0
     for (const g of gates.filter((g) => g.x === x).sort((a, b) => a.y - b.y)) {
@@ -279,7 +290,7 @@ export function border(gates: Rect[]): Rect[] {
 /** Tiles the player cannot walk into, as rectangles. */
 export function solids(): Rect[] {
   return [
-    ...border([FARM_GATE]),
+    ...border([FARM_GATE, FARM_TOWN_GATE]),
     HOUSE,
     POND,
     CART,
@@ -295,11 +306,12 @@ export function solids(): Rect[] {
 }
 
 /** The trees along the edge of a map, for drawing, clear of its gates. */
-export function borderTrees(gates: Rect[] = [FARM_GATE]): { x: number; y: number }[] {
+export function borderTrees(gates: Rect[] = [FARM_GATE, FARM_TOWN_GATE]): { x: number; y: number }[] {
   const out: { x: number; y: number }[] = []
-  const nearGate = (x: number, y: number) => gates.some((g) => g.x === x && Math.abs(g.y - y) <= 1)
+  const nearGate = (x: number, y: number) =>
+    gates.some((g) => (g.x === x && Math.abs(g.y - y) <= 1) || (g.y === y && Math.abs(g.x - x) <= 1))
   for (let x = 0; x < WIDTH; x += 2) {
-    out.push({ x, y: 0 }, { x, y: HEIGHT - 1 })
+    for (const y of [0, HEIGHT - 1]) if (!nearGate(x, y)) out.push({ x, y })
   }
   for (let y = 2; y < HEIGHT - 1; y += 2) {
     for (const x of [0, WIDTH - 1]) if (!nearGate(x, y)) out.push({ x, y })

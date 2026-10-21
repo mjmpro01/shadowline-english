@@ -52,8 +52,9 @@ type GameProfile struct {
 	X          int        `json:"x"`
 	Y          int        `json:"y"`
 	MainStep   int        `json:"mainStep"`
-	// WoodsOpen: the story has reached the woods.
+	// WoodsOpen: the story has reached the woods; TownOpen, Echo Town.
 	WoodsOpen bool `json:"woodsOpen"`
+	TownOpen  bool `json:"townOpen"`
 }
 
 type GamePlot struct {
@@ -86,6 +87,9 @@ type GameState struct {
 	// back. Empty until the woods are open.
 	Monsters []game.Monster `json:"monsters"`
 	Spawns   []SpawnView    `json:"spawns"`
+	// The people of Echo Town and how well the player knows them. Empty until
+	// the town is open.
+	Friends []FriendView `json:"friends"`
 }
 
 // SpawnView is a place in the woods, and when its monster is back if it was
@@ -241,13 +245,14 @@ func readState(ctx context.Context, tx pgx.Tx, user uuid.UUID, p profileRow, now
 		Profile: GameProfile{
 			Gold: p.gold, Stamina: stamina, StaminaMax: game.StaminaMax,
 			HP: hp, HPMax: game.HPMax,
-			Map: p.mapName, X: p.x, Y: p.y, MainStep: p.mainStep, WoodsOpen: p.woodsOpen(),
+			Map: p.mapName, X: p.x, Y: p.y, MainStep: p.mainStep, WoodsOpen: p.woodsOpen(), TownOpen: p.townOpen(),
 		},
 		Inventory:    map[string]int{},
 		Crops:        game.Crops,
 		UpgradeCosts: []int{},
 		Monsters:     []game.Monster{},
 		Spawns:       []SpawnView{},
+		Friends:      []FriendView{},
 	}
 	if !next.IsZero() {
 		out.Profile.StaminaNextAt = &next
@@ -271,6 +276,13 @@ func readState(ctx context.Context, tx pgx.Tx, user uuid.UUID, p profileRow, now
 			}
 			out.Spawns = append(out.Spawns, view)
 		}
+	}
+	if p.townOpen() {
+		f, err := friends(ctx, tx, user, now)
+		if err != nil {
+			return out, err
+		}
+		out.Friends = f
 	}
 	if p.sleptAt != nil {
 		if again := p.sleptAt.Add(game.SleepEvery); again.After(now) {
@@ -634,8 +646,11 @@ func (s *Store) MoveTo(ctx context.Context, user uuid.UUID, mapName string, x, y
 		if mapName == "woods" && !p.woodsOpen() {
 			return refuse("woods_locked", "the woods are not open yet")
 		}
-		if mapName == "woods" && p.mapName != "woods" {
-			if err := logEvent(ctx, tx, user, "enter_woods", "", 0); err != nil {
+		if mapName == "town" && !p.townOpen() {
+			return refuse("town_locked", "the town is not open yet")
+		}
+		if mapName != p.mapName && (mapName == "woods" || mapName == "town") {
+			if err := logEvent(ctx, tx, user, "enter_"+mapName, "", 0); err != nil {
 				return err
 			}
 		}
