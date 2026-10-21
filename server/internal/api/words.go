@@ -13,9 +13,9 @@ import (
 	"github.com/shadowline/server/internal/store"
 )
 
-// The longest caption worth keeping as context. A clip is at most thirty
-// seconds, so a real one never comes near this; the limit is here so a request cannot make
-// the worker's prompt as long as it likes.
+// The longest caption worth keeping as context. A caption is a line, and a
+// line is rarely near this; one longer — the lyrics of a whole song — is cut
+// short here, so a request cannot make the worker's prompt as long as it likes.
 const maxGlossContext = 400
 
 // maxWordLength is longer than any word a caption holds ("antidisestablish-

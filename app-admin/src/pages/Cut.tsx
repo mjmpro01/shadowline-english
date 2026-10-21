@@ -4,7 +4,7 @@ import { useT } from '../i18n'
 import { Icon } from '../components/Icon'
 import { ThumbnailStrip } from '../components/ThumbnailStrip'
 import { WaveformEditor } from '../components/WaveformEditor'
-import { MAX_CLIP_SECONDS, type Playlist, type Transcript } from '../data/types'
+import { LINE_SECONDS, MAX_CLIP_SECONDS, type Playlist, type Transcript } from '../data/types'
 import { TranscriptStatus } from '../components/TranscriptStatus'
 import { matchSeries, type SeriesMatch } from '../lib/seriesName'
 import { publishClips, type PublishProgress } from '../lib/publish'
@@ -43,6 +43,11 @@ const EMPTY_LINE: Omit<Line, 'categories'> = { title: '', text: '', ipa: '', inc
 
 function clock(seconds: number): string {
   return `${Math.floor(seconds / 60)}:${Math.floor(seconds % 60).toString().padStart(2, '0')}.${Math.floor((seconds % 1) * 10)}`
+}
+
+/** The clip limit as a person would say it: "6 min" rather than "360s". */
+function limitLabel(seconds: number): string {
+  return seconds >= 60 && seconds % 60 === 0 ? `${seconds / 60} min` : `${seconds}s`
 }
 
 /** Floored to tenths like the timestamps beside it, so a boundary reads the same in both. */
@@ -200,7 +205,7 @@ export function Cut() {
     const url = URL.createObjectURL(file)
     try {
       const { samples, sampleRate } = await decodeFile(file)
-      const proposal = proposeSegments(samples, sampleRate, { maxSeconds: MAX_CLIP_SECONDS })
+      const proposal = proposeSegments(samples, sampleRate, { maxSeconds: LINE_SECONDS })
       setLoaded({
         name: file.name,
         samples,
@@ -465,6 +470,18 @@ export function Cut() {
       { ...EMPTY_LINE, categories: prev[selected].categories, include: prev[selected].include },
       ...prev.slice(selected + 1),
     ])
+  }
+
+  /** The whole recording as one clip — a song sung through rather than line by
+   *  line. What was proposed goes; Split at playhead still cuts it after. */
+  const takeWhole = () => {
+    if (!loaded || loaded.duration > MAX_CLIP_SECONDS) return
+    if (segments.length > 1 && !window.confirm(`Replace the ${segments.length} clips with the whole recording as one?`)) return
+    const whole = [{ start: 0, end: loaded.duration }]
+    setSegments(whole)
+    setLines([{ ...EMPTY_LINE, categories: batchCategories }])
+    setSelected(0)
+    if (transcript?.status === 'ready') fillFromTranscript(transcript.words, whole)
   }
 
   const publish = async () => {
@@ -786,9 +803,22 @@ export function Cut() {
               <button type="button" className="btn btn-secondary" onClick={splitAtPlayhead} disabled={playhead === null || selected === null}>
                 Split at playhead
               </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={takeWhole}
+                disabled={loaded.duration > MAX_CLIP_SECONDS + 0.01}
+                title={
+                  loaded.duration > MAX_CLIP_SECONDS + 0.01
+                    ? `Longer than ${limitLabel(MAX_CLIP_SECONDS)}, the most one clip can be`
+                    : 'One clip from start to end, as a song is sung through'
+                }
+              >
+                Whole video as one clip
+              </button>
               {tooLong > 0 && (
                 <span style={{ fontSize: 12, color: 'var(--score-attention)' }}>
-                  {tooLong} clip{tooLong > 1 ? 's are' : ' is'} longer than {MAX_CLIP_SECONDS}s
+                  {tooLong} clip{tooLong > 1 ? 's are' : ' is'} longer than {limitLabel(MAX_CLIP_SECONDS)}
                 </span>
               )}
             </div>

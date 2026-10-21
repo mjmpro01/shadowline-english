@@ -93,6 +93,17 @@ The worker writes a heartbeat to `worker_heartbeats` every ten seconds, idle or
 busy; forty-five seconds without one counts as not running. The upload history
 shows the same thing as a pill in its header.
 
+## A song taken whole
+
+The studio proposes cuts at the recording's pauses, each at most 30 seconds
+(`LINE_SECONDS`): a clip is usually one line to shadow. A karaoke video is
+often wanted the other way, the song sung through, so **Whole video as one
+clip** replaces the proposal with a single clip from start to end, the
+transcript filled into it as into any other. Split at playhead still cuts it
+afterwards. A clip may run to six minutes (`MAX_CLIP_SECONDS`, held to the same
+number by the server); a longer recording cannot be taken whole, and the button
+says so.
+
 ## Publishing a long recording
 
 Publishing is two things: the clip rows, then their audio. The studio says which

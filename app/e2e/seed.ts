@@ -1,7 +1,7 @@
 import { expect, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { API_URL } from './environment'
-import { LESSON, VIDEO_CLIP } from './fixtures'
+import { LESSON, SONG_LINES, VIDEO_CLIP } from './fixtures'
 import { asAdmin } from './session'
 
 /**
@@ -155,6 +155,40 @@ export async function publishVideoLesson(
       { timeout: 90_000, intervals: [1000] },
     )
     .toBeGreaterThanOrEqual(cuts.length)
+}
+
+/** The caption of the song published whole by `publishSong`. */
+export const SONG_TITLE = 'Sing the whole song'
+
+/** A song taken whole, as the studio's "Whole video as one clip" does: one clip,
+ *  start to end, longer than any line. */
+export async function publishSong(page: Page): Promise<void> {
+  await asAdmin(page)
+  const wav = readFileSync(SONG_LINES)
+  const seconds = (wav.length - 44) / 2 / wav.readUInt32LE(24)
+  const created = await page.request.post(`${API_URL}/api/admin/clips`, {
+    data: {
+      clips: [
+        {
+          title: 'Whole song',
+          source: 'song-lines.wav',
+          playlist: 'Songs',
+          categories: ['karaoke'],
+          timestamp: `0:00.0–${clock(seconds)}`,
+          durationSeconds: seconds,
+          summary: 'No takes recorded yet — practice this clip to see your pitch analysis.',
+          captions: [{ text: SONG_TITLE, ipa: '' }],
+        },
+      ],
+    },
+  })
+  expect(created.ok(), `publishing the song: ${created.status()}`).toBe(true)
+  const [clip] = (await created.json()) as { id: string }[]
+  const audio = await page.request.put(`${API_URL}/api/admin/clips/${clip.id}/audio`, {
+    headers: { 'Content-Type': 'audio/wav' },
+    data: wav,
+  })
+  expect(audio.ok(), `the song's audio: ${audio.status()}`).toBe(true)
 }
 
 /** Marks a clip featured, so it reaches the dashboard. */
