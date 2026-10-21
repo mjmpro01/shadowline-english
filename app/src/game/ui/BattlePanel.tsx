@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import type { Locale, Translate } from '../../i18n'
 import { canSpeak, speak } from '../../lib/speak'
 import type { Battle, GameState, Turn } from '../api'
-import { art } from '../assets'
+import { art, monsterColour } from '../assets'
 import { optionKey, pickLetter, pickTile, spelled, timeLeft, timeShare, type Picks } from '../battle'
 import { ItemIcon } from './common'
 import { pick, useNow } from './util'
@@ -48,7 +48,7 @@ export function BattlePanel({
       <section className="arena-sheet arena-sheet-wide arena-battle" role="dialog" aria-label={t('arena.battle.title', name)}>
         <header className="arena-battle-head">
           <div className="arena-fighter" data-hurt={turn?.right ? 'monster' : undefined} key={`m${battle.round}`}>
-            <MonsterPicture id={battle.monster.id} />
+            <MonsterPicture id={battle.monster.id} colour={monsterColour(battle.spawn, battle.monster.id)} />
             <div className="arena-fighter-info">
               <strong>{name}</strong>
               <HealthBar value={battle.monsterHp} max={battle.monsterHpMax} kind="monster" />
@@ -105,14 +105,15 @@ function HealthBar({ value, max, kind }: { value: number; max: number; kind: 'mo
   )
 }
 
-/** The monster as drawn for a fight, or a painted stand-in until it is. */
-function MonsterPicture({ id }: { id: string }) {
+/** The monster as drawn for a fight, in its spot's colour, or a painted
+ *  stand-in until it is drawn. */
+function MonsterPicture({ id, colour }: { id: string; colour: string | null }) {
   const [missing, setMissing] = useState(false)
   if (missing) return <MonsterStandIn id={id} />
   return (
     <img
       className="arena-monster-img"
-      src={art(`monsters/${id}_battle.png`)}
+      src={art(`monsters/${colour ? `${id}_${colour}` : id}_battle.png`)}
       alt=""
       onError={() => setMissing(true)}
     />

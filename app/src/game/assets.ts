@@ -38,10 +38,32 @@ export const DUST_FRAMES = 4
 export const ZZZ_FRAMES = 3
 /** Kinds of tree in objects/tree.png, side by side. */
 export const TREE_KINDS = 3
-/** The monsters of the woods, and the frames of each one's sheet: a few of
- *  it bobbing in place, which is also how it moves. */
+/** The monsters of the woods. A sheet from scripts/build-art.py is four
+ *  rows of frames in one strip — standing, moving (or attacking), hit, going
+ *  down; the painted stand-in is four frames of it bobbing, used for all. */
 export const MONSTER_IDS = ['word_slime', 'echo_bat'] as const
+export type MonsterId = (typeof MONSTER_IDS)[number]
 export const MONSTER_FRAMES = 4
+export const MONSTER_ROWS = 4
+/** The row each monster moves with: the bat flaps the same way standing or
+ *  flying, its second row being a dive. */
+export const MONSTER_MOVE_ROW: Record<MonsterId, number> = { word_slime: 1, echo_bat: 0 }
+/** The slime comes in more colours than its own green; each spot keeps one. */
+export const SLIME_COLOURS = ['blue', 'purple'] as const
+/** A slime's colour goes with its spot (slime_1 green, slime_2 blue…), so it
+ *  is the same one on the map, in the fight, and on each visit. Null for the
+ *  monster's own look. */
+export function monsterColour(spawn: string, monster: string): (typeof SLIME_COLOURS)[number] | null {
+  if (monster !== 'word_slime') return null
+  const n = ((Number(spawn.replace(/\D/g, '')) || 1) - 1) % (SLIME_COLOURS.length + 1)
+  return n === 0 ? null : SLIME_COLOURS[n - 1]
+}
+
+/** Every monster sheet, colours included: key and the monster it draws. */
+export const MONSTER_SHEETS: { key: string; id: MonsterId; file: string }[] = [
+  ...MONSTER_IDS.map((id) => ({ key: `monster-${id}`, id, file: `monsters/${id}.png` })),
+  ...SLIME_COLOURS.map((c) => ({ key: `monster-word_slime-${c}`, id: 'word_slime' as const, file: `monsters/word_slime_${c}.png` })),
+]
 
 export const ASSETS: AssetSpec[] = [
   { key: 'player', file: 'characters/player.png', frame: { w: 16, h: 32 } },
@@ -62,7 +84,8 @@ export const ASSETS: AssetSpec[] = [
   { key: 'sparkle', file: 'fx/sparkle.png', frame: { w: 16, h: 16 } },
   { key: 'dust', file: 'fx/dust.png', frame: { w: 16, h: 16 } },
   { key: 'sleep_z', file: 'fx/sleep_z.png', frame: { w: 16, h: 16 } },
-  ...MONSTER_IDS.map((id) => ({ key: `monster-${id}`, file: `monsters/${id}.png`, frame: { w: 24, h: 24 } })),
+  // The colours have no stand-in: without their file a slime is green.
+  ...MONSTER_SHEETS.map(({ key, file }) => ({ key, file, frame: { w: 24, h: 24 } })),
 ]
 
 export const BASE = `${import.meta.env.BASE_URL}game/`
