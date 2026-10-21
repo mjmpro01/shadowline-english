@@ -21,9 +21,9 @@ import (
 	"github.com/shadowline/server/internal/version"
 )
 
-// maxAudioBytes caps an upload. A six-second clip is well under a megabyte;
-// eight leaves room for uncompressed WAV without letting the endpoint become a
-// place to park files.
+// maxAudioBytes caps an upload. A clip at its longest, thirty seconds, is under
+// three megabytes as uncompressed 48 kHz WAV; eight leaves room for that without
+// letting the endpoint become a place to park files.
 const maxAudioBytes = 8 << 20
 
 // maxSourceBytes caps the recording a batch is cut out of. Two gigabytes covers
@@ -388,9 +388,10 @@ func (s *Server) handleCreateClips(w http.ResponseWriter, r *http.Request) {
 }
 
 // MaxClipSeconds mirrors MAX_CLIP_SECONDS in app/src/data/types.ts and in
-// app-admin/src/data/types.ts. A clip is one line to shadow; the console already
-// refuses longer cuts, and so does this.
-const MaxClipSeconds = 6
+// app-admin/src/data/types.ts. A clip is one line to shadow — spoken, or a line
+// of a song, which runs longer than speech; the console already refuses longer
+// cuts, and so does this.
+const MaxClipSeconds = 30
 
 func validateClip(in store.NewClip) error {
 	if in.Title == "" {

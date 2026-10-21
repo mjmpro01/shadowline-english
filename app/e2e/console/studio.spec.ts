@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { APP_URL } from '../environment'
-import { LESSON } from '../fixtures'
+import { LESSON, SONG_LINES } from '../fixtures'
 import { asAdmin, resetServer } from '../session'
 import { publishLesson } from '../seed'
 
@@ -97,21 +97,35 @@ test('dragging a boundary changes the clip, without crossing its neighbour', asy
   expect(firstEnd).toBe(secondStart)
 })
 
-test('a merge that overruns the limit blocks publishing until it is fixed', async ({ page }) => {
+test('a line longer than speech, as a line of a song is, still publishes', async ({ page }) => {
   await openStudio(page)
 
   await page.locator('input[type=file]').setInputFiles(LESSON)
   await expect(page.locator('.waveform-segment')).toHaveCount(4, { timeout: 15_000 })
-  await expect(page.getByRole('button', { name: /Publish 4 clips/ })).toBeEnabled()
 
-  // The last two lines together run past six seconds.
+  // The last two lines together run past seven seconds: long for speech, short
+  // for a song.
   await page.getByRole('button', { name: 'Merge next' }).nth(2).click()
-  await expect(page.getByText(/longer than 6s/)).toBeVisible()
+  await expect(page.locator('.waveform-segment')).toHaveCount(3)
+  await expect(page.getByText(/longer than \d+s/)).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /Publish 3 clips/ })).toBeEnabled()
+})
+
+test('a merge that overruns the limit blocks publishing until it is fixed', async ({ page }) => {
+  await openStudio(page)
+
+  // Two eighteen-second lines: each a clip, the two together past the limit.
+  await page.locator('input[type=file]').setInputFiles(SONG_LINES)
+  await expect(page.locator('.waveform-segment')).toHaveCount(2, { timeout: 15_000 })
+  await expect(page.getByRole('button', { name: /Publish 2 clips/ })).toBeEnabled()
+
+  await page.getByRole('button', { name: 'Merge next' }).first().click()
+  await expect(page.getByText(/longer than 30s/)).toBeVisible()
   await expect(page.getByRole('button', { name: /Publish/ })).toBeDisabled()
 
-  await page.getByRole('button', { name: 'Delete' }).last().click()
-  await expect(page.getByText(/longer than 6s/)).toHaveCount(0)
-  await expect(page.getByRole('button', { name: /Publish 2 clips/ })).toBeEnabled()
+  // Unticked, the long one is left out and the rest can go.
+  await page.getByRole('checkbox', { name: 'Publish clip 1' }).uncheck()
+  await expect(page.getByText(/longer than 30s/)).toHaveCount(0)
 })
 
 test('clips get a name, a playlist and categories, and stay editable after publishing', async ({ page }) => {

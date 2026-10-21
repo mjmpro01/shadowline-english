@@ -5,12 +5,13 @@ export type MetricScores = Record<MetricName, number>
 export const METRIC_NAMES: MetricName[] = ['Intonation', 'Rhythm', 'Stress', 'Variation']
 
 /**
- * A clip is one line to shadow, not a passage. Everything entering the app —
+ * A clip is one line to shadow, not a passage — a spoken line, or a line of a
+ * song, which runs longer. Everything entering the app —
  * the source audio and the takes recorded against it — is held to this. The
  * server enforces the same number; this copy is what the studio and the
  * recorder check against before anything is sent.
  */
-export const MAX_CLIP_SECONDS = 6
+export const MAX_CLIP_SECONDS = 30
 
 export interface CaptionLine {
   text: string

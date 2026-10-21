@@ -13,8 +13,8 @@ import (
 	"github.com/shadowline/server/internal/store"
 )
 
-// The longest caption worth keeping as context. A clip is six seconds, so a
-// real one never comes near this; the limit is here so a request cannot make
+// The longest caption worth keeping as context. A clip is at most thirty
+// seconds, so a real one never comes near this; the limit is here so a request cannot make
 // the worker's prompt as long as it likes.
 const maxGlossContext = 400
 

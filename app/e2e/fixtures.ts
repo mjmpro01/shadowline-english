@@ -36,8 +36,9 @@ export const SOURCE_CLIP = join(FIXTURE_DIR, 'source-clip.wav')
 /** A second clip with a flat delivery, for checking one clip's contour is not
     reused to score another. */
 export const FLAT_CLIP = join(FIXTURE_DIR, 'flat-clip.wav')
-/** Longer than a clip is allowed to be. */
-export const OVERLONG_CLIP = join(FIXTURE_DIR, 'overlong-clip.wav')
+/** Two long lines, as a song's are: each fits in a clip, and the two together
+    run past the limit. */
+export const SONG_LINES = join(FIXTURE_DIR, 'song-lines.wav')
 /** A recording of four lines with pauses between them, for the clip studio.
     Lines alternate between melodic and flat so the published clips differ. */
 export const LESSON = join(FIXTURE_DIR, 'lesson.wav')
@@ -58,7 +59,13 @@ export const VIDEO_CLIP = join(import.meta.dirname, 'fixtures', 'studio-clip.web
 export function writeAudioFixtures(): void {
   writeWav(SOURCE_CLIP, tone({ melody: MELODIES.wide }))
   writeWav(FLAT_CLIP, tone({ melody: MELODIES.flat }))
-  writeWav(OVERLONG_CLIP, tone({ melody: MELODIES.wide, duration: 10 }))
+  writeWav(
+    SONG_LINES,
+    lines([
+      { speech: 18, pause: 0.55, melody: MELODIES.wide },
+      { speech: 18, pause: 0.55, melody: MELODIES.flat },
+    ]),
+  )
   writeWav(
     LESSON,
     lines([
