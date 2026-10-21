@@ -52,9 +52,12 @@ type GameProfile struct {
 	X          int        `json:"x"`
 	Y          int        `json:"y"`
 	MainStep   int        `json:"mainStep"`
-	// WoodsOpen: the story has reached the woods; TownOpen, Echo Town.
-	WoodsOpen bool `json:"woodsOpen"`
-	TownOpen  bool `json:"townOpen"`
+	// WoodsOpen: the story has reached the woods; TownOpen, Echo Town;
+	// HallOpen, the Word Hall's door; LibraryOpen, Lina's library.
+	WoodsOpen   bool `json:"woodsOpen"`
+	TownOpen    bool `json:"townOpen"`
+	HallOpen    bool `json:"hallOpen"`
+	LibraryOpen bool `json:"libraryOpen"`
 }
 
 type GamePlot struct {
@@ -90,6 +93,8 @@ type GameState struct {
 	// The people of Echo Town and how well the player knows them. Empty until
 	// the town is open.
 	Friends []FriendView `json:"friends"`
+	// Letter is today's letter in the mailbox, once the townsfolk write.
+	Letter *LetterView `json:"letter"`
 }
 
 // SpawnView is a place in the woods, and when its monster is back if it was
@@ -246,6 +251,7 @@ func readState(ctx context.Context, tx pgx.Tx, user uuid.UUID, p profileRow, now
 			Gold: p.gold, Stamina: stamina, StaminaMax: game.StaminaMax,
 			HP: hp, HPMax: game.HPMax,
 			Map: p.mapName, X: p.x, Y: p.y, MainStep: p.mainStep, WoodsOpen: p.woodsOpen(), TownOpen: p.townOpen(),
+			HallOpen: p.hallOpen(), LibraryOpen: p.libraryOpen(),
 		},
 		Inventory:    map[string]int{},
 		Crops:        game.Crops,
@@ -283,6 +289,9 @@ func readState(ctx context.Context, tx pgx.Tx, user uuid.UUID, p profileRow, now
 			return out, err
 		}
 		out.Friends = f
+		if out.Letter, err = todaysLetter(ctx, tx, user, p, now); err != nil {
+			return out, err
+		}
 	}
 	if p.sleptAt != nil {
 		if again := p.sleptAt.Add(game.SleepEvery); again.After(now) {

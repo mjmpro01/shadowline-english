@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/shadowline/server/internal/auth"
@@ -114,6 +115,26 @@ func (s *Server) handleTestTalkAnswer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"reply": reply})
+}
+
+// handleTestQuizAnswer is the answer to the note or library question waiting
+// for the signed-in player. AUTH_FAKE=1 only.
+func (s *Server) handleTestQuizAnswer(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	answer, err := s.Store.QuizAnswerKey(r.Context(), u.ID, r.URL.Query().Get("kind"))
+	if err != nil {
+		fail(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"answer": answer})
+}
+
+// handleTestLetter is what today's letter asks for, which the browser is never
+// told. AUTH_FAKE=1 only.
+func (s *Server) handleTestLetter(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	npc, item, qty := store.LetterKey(u.ID, time.Now())
+	writeJSON(w, http.StatusOK, map[string]any{"npc": npc, "item": item, "qty": qty})
 }
 
 // handleTestGameStep moves the signed-in player's story to a step, so a test

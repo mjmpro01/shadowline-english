@@ -90,6 +90,9 @@ var Items = []Item{
 	// Bram's hammer, won back from the troll: with it he can work soil one
 	// level further. The shop never has it.
 	{ID: "bram_hammer", Name: Text{"Bram's hammer", "Búa của Bram"}, Kind: "tool", UnlockStep: Never},
+	// Sage Orin's glasses, which read the Lexi's notes on the Word Hall's door:
+	// they are written in IPA.
+	{ID: "ipa_glasses", Name: Text{"IPA glasses", "Kính IPA"}, Kind: "tool", UnlockStep: Never},
 }
 
 // Never is an unlock step no story reaches: what is never in the shop.

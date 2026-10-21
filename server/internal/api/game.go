@@ -359,3 +359,113 @@ func (s *Server) handleClinic(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, state)
 }
+
+// handleHall is the player at the Word Hall's door.
+func (s *Server) handleHall(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	hall, state, err := s.Store.VisitHall(r.Context(), u.ID)
+	if err != nil {
+		s.gameFail(w, err, "visit hall")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"hall": hall, "state": state})
+}
+
+func (s *Server) handleHallRead(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	var body struct {
+		Answer string `json:"answer"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		fail(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	result, state, err := s.Store.ReadNote(r.Context(), u.ID, body.Answer)
+	if err != nil {
+		s.gameFail(w, err, "read note")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"result": result, "state": state})
+}
+
+func (s *Server) handleLibrary(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	if len(q) > 40 {
+		q = q[:40]
+	}
+	library, err := s.Store.Library(r.Context(), u.ID, q)
+	if err != nil {
+		s.gameFail(w, err, "library")
+		return
+	}
+	writeJSON(w, http.StatusOK, library)
+}
+
+func (s *Server) handleLibraryAsk(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	var body struct {
+		Word string `json:"word"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		fail(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	question, err := s.Store.AskDonation(r.Context(), u.ID, body.Word)
+	if err != nil {
+		s.gameFail(w, err, "ask donation")
+		return
+	}
+	writeJSON(w, http.StatusOK, question)
+}
+
+func (s *Server) handleLibraryDonate(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	var body struct {
+		Answer string `json:"answer"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		fail(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	result, state, err := s.Store.Donate(r.Context(), u.ID, body.Answer)
+	if err != nil {
+		s.gameFail(w, err, "donate")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"result": result, "state": state})
+}
+
+func (s *Server) handleLibraryClaim(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	var body struct {
+		Words int `json:"words"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		fail(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	reward, state, err := s.Store.ClaimMilestone(r.Context(), u.ID, body.Words)
+	if err != nil {
+		s.gameFail(w, err, "claim milestone")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"reward": reward, "state": state})
+}
+
+func (s *Server) handleLetterDeliver(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	var body struct {
+		NPC string `json:"npc"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		fail(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	result, state, err := s.Store.DeliverLetter(r.Context(), u.ID, body.NPC)
+	if err != nil {
+		s.gameFail(w, err, "deliver letter")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"result": result, "state": state})
+}
