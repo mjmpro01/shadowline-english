@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/shadowline/server/internal/auth"
 	"github.com/shadowline/server/internal/store"
 )
@@ -175,7 +177,7 @@ func (s *Server) handleGameMove(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if body.Map != "farm" && body.Map != "woods" {
+	if body.Map != "farm" && body.Map != "woods" && body.Map != "town" {
 		fail(w, http.StatusBadRequest, "there is no such map")
 		return
 	}
@@ -279,4 +281,81 @@ func (s *Server) handleBattle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"battle": battle})
+}
+
+// --- Echo Town ----------------------------------------------------------------
+
+func (s *Server) handleTalkExchange(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	chat, err := s.Store.TalkExchange(r.Context(), u.ID, chi.URLParam(r, "npc"))
+	if err != nil {
+		s.gameFail(w, err, "talk exchange")
+		return
+	}
+	writeJSON(w, http.StatusOK, chat)
+}
+
+func (s *Server) handleTalk(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	var body struct {
+		NPC   string `json:"npc"`
+		Reply int    `json:"reply"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		fail(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	result, state, err := s.Store.Talk(r.Context(), u.ID, body.NPC, body.Reply)
+	if err != nil {
+		s.gameFail(w, err, "talk")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"result": result, "state": state})
+}
+
+func (s *Server) handleGift(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	var body struct {
+		NPC   string `json:"npc"`
+		Item  string `json:"item"`
+		Words int    `json:"words"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		fail(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	result, state, err := s.Store.Gift(r.Context(), u.ID, body.NPC, body.Item, body.Words)
+	if err != nil {
+		s.gameFail(w, err, "gift")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"result": result, "state": state})
+}
+
+func (s *Server) handleHeart(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	var body struct {
+		NPC    string `json:"npc"`
+		Hearts int    `json:"hearts"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		fail(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	event, state, err := s.Store.ClaimHeart(r.Context(), u.ID, body.NPC, body.Hearts)
+	if err != nil {
+		s.gameFail(w, err, "heart event")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"event": event, "state": state})
+}
+
+func (s *Server) handleClinic(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	state, err := s.Store.Clinic(r.Context(), u.ID)
+	if err != nil {
+		s.gameFail(w, err, "clinic")
+		return
+	}
+	writeJSON(w, http.StatusOK, state)
 }

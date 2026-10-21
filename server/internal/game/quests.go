@@ -18,6 +18,8 @@ type Counter struct {
 	//   "takes"   — Shadowing lines practised, scoring at least MinScore when set
 	//   "reviews" — flashcards reviewed
 	//   "spent"   — gold spent
+	//   "talked"  — different people in town chatted with
+	//   "hearts"  — the most hearts with anyone in town, whenever made
 	Kind     string `json:"-"`
 	Item     string `json:"-"`
 	Of       string `json:"-"`
@@ -55,6 +57,8 @@ const (
 	WoodsStep  = 10
 	// TrollStep is Bram's request, from which the troll is in its lair.
 	TrollStep = 15
+	// TownStep is chapter 3's first step: Echo Town is open from here.
+	TownStep = 17
 )
 
 // MainQuests is the story so far. Chapter 1, the farm, doubles as the
@@ -258,6 +262,52 @@ var MainQuests = []Step{
 		Target:    0,
 		Reward:    Reward{Gold: 30},
 	},
+	{
+		ID: "to_town", Chapter: 3, Giver: "sir_shadow",
+		Title: Text{"Echo Town", "Thị trấn Echo"},
+		Lines: []Text{
+			{"The road south of the farm goes to Echo town.", "Con đường phía nam trang trại dẫn tới thị trấn Echo."},
+			{"The people there need friends. Go and say hello.", "Người dân ở đó cần bạn bè. Hãy tới chào họ."},
+		},
+		Objective: Text{"Go to Echo Town", "Đi tới thị trấn Echo"},
+		Counter:   Counter{Kind: "event", Item: "enter_town"}, Target: 1,
+		Reward: Reward{Gold: 20},
+	},
+	{
+		ID: "introductions", Chapter: 3, Giver: "elsa",
+		Title: Text{"Introductions", "Làm quen"},
+		Lines: []Text{
+			{"Welcome, farmer! I am Elsa, the mayor.", "Chào mừng, bác nông dân! Tôi là Elsa, thị trưởng."},
+			{"Since the Silence, we hardly talk to each other.", "Từ khi có Màn Im Lặng, chúng tôi hầu như chẳng nói chuyện với nhau."},
+			{"Would you say hello to everyone in town?", "Cậu đi chào hỏi mọi người trong thị trấn giúp tôi nhé?"},
+		},
+		Objective: Text{"Chat with all 5 people in town", "Trò chuyện với cả 5 người trong thị trấn"},
+		Counter:   Counter{Kind: "talked"}, Target: 5,
+		Reward: Reward{Gold: 50, Items: map[string]int{"flowers": 1}},
+	},
+	{
+		ID: "first_gift", Chapter: 3, Giver: "elsa",
+		Title: Text{"How to win friends", "Cách kết bạn"},
+		Lines: []Text{
+			{"Everyone loves a good gift.", "Ai cũng thích một món quà ý nghĩa."},
+			{"Find out what someone loves, and give it to them.", "Hãy tìm xem ai đó thích gì, rồi tặng họ."},
+			{"And say it kindly when you do!", "Và nhớ nói thật dễ thương khi tặng nhé!"},
+		},
+		Objective: Text{"Give someone a gift they love", "Tặng ai đó món quà họ rất thích"},
+		Counter:   Counter{Kind: "event", Item: "gift_loved"}, Target: 1,
+		Reward: Reward{Gold: 40},
+	},
+	{
+		ID: "two_hearts", Chapter: 3, Giver: "elsa",
+		Title: Text{"A real friend", "Một người bạn thật sự"},
+		Lines: []Text{
+			{"The town feels warmer already.", "Thị trấn đã ấm áp hơn rồi."},
+			{"Talk with your friends every day. Friendship grows slowly.", "Hãy trò chuyện với bạn bè mỗi ngày. Tình bạn lớn lên từ từ."},
+		},
+		Objective: Text{"Reach 2 hearts with someone", "Đạt 2 tim với một người"},
+		Counter:   Counter{Kind: "hearts"}, Target: 2,
+		Reward: Reward{Gold: 60, Items: map[string]int{"seed_bloom": 2}},
+	},
 }
 
 // Daily is one of the day's three small tasks.
@@ -268,8 +318,10 @@ type Daily struct {
 	Target   int     `json:"target"`
 	Reward   Reward  `json:"reward"`
 	Learning bool    `json:"learning"`
-	// Woods tasks are only drawn once the woods are open.
+	// Woods tasks are only drawn once the woods are open, town ones once the
+	// town is.
 	Woods bool `json:"woods"`
+	Town  bool `json:"town"`
 }
 
 // DailyPool is what the day's tasks are drawn from. The learning ones are
@@ -298,6 +350,10 @@ var DailyPool = []Daily{
 		Counter: Counter{Kind: "event", Item: "win_clean"}, Target: 1, Reward: Reward{Gold: 50}},
 	{ID: "shroom1", Title: Text{"Beat a Thorn-shroom", "Hạ một Nấm gai"}, Woods: true,
 		Counter: Counter{Kind: "event", Item: "win", Of: "thorn_mushroom"}, Target: 1, Reward: Reward{Gold: 50, Stamina: 5}},
+	{ID: "chat3", Title: Text{"Chat with 3 people in town", "Trò chuyện với 3 người trong thị trấn"}, Town: true,
+		Learning: true, Counter: Counter{Kind: "event", Item: "talk"}, Target: 3, Reward: Reward{Gold: 40, Stamina: 5}},
+	{ID: "gift1", Title: Text{"Give a gift in town", "Tặng một món quà trong thị trấn"}, Town: true,
+		Counter: Counter{Kind: "event", Item: "gift"}, Target: 1, Reward: Reward{Gold: 30}},
 }
 
 // DailyCount is how many tasks a day holds.
@@ -309,14 +365,14 @@ var DailyChest = Reward{Gold: 60, Items: map[string]int{"seed_bloom": 1, "ginger
 // DailyFor is the day's tasks for one player: random, but the same every time
 // that player asks on that day, and always with at least one in the app itself.
 // Tasks in the woods come into the draw once the woods are open.
-func DailyFor(user, day string, woods bool) []Daily {
+func DailyFor(user, day string, woods, town bool) []Daily {
 	h := fnv.New64a()
 	_, _ = h.Write([]byte(user + "|" + day))
 	r := rand.New(rand.NewSource(int64(h.Sum64())))
 
 	var learning, other []Daily
 	for _, d := range DailyPool {
-		if d.Woods && !woods {
+		if (d.Woods && !woods) || (d.Town && !town) {
 			continue
 		}
 		if d.Learning {

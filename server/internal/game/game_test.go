@@ -76,18 +76,18 @@ func TestTheQuestDayTurnsAtMidnightInVietnam(t *testing.T) {
 }
 
 func TestTheDaysTasksAreFixedForTheDayAndIncludeLearning(t *testing.T) {
-	for _, woods := range []bool{false, true} {
-		checkDailies(t, woods)
+	for _, open := range [][2]bool{{false, false}, {true, false}, {true, true}} {
+		checkDailies(t, open[0], open[1])
 	}
 }
 
-func checkDailies(t *testing.T, woods bool) {
+func checkDailies(t *testing.T, woods, town bool) {
 	t.Helper()
 	seen := map[string]bool{}
-	for d := 1; d <= 28; d++ {
-		day := time.Date(2026, 10, d, 0, 0, 0, 0, time.UTC).Format("2006-01-02")
-		first := DailyFor("user-1", day, woods)
-		again := DailyFor("user-1", day, woods)
+	for d := 0; d < 60; d++ {
+		day := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC).AddDate(0, 0, d).Format("2006-01-02")
+		first := DailyFor("user-1", day, woods, town)
+		again := DailyFor("user-1", day, woods, town)
 		if len(first) != DailyCount {
 			t.Fatalf("%s: %d tasks", day, len(first))
 		}
@@ -105,27 +105,30 @@ func checkDailies(t *testing.T, woods bool) {
 			if q.Woods && !woods {
 				t.Fatalf("%s: %s is in the woods, which are not open", day, q.ID)
 			}
+			if q.Town && !town {
+				t.Fatalf("%s: %s is in town, which is not open", day, q.ID)
+			}
 		}
 		if !learning {
 			t.Fatalf("%s: nothing to practise in the app: %v", day, first)
 		}
 	}
-	// Over four weeks every task that can come up should, at least once.
+	// Over two months every task that can come up should, at least once.
 	want := 0
 	for _, d := range DailyPool {
-		if woods || !d.Woods {
+		if (woods || !d.Woods) && (town || !d.Town) {
 			want++
 		}
 	}
 	if len(seen) != want {
-		t.Fatalf("woods %v: only %d of %d tasks ever came up", woods, len(seen), want)
+		t.Fatalf("woods %v, town %v: only %d of %d tasks ever came up", woods, town, len(seen), want)
 	}
 }
 
 func TestTheDaysTasksDoNotChangeForFarmersBeforeTheWoods(t *testing.T) {
 	// The woods tasks joined the pool later; a farmer who has not reached the
 	// woods draws from exactly the pool they drew from before.
-	got := DailyFor("user-7", "2026-10-20", false)
+	got := DailyFor("user-7", "2026-10-20", false, false)
 	for _, q := range got {
 		if q.Woods {
 			t.Fatalf("drew %s", q.ID)
@@ -259,5 +262,113 @@ func TestTheCatalogHoldsTogether(t *testing.T) {
 	}
 	if BloomStep >= len(MainQuests)+1 || GoldenStep > len(MainQuests) {
 		t.Errorf("a seed unlocks at a step the story never reaches")
+	}
+}
+
+func TestTheTownHoldsTogether(t *testing.T) {
+	if TownStep >= len(MainQuests) || MainQuests[TownStep].ID != "to_town" {
+		t.Fatal("the town opens at the step that sends the player there")
+	}
+	ids := map[string]bool{}
+	for _, p := range Townsfolk {
+		if ids[p.ID] {
+			t.Errorf("%s twice", p.ID)
+		}
+		ids[p.ID] = true
+		if len(p.Exchanges) < 3 || len(p.Events) == 0 {
+			t.Errorf("%s has too little to say", p.ID)
+		}
+		for i, e := range p.Exchanges {
+			rights := 0
+			for _, r := range e.Replies {
+				if r.Right {
+					rights++
+				}
+				if r.Text.En == "" || r.Text.Vi == "" || r.Why.En == "" || r.Why.Vi == "" {
+					t.Errorf("%s exchange %d has a reply with something missing", p.ID, i)
+				}
+			}
+			if rights != 1 || e.Line.En == "" || e.Line.Vi == "" {
+				t.Errorf("%s exchange %d: %d right replies", p.ID, i, rights)
+			}
+		}
+		for _, list := range [][]string{p.Loves, p.Likes, p.Dislikes} {
+			for _, item := range list {
+				if it, ok := ItemByID(item); !ok || it.Kind != "gift" {
+					t.Errorf("%s has a taste for %s, which is not a gift", p.ID, item)
+				}
+			}
+		}
+		for _, ev := range p.Events {
+			for item := range ev.Reward.Items {
+				if _, ok := ItemByID(item); !ok {
+					t.Errorf("%s gives %s, which is not an item", p.ID, item)
+				}
+			}
+		}
+	}
+	for _, s := range MainQuests {
+		if s.Chapter == 3 && s.Giver != "sir_shadow" && !ids[s.Giver] {
+			t.Errorf("step %s is given by %s, who is not in town", s.ID, s.Giver)
+		}
+	}
+	// Someone loves each gift that can win the first-gift step.
+	loved := false
+	for _, p := range Townsfolk {
+		loved = loved || len(p.Loves) > 0
+	}
+	if !loved {
+		t.Fatal("nobody loves anything")
+	}
+}
+
+func TestAChatIsTheSameAllDay(t *testing.T) {
+	elsa, _ := TownspersonByID("elsa")
+	a, b := ChatFor("u1", "2026-10-21", elsa), ChatFor("u1", "2026-10-21", elsa)
+	if a.Exchange.Line != b.Exchange.Line || a.Order != b.Order {
+		t.Fatal("the same day, a different chat")
+	}
+	seen := map[string]bool{}
+	for d := 1; d <= 20; d++ {
+		c := ChatFor("u1", fmt.Sprintf("2026-11-%02d", d), elsa)
+		seen[c.Exchange.Line.En] = true
+		rights := 0
+		for _, r := range c.Shown() {
+			if r.Right {
+				rights++
+			}
+		}
+		if rights != 1 {
+			t.Fatal("shown replies lost the right one")
+		}
+	}
+	if len(seen) < 3 {
+		t.Fatalf("only %d chats over twenty days", len(seen))
+	}
+	words := GiftWordsFor("u1", "2026-10-21", elsa)
+	right := 0
+	for _, w := range words {
+		if w.Right {
+			right++
+		}
+	}
+	if right != 1 {
+		t.Fatal("the gift words lost the right one")
+	}
+}
+
+func TestGiftsAndHearts(t *testing.T) {
+	vy, _ := TownspersonByID("vy")
+	if Taste(vy, "flowers") != "loved" || Taste(vy, "honey_cake") != "disliked" || Taste(vy, "wool_scarf") != "neutral" {
+		t.Fatal("Dr. Vy's tastes")
+	}
+	if GiftPoints("loved", true) != GiftLoved || GiftPoints("loved", false) != GiftLoved/2 {
+		t.Fatal("the wrong words halve a good gift")
+	}
+	if GiftPoints("disliked", true) != GiftDisliked || GiftPoints("disliked", false) != GiftDisliked {
+		t.Fatal("a gift they dislike costs the same either way")
+	}
+	if Hearts(199) != 1 || Hearts(200) != 2 || Hearts(5000) != MaxHearts || Hearts(-5) != 0 {
+		t.Fatal("hearts from points")
 	}
 }

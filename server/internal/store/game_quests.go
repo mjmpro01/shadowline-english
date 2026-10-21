@@ -78,6 +78,13 @@ func countFor(ctx context.Context, tx pgx.Tx, user uuid.UUID, c game.Counter, fr
 	case "reviews":
 		sql = `select count(*)::int from vocab_words
 		       where user_id = $1 and reviewed_at >= $2 and reviewed_at < $3`
+	case "talked":
+		sql = `select count(distinct item)::int from game_events
+		       where user_id = $1 and at >= $2 and at < $3 and kind = 'talk'`
+	case "hearts":
+		// Friendship is kept, not logged: the best there is now.
+		sql = `select coalesce(max(points), 0)::int / 100 from game_friendship
+		       where user_id = $1 and $2::timestamptz is not null and $3::timestamptz is not null`
 	default:
 		return 0, fmt.Errorf("unknown quest counter %q", c.Kind)
 	}
@@ -169,7 +176,7 @@ func readQuests(ctx context.Context, tx pgx.Tx, user uuid.UUID, p profileRow, no
 		return out, err
 	}
 	allClaimed := true
-	for _, d := range game.DailyFor(user.String(), day, p.woodsOpen()) {
+	for _, d := range game.DailyFor(user.String(), day, p.woodsOpen(), p.townOpen()) {
 		n, err := countFor(ctx, tx, user, d.Counter, start, end)
 		if err != nil {
 			return out, err
