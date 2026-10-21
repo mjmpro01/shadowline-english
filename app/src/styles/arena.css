@@ -739,9 +739,7 @@
   font-weight: 600;
 }
 .arena-icon-standin {
-  display: inline-grid;
-  place-content: center;
-  line-height: 1;
+  display: inline-block;
 }
 @keyframes arena-bob {
   50% {

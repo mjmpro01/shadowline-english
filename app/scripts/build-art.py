@@ -510,13 +510,32 @@ def items():
         "letter": (1734, 384, 2076, 666),
     }
     for name, box in boxes.items():
-        piece = trim(img.crop(box))
-        side = 96
-        k = side / max(piece.size)
-        piece = piece.resize((round(piece.width * k), round(piece.height * k)), Image.LANCZOS)
-        out = Image.new("RGBA", (side, side))
-        out.alpha_composite(piece, ((side - piece.width) // 2, (side - piece.height) // 2))
-        save(out, f"items/{name}.png")
+        save(icon(img.crop(box)), f"items/{name}.png")
+
+
+def icon(piece, side=96):
+    """A picture as an icon: cropped to what is drawn, sized to fit a square,
+    in its middle."""
+    piece = trim(piece)
+    k = side / max(piece.size)
+    piece = piece.resize((round(piece.width * k), round(piece.height * k)), Image.LANCZOS)
+    out = Image.new("RGBA", (side, side))
+    out.alpha_composite(piece, ((side - piece.width) // 2, (side - piece.height) // 2))
+    return out
+
+
+# art/echo_icons_pack/ holds icons drawn one to a picture, named as drawn; the
+# figure is a little see-through, so what is drawn is made solid.
+
+ICONS = os.path.join(HERE, "..", "art", "echo_icons_pack", "items")
+ICON_IDS = {"hammer": "bram_hammer", "herbal_medicine": "herb_salve"}
+
+
+def pack_items():
+    for name, item in ICON_IDS.items():
+        a = np.array(Image.open(os.path.join(ICONS, f"{name}.png")).convert("RGBA"))
+        a[..., 3] = np.where(a[..., 3] > SOLID, 255, a[..., 3])
+        save(icon(Image.fromarray(a)), f"items/{item}.png")
 
 
 def portraits():
@@ -659,6 +678,7 @@ def main():
     objects(frames)
     crops(frames)
     items()
+    pack_items()
     portraits()
     effects(frames)
     monsters(frames)
