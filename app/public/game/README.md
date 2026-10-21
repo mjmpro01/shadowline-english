@@ -35,7 +35,7 @@ farm is playable with any subset of this folder.
 | `monsters/word_slime_{blue,purple}.png` | The slime's other colours. Each spot keeps one: `slime_1` green, `slime_2` blue, `slime_3` purple, then round again |
 | `monsters/<id>_battle.png`, `word_slime_{blue,purple}_battle.png` | The monster standing, 192 px tall, for the fight panel (shown 72 px, 52 px on a phone); an SVG stand-in without it |
 | `fx/*.png` | The harvest burst, dust at the player's heels, the sparkle over a ripe crop, the "!" over what the player faces, Zs |
-| `items/*.png` | 96 px icons: coin, stamina, the seeds, tea, chests, the quest book, the letter, the word scroll. A new seed or item needs one named after its id in `server/internal/game/catalog.go`. **Still to draw:** `bram_hammer.png` (Bram's hammer, won back from the troll) and `herb_salve.png`; until then the game shows a sign in their place |
+| `items/*.png` | 96 px icons: coin, stamina, the seeds, tea, chests, the quest book, the letter, the word scroll. A new seed or item needs one named after its id in `server/internal/game/catalog.go`. `bram_hammer.png` and `herb_salve.png` come from `art/echo_icons_pack/` |
 | `portraits/*.png` | Four faces side by side: neutral, happy, thinking, worried |
 | `ui/*.png` | The wooden frames of the panels (`dialog_box`, `panel`; their corner blocks are 52 px), the joystick, the action button |
 
@@ -80,6 +80,11 @@ and sizes every frame of a monster by the same amount so a slime going flat
 gets lower rather than larger. The fight panel plays the same strips, larger:
 standing, hit on a right answer, the second row for a wrong one, going down
 when beaten.
+
+The icons in `art/echo_icons_pack/items/` are one to a picture, named as drawn
+(`hammer` is `bram_hammer`, `herbal_medicine` is `herb_salve`). Their figures
+are a little see-through, so the script makes what is drawn solid before
+sizing it like the other icons.
 
 Two of the pack's files were swapped as delivered: `characters/npcs.png` held
 the buildings and `objects/large_objects.png` the people. In `art/echo_farm_full/`
