@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
@@ -179,6 +180,57 @@ func TestTheWoodsHoldTogether(t *testing.T) {
 	}
 	if WoodsStep > len(MainQuests) || MainQuests[WoodsStep].ID != "enter_woods" {
 		t.Errorf("the woods open at the step that sends the player into them")
+	}
+	if TrollStep >= len(MainQuests) || MainQuests[TrollStep].ID != "brams_hammer" {
+		t.Errorf("the troll's lair fills at the step that asks for it to be beaten")
+	}
+	for _, m := range Monsters {
+		for i, p := range m.Phases {
+			if len(p.Games) == 0 || p.Seconds <= 0 || p.ScrambleSeconds <= 0 {
+				t.Errorf("monster %s phase %d is missing its numbers", m.ID, i)
+			}
+		}
+	}
+}
+
+func TestABossChangesAsItTires(t *testing.T) {
+	troll, _ := MonsterByID("mumble_troll")
+	var phases []int
+	for hp := troll.HP; hp >= -1; hp-- {
+		i, _ := PhaseOf(troll, hp)
+		phases = append(phases, i)
+	}
+	// 12..9 the first, 8..5 the second, 4..1 the third; past zero, still the last.
+	want := []int{0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2}
+	if fmt.Sprint(phases) != fmt.Sprint(want) {
+		t.Fatalf("phases by health: %v, want %v", phases, want)
+	}
+	_, last := PhaseOf(troll, 1)
+	if TimeFor(last, GameIPA) != 8*time.Second || TimeFor(last, GameScramble) != 16*time.Second {
+		t.Fatal("the last phase is the fastest")
+	}
+	slime, _ := MonsterByID("word_slime")
+	if i, p := PhaseOf(slime, 1); i != 0 || p.Seconds != slime.Seconds || len(p.Games) != len(slime.Games) {
+		t.Fatal("a monster without phases fights the same way throughout")
+	}
+	if RespawnOf(troll) != 24*time.Hour || RespawnOf(slime) != RespawnDefault {
+		t.Fatal("the troll comes back a day later, the rest in minutes")
+	}
+}
+
+func TestTheHammerRichensTheSoil(t *testing.T) {
+	if MaxLevelFor(false) != MaxLevel || MaxLevelFor(true) != MaxLevel+1 {
+		t.Fatal("the hammer allows one level more")
+	}
+	if UpgradeCost(MaxLevel) <= UpgradeCost(MaxLevel-1) {
+		t.Fatal("the hammer's level costs more than the ones before")
+	}
+	if c, _ := CropByID("sprout"); GrowTime(c, HammerLevel) >= GrowTime(c, MaxLevel) {
+		t.Fatal("the richest soil grows fastest")
+	}
+	hammer, ok := ItemByID("bram_hammer")
+	if !ok || hammer.UnlockStep <= len(MainQuests) || hammer.Stamina != 0 || hammer.HP != 0 {
+		t.Fatal("the hammer is never sold and never used up")
 	}
 }
 

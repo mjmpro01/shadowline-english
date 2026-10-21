@@ -43,6 +43,22 @@ type Monster struct {
 	// Drop is an item it may leave behind, one time in 100/DropChance.
 	Drop       string `json:"-"`
 	DropChance int    `json:"-"`
+	// Phases, for a boss: the fight changes as its health runs down. Each
+	// takes an equal share of its health, first to last; none for a monster
+	// that fights the same way throughout.
+	Phases []Phase `json:"-"`
+	// Respawn is how long it stays away once beaten; zero is the usual
+	// RespawnDefault.
+	Respawn time.Duration `json:"-"`
+	// Boss marks the monster the story builds up to.
+	Boss bool `json:"boss,omitempty"`
+}
+
+// Phase is one part of a boss fight: the questions it asks and how fast.
+type Phase struct {
+	Games           []string
+	Seconds         int
+	ScrambleSeconds int
 }
 
 var Monsters = []Monster{
@@ -52,6 +68,17 @@ var Monsters = []Monster{
 	{ID: "echo_bat", Name: Text{"Echo-bat", "Dơi vọng âm"}, HP: 4, Hit: 4,
 		Games: []string{GameListen, GameIPA, GameScramble}, Seconds: 10, ScrambleSeconds: 20,
 		RankLo: 1, RankHi: 4000, Gold: 14, CleanBonus: 6, Drop: "herb_salve", DropChance: 20},
+	{ID: "thorn_mushroom", Name: Text{"Thorn-shroom", "Nấm gai"}, HP: 6, Hit: 5,
+		Games: []string{GameMeaning, GameListen, GameScramble, GameIPA}, Seconds: 10, ScrambleSeconds: 20,
+		RankLo: 1, RankHi: 6000, Gold: 22, CleanBonus: 8, Drop: "seed_bloom", DropChance: 15},
+	{ID: "mumble_troll", Name: Text{"Mumble Troll", "Quỷ Lầm Bầm"}, HP: 12, Hit: 5, Boss: true,
+		Games: []string{GameMeaning, GameListen}, Seconds: 12, ScrambleSeconds: 16,
+		RankLo: 1, RankHi: 8000, Gold: 60, CleanBonus: 20, Respawn: 24 * time.Hour,
+		Phases: []Phase{
+			{Games: []string{GameMeaning, GameListen}, Seconds: 12, ScrambleSeconds: 16},
+			{Games: []string{GameListen, GameIPA}, Seconds: 10, ScrambleSeconds: 16},
+			{Games: []string{GameScramble, GameIPA}, Seconds: 8, ScrambleSeconds: 16},
+		}},
 }
 
 func MonsterByID(id string) (Monster, bool) {
@@ -69,6 +96,9 @@ type Spawn struct {
 	Monster string `json:"monster"`
 	X       int    `json:"x"`
 	Y       int    `json:"y"`
+	// Step is the main-quest step from which it is there at all: the troll's
+	// lair stands empty until Bram asks for his hammer back.
+	Step int `json:"-"`
 }
 
 var Spawns = []Spawn{
@@ -78,6 +108,9 @@ var Spawns = []Spawn{
 	{ID: "slime_4", Monster: "word_slime", X: 20, Y: 6},
 	{ID: "bat_1", Monster: "echo_bat", X: 24, Y: 15},
 	{ID: "bat_2", Monster: "echo_bat", X: 27, Y: 8},
+	{ID: "shroom_1", Monster: "thorn_mushroom", X: 4, Y: 3},
+	{ID: "shroom_2", Monster: "thorn_mushroom", X: 17, Y: 18},
+	{ID: "troll_lair", Monster: "mumble_troll", X: 28, Y: 12, Step: TrollStep},
 }
 
 func SpawnByID(id string) (Spawn, bool) {
@@ -97,8 +130,8 @@ const (
 	FightCost = 3
 	// MinHPToFight: below this, the player is too hurt to start a fight.
 	MinHPToFight = 6
-	// Respawn is how long a beaten monster stays away.
-	Respawn = 10 * time.Minute
+	// RespawnDefault is how long a beaten monster stays away.
+	RespawnDefault = 10 * time.Minute
 	// FaintHP is the health a player wakes up with at home after losing.
 	FaintHP = 15
 	// Grace is extra time allowed for an answer on its way over the network.
@@ -122,10 +155,30 @@ func Strike(elapsed, allowed time.Duration) int {
 	return 1
 }
 
-// TimeFor is how long a monster gives for a kind of question.
-func TimeFor(m Monster, kind string) time.Duration {
-	if kind == GameScramble {
-		return time.Duration(m.ScrambleSeconds) * time.Second
+// RespawnOf is how long a monster stays away once beaten.
+func RespawnOf(m Monster) time.Duration {
+	if m.Respawn > 0 {
+		return m.Respawn
 	}
-	return time.Duration(m.Seconds) * time.Second
+	return RespawnDefault
+}
+
+// PhaseOf is which part of its fight a monster is in at this much health,
+// from 0, and the questions it asks there. A monster without phases is always
+// in its one.
+func PhaseOf(m Monster, hp int) (int, Phase) {
+	if len(m.Phases) == 0 {
+		return 0, Phase{Games: m.Games, Seconds: m.Seconds, ScrambleSeconds: m.ScrambleSeconds}
+	}
+	lost := m.HP - max(hp, 1)
+	i := min(len(m.Phases)-1, lost*len(m.Phases)/m.HP)
+	return i, m.Phases[i]
+}
+
+// TimeFor is how long a phase of a fight gives for a kind of question.
+func TimeFor(p Phase, kind string) time.Duration {
+	if kind == GameScramble {
+		return time.Duration(p.ScrambleSeconds) * time.Second
+	}
+	return time.Duration(p.Seconds) * time.Second
 }

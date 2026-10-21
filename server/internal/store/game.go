@@ -177,6 +177,15 @@ func addItem(ctx context.Context, tx pgx.Tx, user uuid.UUID, item string, qty in
 	return err
 }
 
+// hasItem says whether the bag holds at least one of something.
+func hasItem(ctx context.Context, tx pgx.Tx, user uuid.UUID, item string) (bool, error) {
+	var has bool
+	err := tx.QueryRow(ctx, `
+		select exists (select 1 from game_inventory where user_id = $1 and item = $2 and qty > 0)`,
+		user, item).Scan(&has)
+	return has, err
+}
+
 // takeItem uses one of something, or says there is none.
 func takeItem(ctx context.Context, tx pgx.Tx, user uuid.UUID, item string) (bool, error) {
 	tag, err := tx.Exec(ctx, `
@@ -253,6 +262,9 @@ func readState(ctx context.Context, tx pgx.Tx, user uuid.UUID, p profileRow, now
 			return out, err
 		}
 		for _, sp := range game.Spawns {
+			if p.mainStep < sp.Step {
+				continue // the lair is empty until the story fills it
+			}
 			view := SpawnView{Spawn: sp}
 			if at, ok := back[sp.ID]; ok {
 				view.RespawnAt = &at
@@ -265,7 +277,11 @@ func readState(ctx context.Context, tx pgx.Tx, user uuid.UUID, p profileRow, now
 			out.Profile.CanSleepAt = &again
 		}
 	}
-	for level := 0; level < game.MaxLevel; level++ {
+	hammer, err := hasItem(ctx, tx, user, "bram_hammer")
+	if err != nil {
+		return out, err
+	}
+	for level := 0; level < game.MaxLevelFor(hammer); level++ {
 		out.UpgradeCosts = append(out.UpgradeCosts, game.UpgradeCost(level))
 	}
 	for _, it := range game.Items {
@@ -569,7 +585,11 @@ func (s *Store) UpgradePlot(ctx context.Context, user uuid.UUID, idx int) (GameS
 		if !plot.Unlocked {
 			return refuse("locked", "that plot has not been cleared yet")
 		}
-		if plot.Level >= game.MaxLevel {
+		hammer, err := hasItem(ctx, tx, user, "bram_hammer")
+		if err != nil {
+			return err
+		}
+		if plot.Level >= game.MaxLevelFor(hammer) {
 			return refuse("max_level", "that soil is as rich as it gets")
 		}
 		cost := game.UpgradeCost(plot.Level)
