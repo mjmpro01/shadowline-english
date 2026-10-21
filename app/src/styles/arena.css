@@ -739,7 +739,9 @@
   font-weight: 600;
 }
 .arena-icon-standin {
-  display: inline-block;
+  display: inline-grid;
+  place-content: center;
+  line-height: 1;
 }
 @keyframes arena-bob {
   50% {
@@ -974,4 +976,38 @@
     height: 38px;
     font-size: 18px;
   }
+}
+
+/* The Word Hall, the library and the day's letter. */
+.arena-word-told {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+.arena-word-told .arena-ipa {
+  font-family: 'Charis SIL', 'Doulos SIL', Georgia, serif;
+}
+.arena-milestones .arena-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0.7;
+}
+.arena-milestones .arena-chip[data-reached='true'] {
+  opacity: 1;
+  font-weight: 600;
+}
+.arena-library-words {
+  max-height: 220px;
+  overflow-y: auto;
+}
+.arena-letter-body {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #fff8e7;
+  color: #3b2a17;
+  font-family: Georgia, serif;
+  display: grid;
+  gap: 6px;
 }

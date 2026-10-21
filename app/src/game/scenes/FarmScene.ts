@@ -156,6 +156,19 @@ export class FarmScene extends MapScene {
   protected applyState(state: GameState) {
     super.applyState(state)
     this.drawPlots()
+    this.raiseFlag()
+  }
+
+  /** Who the story's marker is over, for the mailbox's flag. */
+  private giver: string | null = null
+
+  /** The mailbox's flag is up while a letter waits in it: Grandma's, or the
+   *  day's from town until it is done. */
+  private raiseFlag() {
+    const waiting = this.giver === 'grandma' || (this.state?.letter != null && !this.state.letter.done)
+    this.children?.list.forEach((obj) => {
+      if (obj instanceof Phaser.GameObjects.Image && obj.texture.key === 'mailbox') obj.setFrame(waiting ? 1 : 0)
+    })
   }
 
   private drawPlots() {
@@ -203,12 +216,8 @@ export class FarmScene extends MapScene {
     else if (giver === 'grandma') at = { x: (MAILBOX.x + 0.5) * TILE, y: MAILBOX.y * TILE - 4 }
     this.questMarker.setVisible(at !== null)
     if (at) this.questMarker.setPosition(at.x, at.y).setTint(done ? 0x81c784 : 0xffd54f)
-    // The mailbox's flag is up while a letter waits in it.
-    this.children.list.forEach((obj) => {
-      if (obj instanceof Phaser.GameObjects.Image && obj.texture.key === 'mailbox') {
-        obj.setFrame(giver === 'grandma' ? 1 : 0)
-      }
-    })
+    this.giver = giver
+    this.raiseFlag()
   }
 
   protected targetAt(rx: number, ry: number): Target | null {

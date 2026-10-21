@@ -572,6 +572,17 @@ func (s *Store) RespawnAll(ctx context.Context) error {
 	return err
 }
 
+// SetGold sets a player's gold, for a browser test that needs to buy things.
+func (s *Store) SetGold(ctx context.Context, user uuid.UUID, gold int) error {
+	return s.inTx(ctx, func(tx pgx.Tx) error {
+		if err := ensureGame(ctx, tx, user); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `update game_profiles set gold = $2 where user_id = $1`, user, gold)
+		return err
+	})
+}
+
 func (s *Store) SetMainStep(ctx context.Context, user uuid.UUID, step int) error {
 	return s.inTx(ctx, func(tx pgx.Tx) error {
 		if err := ensureGame(ctx, tx, user); err != nil {

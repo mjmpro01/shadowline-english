@@ -137,6 +137,24 @@ func (s *Server) handleTestLetter(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"npc": npc, "item": item, "qty": qty})
 }
 
+// handleTestGold sets the signed-in player's gold, for a test that has to buy
+// what a letter asks for. AUTH_FAKE=1 only.
+func (s *Server) handleTestGold(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	var body struct {
+		Gold int `json:"gold"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		fail(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := s.Store.SetGold(r.Context(), u.ID, body.Gold); err != nil {
+		s.failErr(w, err, "test gold")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // handleTestGameStep moves the signed-in player's story to a step, so a test
 // can start in the woods without playing chapter 1. AUTH_FAKE=1 only.
 func (s *Server) handleTestGameStep(w http.ResponseWriter, r *http.Request) {

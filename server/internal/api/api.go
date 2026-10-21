@@ -214,6 +214,7 @@ func (s *Server) Routes() http.Handler {
 				r.Get("/test/game/talk/answer", s.handleTestTalkAnswer)
 				r.Get("/test/game/quiz/answer", s.handleTestQuizAnswer)
 				r.Get("/test/game/letter", s.handleTestLetter)
+				r.Post("/test/game/gold", s.handleTestGold)
 			}
 
 			r.Group(func(r chi.Router) {

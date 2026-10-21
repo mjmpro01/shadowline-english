@@ -103,6 +103,8 @@ const ACTION_LABEL = {
   board: 'arena.act.board',
   monster: 'arena.act.monster',
   lair: 'arena.act.lair',
+  hall: 'arena.act.hall',
+  library: 'arena.act.library',
 } as const
 
 /** The action button: what pressing E (or tapping it) would do right now. */

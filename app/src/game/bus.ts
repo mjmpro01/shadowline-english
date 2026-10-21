@@ -19,6 +19,9 @@ export type Target =
   | { kind: 'monster'; spawn: string; monster: string }
   /** The troll's lair, while nothing lives in it yet. */
   | { kind: 'lair' }
+  /** The Word Hall's door, and the library's. */
+  | { kind: 'hall' }
+  | { kind: 'library' }
 
 export type NpcId = 'sir_shadow' | 'mira' | 'bram' | 'elsa' | 'orin' | 'lina' | 'hugo' | 'vy'
 export type MapName = 'farm' | 'woods' | 'town'

@@ -77,6 +77,12 @@ export function QuestBook({
                   {f.talkedToday && f.giftedToday ? ' · ' : ''}
                   {f.giftedToday ? `✓ ${t('arena.town.gifted')}` : ''}
                 </span>
+                {state.letter?.from.id === f.id && (
+                  <span className="arena-muted">
+                    {state.letter.done ? '✓ ' : '✉ '}
+                    {t('arena.letter.title', pick(f.name, locale))}
+                  </span>
+                )}
               </div>
             </li>
           ))}

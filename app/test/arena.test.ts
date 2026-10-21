@@ -13,7 +13,18 @@ import {
   tile,
   type Rect,
 } from '../src/game/world/farm'
-import { BUILDINGS, FROM_FARM_TO_TOWN, TOWN_GATE, TOWN_NPCS, door, townSolids } from '../src/game/world/town'
+import {
+  BUILDINGS,
+  FROM_FARM_TO_TOWN,
+  HALL_DOOR,
+  SQUARE,
+  TOWN_GATE,
+  TOWN_NPCS,
+  TOWN_TREES,
+  WORD_HALL,
+  door,
+  townSolids,
+} from '../src/game/world/town'
 import { giftsInBag, replyKey } from '../src/game/town'
 import type { GameState } from '../src/game/api'
 import { FROM_FARM, WOODS_GATE, woodsSolids } from '../src/game/world/woods'
@@ -140,6 +151,16 @@ describe('Echo Town', () => {
       const d = door(b)
       expect(blocks(townSolids(), d.x, d.y), b.id).toBe(false)
     }
+  })
+
+  it('puts the Word Hall clear of the houses, the gate and the trees, its door open to the square', () => {
+    const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+    for (const b of BUILDINGS) expect(overlaps(WORD_HALL, b.rect), b.id).toBe(false)
+    expect(overlaps(WORD_HALL, { ...TOWN_GATE, h: 8 })).toBe(false)
+    for (const tree of TOWN_TREES) expect(overlaps(WORD_HALL, { ...tree, w: 1, h: 1 })).toBe(false)
+    expect(blocks(townSolids(), HALL_DOOR.x, HALL_DOOR.y)).toBe(false)
+    // One step down from the door is the square.
+    expect(blocks([SQUARE], HALL_DOOR.x, HALL_DOOR.y + 1)).toBe(true)
   })
 
   it('finds the gifts in the bag', () => {

@@ -8,9 +8,12 @@ import {
   type Chat,
   type GameState,
   type GiftResult,
+  type Hall,
   type HarvestedWord,
   type HeartEvent,
+  type Library,
   type Quests,
+  type QuizAnswer,
   type Reward,
   type TalkResult,
   type Turn,
@@ -24,8 +27,10 @@ import { ActionButton, Hud, Joystick, Tracker } from '../game/ui/Hud'
 import { BagPanel, BramPanel, HousePanel, PlotPanel, ShopPanel, WordCard } from '../game/ui/panels'
 import { QuestBook } from '../game/ui/QuestBook'
 import { TownChat } from '../game/ui/TownChat'
+import { HallPanel, LetterPanel, LibraryPanel } from '../game/ui/WordHall'
 import { RewardChips } from '../game/ui/common'
-import { gameError } from '../game/ui/util'
+import { gameError, pick } from '../game/ui/util'
+import { ApiError } from '../lib/api'
 import '../styles/arena.css'
 
 type Panel =
@@ -46,6 +51,10 @@ type Panel =
   | { kind: 'quests'; tab: 'main' | 'daily' | 'town' }
   | { kind: 'word'; word: HarvestedWord | null; gold: number }
   | { kind: 'battle'; battle: Battle; turn: Turn | null }
+  /** The Word Hall's door: null until it has been looked at. */
+  | { kind: 'hall'; hall: Hall | null; result: QuizAnswer | null }
+  | { kind: 'library'; library: Library | null; result: QuizAnswer | null }
+  | { kind: 'letter' }
 
 type Game = { destroy: (removeCanvas: boolean) => void }
 
@@ -161,6 +170,10 @@ export function ArenaScreen() {
   useEffect(() => {
     questsRef.current = quests
   }, [quests])
+  const stateRef = useRef(state)
+  useEffect(() => {
+    stateRef.current = state
+  }, [state])
   useEffect(() => {
     const offs = [
       bus.on('focus', setFocus),
@@ -196,7 +209,15 @@ export function ArenaScreen() {
             break
           case 'mailbox':
             if (questsRef.current?.main?.giver === 'grandma') setPanel({ kind: 'talk', who: 'grandma' })
+            else if (stateRef.current?.letter) setPanel({ kind: 'letter' })
             else setToast({ text: t('arena.mail.none') })
+            break
+          case 'hall':
+            setPanel({ kind: 'hall', hall: null, result: null })
+            break
+          case 'library':
+            if (stateRef.current?.profile.libraryOpen) setPanel({ kind: 'library', library: null, result: null })
+            else setToast({ text: t('arena.library.closed') })
             break
           case 'board':
             setPanel({ kind: 'quests', tab: 'daily' })
@@ -350,6 +371,122 @@ export function ArenaScreen() {
     }
   }
 
+  // The Word Hall's door: looking at it is a visit, and puts up the next note.
+  const lookingAtHall = panel?.kind === 'hall' && panel.hall === null
+  useEffect(() => {
+    if (!lookingAtHall) return
+    let live = true
+    gameApi.hall().then(
+      (res) => {
+        if (!live) return
+        take(res.state)
+        setPanel((p) => (p?.kind === 'hall' ? { kind: 'hall', hall: res.hall, result: null } : p))
+        void refreshQuests()
+      },
+      (err: unknown) => live && setToast({ text: gameError(err, t) }),
+    )
+    return () => {
+      live = false
+    }
+  }, [lookingAtHall, refreshQuests, t, take])
+
+  const readNote = async (answer: string) => {
+    setBusy(true)
+    try {
+      const res = await gameApi.readNote(answer)
+      take(res.state)
+      setPanel((p) =>
+        p?.kind === 'hall' && p.hall
+          ? { ...p, hall: { ...p.hall, read: p.hall.read + 1, note: null }, result: res.result }
+          : p,
+      )
+      void refreshQuests()
+    } catch (err) {
+      setToast({ text: gameError(err, t) })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // Lina's library: the shelves and the words the player could give, by search.
+  const librarySearch = useRef('')
+  const loadLibrary = useCallback(
+    async (q: string) => {
+      librarySearch.current = q
+      try {
+        const library = await gameApi.library(q)
+        if (librarySearch.current !== q) return
+        setPanel((p) => (p?.kind === 'library' ? { ...p, library } : p))
+      } catch (err) {
+        setToast({ text: gameError(err, t) })
+      }
+    },
+    [t],
+  )
+  const libraryOpened = panel?.kind === 'library' && panel.library === null
+  useEffect(() => {
+    if (libraryOpened) void loadLibrary(librarySearch.current)
+  }, [libraryOpened, loadLibrary])
+
+  const askDonation = async (word: string) => {
+    setBusy(true)
+    try {
+      const asked = await gameApi.askDonation(word)
+      setPanel((p) =>
+        p?.kind === 'library' && p.library ? { ...p, library: { ...p.library, asked, askedWord: word } } : p,
+      )
+    } catch (err) {
+      setToast({ text: gameError(err, t) })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const donate = async (answer: string) => {
+    setBusy(true)
+    try {
+      const res = await gameApi.donate(answer)
+      take(res.state)
+      setPanel((p) => (p?.kind === 'library' ? { ...p, result: res.result } : p))
+      void refreshQuests()
+    } catch (err) {
+      setToast({ text: gameError(err, t) })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const claimMilestone = async (words: number) => {
+    setBusy(true)
+    try {
+      const res = await gameApi.claimMilestone(words)
+      take(res.state)
+      setToast({ text: t('arena.got'), reward: res.reward })
+      await loadLibrary(librarySearch.current)
+    } catch (err) {
+      setToast({ text: gameError(err, t) })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** Brings the writer of today's letter what they asked for. */
+  const deliver = async (who: NpcId) => {
+    setBusy(true)
+    try {
+      const res = await gameApi.deliver(who)
+      take(res.state)
+      setToast({ text: t('arena.letter.thanks', pick(res.result.friend.name, locale), res.result.gold) })
+      void refreshQuests()
+    } catch (err) {
+      setToast({
+        text: err instanceof ApiError && err.code === 'no_item' ? t('arena.letter.notThat') : gameError(err, t),
+      })
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const close = useCallback(() => setPanel(null), [])
   const common = state ? { state, locale, t, onClose: close, busy, skew } : null
 
@@ -410,7 +547,22 @@ export function ArenaScreen() {
         <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => void move(() => gameApi.clinic())}>
           {t('arena.town.clinic', CLINIC_COST)}
         </button>
+      ) : who === 'lina' && state?.profile.libraryOpen ? (
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() => setPanel({ kind: 'library', library: null, result: null })}
+        >
+          {t('arena.library.open')}
+        </button>
       ) : null
+    // Today's letter is from this person: what it asked for can be given here.
+    const letter = state?.letter && !state.letter.done && state.letter.from.id === who ? state.letter : null
+    const deliverButton = letter && who !== 'grandma' ? (
+      <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void deliver(who)}>
+        ✉ {t('arena.letter.deliver')}
+      </button>
+    ) : null
     const friend = isTownsperson(who) ? state?.friends.find((f) => f.id === who) : undefined
     return (
       <Dialogue
@@ -423,7 +575,14 @@ export function ArenaScreen() {
         busy={busy}
         onClose={close}
         onClaim={() => void claim('main')}
-        actions={actions}
+        actions={
+          deliverButton || actions ? (
+            <>
+              {deliverButton}
+              {actions}
+            </>
+          ) : null
+        }
       >
         {friend && state && isTownsperson(who) && (
           <TownChat
@@ -551,6 +710,36 @@ export function ArenaScreen() {
           onClose={() => leaveBattle(panel.battle)}
           artInfo={artInfo}
         />
+      )}
+      {panel?.kind === 'hall' && (
+        <HallPanel
+          hall={panel.hall}
+          result={panel.result}
+          t={t}
+          busy={busy}
+          onRead={(answer) => void readNote(answer)}
+          onNext={() => setPanel({ kind: 'hall', hall: null, result: null })}
+          onClose={close}
+        />
+      )}
+      {state && panel?.kind === 'library' && (
+        <LibraryPanel
+          library={panel.library}
+          result={panel.result}
+          state={state}
+          locale={locale}
+          t={t}
+          busy={busy}
+          onSearch={loadLibrary}
+          onAsk={(word) => void askDonation(word)}
+          onAnswer={(answer) => void donate(answer)}
+          onClaim={(words) => void claimMilestone(words)}
+          onAnother={() => setPanel({ kind: 'library', library: null, result: null })}
+          onClose={close}
+        />
+      )}
+      {state?.letter && panel?.kind === 'letter' && (
+        <LetterPanel letter={state.letter} locale={locale} t={t} onClose={close} />
       )}
       {quests && panel?.kind === 'quests' && (
         <QuestBook
