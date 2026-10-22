@@ -6,6 +6,7 @@ import { useT } from '../i18n'
 import { Banners } from '../components/Banners'
 import { ClipFace } from '../components/ClipFace'
 import { Icon } from '../components/Icon'
+import { ListenAgain } from '../components/ListenAgain'
 import { Mascot } from '../components/Mascot'
 import { statsFor } from '../lib/leaderboard'
 import { colorFor } from '../lib/score'
@@ -55,6 +56,8 @@ export function DashboardScreen() {
       </div>
 
       <Banners placement="dashboard" />
+
+      <ListenAgain />
 
       {data.takes.length === 0 ? (
         <FirstSteps
@@ -280,3 +283,4 @@ function FirstSteps({
     </section>
   )
 }
+

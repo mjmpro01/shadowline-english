@@ -1,9 +1,12 @@
-import { Navigate, createBrowserRouter } from 'react-router-dom'
+import { Navigate, createBrowserRouter, useLocation, useParams } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
 import { RequireAuth } from './components/RequireAuth'
 import { AnalysisScreen } from './screens/AnalysisScreen'
 import { ArenaScreen } from './screens/ArenaScreen'
 import { DashboardScreen } from './screens/DashboardScreen'
+import { DictationEpisodeScreen } from './screens/DictationEpisodeScreen'
+import { DictationHomeScreen } from './screens/DictationHomeScreen'
+import { DictationScreen } from './screens/DictationScreen'
 import { DubScreen } from './screens/DubScreen'
 import { EpisodeScreen } from './screens/EpisodeScreen'
 import { FlashcardsScreen } from './screens/FlashcardsScreen'
@@ -44,9 +47,14 @@ export const router = createBrowserRouter([
       { path: 'library/s/:slug', element: <SeriesScreen /> },
       { path: 'library/shelf/:slug', element: <ShelfScreen /> },
       { path: 'library/e/:episodeId', element: <EpisodeScreen /> },
+      // Where a dictation first lived, before it had a tab of its own.
+      { path: 'library/e/:episodeId/dictation/:clipId', element: <ToDictation /> },
       { path: 'library/:videoId', element: <AnalysisScreen /> },
       { path: 'library/:videoId/practice', element: <PracticeScreen /> },
       { path: 'library/:videoId/dub', element: <DubScreen /> },
+      { path: 'dictation', element: <DictationHomeScreen /> },
+      { path: 'dictation/e/:episodeId', element: <DictationEpisodeScreen /> },
+      { path: 'dictation/e/:episodeId/:clipId', element: <DictationScreen /> },
       { path: 'arena', element: <ArenaScreen /> },
       { path: 'vocabulary', element: <VocabularyScreen /> },
       { path: 'vocabulary/practice', element: <FlashcardsScreen /> },
@@ -57,3 +65,9 @@ export const router = createBrowserRouter([
     ],
   },
 ])
+
+function ToDictation() {
+  const { episodeId, clipId } = useParams()
+  const { search } = useLocation()
+  return <Navigate to={`/dictation/e/${episodeId ?? ''}/${clipId ?? ''}${search}`} replace />
+}

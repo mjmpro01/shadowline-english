@@ -77,21 +77,30 @@ function Body({ page, t }: { page: EpisodePage; t: Translate }) {
         <div className="progress-track" role="img" aria-label={t('playlist.percentPractised', percent)}>
           <div className="progress-fill" style={{ width: `${percent}%` }} />
         </div>
-        {progress.next ? (
+        <div className="row gap-2 wrap">
+          {progress.next ? (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => navigate(`/library/${progress.next!.id}/practice`)}
+            >
+              <Icon name="mic" size={14} />
+              {t('playlist.practiceNext', progress.next.title)}
+            </button>
+          ) : (
+            // Not a dead end: going round again is the point of shadowing, and
+            // the list below is still there to pick from.
+            <div className="card-meta">{t('playlist.allPractised')}</div>
+          )}
           <button
             type="button"
-            className="btn btn-primary"
-            style={{ alignSelf: 'flex-start' }}
-            onClick={() => navigate(`/library/${progress.next!.id}/practice`)}
+            className="btn btn-secondary"
+            onClick={() => navigate(`/dictation/e/${episode.id}/${clips[0].id}`)}
           >
-            <Icon name="mic" size={14} />
-            {t('playlist.practiceNext', progress.next.title)}
+            <Icon name="square-pen" size={14} />
+            {t('dictation.start')}
           </button>
-        ) : (
-          // Not a dead end: going round again is the point of shadowing, and
-          // the list below is still there to pick from.
-          <div className="card-meta">{t('playlist.allPractised')}</div>
-        )}
+        </div>
       </div>
 
       <div className="stack gap-2">
@@ -138,15 +147,26 @@ function Body({ page, t }: { page: EpisodePage; t: Translate }) {
                 {stats.lastScore ?? '—'}
               </span>
 
-              <button
-                type="button"
-                className="btn btn-secondary"
-                data-tour="practice-clip"
-                onClick={() => navigate(`/library/${clip.id}/practice`)}
-              >
-                <Icon name="mic" size={14} />
-                {t('library.practice')}
-              </button>
+              <div className="row gap-1 playlist-actions">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  data-tour="practice-clip"
+                  onClick={() => navigate(`/library/${clip.id}/practice`)}
+                >
+                  <Icon name="mic" size={14} />
+                  {t('library.practice')}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-icon"
+                  title={t('dictation.fromHere')}
+                  aria-label={t('dictation.fromHere')}
+                  onClick={() => navigate(`/dictation/e/${episode.id}/${clip.id}`)}
+                >
+                  <Icon name="square-pen" size={16} />
+                </button>
+              </div>
             </div>
           )
         })}

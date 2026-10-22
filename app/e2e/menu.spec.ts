@@ -18,8 +18,8 @@ test('a plank per place, and the one you are on is lit', async ({ page }) => {
   await page.goto('/library')
 
   const planks = page.locator('.menu-plank')
-  // Dashboard, Shadowing, Arena, Vocabulary, Progress, Guide, Profile.
-  await expect(planks).toHaveCount(7)
+  // Dashboard, Shadowing, Dictation, Arena, Vocabulary, Progress, Guide, Profile.
+  await expect(planks).toHaveCount(8)
   await expect(planks.filter({ hasText: 'Shadowing' })).toHaveAttribute('aria-current', 'page')
   await expect(planks.filter({ hasText: 'Shadowing' }).getByText('HERE')).toBeVisible()
 
@@ -69,7 +69,7 @@ test('the phone gets the same menu lying down', async ({ page }) => {
 
   await expect(page.locator('.sidebar')).toBeHidden()
   const tabs = page.locator('.tabbar-link')
-  await expect(tabs).toHaveCount(5)
+  await expect(tabs).toHaveCount(6)
   // "Shadowing" is cut short on a narrow phone; the tab says "Shadow".
   await expect(tabs.filter({ hasText: 'Shadow' })).toHaveAttribute('aria-current', 'page')
 })
@@ -86,7 +86,7 @@ for (const width of [320, 360, 390]) {
         .evaluateAll((labels) => labels.filter((l) => l.scrollWidth > l.clientWidth).map((l) => l.textContent))
 
     await page.goto('/dashboard')
-    await expect(page.locator('.tabbar-label')).toHaveCount(5)
+    await expect(page.locator('.tabbar-label')).toHaveCount(6)
     expect(await cut()).toEqual([])
 
     await page.goto('/profile')
