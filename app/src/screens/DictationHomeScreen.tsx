@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useI18n, type Translate } from '../i18n'
+import { ClipPreview } from '../components/ClipPreview'
 import { Icon } from '../components/Icon'
 import { ListenAgain, heardPercent } from '../components/ListenAgain'
 import { Loading } from '../components/LoadState'
@@ -102,10 +103,10 @@ export function DictationHomeScreen() {
           <div key={d.id} className="dict-line">
             <span className="stack" style={{ gap: 2, minWidth: 0 }}>
               <span className="card-title clamp-2" style={{ fontSize: 15 }}>
-                {d.firstLine || d.episodeTitle}
+                {d.episodeTitle}
               </span>
               <span className="card-meta">
-                {d.episodeTitle} · {t('dictation.accuracy', heardPercent(d))} ·{' '}
+                {t('dictation.fromLineN', d.firstLineNumber)} · {t('dictation.accuracy', heardPercent(d))} ·{' '}
                 {new Date(d.createdAt).toLocaleDateString(locale)}
               </span>
             </span>
@@ -196,11 +197,17 @@ function Found({ results, query, t }: { results: SearchResults; query: string; t
         </button>
       ))}
       {clips.map((c) => (
-        <div key={c.id} className="dict-line">
-          <span className="dict-line-text">{c.captions[0]?.text || c.title}</span>
+        // A line found by its words is shown by its clip, not by them.
+        <div key={c.id} className="card elev-sm dict-start-row">
+          <ClipPreview clip={c} label={c.source} />
+          <span className="stack" style={{ gap: 2, minWidth: 0 }}>
+            {/* Not the clip's title either: an admin may have named it by its line. */}
+            <strong className="clamp-2">{c.source}</strong>
+            <span className="card-meta mono">{c.timestamp}</span>
+          </span>
           <button
             type="button"
-            className="btn btn-ghost"
+            className="btn btn-secondary"
             onClick={() => navigate(`/dictation/e/${c.episodeId}/${c.id}`)}
           >
             <Icon name="square-pen" size={14} />

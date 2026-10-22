@@ -283,14 +283,18 @@ type Dictation struct {
 	EpisodeID    uuid.UUID `json:"episodeId"`
 	EpisodeTitle string    `json:"episodeTitle"`
 	// Nil once the line it started at has been deleted.
-	FirstClipID *uuid.UUID      `json:"firstClipId"`
-	FirstLine   string          `json:"firstLine"`
-	Total       int             `json:"total"`
-	Right       int             `json:"right"`
-	Errors      DictationErrors `json:"errors"`
-	CreatedAt   time.Time       `json:"createdAt"`
-	ReviewOn    string          `json:"reviewOn"`
-	ReviewedAt  *time.Time      `json:"reviewedAt"`
+	FirstClipID *uuid.UUID `json:"firstClipId"`
+	FirstLine   string     `json:"firstLine"`
+	// Where in the episode it starts, counting from 1: what the learner is
+	// shown in place of the line, which would give the passage away. Zero once
+	// that line has been deleted.
+	FirstLineNumber int             `json:"firstLineNumber"`
+	Total           int             `json:"total"`
+	Right           int             `json:"right"`
+	Errors          DictationErrors `json:"errors"`
+	CreatedAt       time.Time       `json:"createdAt"`
+	ReviewOn        string          `json:"reviewOn"`
+	ReviewedAt      *time.Time      `json:"reviewedAt"`
 }
 
 // SaveDictation keeps a dictation and puts it down to be listened to again
@@ -330,6 +334,10 @@ func (s *Store) SaveDictation(ctx context.Context, user uuid.UUID, in NewDictati
 func (s *Store) dictations(ctx context.Context, user uuid.UUID, where string, args ...any) ([]Dictation, error) {
 	rows, err := s.pool.Query(ctx, `
 		select d.id, d.episode_id, coalesce(src.title, ''), d.first_clip_id, coalesce(c.captions->0->>'text', ''),
+		       case when c.id is null then 0 else (
+		         select count(*) from clips e
+		         where e.source_id = c.source_id
+		           and (e.start_seconds, e.title) < (c.start_seconds, c.title)) + 1 end,
 		       d.total, d."right", d.errors, d.created_at, d.review_on::text, d.reviewed_at
 		from dictations d
 		left join clip_sources src on src.id = d.episode_id
@@ -344,7 +352,7 @@ func (s *Store) dictations(ctx context.Context, user uuid.UUID, where string, ar
 	for rows.Next() {
 		var d Dictation
 		var errs []byte
-		if err := rows.Scan(&d.ID, &d.EpisodeID, &d.EpisodeTitle, &d.FirstClipID, &d.FirstLine,
+		if err := rows.Scan(&d.ID, &d.EpisodeID, &d.EpisodeTitle, &d.FirstClipID, &d.FirstLine, &d.FirstLineNumber,
 			&d.Total, &d.Right, &errs, &d.CreatedAt, &d.ReviewOn, &d.ReviewedAt); err != nil {
 			return nil, err
 		}

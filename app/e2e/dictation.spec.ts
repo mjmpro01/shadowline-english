@@ -102,7 +102,10 @@ test('a passage is listened to, written down, checked, shadowed, and heard again
   await page.getByRole('button', { name: 'Done' }).click()
   await page.waitForURL('**/dictation')
   // The tab keeps it, under what has been written down lately.
-  await expect(page.getByTestId('dict-recent')).toContainText('Shadow this line 1')
+  // Named by episode and line, not by what the line says.
+  await expect(page.getByTestId('dict-recent')).toContainText('lesson.wav')
+  await expect(page.getByTestId('dict-recent')).toContainText('From line 1')
+  await expect(page.getByTestId('dict-recent')).not.toContainText('Shadow this line')
   await expect(page.getByTestId('dict-recent')).toContainText('63% heard')
 
   // Not due today…
@@ -114,11 +117,13 @@ test('a passage is listened to, written down, checked, shadowed, and heard again
   expect((await page.request.post(`${API_URL}/api/test/dictations/due`)).status()).toBe(204)
   // The tab has it too.
   await page.goto('/dictation')
-  await expect(page.getByTestId('listen-again')).toContainText('Shadow this line 1')
+  await expect(page.getByTestId('listen-again')).toContainText('From line 1')
   await page.goto('/dashboard')
   const card = page.getByTestId('listen-again')
   await expect(card).toContainText('Listen again today')
-  await expect(card).toContainText('Shadow this line 1')
+  await expect(card).toContainText('lesson.wav')
+  await expect(card).toContainText('From line 1')
+  await expect(card).not.toContainText('Shadow this line')
   await expect(card).toContainText('63% heard')
   await card.getByRole('button', { name: 'Listen again' }).click()
   await page.waitForURL('**/dictation/**?review=*')
@@ -152,7 +157,13 @@ test('the dictation tab has a passage to start on, and what is due today', async
   await page.getByRole('button', { name: /Lesson one/ }).click()
   await page.getByRole('button', { name: /lesson\.wav/ }).click()
   await page.waitForURL('**/dictation/e/*')
-  await expect(page.getByTestId('dict-start-line')).toHaveCount(4)
+  const lines = page.getByTestId('dict-start-line')
+  await expect(lines).toHaveCount(4)
+  // Each line is its clip, to play; what it says stays hidden until it is written down.
+  await expect(lines.nth(0)).toContainText('Line 1')
+  await expect(page.getByText(/Shadow this line/)).toHaveCount(0)
+  await lines.nth(0).getByRole('button', { name: /Play this clip/ }).click()
+  await expect(lines.nth(0).locator('video[src], audio[src]')).toHaveCount(1)
   await page.getByTestId('dict-start-line').nth(2).getByRole('button', { name: 'Dictation from this line' }).click()
   await page.waitForURL('**/dictation/e/*/*')
   await expect(page.getByText('2 lines · 0:07')).toBeVisible()
@@ -163,6 +174,8 @@ test('the dictation tab has a passage to start on, and what is due today', async
   await page.goto('/dictation')
   await page.getByRole('searchbox', { name: 'Search series, episodes and lines' }).fill('line 4')
   const found = page.getByTestId('dict-found')
+  await expect(found.getByRole('button', { name: /Play this clip/ }).first()).toBeVisible()
+  await expect(found).not.toContainText('Shadow this line')
   await found.getByRole('button', { name: 'Dictation from this line' }).first().click()
   await page.waitForURL('**/dictation/e/*/*')
   await expect(page.getByText('1 line · 0:03')).toBeVisible()

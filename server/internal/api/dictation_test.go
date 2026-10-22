@@ -35,6 +35,7 @@ type dictationJSON struct {
 	EpisodeTitle string `json:"episodeTitle"`
 	FirstClipID  string `json:"firstClipId"`
 	FirstLine    string `json:"firstLine"`
+	FirstNumber  int    `json:"firstLineNumber"`
 	Total        int    `json:"total"`
 	Right        int    `json:"right"`
 	Errors       struct {
@@ -136,7 +137,7 @@ func TestADictationIsKeptAndComesBackTomorrow(t *testing.T) {
 		"right":       30,
 		"errors":      map[string]int{"missingEnding": 2, "unknownWord": 1},
 	}), http.StatusCreated)
-	if saved.Total != 36 || saved.Right != 30 || saved.Errors.MissingEnding != 2 || saved.FirstLine != lines[0] ||
+	if saved.Total != 36 || saved.Right != 30 || saved.Errors.MissingEnding != 2 || saved.FirstLine != lines[0] || saved.FirstNumber != 1 ||
 		saved.EpisodeTitle != "a-day.mp4" || saved.ReviewOn == "" || saved.ReviewedAt != nil {
 		t.Fatalf("the dictation kept: %+v", saved)
 	}
@@ -162,6 +163,14 @@ func TestADictationIsKeptAndComesBackTomorrow(t *testing.T) {
 	list = expect[dictationListJSON](t, learner.json("GET", "/api/dictations", nil), http.StatusOK)
 	if len(list.Due) != 0 || list.Recent[0].ReviewedAt == nil {
 		t.Fatalf("after listening again: %+v", list)
+	}
+
+	// One started further in says which line, by its place in the episode.
+	third := expect[dictationJSON](t, learner.json("POST", "/api/dictations", map[string]any{
+		"firstClipId": clips[2].ID, "clipIds": []string{clips[2].ID, clips[3].ID}, "total": 4, "right": 4,
+	}), http.StatusCreated)
+	if third.FirstNumber != 3 {
+		t.Fatalf("a dictation from the third line: %+v", third)
 	}
 
 	// Nonsense is refused.
