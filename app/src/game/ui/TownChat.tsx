@@ -79,7 +79,7 @@ function Hearts({ friend, t }: { friend: Friend; t: Translate }) {
 }
 
 /** A line that shows its translation when tapped. */
-function Line({ text, t, speakable = false }: { text: Bilingual; t: Translate; speakable?: boolean }) {
+export function Line({ text, t, speakable = false }: { text: Bilingual; t: Translate; speakable?: boolean }) {
   const [open, setOpen] = useState(false)
   return (
     <div className="arena-line">

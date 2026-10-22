@@ -199,12 +199,22 @@ func (s *Server) Routes() http.Handler {
 			r.Post("/game/gift", s.handleGift)
 			r.Post("/game/heart", s.handleHeart)
 			r.Post("/game/clinic", s.handleClinic)
+			r.Post("/game/hall", s.handleHall)
+			r.Post("/game/hall/read", s.handleHallRead)
+			r.Get("/game/library", s.handleLibrary)
+			r.Post("/game/library/ask", s.handleLibraryAsk)
+			r.Post("/game/library/donate", s.handleLibraryDonate)
+			r.Post("/game/library/claim", s.handleLibraryClaim)
+			r.Post("/game/letter/deliver", s.handleLetterDeliver)
 			if s.Cfg.AuthFake {
 				// For the browser tests: the signed-in player's answer key and
 				// story step. Absent from a normal deployment.
 				r.Get("/test/game/battle/answer", s.handleTestBattleAnswer)
 				r.Post("/test/game/step", s.handleTestGameStep)
 				r.Get("/test/game/talk/answer", s.handleTestTalkAnswer)
+				r.Get("/test/game/quiz/answer", s.handleTestQuizAnswer)
+				r.Get("/test/game/letter", s.handleTestLetter)
+				r.Post("/test/game/gold", s.handleTestGold)
 			}
 
 			r.Group(func(r chi.Router) {

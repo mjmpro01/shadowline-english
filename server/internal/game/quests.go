@@ -20,6 +20,7 @@ type Counter struct {
 	//   "spent"   — gold spent
 	//   "talked"  — different people in town chatted with
 	//   "hearts"  — the most hearts with anyone in town, whenever made
+	//   (and events: word_hall, note_right, donate, letter_done)
 	Kind     string `json:"-"`
 	Item     string `json:"-"`
 	Of       string `json:"-"`
@@ -59,6 +60,14 @@ const (
 	TrollStep = 15
 	// TownStep is chapter 3's first step: Echo Town is open from here.
 	TownStep = 17
+	// HallStep sends the player to the silent Word Hall; GlassesStep is Sage
+	// Orin's, whose reward is the glasses that read the Lexi's notes.
+	HallStep    = 21
+	GlassesStep = 22
+	// LibraryStep is Lina's request, from which words can be given to the
+	// library; LetterStep is Elsa's, from which the townsfolk write.
+	LibraryStep = 24
+	LetterStep  = 25
 )
 
 // MainQuests is the story so far. Chapter 1, the farm, doubles as the
@@ -308,6 +317,77 @@ var MainQuests = []Step{
 		Counter:   Counter{Kind: "hearts"}, Target: 2,
 		Reward: Reward{Gold: 60, Items: map[string]int{"seed_bloom": 2}},
 	},
+	{
+		ID: "silent_hall", Chapter: 3, Giver: "elsa",
+		Title: Text{"The silent hall", "Toà nhà im lặng"},
+		Lines: []Text{
+			{"There is one place in town nobody visits now.", "Có một nơi trong thị trấn giờ chẳng ai lui tới."},
+			{"The Word Hall, north of the square. Words were kept there.", "Word Hall, phía bắc quảng trường. Ngôn từ từng được cất giữ ở đó."},
+			{"The Silence closed its doors. Will you go and look?", "Màn Im Lặng đã đóng cửa nó lại. Cậu tới xem thử nhé?"},
+		},
+		Objective: Text{"Go to the door of the Word Hall", "Tới cửa Word Hall"},
+		Counter:   Counter{Kind: "event", Item: "word_hall"}, Target: 1,
+		Reward: Reward{Gold: 30},
+	},
+	{
+		ID: "ipa_glasses", Chapter: 3, Giver: "orin",
+		Title: Text{"Strange little letters", "Những ký hiệu lạ"},
+		Lines: []Text{
+			{"You saw the notes on the hall's door? The Lexi left them.", "Cháu thấy những mảnh giấy trên cửa Word Hall rồi chứ? Các Lexi để lại đấy."},
+			{"The Lexi are the spirits of words. They write how words sound, not how they look.", "Lexi là tinh linh của ngôn từ. Chúng viết cách từ phát âm, chứ không phải mặt chữ."},
+			{"That writing is called IPA. Take my glasses. They will help you read it.", "Lối viết đó gọi là IPA. Cầm lấy kính của ta. Nó sẽ giúp cháu đọc được."},
+		},
+		Objective: Text{"Listen to Sage Orin", "Nghe Hiền triết Orin kể"},
+		Target:    0,
+		Reward:    Reward{Items: map[string]int{"ipa_glasses": 1}},
+	},
+	{
+		ID: "lexi_note", Chapter: 3, Giver: "orin",
+		Title: Text{"A note from the Lexi", "Ghi chú của Lexi"},
+		Lines: []Text{
+			{"Put on the glasses and read a note on the hall's door.", "Đeo kính vào rồi đọc một ghi chú trên cửa Word Hall."},
+			{"Each note is one word. Say it in your head, then find it.", "Mỗi ghi chú là một từ. Đọc thầm trong đầu, rồi tìm ra nó."},
+		},
+		Objective: Text{"Read a Lexi note right", "Đọc đúng một ghi chú của Lexi"},
+		Counter:   Counter{Kind: "event", Item: "note_right"}, Target: 1,
+		Reward: Reward{Gold: 40},
+	},
+	{
+		ID: "first_donation", Chapter: 3, Giver: "lina",
+		Title: Text{"A library of words", "Thư viện ngôn từ"},
+		Lines: []Text{
+			{"The Silence took words from our shelves too.", "Màn Im Lặng cũng lấy mất ngôn từ trên kệ sách của chúng tôi."},
+			{"You collect words on your farm. Would you give some to the library?", "Cậu thu hoạch từ ở trang trại. Cậu tặng thư viện vài từ nhé?"},
+			{"Tell me what a word means, and it goes on the shelf.", "Nói cho tôi nghĩa của một từ, và nó sẽ được đặt lên kệ."},
+		},
+		Objective: Text{"Give 3 words to the library", "Tặng thư viện 3 từ"},
+		Counter:   Counter{Kind: "event", Item: "donate"}, Target: 3,
+		Reward: Reward{Gold: 50, Items: map[string]int{"seed_bloom": 1}},
+	},
+	{
+		ID: "first_letter", Chapter: 3, Giver: "elsa",
+		Title: Text{"Letters from town", "Thư từ thị trấn"},
+		Lines: []Text{
+			{"People in town are talking again, thanks to you.", "Nhờ cậu mà người trong thị trấn lại nói chuyện với nhau."},
+			{"Now they will write to you, too. Check your mailbox every day.", "Giờ họ sẽ viết thư cho cậu nữa. Hãy xem hộp thư mỗi ngày."},
+			{"Read carefully, and bring them what they ask for.", "Đọc kỹ, và mang cho họ thứ họ nhờ."},
+		},
+		Objective: Text{"Do what a letter asks", "Làm theo một lá thư nhờ việc"},
+		Counter:   Counter{Kind: "event", Item: "letter_done"}, Target: 1,
+		Reward: Reward{Gold: 60},
+	},
+	{
+		ID: "hall_rooms", Chapter: 3, Giver: "elsa",
+		Title: Text{"What the Lexi want", "Điều các Lexi mong muốn"},
+		Lines: []Text{
+			{"Sage Orin read all the notes on the hall's door.", "Hiền triết Orin đã đọc hết các ghi chú trên cửa Word Hall."},
+			{"The Lexi are still inside, in six rooms, each one empty of words.", "Các Lexi vẫn ở bên trong, trong sáu căn phòng, phòng nào cũng trống rỗng ngôn từ."},
+			{"Fill the rooms, they say, and the hall will speak again.", "Chúng nói: hãy lấp đầy các phòng, và Word Hall sẽ lại cất tiếng."},
+		},
+		Objective: Text{"Listen to Mayor Elsa", "Nghe Thị trưởng Elsa kể"},
+		Target:    0,
+		Reward:    Reward{Gold: 30},
+	},
 }
 
 // Daily is one of the day's three small tasks.
@@ -319,9 +399,20 @@ type Daily struct {
 	Reward   Reward  `json:"reward"`
 	Learning bool    `json:"learning"`
 	// Woods tasks are only drawn once the woods are open, town ones once the
-	// town is.
-	Woods bool `json:"woods"`
-	Town  bool `json:"town"`
+	// town is, and so on for what the story opens after.
+	Woods   bool `json:"woods"`
+	Town    bool `json:"town"`
+	Glasses bool `json:"-"`
+	Library bool `json:"-"`
+}
+
+// Open is what of the world a player has reached, for the day's draw.
+type Open struct {
+	Woods, Town, Glasses, Library bool
+}
+
+func (o Open) has(d Daily) bool {
+	return (!d.Woods || o.Woods) && (!d.Town || o.Town) && (!d.Glasses || o.Glasses) && (!d.Library || o.Library)
 }
 
 // DailyPool is what the day's tasks are drawn from. The learning ones are
@@ -354,6 +445,10 @@ var DailyPool = []Daily{
 		Learning: true, Counter: Counter{Kind: "event", Item: "talk"}, Target: 3, Reward: Reward{Gold: 40, Stamina: 5}},
 	{ID: "gift1", Title: Text{"Give a gift in town", "Tặng một món quà trong thị trấn"}, Town: true,
 		Counter: Counter{Kind: "event", Item: "gift"}, Target: 1, Reward: Reward{Gold: 30}},
+	{ID: "notes3", Title: Text{"Read 3 Lexi notes", "Đọc 3 ghi chú của Lexi"}, Town: true, Glasses: true,
+		Learning: true, Counter: Counter{Kind: "event", Item: "note"}, Target: 3, Reward: Reward{Gold: 40, Stamina: 5}},
+	{ID: "donate1", Title: Text{"Give a word to the library", "Tặng thư viện một từ"}, Town: true, Library: true,
+		Learning: true, Counter: Counter{Kind: "event", Item: "donate"}, Target: 1, Reward: Reward{Gold: 40}},
 }
 
 // DailyCount is how many tasks a day holds.
@@ -364,15 +459,16 @@ var DailyChest = Reward{Gold: 60, Items: map[string]int{"seed_bloom": 1, "ginger
 
 // DailyFor is the day's tasks for one player: random, but the same every time
 // that player asks on that day, and always with at least one in the app itself.
-// Tasks in the woods come into the draw once the woods are open.
-func DailyFor(user, day string, woods, town bool) []Daily {
+// Tasks in the woods come into the draw once the woods are open, and the
+// others as the story reaches them.
+func DailyFor(user, day string, open Open) []Daily {
 	h := fnv.New64a()
 	_, _ = h.Write([]byte(user + "|" + day))
 	r := rand.New(rand.NewSource(int64(h.Sum64())))
 
 	var learning, other []Daily
 	for _, d := range DailyPool {
-		if (d.Woods && !woods) || (d.Town && !town) {
+		if !open.has(d) {
 			continue
 		}
 		if d.Learning {

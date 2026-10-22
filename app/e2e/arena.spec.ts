@@ -301,3 +301,114 @@ test('a chat a day and a gift they love make a friend in town', async ({ page })
   await expect(page.getByTestId('friend-elsa')).toContainText('Chatted today')
   await expect(page.getByTestId('friend-elsa')).toContainText('Gift given today')
 })
+
+// Chapter 3, second half: the Word Hall, the library, and letters from town.
+const HALL_STEP = 21
+const LIBRARY_STEP = 24
+const LETTER_STEP = 25
+/** In town, on the path just below the Word Hall's door. */
+const BELOW_HALL = { map: 'town', x: 12 * 16 + 8, y: 7 * 16 + 12 }
+/** In town, just below the library's door. */
+const BELOW_LIBRARY = { map: 'town', x: 4 * 16 + 8, y: 17 * 16 + 12 }
+/** On the farm, just below the mailbox. */
+const BELOW_MAILBOX = { map: 'farm', x: 9 * 16 + 8, y: 6 * 16 + 12 }
+
+/** Faces north, one short step, then acts on what is there. */
+async function actUp(page: Page, label: string) {
+  await page.locator('.arena canvas').click({ position: { x: 20, y: 300 } })
+  await page.keyboard.down('ArrowUp')
+  await page.waitForTimeout(60)
+  await page.keyboard.up('ArrowUp')
+  await expect(page.locator('.arena-action')).toContainText(label)
+  await page.keyboard.press('e')
+}
+
+async function quizAnswer(page: Page, kind: 'note' | 'donate'): Promise<string> {
+  const res = await page.request.get(`${API_URL}/api/test/game/quiz/answer?kind=${kind}`)
+  expect(res.ok()).toBe(true)
+  return ((await res.json()) as { answer: string }).answer
+}
+
+test("the Word Hall's notes are read with Sage Orin's glasses", async ({ page }) => {
+  await setStep(page, HALL_STEP)
+  expect((await page.request.post(`${API_URL}/api/game/move`, { data: BELOW_HALL })).status()).toBe(204)
+  await openFarm(page)
+  await actUp(page, 'Read the door')
+  const hall = page.getByRole('dialog', { name: 'The Word Hall' })
+  await expect(hall).toContainText('strange little letters you cannot read')
+  await page.keyboard.press('Escape')
+
+  // Elsa's step is done by the visit; Sage Orin's gives the glasses.
+  for (let i = 0; i < 2; i++) {
+    expect((await page.request.post(`${API_URL}/api/game/quests/claim`, { data: { quest: 'main' } })).ok()).toBe(true)
+  }
+  await openFarm(page)
+  await actUp(page, 'Read the door')
+  await expect(hall.locator('.arena-option')).toHaveCount(4)
+  await expect(hall.getByTestId('notes-read')).toContainText('0 of 3')
+  const answer = await quizAnswer(page, 'note')
+  await hall.locator('.arena-option', { hasText: new RegExp(`^\\d${answer}$`) }).click()
+  await expect(hall.locator('.arena-turn')).toHaveAttribute('data-right', 'true')
+  await expect(hall).toContainText(answer)
+  await expect(hall.getByTestId('notes-read')).toContainText('1 of 3')
+  await hall.getByRole('button', { name: 'Next note' }).click()
+  await expect(hall.locator('.arena-option')).toHaveCount(4)
+})
+
+test('Lina takes a word for the library once its meaning is known', async ({ page }) => {
+  await setStep(page, LIBRARY_STEP)
+  for (const word of ['water', 'garden']) {
+    expect((await page.request.post(`${API_URL}/api/vocab`, { data: { word } })).status()).toBe(201)
+  }
+  expect((await page.request.post(`${API_URL}/api/game/move`, { data: BELOW_LIBRARY })).status()).toBe(204)
+  await openFarm(page)
+  await actUp(page, 'Library')
+  const library = page.getByRole('dialog', { name: 'Lina’s library' })
+  await expect(library.getByTestId('library-donated')).toHaveText('0 words on the shelves')
+
+  await library.getByRole('button', { name: 'water', exact: true }).click()
+  await expect(library).toContainText('What does “water” mean?')
+  const answer = await quizAnswer(page, 'donate')
+  await library.locator('.arena-option', { hasText: answer }).click()
+  await expect(library.locator('.arena-turn')).toHaveAttribute('data-right', 'true')
+  await expect(library).toContainText('“water” is on the shelf now')
+  await library.getByRole('button', { name: 'Give another word' }).click()
+  await expect(library.getByTestId('library-donated')).toHaveText('1 word on the shelves')
+  await expect(library.getByRole('button', { name: 'water', exact: true })).toHaveCount(0)
+  await expect(library.getByRole('button', { name: 'garden', exact: true })).toBeVisible()
+})
+
+test("the day's letter is read at the mailbox and brought to its writer", async ({ page }) => {
+  await setStep(page, LETTER_STEP)
+  expect((await page.request.post(`${API_URL}/api/test/game/gold`, { data: { gold: 500 } })).status()).toBe(204)
+  expect((await page.request.post(`${API_URL}/api/game/move`, { data: BELOW_MAILBOX })).status()).toBe(204)
+  await openFarm(page)
+  await actUp(page, 'Open')
+  const key = (await (await page.request.get(`${API_URL}/api/test/game/letter`)).json()) as {
+    npc: string
+    item: string
+    qty: number
+  }
+  const letter = page.locator('.arena-letter')
+  await expect(letter).toBeVisible()
+  await expect(letter).toContainText('Take what is asked for to')
+  await page.keyboard.press('Escape')
+
+  // What the letter asks for, from the shop, then to the writer's door.
+  expect((await page.request.post(`${API_URL}/api/game/buy`, { data: { item: key.item, qty: key.qty } })).ok()).toBe(true)
+  const writer = (await (await page.request.get(`${API_URL}/api/game/state`)).json()) as {
+    friends: { id: string; name: { en: string } }[]
+  }
+  const name = writer.friends.find((f) => f.id === key.npc)!.name.en
+  const door = { elsa: [5, 7], vy: [21, 7], orin: [28, 7], lina: [5, 17], hugo: [28, 17] }[key.npc]!
+  const beside = { map: 'town', x: (door[0] + 2) * 16 + 4, y: (door[1] + 1) * 16 }
+  expect((await page.request.post(`${API_URL}/api/game/move`, { data: beside })).status()).toBe(204)
+  await openFarm(page)
+  await actLeft(page)
+  // The writer's dialog is titled by their story step when they have one
+  // (Elsa gives the letters step), so the button is found on its own.
+  const give = page.getByRole('dialog').getByRole('button', { name: /Give what your letter asked for/ })
+  await give.click()
+  await expect(page.locator('.arena-toast')).toContainText(`${name} is so pleased!`)
+  await expect(give).toHaveCount(0)
+})

@@ -176,7 +176,12 @@ func readQuests(ctx context.Context, tx pgx.Tx, user uuid.UUID, p profileRow, no
 		return out, err
 	}
 	allClaimed := true
-	for _, d := range game.DailyFor(user.String(), day, p.woodsOpen(), p.townOpen()) {
+	glasses, err := hasItem(ctx, tx, user, "ipa_glasses")
+	if err != nil {
+		return out, err
+	}
+	open := game.Open{Woods: p.woodsOpen(), Town: p.townOpen(), Glasses: glasses, Library: p.libraryOpen()}
+	for _, d := range game.DailyFor(user.String(), day, open) {
 		n, err := countFor(ctx, tx, user, d.Counter, start, end)
 		if err != nil {
 			return out, err

@@ -58,6 +58,9 @@ export interface GameState {
     mainStep: number
     woodsOpen: boolean
     townOpen: boolean
+    /** The Word Hall's door is in the story; Lina takes words. */
+    hallOpen: boolean
+    libraryOpen: boolean
   }
   plots: Plot[]
   inventory: Record<string, number>
@@ -70,6 +73,50 @@ export interface GameState {
   spawns: Spawn[]
   /** The people of Echo Town; empty until the town is open. */
   friends: Friend[]
+  /** Today's letter in the mailbox, once the townsfolk write. */
+  letter: Letter | null
+}
+
+/** A letter from someone in town: what they wrote, never the item itself —
+ *  reading it is how the player knows what to bring. */
+export interface Letter {
+  from: { id: string; name: Bilingual; role: Bilingual }
+  body: Bilingual[]
+  gold: number
+  done: boolean
+}
+
+/** A question from the Word Hall's door or from Lina. The answer stays on
+ *  the server. */
+export interface Quiz {
+  kind: 'ipa' | 'meaning'
+  prompt: string
+  options: string[]
+}
+
+export interface QuizAnswer {
+  right: boolean
+  word: string
+  ipa: string
+  meaning: string
+  gold: number
+}
+
+export interface Hall {
+  /** Sage Orin's glasses are in the bag: the notes can be read. */
+  glasses: boolean
+  read: number
+  perDay: number
+  note: Quiz | null
+}
+
+export interface Library {
+  donated: number
+  milestones: { words: number; reward: Reward; reached: boolean; claimed: boolean }[]
+  words: { word: string; ipa: string }[]
+  available: number
+  asked: Quiz | null
+  askedWord: string
 }
 
 export interface HeartEvent {
@@ -250,6 +297,21 @@ export const gameApi = {
   heart: (npc: string, hearts: number) =>
     api.send<{ event: HeartEvent; state: GameState }>('POST', '/api/game/heart', { npc, hearts }),
   clinic: () => api.send<GameState>('POST', '/api/game/clinic', {}),
+  hall: () => api.send<{ hall: Hall; state: GameState }>('POST', '/api/game/hall', {}),
+  readNote: (answer: string) =>
+    api.send<{ result: QuizAnswer; state: GameState }>('POST', '/api/game/hall/read', { answer }),
+  library: (q = '') => api.get<Library>(`/api/game/library${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  askDonation: (word: string) => api.send<Quiz>('POST', '/api/game/library/ask', { word }),
+  donate: (answer: string) =>
+    api.send<{ result: QuizAnswer; state: GameState }>('POST', '/api/game/library/donate', { answer }),
+  claimMilestone: (words: number) =>
+    api.send<{ reward: Reward; state: GameState }>('POST', '/api/game/library/claim', { words }),
+  deliver: (npc: string) =>
+    api.send<{ result: { gold: number; points: number; friend: Friend }; state: GameState }>(
+      'POST',
+      '/api/game/letter/deliver',
+      { npc },
+    ),
   battle: () => api.get<{ battle: Battle | null }>('/api/game/battle'),
   startBattle: (spawn: string) =>
     api.send<{ battle: Battle; state: GameState }>('POST', '/api/game/battle/start', { spawn }),

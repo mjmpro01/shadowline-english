@@ -23,7 +23,8 @@ const REFUSALS = [
   'no_stamina', 'no_gold', 'not_ripe', 'occupied', 'locked', 'no_seed', 'empty', 'rested',
   'full', 'no_item', 'unlocked', 'max_level', 'not_done', 'claimed', 'no_quest',
   'woods_locked', 'no_hp', 'in_battle', 'respawning', 'battle_over', 'lair_closed',
-  'town_locked', 'talked_today', 'gifted_today', 'not_gift',
+  'town_locked', 'talked_today', 'gifted_today', 'not_gift', 'need_glasses', 'no_note',
+  'library_closed', 'not_givable', 'no_question', 'no_letter', 'not_the_writer', 'letter_done',
 ]
 
 export function gameError(err: unknown, t: Translate): string {

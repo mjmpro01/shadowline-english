@@ -76,18 +76,19 @@ func TestTheQuestDayTurnsAtMidnightInVietnam(t *testing.T) {
 }
 
 func TestTheDaysTasksAreFixedForTheDayAndIncludeLearning(t *testing.T) {
-	for _, open := range [][2]bool{{false, false}, {true, false}, {true, true}} {
-		checkDailies(t, open[0], open[1])
+	for _, open := range []Open{{}, {Woods: true}, {Woods: true, Town: true},
+		{Woods: true, Town: true, Glasses: true}, {Woods: true, Town: true, Glasses: true, Library: true}} {
+		checkDailies(t, open)
 	}
 }
 
-func checkDailies(t *testing.T, woods, town bool) {
+func checkDailies(t *testing.T, open Open) {
 	t.Helper()
 	seen := map[string]bool{}
 	for d := 0; d < 60; d++ {
 		day := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC).AddDate(0, 0, d).Format("2006-01-02")
-		first := DailyFor("user-1", day, woods, town)
-		again := DailyFor("user-1", day, woods, town)
+		first := DailyFor("user-1", day, open)
+		again := DailyFor("user-1", day, open)
 		if len(first) != DailyCount {
 			t.Fatalf("%s: %d tasks", day, len(first))
 		}
@@ -102,11 +103,8 @@ func checkDailies(t *testing.T, woods, town bool) {
 			ids[q.ID] = true
 			learning = learning || q.Learning
 			seen[q.ID] = true
-			if q.Woods && !woods {
-				t.Fatalf("%s: %s is in the woods, which are not open", day, q.ID)
-			}
-			if q.Town && !town {
-				t.Fatalf("%s: %s is in town, which is not open", day, q.ID)
+			if !open.has(q) {
+				t.Fatalf("%s: %s is not open to %+v", day, q.ID, open)
 			}
 		}
 		if !learning {
@@ -116,19 +114,19 @@ func checkDailies(t *testing.T, woods, town bool) {
 	// Over two months every task that can come up should, at least once.
 	want := 0
 	for _, d := range DailyPool {
-		if (woods || !d.Woods) && (town || !d.Town) {
+		if open.has(d) {
 			want++
 		}
 	}
 	if len(seen) != want {
-		t.Fatalf("woods %v, town %v: only %d of %d tasks ever came up", woods, town, len(seen), want)
+		t.Fatalf("%+v: only %d of %d tasks ever came up", open, len(seen), want)
 	}
 }
 
 func TestTheDaysTasksDoNotChangeForFarmersBeforeTheWoods(t *testing.T) {
 	// The woods tasks joined the pool later; a farmer who has not reached the
 	// woods draws from exactly the pool they drew from before.
-	got := DailyFor("user-7", "2026-10-20", false, false)
+	got := DailyFor("user-7", "2026-10-20", Open{})
 	for _, q := range got {
 		if q.Woods {
 			t.Fatalf("drew %s", q.ID)

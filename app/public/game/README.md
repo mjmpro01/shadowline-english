@@ -53,6 +53,8 @@ place of each portrait.
 | `objects/fountain.png` | The fountain in the middle of the square, 2×2 tiles |
 | `tiles/` additions | Paving for the square (the farm's `stone_path` stands in), flower beds |
 | `items/{flowers,old_book,wool_scarf,honey_cake,coffee,soup}.png` | Icons for the gifts and Hugo's café |
+| `objects/word_hall.png` | The Word Hall north of the square, 6×5 tiles, door at the middle of the foot: closed by the Silence, grey with mist and three notes pinned to its door (until then the farmhouse, larger and greyed, with painted mist). A second, restored look will be wanted for chapter 4 |
+| `items/ipa_glasses.png` | Sage Orin's glasses, which read the Lexi's notes (a 👓 stands in) |
 
 ## What the script does to the pack
 

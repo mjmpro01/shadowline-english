@@ -5,6 +5,7 @@ import { FROM_TOWN, TILE } from '../world/farm'
 import {
   BUILDINGS,
   FROM_FARM_TO_TOWN,
+  HALL_DOOR,
   TOWN_GATE,
   TOWN_NPCS,
   TOWN_TREES,
@@ -12,6 +13,8 @@ import {
   townDecor,
   townGround,
   townSolids,
+  WORD_HALL,
+  door,
 } from '../world/town'
 import { MapScene } from './MapScene'
 
@@ -23,6 +26,9 @@ const SIGNS: Record<string, string> = {
   library: 'Library',
   cafe: 'Café',
 }
+
+/** The library's door, where Lina's shelves are. */
+const LIBRARY_DOOR = door(BUILDINGS.find((b) => b.id === 'library')!)
 
 /**
  * Echo Town: the square, the fountain, and five people at their doors. Walking
@@ -67,6 +73,7 @@ export class TownScene extends MapScene {
         .setScale(0.25)
         .setDepth(foot + 1)
     }
+    this.drawHall()
     ;[...TOWN_TREES, ...townBorderTrees()].forEach((t, i) =>
       this.stand('tree', (t.x + 0.5) * TILE, (t.y + 1) * TILE, (t.x * 3 + t.y * 5 + i) % this.count('tree', TREE_KINDS)),
     )
@@ -90,6 +97,36 @@ export class TownScene extends MapScene {
     })
   }
 
+  /** The Word Hall, until it is drawn: the farmhouse grown larger and gone
+   *  grey, a hush of mist drifting over it, and the Lexi's notes on its door. */
+  private drawHall() {
+    const x = (WORD_HALL.x + WORD_HALL.w / 2) * TILE
+    const foot = (WORD_HALL.y + WORD_HALL.h) * TILE
+    const hall = this.stand('farmhouse', x, foot).setTint(0x9089a6)
+    hall.setScale(hall.scaleX * 1.2, hall.scaleY * 1.1)
+    for (let i = 0; i < 3; i++) {
+      const mist = this.add.ellipse(x + (i - 1) * 26, foot - 30 - i * 8, 70, 22, 0x6b5f8a, 0.28).setDepth(foot + 2)
+      this.tweens.add({ targets: mist, x: mist.x + 10, alpha: 0.12, duration: 2600 + i * 500, yoyo: true, repeat: -1 })
+    }
+    // Three notes pinned to the door.
+    for (let i = 0; i < 3; i++) {
+      this.add
+        .rectangle((HALL_DOOR.x + 0.25 + i * 0.25) * TILE, foot - 14 + (i % 2) * 3, 3, 4, 0xfff8e7)
+        .setDepth(foot + 1)
+    }
+    this.add
+      .text(x, WORD_HALL.y * TILE + 2, 'Word Hall', {
+        fontFamily: 'Georgia, serif',
+        fontSize: '28px',
+        color: '#e8e2f5',
+        backgroundColor: '#3b3355',
+        padding: { x: 6, y: 2 },
+      })
+      .setOrigin(0.5, 0)
+      .setScale(0.25)
+      .setDepth(foot + 1)
+  }
+
   /** The story's marker over whoever in town has something to say. */
   private showQuestGiver(giver: string | null, done: boolean) {
     if (!this.questMarker) return
@@ -102,6 +139,9 @@ export class TownScene extends MapScene {
     for (const [id, sprite] of this.npcs) {
       if (Math.hypot(rx - sprite.x, ry - (sprite.y - 6)) <= 14) return { kind: 'npc', id }
     }
+    const near = (d: { x: number; y: number }) => Math.hypot(rx - (d.x + 0.5) * TILE, ry - d.y * TILE) <= 12
+    if (near(HALL_DOOR)) return { kind: 'hall' }
+    if (near(LIBRARY_DOOR)) return { kind: 'library' }
     return null
   }
 
@@ -110,6 +150,8 @@ export class TownScene extends MapScene {
       const s = this.npcs.get(target.id)
       if (s) return { x: s.x, y: s.y - 36 }
     }
+    if (target.kind === 'hall') return { x: (HALL_DOOR.x + 0.5) * TILE, y: HALL_DOOR.y * TILE - 30 }
+    if (target.kind === 'library') return { x: (LIBRARY_DOOR.x + 0.5) * TILE, y: LIBRARY_DOOR.y * TILE - 30 }
     return { x: 0, y: 0 }
   }
 }
