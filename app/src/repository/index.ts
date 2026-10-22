@@ -141,6 +141,9 @@ export interface Dictation {
   /** Null once the line it started at has been deleted. */
   firstClipId: string | null
   firstLine: string
+  /** Where in the episode it starts, from 1; what is shown in place of the
+   *  line, which would give the passage away. 0 once that line is deleted. */
+  firstLineNumber: number
   total: number
   right: number
   errors: DictationErrors

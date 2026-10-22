@@ -11,7 +11,8 @@ export function heardPercent(d: Pick<Dictation, 'right' | 'total'>): number {
 
 /**
  * Yesterday's dictations, to be listened to once more: the last step of the
- * method is the next day. On the dashboard it is nothing at all when none is
+ * method is the next day. Named by episode and line number rather than by the
+ * line, which would be the answer to hearing them again with no text. On the dashboard it is nothing at all when none is
  * due; the dictation tab passes `whenNone` to say so instead.
  */
 export function ListenAgain({ whenNone }: { whenNone?: string }) {
@@ -34,10 +35,10 @@ export function ListenAgain({ whenNone }: { whenNone?: string }) {
         <div key={d.id} className="dict-line">
           <span className="stack" style={{ gap: 2, minWidth: 0 }}>
             <span className="card-title clamp-2" style={{ fontSize: 15 }}>
-              {d.firstLine || d.episodeTitle}
+              {d.episodeTitle}
             </span>
             <span className="card-meta">
-              {d.episodeTitle} · {t('dictation.accuracy', heardPercent(d))}
+              {t('dictation.fromLineN', d.firstLineNumber)} · {t('dictation.accuracy', heardPercent(d))}
             </span>
           </span>
           <button

@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from 'react-router-dom'
 import { useT } from '../i18n'
 import { Icon } from '../components/Icon'
+import { ClipPreview } from '../components/ClipPreview'
 import { Loading } from '../components/LoadState'
 import { useRemote } from '../lib/remote'
 import { clock } from '../lib/time'
@@ -54,13 +55,17 @@ export function DictationEpisodeScreen() {
               </button>
               <div className="stack gap-2">
                 {remote.value.clips.map((clip, i) => (
-                  <div key={clip.id} className="dict-line" data-testid="dict-start-line">
-                    <span className="row gap-2" style={{ minWidth: 0, alignItems: 'baseline' }}>
-                      <span className="card-meta mono">{i + 1}</span>
-                      <span className="dict-line-text">{clip.captions[0]?.text || clip.title}</span>
-                      <span className="card-meta mono">{clock(clip.durationSeconds)}</span>
-                    </span>
-                    <button type="button" className="btn btn-ghost" onClick={() => start(clip.id)}>
+                  // The line itself is not shown: reading it here would give
+                  // away the passage about to be written down.
+                  <div key={clip.id} className="card elev-sm dict-start-row" data-testid="dict-start-line">
+                    <ClipPreview clip={clip} label={t('dictation.lineN', i + 1)} />
+                    <div className="stack" style={{ gap: 2, minWidth: 0 }}>
+                      <strong>{t('dictation.lineN', i + 1)}</strong>
+                      <span className="card-meta mono">
+                        {clip.timestamp} · {clock(clip.durationSeconds)}
+                      </span>
+                    </div>
+                    <button type="button" className="btn btn-secondary" onClick={() => start(clip.id)}>
                       <Icon name="square-pen" size={14} />
                       {t('dictation.fromHere')}
                     </button>
