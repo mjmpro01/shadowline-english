@@ -155,6 +155,10 @@ func (s *Server) Routes() http.Handler {
 			r.Get("/clips/{id}", s.handleGetClip)
 			r.Get("/clips/{id}/audio", s.handleClipAudio)
 			r.Get("/clips/{id}/video", s.handleClipVideo)
+			r.Get("/dictation/{id}", s.handleDictationPassage)
+			r.Get("/dictations", s.handleListDictations)
+			r.Post("/dictations", s.handleSaveDictation)
+			r.Post("/dictations/{id}/review", s.handleReviewDictation)
 
 			r.Get("/takes", s.handleListTakes)
 			r.Post("/takes", s.handleCreateTake)
@@ -215,6 +219,7 @@ func (s *Server) Routes() http.Handler {
 				r.Get("/test/game/quiz/answer", s.handleTestQuizAnswer)
 				r.Get("/test/game/letter", s.handleTestLetter)
 				r.Post("/test/game/gold", s.handleTestGold)
+				r.Post("/test/dictations/due", s.handleTestDictationsDue)
 			}
 
 			r.Group(func(r chi.Router) {
