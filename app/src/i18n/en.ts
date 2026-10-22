@@ -16,6 +16,7 @@ export const en = {
   // --- navigation and shell -------------------------------------------------
   'nav.dashboard': 'Dashboard',
   'nav.library': 'Shadowing',
+  'nav.dictation': 'Dictation',
   'nav.vocabulary': 'Vocabulary',
   'nav.progress': 'Progress',
   'nav.profile': 'Profile',
@@ -24,6 +25,7 @@ export const en = {
   'nav.tab.dashboard': 'Home',
   'nav.tab.library': 'Shadow',
   'nav.tab.vocabulary': 'Words',
+  'nav.tab.dictation': 'Dictate',
   'nav.tagline': 'FOREST QUEST',
   'nav.quest': 'QUEST',
   'nav.here': 'HERE',
@@ -236,6 +238,18 @@ export const en = {
 
   // --- dictation: a passage of an episode, heard and written down ------------
   'dictation.start': 'Dictation',
+  'dictation.homeIntro':
+    'Hear a passage through, write it down a phrase at a time, check it, shadow it — and hear it again tomorrow.',
+  'dictation.noneDue': 'Nothing to listen to again today.',
+  'dictation.pick': 'Pick a passage',
+  'dictation.search': 'Search series, episodes and lines',
+  'dictation.noSeries': 'Nothing in the library yet.',
+  'dictation.lines': (lines: number) => `${lines} ${lines === 1 ? 'line' : 'lines'}`,
+  'dictation.pickLine': 'Pick the line to start at. The passage runs on from it for half a minute to a minute and a half.',
+  'dictation.fromStart': 'Start from the first line',
+  'dictation.recent': 'Written down lately',
+  'dictation.noRecent': 'Nothing written down yet.',
+  'dictation.again': 'Write it again',
   'dictation.fromHere': 'Dictation from this line',
   'dictation.back': (title: string) => `Back to ${title}`,
   'dictation.passage': (lines: number, length: string) => `${lines} ${lines === 1 ? 'line' : 'lines'} · ${length}`,

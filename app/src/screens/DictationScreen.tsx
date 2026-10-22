@@ -44,7 +44,7 @@ export function DictationScreen() {
         type="button"
         className="btn btn-ghost"
         style={{ alignSelf: 'flex-start' }}
-        onClick={() => navigate(`/library/e/${episodeId ?? ''}`)}
+        onClick={() => navigate(`/dictation/e/${episodeId ?? ''}`)}
       >
         <Icon name="chevron-left" />
         {title ? t('dictation.back', title) : t('series.back')}
@@ -246,7 +246,6 @@ function Dictation({ passage, review, t }: { passage: Passage; review: string | 
           review={review}
           player={player}
           t={t}
-          episodeId={passage.episode.id}
           onBack={review ? null : () => goTo(4)}
           onDone={clearDraft}
         />
@@ -613,14 +612,12 @@ function Again({
   review,
   player,
   t,
-  episodeId,
   onBack,
   onDone,
 }: {
   review: string | null
   player: PassagePlayer
   t: Translate
-  episodeId: string
   onBack: (() => void) | null
   onDone: () => void
 }) {
@@ -634,7 +631,7 @@ function Again({
     try {
       if (review) await repository.reviewDictation(review)
       onDone()
-      navigate(review ? '/dashboard' : `/library/e/${episodeId}`)
+      navigate(review ? '/dashboard' : '/dictation')
     } catch (err) {
       setError(explain(err, t, t('common.loadFailed')))
       setBusy(false)

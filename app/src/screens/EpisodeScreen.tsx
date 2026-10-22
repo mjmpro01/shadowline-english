@@ -95,7 +95,7 @@ function Body({ page, t }: { page: EpisodePage; t: Translate }) {
           <button
             type="button"
             className="btn btn-secondary"
-            onClick={() => navigate(`/library/e/${episode.id}/dictation/${clips[0].id}`)}
+            onClick={() => navigate(`/dictation/e/${episode.id}/${clips[0].id}`)}
           >
             <Icon name="square-pen" size={14} />
             {t('dictation.start')}
@@ -162,7 +162,7 @@ function Body({ page, t }: { page: EpisodePage; t: Translate }) {
                   className="btn btn-ghost btn-icon"
                   title={t('dictation.fromHere')}
                   aria-label={t('dictation.fromHere')}
-                  onClick={() => navigate(`/library/e/${episode.id}/dictation/${clip.id}`)}
+                  onClick={() => navigate(`/dictation/e/${episode.id}/${clip.id}`)}
                 >
                   <Icon name="square-pen" size={16} />
                 </button>

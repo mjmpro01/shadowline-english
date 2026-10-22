@@ -20,12 +20,14 @@ export const vi: Messages = {
   // --- navigation and shell -------------------------------------------------
   'nav.dashboard': 'Tổng quan',
   'nav.library': 'Shadowing',
+  'nav.dictation': 'Chép chính tả',
   'nav.vocabulary': 'Từ vựng',
   'nav.progress': 'Tiến độ',
   'nav.profile': 'Hồ sơ',
   'nav.tab.dashboard': 'Tổng quan',
   'nav.tab.library': 'Shadow',
   'nav.tab.vocabulary': 'Từ vựng',
+  'nav.tab.dictation': 'Chép',
   'nav.tagline': 'HÀNH TRÌNH RỪNG',
   'nav.quest': 'HÀNH TRÌNH',
   'nav.here': 'Ở ĐÂY',
@@ -256,6 +258,18 @@ export const vi: Messages = {
 
   // --- chép chính tả ---------------------------------------------------------
   'dictation.start': 'Chép chính tả',
+  'dictation.homeIntro':
+    'Nghe trọn một đoạn, chép từng cụm, đối chiếu, đọc nhại theo — và nghe lại vào ngày mai.',
+  'dictation.noneDue': 'Hôm nay không có bài nào cần nghe lại.',
+  'dictation.pick': 'Chọn đoạn để chép',
+  'dictation.search': 'Tìm series, tập hoặc câu',
+  'dictation.noSeries': 'Thư viện chưa có gì.',
+  'dictation.lines': (lines: number) => `${lines} câu`,
+  'dictation.pickLine': 'Chọn câu bắt đầu. Đoạn chép chạy tiếp từ câu đó, dài từ nửa phút tới một phút rưỡi.',
+  'dictation.fromStart': 'Bắt đầu từ câu đầu',
+  'dictation.recent': 'Đã chép gần đây',
+  'dictation.noRecent': 'Chưa chép bài nào.',
+  'dictation.again': 'Chép lại',
   'dictation.fromHere': 'Chép chính tả từ câu này',
   'dictation.back': (title: string) => `Về ${title}`,
   'dictation.passage': (lines: number, length: string) => `${lines} câu · ${length}`,

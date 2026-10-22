@@ -100,7 +100,10 @@ test('a passage is listened to, written down, checked, shadowed, and heard again
   await expect(page.getByText('Tomorrow it will be on your dashboard')).toBeVisible()
   await expect(page.getByText('Shadow this line 3')).toHaveCount(0)
   await page.getByRole('button', { name: 'Done' }).click()
-  await page.waitForURL('**/library/e/**')
+  await page.waitForURL('**/dictation')
+  // The tab keeps it, under what has been written down lately.
+  await expect(page.getByTestId('dict-recent')).toContainText('Shadow this line 1')
+  await expect(page.getByTestId('dict-recent')).toContainText('63% heard')
 
   // Not due today…
   await page.goto('/dashboard')
@@ -109,7 +112,10 @@ test('a passage is listened to, written down, checked, shadowed, and heard again
 
   // …and there tomorrow, when the last step is done from the dashboard.
   expect((await page.request.post(`${API_URL}/api/test/dictations/due`)).status()).toBe(204)
-  await page.reload()
+  // The tab has it too.
+  await page.goto('/dictation')
+  await expect(page.getByTestId('listen-again')).toContainText('Shadow this line 1')
+  await page.goto('/dashboard')
   const card = page.getByTestId('listen-again')
   await expect(card).toContainText('Listen again today')
   await expect(card).toContainText('Shadow this line 1')
@@ -132,4 +138,39 @@ test('a dictation can start at any line of the episode', async ({ page }) => {
   await expect(page.getByText('2 lines · 0:07')).toBeVisible()
   await page.getByRole('button', { name: 'Start writing' }).click()
   await expect(page.getByTestId('write')).toContainText('Phrase 1 of 2')
+})
+
+test('the dictation tab has a passage to start on, and what is due today', async ({ page }) => {
+  await page.goto('/dashboard')
+  await page.locator('.menu-plank').filter({ hasText: 'Dictation' }).click()
+  await page.waitForURL('**/dictation')
+  await expect(page.getByRole('heading', { name: 'Dictation', level: 1 })).toBeVisible()
+  await expect(page.getByTestId('listen-again')).toContainText('Nothing to listen to again today.')
+  await expect(page.getByTestId('dict-recent')).toContainText('Nothing written down yet.')
+
+  // By series, then episode, then the line to start at.
+  await page.getByRole('button', { name: /Lesson one/ }).click()
+  await page.getByRole('button', { name: /lesson\.wav/ }).click()
+  await page.waitForURL('**/dictation/e/*')
+  await expect(page.getByTestId('dict-start-line')).toHaveCount(4)
+  await page.getByTestId('dict-start-line').nth(2).getByRole('button', { name: 'Dictation from this line' }).click()
+  await page.waitForURL('**/dictation/e/*/*')
+  await expect(page.getByText('2 lines · 0:07')).toBeVisible()
+  // The tab stays lit through it.
+  await expect(page.locator('.menu-plank[aria-current="page"]')).toContainText('Dictation')
+
+  // Or by search, straight to a line.
+  await page.goto('/dictation')
+  await page.getByRole('searchbox', { name: 'Search series, episodes and lines' }).fill('line 4')
+  const found = page.getByTestId('dict-found')
+  await found.getByRole('button', { name: 'Dictation from this line' }).first().click()
+  await page.waitForURL('**/dictation/e/*/*')
+  await expect(page.getByText('1 line · 0:03')).toBeVisible()
+})
+
+test('the old address of a dictation still leads to it', async ({ page }) => {
+  await openEpisode(page)
+  const episode = page.url().split('/library/e/')[1]
+  await page.goto(`/library/e/${episode}/dictation/nothing`)
+  await page.waitForURL(`**/dictation/e/${episode}/nothing`)
 })
