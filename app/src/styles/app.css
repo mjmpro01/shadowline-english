@@ -1001,9 +1001,139 @@
   /* The score and the button drop to their own row rather than squeezing the
      line into nothing. */
   .playlist-score,
-  .playlist-row > .btn {
+  .playlist-row > .btn,
+  .playlist-actions {
     grid-column: 2 / -1;
   }
+}
+
+/* — dictation — */
+.dict-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dict-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 4px 4px;
+  border: 1px solid var(--color-divider);
+  border-radius: 999px;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+.dict-step-number {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-surface-2);
+  font-size: 12px;
+  font-weight: 700;
+}
+.dict-step[data-state='now'] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-100);
+  color: var(--color-text);
+  font-weight: 600;
+}
+.dict-step[data-state='now'] .dict-step-number {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+.dict-step[data-state='done'] .dict-step-number {
+  background: var(--score-good);
+  color: var(--color-surface);
+}
+.dict-hint {
+  color: var(--color-accent-ink);
+}
+/* A box to write a line in, not a search field: square, and as wide as it is. */
+.dict-box {
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  resize: vertical;
+  line-height: 1.5;
+}
+.dict-text {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.9;
+  min-width: 0;
+}
+.dict-w[data-kind='wrong'] del,
+.dict-w[data-kind='extra'] del {
+  color: var(--color-text-muted);
+}
+.dict-w[data-kind='wrong'] ins {
+  text-decoration: none;
+  color: var(--score-attention);
+  font-weight: 700;
+}
+/* A word not written down: there, but as the gap it was. */
+.dict-w[data-kind='missing'] {
+  color: var(--score-attention);
+  text-decoration: underline dashed;
+  text-underline-offset: 4px;
+}
+.dict-errors {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+  border-top: 1px solid var(--color-divider);
+  padding-top: var(--space-2);
+}
+.dict-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.dict-chip {
+  font: inherit;
+  font-size: 13px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--color-divider);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+.dict-chip[aria-pressed='true'] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-on-accent);
+}
+.dict-chip:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+.dict-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-divider);
+}
+.dict-line-text {
+  font-size: 17px;
+  line-height: 1.5;
+  min-width: 0;
+}
+/* The line being spoken, so reading along can keep its place. */
+.dict-line[data-current='true'] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-100);
 }
 
 /* — studio video + filmstrip — */

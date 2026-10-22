@@ -98,6 +98,60 @@ export interface Repository {
   uploadAvatar(avatar: Blob): Promise<Profile>
 
   leaderboard(): Promise<LeaderboardRow[]>
+
+  /** A passage to write down, starting at one line of an episode: the lines
+   *  after it to make half a minute to a minute and a half, cut into phrases. */
+  dictation(clipId: string): Promise<Passage>
+  /** Keeps how a dictation went; it comes back to be listened to tomorrow. */
+  saveDictation(dictation: NewDictation): Promise<Dictation>
+  /** The dictations due to be listened to again today, and the latest. */
+  dictations(): Promise<DictationList>
+  reviewDictation(id: string): Promise<void>
+}
+
+export interface Passage {
+  episode: { id: string; title: string }
+  clips: { id: string; title: string; durationSeconds: number; text: string }[]
+  /** Seconds from the start of their clip's own sound. */
+  chunks: { clipId: string; start: number; end: number; text: string }[]
+  totalSeconds: number
+}
+
+export interface DictationErrors {
+  missingEnding: number
+  shortWord: number
+  unknownWord: number
+  sound: number
+  linking: number
+  other: number
+}
+
+export interface NewDictation {
+  firstClipId: string
+  clipIds: string[]
+  total: number
+  right: number
+  errors: DictationErrors
+}
+
+export interface Dictation {
+  id: string
+  episodeId: string
+  episodeTitle: string
+  /** Null once the line it started at has been deleted. */
+  firstClipId: string | null
+  firstLine: string
+  total: number
+  right: number
+  errors: DictationErrors
+  createdAt: string
+  reviewOn: string
+  reviewedAt: string | null
+}
+
+export interface DictationList {
+  due: Dictation[]
+  recent: Dictation[]
 }
 
 export interface LibrarySummary {
@@ -306,6 +360,22 @@ class ApiRepository implements Repository {
 
   leaderboard() {
     return api.get<LeaderboardRow[]>('/api/leaderboard')
+  }
+
+  dictation(clipId: string) {
+    return api.get<Passage>(`/api/dictation/${clipId}`)
+  }
+
+  saveDictation(dictation: NewDictation) {
+    return api.send<Dictation>('POST', '/api/dictations', dictation)
+  }
+
+  dictations() {
+    return api.get<DictationList>('/api/dictations')
+  }
+
+  reviewDictation(id: string) {
+    return api.send<void>('POST', `/api/dictations/${id}/review`, {})
   }
 }
 

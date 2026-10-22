@@ -4,6 +4,7 @@ import { RequireAuth } from './components/RequireAuth'
 import { AnalysisScreen } from './screens/AnalysisScreen'
 import { ArenaScreen } from './screens/ArenaScreen'
 import { DashboardScreen } from './screens/DashboardScreen'
+import { DictationScreen } from './screens/DictationScreen'
 import { DubScreen } from './screens/DubScreen'
 import { EpisodeScreen } from './screens/EpisodeScreen'
 import { FlashcardsScreen } from './screens/FlashcardsScreen'
@@ -44,6 +45,7 @@ export const router = createBrowserRouter([
       { path: 'library/s/:slug', element: <SeriesScreen /> },
       { path: 'library/shelf/:slug', element: <ShelfScreen /> },
       { path: 'library/e/:episodeId', element: <EpisodeScreen /> },
+      { path: 'library/e/:episodeId/dictation/:clipId', element: <DictationScreen /> },
       { path: 'library/:videoId', element: <AnalysisScreen /> },
       { path: 'library/:videoId/practice', element: <PracticeScreen /> },
       { path: 'library/:videoId/dub', element: <DubScreen /> },

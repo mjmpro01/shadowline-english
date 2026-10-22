@@ -56,6 +56,8 @@ export function DashboardScreen() {
 
       <Banners placement="dashboard" />
 
+      <ListenAgain />
+
       {data.takes.length === 0 ? (
         <FirstSteps
           onStart={async () => {
@@ -277,6 +279,46 @@ function FirstSteps({
           </button>
         </div>
       </div>
+    </section>
+  )
+}
+
+/**
+ * Yesterday's dictations, to be listened to once more: the last step of the
+ * method is the next day. Nothing at all when none is due.
+ */
+function ListenAgain() {
+  const t = useT()
+  const navigate = useNavigate()
+  const remote = useRemote('', () => repository.dictations())
+  const due = remote.state === 'ready' ? remote.value.due : []
+  if (due.length === 0) return null
+  return (
+    <section className="card elev-sm stack gap-2" data-testid="listen-again" aria-labelledby="listen-again-title">
+      <h2 id="listen-again-title" className="card-kicker" style={{ margin: 0 }}>
+        {t('dash.reviewToday')}
+      </h2>
+      <div className="card-meta">{t('dash.reviewBody')}</div>
+      {due.map((d) => (
+        <div key={d.id} className="dict-line">
+          <span className="stack" style={{ gap: 2, minWidth: 0 }}>
+            <span className="card-title clamp-2" style={{ fontSize: 15 }}>
+              {d.firstLine || d.episodeTitle}
+            </span>
+            <span className="card-meta">
+              {d.episodeTitle} · {t('dictation.accuracy', d.total === 0 ? 100 : Math.round((d.right / d.total) * 100))}
+            </span>
+          </span>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => navigate(`/library/e/${d.episodeId}/dictation/${d.firstClipId}?review=${d.id}`)}
+          >
+            <Icon name="volume" size={14} />
+            {t('dash.reviewOpen')}
+          </button>
+        </div>
+      ))}
     </section>
   )
 }

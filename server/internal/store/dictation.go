@@ -279,17 +279,18 @@ type NewDictation struct {
 
 // Dictation is one done, and when it is to be listened to again.
 type Dictation struct {
-	ID           uuid.UUID       `json:"id"`
-	EpisodeID    uuid.UUID       `json:"episodeId"`
-	EpisodeTitle string          `json:"episodeTitle"`
-	FirstClipID  uuid.UUID       `json:"firstClipId"`
-	FirstLine    string          `json:"firstLine"`
-	Total        int             `json:"total"`
-	Right        int             `json:"right"`
-	Errors       DictationErrors `json:"errors"`
-	CreatedAt    time.Time       `json:"createdAt"`
-	ReviewOn     string          `json:"reviewOn"`
-	ReviewedAt   *time.Time      `json:"reviewedAt"`
+	ID           uuid.UUID `json:"id"`
+	EpisodeID    uuid.UUID `json:"episodeId"`
+	EpisodeTitle string    `json:"episodeTitle"`
+	// Nil once the line it started at has been deleted.
+	FirstClipID *uuid.UUID      `json:"firstClipId"`
+	FirstLine   string          `json:"firstLine"`
+	Total       int             `json:"total"`
+	Right       int             `json:"right"`
+	Errors      DictationErrors `json:"errors"`
+	CreatedAt   time.Time       `json:"createdAt"`
+	ReviewOn    string          `json:"reviewOn"`
+	ReviewedAt  *time.Time      `json:"reviewedAt"`
 }
 
 // SaveDictation keeps a dictation and puts it down to be listened to again
@@ -366,7 +367,7 @@ func (s *Store) Dictations(ctx context.Context, user uuid.UUID, now time.Time) (
 	var out DictationList
 	today, _, _ := game.Day(now)
 	var err error
-	if out.Due, err = s.dictations(ctx, user, `d.reviewed_at is null and d.review_on <= $2::date`, today); err != nil {
+	if out.Due, err = s.dictations(ctx, user, `d.reviewed_at is null and d.review_on <= $2::date and d.first_clip_id is not null`, today); err != nil {
 		return out, err
 	}
 	out.Recent, err = s.dictations(ctx, user, `true`)
