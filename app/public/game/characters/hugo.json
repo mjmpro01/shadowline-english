@@ -1,0 +1,1 @@
+{"frameWidth": 86, "frameHeight": 126, "bodyHeight": 112, "feet": 121, "anims": {"idle-down": [0, 1], "idle-up": [24, 25], "idle-left": [8, 9], "idle-right": [16, 17], "walk-down": [4, 5, 6, 7], "walk-up": [28, 29, 30, 31], "walk-left": [12, 13, 14, 15], "walk-right": [20, 21, 22, 23]}}

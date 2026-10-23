@@ -4,10 +4,12 @@ import type { NpcId, Target } from '../bus'
 import { FROM_TOWN, TILE } from '../world/farm'
 import {
   BUILDINGS,
+  FOUNTAIN,
   FROM_FARM_TO_TOWN,
   HALL_DOOR,
   TOWN_GATE,
   TOWN_NPCS,
+  TOWN_PROPS,
   TOWN_TREES,
   townBorderTrees,
   townDecor,
@@ -53,16 +55,18 @@ export class TownScene extends MapScene {
 
   protected buildWorld() {
     this.npcs = new Map()
-    this.drawGround(townGround(this.names))
+    const fountain = this.present.has('fountain')
+    this.drawGround(townGround(this.names, fountain))
     for (const d of townDecor(this.names)) {
       this.sized(this.add.image(d.x * TILE, d.y * TILE, 'tiles', d.index).setOrigin(0, 0).setDepth(0.5))
     }
     for (const b of BUILDINGS) {
       const x = (b.rect.x + b.rect.w / 2) * TILE
       const foot = (b.rect.y + b.rect.h) * TILE
-      this.stand('farmhouse', x, foot).setTint(b.tint)
+      const house = this.present.has(b.id) ? this.stand(b.id, x, foot) : this.stand('farmhouse', x, foot).setTint(b.tint)
+      // The name over the roof: the drawn houses are taller than their plot.
       this.add
-        .text(x, b.rect.y * TILE + 2, SIGNS[b.id], {
+        .text(x, Math.max(2, foot - house.displayHeight - 6), SIGNS[b.id], {
           fontFamily: 'Georgia, serif',
           fontSize: '28px',
           color: '#fff8e7',
@@ -74,6 +78,14 @@ export class TownScene extends MapScene {
         .setDepth(foot + 1)
     }
     this.drawHall()
+    if (fountain) {
+      const f = this.sized(this.add.sprite((FOUNTAIN.x + FOUNTAIN.w / 2) * TILE, (FOUNTAIN.y + FOUNTAIN.h) * TILE + 2, 'fountain', 0))
+      f.setOrigin(0.5, 1).setDepth(f.y)
+      f.play('fountain')
+    }
+    for (const p of TOWN_PROPS) {
+      if (this.present.has(p.key)) this.stand(p.key, (p.rect.x + p.rect.w / 2) * TILE, (p.rect.y + p.rect.h) * TILE)
+    }
     ;[...TOWN_TREES, ...townBorderTrees()].forEach((t, i) =>
       this.stand('tree', (t.x + 0.5) * TILE, (t.y + 1) * TILE, (t.x * 3 + t.y * 5 + i) % this.count('tree', TREE_KINDS)),
     )

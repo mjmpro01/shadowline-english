@@ -408,6 +408,15 @@ export abstract class MapScene extends Phaser.Scene {
       frameRate: 2,
       repeat: -1,
     })
+    // The town's fountain, playing; only drawn when its picture is there.
+    if (this.present.has('fountain')) {
+      make({
+        key: 'fountain',
+        frames: this.anims.generateFrameNumbers('fountain', { frames: this.strip('fountain', 4) }),
+        frameRate: 5,
+        repeat: -1,
+      })
+    }
     make({
       key: 'dust-puff',
       frames: this.anims.generateFrameNumbers('dust', { frames: this.strip('dust', DUST_FRAMES) }),

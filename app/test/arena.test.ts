@@ -6,7 +6,9 @@ import {
   FARM_TOWN_GATE,
   FROM_TOWN,
   FROM_WOODS,
+  HEIGHT,
   TILE,
+  WIDTH,
   ground,
   plotRect,
   solids,
@@ -20,6 +22,7 @@ import {
   SQUARE,
   TOWN_GATE,
   TOWN_NPCS,
+  TOWN_PROPS,
   TOWN_TREES,
   WORD_HALL,
   door,
@@ -161,6 +164,26 @@ describe('Echo Town', () => {
     expect(blocks(townSolids(), HALL_DOOR.x, HALL_DOOR.y)).toBe(false)
     // One step down from the door is the square.
     expect(blocks([SQUARE], HALL_DOOR.x, HALL_DOOR.y + 1)).toBe(true)
+  })
+
+  it('can be walked from the gate to every door, around the square\'s furniture', () => {
+    const walls = townSolids()
+    const [sx, sy] = tileOf(FROM_FARM_TO_TOWN)
+    const seen = new Set([`${sx},${sy}`])
+    const queue = [[sx, sy]]
+    while (queue.length) {
+      const [x, y] = queue.shift()!
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx
+        const ny = y + dy
+        if (nx < 0 || ny < 0 || nx >= WIDTH || ny >= HEIGHT || seen.has(`${nx},${ny}`) || blocks(walls, nx, ny)) continue
+        seen.add(`${nx},${ny}`)
+        queue.push([nx, ny])
+      }
+    }
+    for (const b of BUILDINGS) expect(seen.has(`${door(b).x},${door(b).y}`), b.id).toBe(true)
+    expect(seen.has(`${HALL_DOOR.x},${HALL_DOOR.y}`)).toBe(true)
+    for (const p of TOWN_PROPS) expect(blocks([SQUARE], p.rect.x, p.rect.y), p.key).toBe(true)
   })
 
   it('finds the gifts in the bag', () => {

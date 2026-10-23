@@ -31,6 +31,8 @@ export const CHAR_ROWS = {
 export const NPC_IDS = ['sir_shadow', 'mira', 'bram'] as const
 export const TOWN_NPC_IDS = ['elsa', 'orin', 'lina', 'hugo', 'vy'] as const
 export const ALL_NPC_IDS = [...NPC_IDS, ...TOWN_NPC_IDS] as const
+/** The town's houses and the things in its square, each a picture of its own. */
+export const TOWN_OBJECTS = ['town_hall', 'clinic', 'tower', 'library', 'cafe', 'bench', 'lamp', 'notice_board'] as const
 export const CROP_IDS = ['sprout', 'bloom', 'golden'] as const
 /** Growth stages a crop sheet holds: planted, sprout, growing, nearly, ripe. */
 export const CROP_STAGES = 5
@@ -90,6 +92,10 @@ export const ASSETS: AssetSpec[] = [
   { key: 'rock_big', file: 'objects/rock_big.png' },
   { key: 'bush', file: 'objects/bush.png' },
   { key: 'stump', file: 'objects/stump.png' },
+  // Echo Town. Without their files the houses are the farmhouse tinted, and
+  // the fountain is the pond's water.
+  ...TOWN_OBJECTS.map((id) => ({ key: id, file: `objects/${id}.png` })),
+  { key: 'fountain', file: 'objects/fountain.png', frame: { w: 40, h: 36 } },
   ...CROP_IDS.map((id) => ({ key: `crop-${id}`, file: `crops/${id}.png`, frame: { w: 16, h: 32 } })),
   { key: 'interact', file: 'fx/interact.png', frame: { w: 16, h: 16 } },
   { key: 'harvest_pop', file: 'fx/harvest_pop.png', frame: { w: 16, h: 16 } },

@@ -211,6 +211,26 @@
   "flower_red": {
    "atlas_x": 3,
    "atlas_y": 3
+  },
+  "plaza": {
+   "atlas_x": 4,
+   "atlas_y": 3
+  },
+  "plaza_grey": {
+   "atlas_x": 5,
+   "atlas_y": 3
+  },
+  "plaza_brick": {
+   "atlas_x": 6,
+   "atlas_y": 3
+  },
+  "flowerbed_wood": {
+   "atlas_x": 7,
+   "atlas_y": 3
+  },
+  "flowerbed_stone": {
+   "atlas_x": 8,
+   "atlas_y": 3
   }
  }
 }
