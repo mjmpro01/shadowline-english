@@ -39,20 +39,24 @@ farm is playable with any subset of this folder.
 | `portraits/*.png` | Four faces side by side: neutral, happy, thinking, worried |
 | `ui/*.png` | The wooden frames of the panels (`dialog_box`, `panel`; their corner blocks are 52 px), the joystick, the action button |
 
-### Still to draw: Echo Town (chapter 3)
+### Echo Town (chapter 3)
 
-Until these arrive the town is made of what is already here: the farmhouse
-tinted for each house, painted stand-ins for the people, and an initial in
-place of each portrait.
+From `art/echo_town/`, cut by the same script:
 
 | File | What it is |
 |---|---|
-| `characters/{elsa,orin,lina,hugo,vy}.png` + `.json` | The five townsfolk, laid out like the farm's people (they only stand and walk): Mayor Elsa (a sash), Sage Orin (a tall pointed hat), Lina the librarian (glasses), Hugo at the café (an apron), Dr. Vy (a white coat) |
-| `portraits/{elsa,orin,lina,hugo,vy}.png` | Four faces each, as for the farm's people |
-| `objects/{town_hall,clinic,tower,library,cafe}.png` | The five houses, each about the farmhouse's size (5×5 tiles, door at the middle of the foot), a sign over the door |
-| `objects/fountain.png` | The fountain in the middle of the square, 2×2 tiles |
-| `tiles/` additions | Paving for the square (the farm's `stone_path` stands in), flower beds |
-| `items/{flowers,old_book,wool_scarf,honey_cake,coffee,soup}.png` | Icons for the gifts and Hugo's café |
+| `characters/{elsa,orin,lina,hugo,vy}.png` + `.json` | The five townsfolk, laid out like the farm's people (standing and walking, four ways). The pack draws their walking frames smaller than their standing ones; the script brings them up to the same height |
+| `portraits/{elsa,orin,lina,hugo,vy}.png` | Four faces each: neutral, happy, thinking, worried |
+| `objects/{town_hall,clinic,tower,library,cafe}.png` | The five houses, each on its 5×5 tiles with its door at the middle of the foot (the town hall 92 map px wide, the tower 46 and tall) |
+| `objects/fountain.png` | The fountain in the middle of the square, four frames of its water playing, 40 map px wide |
+| `objects/{bench,lamp,notice_board}.png` | The square's furniture |
+| `tiles/farm.png` additions | `plaza` (the square's sandstone), `plaza_grey`, `plaza_brick`, and two flower beds, `flowerbed_wood` and `flowerbed_stone` |
+| `items/{flowers,old_book,wool_scarf,honey_cake,coffee,soup}.png` | The gifts and Hugo's café. The pack's hammer and salve are left to the icons pack's |
+
+### Still to draw
+
+| File | What it is |
+|---|---|
 | `objects/word_hall.png` | The Word Hall north of the square, 6×5 tiles, door at the middle of the foot: closed by the Silence, grey with mist and three notes pinned to its door (until then the farmhouse, larger and greyed, with painted mist). A second, restored look will be wanted for chapter 4 |
 | `items/ipa_glasses.png` | Sage Orin's glasses, which read the Lexi's notes (a 👓 stands in) |
 

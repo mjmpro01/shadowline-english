@@ -274,6 +274,9 @@ test('a chat a day and a gift they love make a friend in town', async ({ page })
   const talk = page.getByRole('dialog', { name: 'Mayor Elsa' })
   const chat = talk.locator('.arena-chat')
   await expect(chat.locator('.arena-option')).toHaveCount(3)
+  // A key pressed while the screen is still busy with the walk is not a
+  // reply; the buttons say when it is listening.
+  await expect(chat.locator('.arena-option').first()).toBeEnabled()
   // The right reply is the server's to know; the test asks it, then uses the keys.
   const { reply } = (await (await page.request.get(`${API_URL}/api/test/game/talk/answer?npc=elsa`)).json()) as {
     reply: number

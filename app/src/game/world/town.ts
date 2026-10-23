@@ -18,8 +18,8 @@ import {
  * Echo Town: south of the farm, a square of stone with a fountain, and the
  * houses of the people who live here, each with its owner at the door.
  *
- * Laid out in 16px tiles like the farm. Until the town is drawn, its houses
- * are the farmhouse in other colours, each with its name over the door.
+ * Laid out in 16px tiles like the farm. Each house has its name over the
+ * door; without its picture it is the farmhouse in another colour.
  */
 
 /** The gap in the trees on the north edge: back to the farm. */
@@ -84,23 +84,36 @@ const PATHS: Rect[] = [
   { x: 23, y: 16, w: 1, h: 2 },
 ]
 
+/** The square's furniture: a lamp at each corner, two benches facing the
+ *  fountain, and the town's notice board. Clear of every way in. */
+export const TOWN_PROPS: { key: 'lamp' | 'bench' | 'notice_board'; rect: Rect }[] = [
+  { key: 'lamp', rect: { x: 9, y: 8, w: 1, h: 1 } },
+  { key: 'lamp', rect: { x: 22, y: 8, w: 1, h: 1 } },
+  { key: 'lamp', rect: { x: 9, y: 15, w: 1, h: 1 } },
+  { key: 'lamp', rect: { x: 22, y: 15, w: 1, h: 1 } },
+  { key: 'bench', rect: { x: 12, y: 14, w: 2, h: 1 } },
+  { key: 'bench', rect: { x: 18, y: 14, w: 2, h: 1 } },
+  { key: 'notice_board', rect: { x: 13, y: 8, w: 2, h: 1 } },
+]
+
 const isPath = (x: number, y: number) => PATHS.some((p) => inRect(x, y, p))
 const isSquare = (x: number, y: number) => inRect(x, y, SQUARE)
 const isWater = (x: number, y: number) => inRect(x, y, FOUNTAIN)
 
-/** The ground: grass, paths, the paved square, and the fountain's water. */
-export function townGround(names: TileNames): Cell[][] {
+/** The ground: grass, paths, the paved square, and — when the fountain is
+ *  not drawn standing on the paving — the pond's water in its place. */
+export function townGround(names: TileNames, fountainDrawn = false): Cell[][] {
   const pond = (i: number) => ({ index: tile(names, `pond_${i}`) })
   const rows: Cell[][] = []
   for (let y = 0; y < HEIGHT; y++) {
     const row: Cell[] = []
     for (let x = 0; x < WIDTH; x++) {
-      if (isWater(x, y)) {
+      if (isWater(x, y) && !fountainDrawn) {
         // Two by two: the pond's four outer corners.
         const top = y === FOUNTAIN.y
         const left = x === FOUNTAIN.x
         row.push(pond(top ? (left ? 5 : 7) : left ? 6 : 8))
-      } else if (isSquare(x, y)) row.push({ index: tile(names, 'stone_path') })
+      } else if (isSquare(x, y)) row.push({ index: tile(names, names.plaza !== undefined ? 'plaza' : 'stone_path') })
       else if (isPath(x, y)) row.push(pathCell(names, x, y, (a, b) => isPath(a, b) || isSquare(a, b)))
       else row.push(grassCell(names, x + 5, y + 3))
     }
@@ -144,6 +157,7 @@ export function townSolids(): Rect[] {
   return [
     ...border([TOWN_GATE]),
     FOUNTAIN,
+    ...TOWN_PROPS.map((p) => p.rect),
     WORD_HALL,
     ...BUILDINGS.map((b) => b.rect),
     ...TOWN_TREES.map((t) => ({ x: t.x, y: t.y, w: 1, h: 1 })),

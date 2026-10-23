@@ -581,15 +581,6 @@
 .arena-heart-event .btn {
   align-self: flex-start;
 }
-.arena-portrait-initial {
-  display: grid;
-  place-content: center;
-  color: #fffaf0;
-  font-family: var(--font-heading);
-  font-size: 40px;
-  font-weight: 700;
-  border-radius: 12px;
-}
 .arena-friend .arena-portrait {
   width: 48px;
   height: 48px;

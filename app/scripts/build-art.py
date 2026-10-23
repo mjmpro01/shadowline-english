@@ -425,6 +425,8 @@ def tiles():
     named["flower_yellow"] = small((833, 903, 918, 997), 0.6)
     named["flower_red"] = small((610, 893, 714, 997), 0.7)
 
+    town_tiles(named)
+
     # Each tile sits in its own cell with its edge pixels repeated around it,
     # so smoothing a tile as it shrinks never reaches into its neighbour (which
     # showed as faint lines between grass tiles).
@@ -671,6 +673,108 @@ def monsters(frames):
         save(fit(standing, h=192), f"monsters/{name}_battle.png")
 
 
+# --- Echo Town (chapter 3) ---------------------------------------------------------
+
+TOWN = os.path.join(HERE, "..", "art", "echo_town")
+TOWN_PEOPLE = ["elsa", "orin", "lina", "hugo", "vy"]
+
+
+def load_town(name):
+    return Image.open(os.path.join(TOWN, f"{name}.png")).convert("RGBA")
+
+
+def town_people():
+    """The five townsfolk: a column each, standing (4 rows of 2) above and
+    walking (4 rows of 4) below, rows facing down, left, right, up — the
+    farm's people's layout."""
+    img = load_town("npcs_town")
+    facing = ["down", "left", "right", "up"]
+    standing = [(80, 20, 305, 610), (360, 20, 625, 610), (660, 20, 885, 610), (940, 20, 1180, 610), (1240, 20, 1470, 610)]
+    walking = [(15, 610, 322, 1024), (330, 610, 636, 1024), (638, 610, 927, 1024), (929, 610, 1218, 1024), (1222, 610, 1530, 1024)]
+    for name, idle_box, walk_box in zip(TOWN_PEOPLE, standing, walking):
+        idle = split_block(img, idle_box, 4, 2)
+        walk = split_block(img, walk_box, 4, 4)
+        # The walking rows are drawn smaller than the standing ones; brought
+        # up to the same height, so a person does not shrink as they set off.
+        tall = lambda rows: np.median([trim(f).height for row in rows for f in row])
+        k = tall(idle) / tall(walk)
+        walk = [[f.resize((round(f.width * k), round(f.height * k)), Image.LANCZOS) for f in row] for row in walk]
+        frames = {}
+        for r, d in enumerate(facing):
+            frames[f"idle-{d}"] = idle[r]
+            frames[f"walk-{d}"] = walk[r]
+        anims = {f"{a}-{d}": [f"{a}-{d}"] for a in ("idle", "walk") for d in DIRS}
+        character(name, frames, anims, "idle-down")
+
+
+def town_portraits():
+    """A row each, in the order of TOWN_PEOPLE: neutral, happy, thinking,
+    worried, as for the farm's people."""
+    grid = split_block(load_town("portraits_town"), (250, 0, 1290, 1024), 5, 4)
+    side = 192
+    for name, faces in zip(TOWN_PEOPLE, grid):
+        sheet = Image.new("RGBA", (side * 4, side))
+        for k, face in enumerate(faces):
+            s = side / max(face.size)
+            face = face.resize((round(face.width * s), round(face.height * s)), Image.LANCZOS)
+            sheet.alpha_composite(face, (k * side + (side - face.width) // 2, side - face.height))
+        save(sheet, f"portraits/{name}.png")
+
+
+def town_objects(frames):
+    img = load_town("objects_town")
+    piece = lambda box: split_block(img, box, 1, 1)[0][0]
+    # Widths in map pixels, times SCALE: each house about the farmhouse's
+    # 88, standing on its 5 × 5 tiles; the tower is narrow and tall.
+    houses = {
+        "town_hall": ((55, 5, 645, 548), 92),
+        "clinic": ((660, 200, 1112, 550), 80),
+        "tower": ((1125, 0, 1400, 556), 46),
+        "library": ((85, 548, 702, 892), 88),
+        "cafe": ((728, 556, 1245, 892), 84),
+    }
+    for name, (box, w) in houses.items():
+        save(fit(piece(box), w=w * SCALE), f"objects/{name}.png")
+    fountain = split_block(img, (35, 900, 790, 1080), 1, 4)[0]
+    frames["fountain"] = frames_sheet([fit(f, w=40 * SCALE) for f in fountain], "objects/fountain.png")
+    save(fit(piece((815, 935, 1080, 1072)), w=30 * SCALE), "objects/bench.png")
+    save(fit(piece((1085, 880, 1185, 1078)), h=30 * SCALE), "objects/lamp.png")
+    save(fit(piece((1192, 885, 1440, 1075)), w=30 * SCALE), "objects/notice_board.png")
+
+
+def town_tiles(named):
+    """The square's paving, from the middle of the sandstone patch (its
+    border is a frame, not paving); and the two flower beds, as tiles."""
+    img = load_town("tiles_town")
+    for name, box in [("plaza", (185, 63, 522, 397)), ("plaza_grey", (559, 63, 890, 397)), ("plaza_brick", (927, 63, 1263, 397))]:
+        x0, y0, x1, y1 = box
+        inset = (x1 - x0) // 5
+        middle = img.crop((x0 + inset, y0 + inset, x1 - inset, y1 - inset)).resize((TILE, TILE), Image.LANCZOS)
+        named[name] = seamless(middle)
+    for name, box in [("flowerbed_wood", (343, 696, 698, 1022)), ("flowerbed_stone", (754, 696, 1108, 1017))]:
+        named[name] = trim(img.crop(box)).resize((TILE, TILE), Image.LANCZOS)
+
+
+TOWN_ITEMS = {
+    "flowers": (60, 65, 475, 470),
+    "old_book": (495, 95, 850, 455),
+    "wool_scarf": (890, 90, 1290, 462),
+    "honey_cake": (1355, 110, 1732, 448),
+    "coffee": (60, 470, 412, 828),
+    "soup": (500, 470, 850, 828),
+}
+
+
+def town_items():
+    """The gifts and Hugo's food. The hammer and the salve on the same board
+    are already drawn, from the icons pack."""
+    img = load_town("items_town")
+    for item, box in TOWN_ITEMS.items():
+        a = np.array(trim(img.crop(box)))
+        a[..., 3] = np.where(a[..., 3] > SOLID, 255, np.where(a[..., 3] > 20, a[..., 3], 0))
+        save(icon(Image.fromarray(a)), f"items/{item}.png")
+
+
 def main():
     frames = {}
     people()
@@ -682,6 +786,10 @@ def main():
     portraits()
     effects(frames)
     monsters(frames)
+    town_people()
+    town_portraits()
+    town_objects(frames)
+    town_items()
     manifest = {"scale": SCALE, "frames": frames}
     with open(os.path.join(OUT, "art.json"), "w") as f:
         json.dump(manifest, f, indent=1)
