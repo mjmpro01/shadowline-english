@@ -17,7 +17,7 @@ import (
 // again from (player, day, person) on every request, so the right reply is
 // never written down nor sent to the browser.
 
-func (p profileRow) townOpen() bool { return p.mainStep >= game.TownStep }
+func (p profileRow) townOpen() bool { return p.reached(game.TownStep) }
 
 // FriendView is how well the player knows someone, as the town draws it.
 type FriendView struct {

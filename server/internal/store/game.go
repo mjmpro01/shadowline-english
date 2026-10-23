@@ -122,9 +122,26 @@ type profileRow struct {
 	mainStepAt time.Time
 	hp         int
 	hpAt       time.Time
+	// An admin, who can go anywhere in the game without the story having
+	// got there: everything can be tried out at once. The story itself still
+	// goes step by step.
+	admin bool
 }
 
-func (p profileRow) woodsOpen() bool { return p.mainStep >= game.WoodsStep }
+// reached is whether the story has opened what opens at step — or whether
+// the player is an admin, for whom everything is open.
+func (p profileRow) reached(step int) bool { return p.admin || p.mainStep >= step }
+
+func (p profileRow) woodsOpen() bool { return p.reached(game.WoodsStep) }
+
+// hasGlasses is whether the player can read the Lexi's notes: with Sage
+// Orin's glasses, or as an admin.
+func (p profileRow) hasGlasses(ctx context.Context, tx pgx.Tx, user uuid.UUID) (bool, error) {
+	if p.admin {
+		return true, nil
+	}
+	return hasItem(ctx, tx, user, "ipa_glasses")
+}
 
 // ensureGame gives a player a farm the first time they arrive: the starting
 // gold, the first plots cleared, a few seeds in the bag.
@@ -159,10 +176,10 @@ func lockGame(ctx context.Context, tx pgx.Tx, user uuid.UUID) (profileRow, time.
 	var now time.Time
 	err := tx.QueryRow(ctx, `
 		select gold, stamina, stamina_at, slept_at, map, x, y, main_step, main_step_at,
-		       hp, hp_at, now()
+		       hp, hp_at, coalesce((select is_admin from users where id = $1), false), now()
 		from game_profiles where user_id = $1 for update`, user).
 		Scan(&p.gold, &p.stamina, &p.staminaAt, &p.sleptAt, &p.mapName, &p.x, &p.y,
-			&p.mainStep, &p.mainStepAt, &p.hp, &p.hpAt, &now)
+			&p.mainStep, &p.mainStepAt, &p.hp, &p.hpAt, &p.admin, &now)
 	return p, now, err
 }
 
@@ -273,7 +290,7 @@ func readState(ctx context.Context, tx pgx.Tx, user uuid.UUID, p profileRow, now
 			return out, err
 		}
 		for _, sp := range game.Spawns {
-			if p.mainStep < sp.Step {
+			if !p.reached(sp.Step) {
 				continue // the lair is empty until the story fills it
 			}
 			view := SpawnView{Spawn: sp}
@@ -306,7 +323,7 @@ func readState(ctx context.Context, tx pgx.Tx, user uuid.UUID, p profileRow, now
 		out.UpgradeCosts = append(out.UpgradeCosts, game.UpgradeCost(level))
 	}
 	for _, it := range game.Items {
-		out.Shop = append(out.Shop, ShopItem{Item: it, Unlocked: p.mainStep >= it.UnlockStep})
+		out.Shop = append(out.Shop, ShopItem{Item: it, Unlocked: p.reached(it.UnlockStep)})
 	}
 
 	rows, err := tx.Query(ctx, `
@@ -512,7 +529,7 @@ func (s *Store) Buy(ctx context.Context, user uuid.UUID, item string, qty int) (
 		if qty < 1 || qty > 99 {
 			return badMove("bad_qty", "buy between 1 and 99")
 		}
-		if p.mainStep < it.UnlockStep {
+		if !p.reached(it.UnlockStep) {
 			return refuse("locked", "that is not for sale yet")
 		}
 		cost := it.Price * qty

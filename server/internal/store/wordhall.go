@@ -18,9 +18,9 @@ import (
 // is kept with its answer in game_quizzes until it is answered, the way a
 // fight keeps its question: the browser is only ever sent the choices.
 
-func (p profileRow) hallOpen() bool    { return p.mainStep >= game.HallStep }
-func (p profileRow) libraryOpen() bool { return p.mainStep >= game.LibraryStep }
-func (p profileRow) lettersOpen() bool { return p.mainStep >= game.LetterStep }
+func (p profileRow) hallOpen() bool    { return p.reached(game.HallStep) }
+func (p profileRow) libraryOpen() bool { return p.reached(game.LibraryStep) }
+func (p profileRow) lettersOpen() bool { return p.reached(game.LetterStep) }
 
 // The words the notes and the library's questions come from when the
 // learner's own run short, and the words to choose among.
@@ -139,7 +139,7 @@ func (s *Store) VisitHall(ctx context.Context, user uuid.UUID) (HallView, GameSt
 				return err
 			}
 		}
-		glasses, err := hasItem(ctx, tx, user, "ipa_glasses")
+		glasses, err := p.hasGlasses(ctx, tx, user)
 		if err != nil || !glasses {
 			return err
 		}
@@ -172,7 +172,7 @@ func (s *Store) VisitHall(ctx context.Context, user uuid.UUID) (HallView, GameSt
 func (s *Store) ReadNote(ctx context.Context, user uuid.UUID, answer string) (QuizAnswer, GameState, error) {
 	var res QuizAnswer
 	state, err := s.gameAction(ctx, user, func(tx pgx.Tx, p *profileRow, now time.Time) error {
-		glasses, err := hasItem(ctx, tx, user, "ipa_glasses")
+		glasses, err := p.hasGlasses(ctx, tx, user)
 		if err != nil {
 			return err
 		}
