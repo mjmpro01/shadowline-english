@@ -180,7 +180,7 @@ func readQuests(ctx context.Context, tx pgx.Tx, user uuid.UUID, p profileRow, no
 	if err != nil {
 		return out, err
 	}
-	open := game.Open{Woods: p.woodsOpen(), Town: p.townOpen(), Glasses: glasses, Library: p.libraryOpen()}
+	open := game.Open{Woods: p.woodsOpen(), Town: p.townOpen(), Glasses: glasses, Library: p.libraryOpen(), Rooms: p.roomsOpen()}
 	for _, d := range game.DailyFor(user.String(), day, open) {
 		n, err := countFor(ctx, tx, user, d.Counter, start, end)
 		if err != nil {

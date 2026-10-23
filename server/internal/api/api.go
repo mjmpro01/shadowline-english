@@ -210,6 +210,10 @@ func (s *Server) Routes() http.Handler {
 			r.Post("/game/library/donate", s.handleLibraryDonate)
 			r.Post("/game/library/claim", s.handleLibraryClaim)
 			r.Post("/game/letter/deliver", s.handleLetterDeliver)
+			r.Get("/game/rooms", s.handleRooms)
+			r.Post("/game/rooms/ask", s.handleRoomsAsk)
+			r.Post("/game/rooms/answer", s.handleRoomsAnswer)
+			r.Post("/game/rooms/claim", s.handleRoomsClaim)
 			if s.Cfg.AuthFake {
 				// For the browser tests: the signed-in player's answer key and
 				// story step. Absent from a normal deployment.

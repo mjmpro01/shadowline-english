@@ -34,6 +34,8 @@ type QuizView struct {
 	Kind    string   `json:"kind"`
 	Prompt  string   `json:"prompt"`
 	Options []string `json:"options"`
+	// Say is the word to speak aloud, for a word to be heard.
+	Say string `json:"say,omitempty"`
 }
 
 // quiz is a question as it is kept, answer and all.

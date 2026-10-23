@@ -58,6 +58,10 @@ type GameProfile struct {
 	TownOpen    bool `json:"townOpen"`
 	HallOpen    bool `json:"hallOpen"`
 	LibraryOpen bool `json:"libraryOpen"`
+	// RoomsOpen: the Word Hall's rooms, chapter 4; RoomsDone, how many of
+	// them have their words back.
+	RoomsOpen bool `json:"roomsOpen"`
+	RoomsDone int  `json:"roomsDone"`
 }
 
 type GamePlot struct {
@@ -268,7 +272,7 @@ func readState(ctx context.Context, tx pgx.Tx, user uuid.UUID, p profileRow, now
 			Gold: p.gold, Stamina: stamina, StaminaMax: game.StaminaMax,
 			HP: hp, HPMax: game.HPMax,
 			Map: p.mapName, X: p.x, Y: p.y, MainStep: p.mainStep, WoodsOpen: p.woodsOpen(), TownOpen: p.townOpen(),
-			HallOpen: p.hallOpen(), LibraryOpen: p.libraryOpen(),
+			HallOpen: p.hallOpen(), LibraryOpen: p.libraryOpen(), RoomsOpen: p.roomsOpen(),
 		},
 		Inventory:    map[string]int{},
 		Crops:        game.Crops,
@@ -299,6 +303,13 @@ func readState(ctx context.Context, tx pgx.Tx, user uuid.UUID, p profileRow, now
 			}
 			out.Spawns = append(out.Spawns, view)
 		}
+	}
+	if p.roomsOpen() {
+		done, err := roomsRestored(ctx, tx, user)
+		if err != nil {
+			return out, err
+		}
+		out.Profile.RoomsDone = done
 	}
 	if p.townOpen() {
 		f, err := friends(ctx, tx, user, now)

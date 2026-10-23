@@ -20,7 +20,8 @@ type Counter struct {
 	//   "spent"   — gold spent
 	//   "talked"  — different people in town chatted with
 	//   "hearts"  — the most hearts with anyone in town, whenever made
-	//   (and events: word_hall, note_right, donate, letter_done)
+	//   (and events: word_hall, note_right, donate, letter_done, room_word,
+	//   room_done of a room)
 	Kind     string `json:"-"`
 	Item     string `json:"-"`
 	Of       string `json:"-"`
@@ -68,6 +69,8 @@ const (
 	// library; LetterStep is Elsa's, from which the townsfolk write.
 	LibraryStep = 24
 	LetterStep  = 25
+	// RoomsStep is chapter 4's first step: the Word Hall's rooms open.
+	RoomsStep = 27
 )
 
 // MainQuests is the story so far. Chapter 1, the farm, doubles as the
@@ -388,6 +391,66 @@ var MainQuests = []Step{
 		Target:    0,
 		Reward:    Reward{Gold: 30},
 	},
+	// --- Chapter 4: the Word Hall's rooms ---------------------------------
+	// A room filled before its step comes up still counts: the rooms are all
+	// open at once, and nobody should have to fill one twice.
+	{
+		ID: "into_the_hall", Chapter: 4, Giver: "orin",
+		Title: Text{"Into the Word Hall", "Bước vào Word Hall"},
+		Lines: []Text{
+			{"The door opens now. Inside, every room is quiet, and every shelf is empty.", "Giờ cánh cửa đã mở. Bên trong, phòng nào cũng im lặng, kệ nào cũng trống trơn."},
+			{"Each room keeps one kind of word: the kitchen's, the body's, the garden's…", "Mỗi phòng giữ một loại từ: từ của gian bếp, của cơ thể, của khu vườn…"},
+			{"Each empty place says what its word means. Bring the word back, and it stays.", "Mỗi chỗ trống ghi nghĩa của từ. Hãy gọi từ đó trở lại, và nó sẽ ở lại."},
+		},
+		Objective: Text{"Put a word back in a room", "Đặt lại một từ vào một căn phòng"},
+		Counter:   Counter{Kind: "event", Item: "room_word"}, Target: 1,
+		Reward: Reward{Gold: 30},
+	},
+	{
+		ID: "kitchen_room", Chapter: 4, Giver: "hugo",
+		Title: Text{"A kitchen without words", "Gian bếp không lời"},
+		Lines: []Text{
+			{"A kitchen with no words! How do you ask for a spoon? How do you say it smells good?", "Một gian bếp không có từ nào! Làm sao xin một cái thìa? Làm sao khen món ăn thơm?"},
+			{"Fill the hall's kitchen for me, and I will cook you something good.", "Lấp đầy gian bếp trong Word Hall giúp tôi, tôi sẽ nấu cho cậu một món thật ngon."},
+		},
+		Objective: Text{"Fill the Kitchen", "Lấp đầy Gian bếp"},
+		Counter:   Counter{Kind: "event", Item: "room_done", Of: "kitchen", Ever: true}, Target: 1,
+		Reward: Reward{Gold: 80, Items: map[string]int{"soup": 2}},
+	},
+	{
+		ID: "body_room", Chapter: 4, Giver: "vy",
+		Title: Text{"Where does it hurt?", "Đau ở đâu?"},
+		Lines: []Text{
+			{"My patients point at their knee and cannot say knee. It is hard to help them.", "Bệnh nhân chỉ vào đầu gối mà không nói được chữ đầu gối. Thật khó giúp họ."},
+			{"Fill the Body Room, please. A doctor needs those words.", "Làm ơn lấp đầy Phòng Cơ thể. Bác sĩ cần những từ đó."},
+		},
+		Objective: Text{"Fill the Body Room", "Lấp đầy Phòng Cơ thể"},
+		Counter:   Counter{Kind: "event", Item: "room_done", Of: "body", Ever: true}, Target: 1,
+		Reward: Reward{Gold: 80, Items: map[string]int{"herb_salve": 2}},
+	},
+	{
+		ID: "nature_room", Chapter: 4, Giver: "lina",
+		Title: Text{"The garden's names", "Tên của khu vườn"},
+		Lines: []Text{
+			{"My books about the woods have blank pages where the animals' names were.", "Sách về khu rừng của tôi có những trang trống, chỗ từng ghi tên các con vật."},
+			{"If the Garden Room is filled, maybe the names come back to the pages too.", "Nếu Phòng Thiên nhiên được lấp đầy, có lẽ những cái tên cũng trở lại trang sách."},
+		},
+		Objective: Text{"Fill the Garden Room", "Lấp đầy Phòng Thiên nhiên"},
+		Counter:   Counter{Kind: "event", Item: "room_done", Of: "nature", Ever: true}, Target: 1,
+		Reward: Reward{Gold: 80, Items: map[string]int{"seed_bloom": 2}},
+	},
+	{
+		ID: "half_the_hall", Chapter: 4, Giver: "elsa",
+		Title: Text{"Half the hall speaks", "Một nửa Word Hall đã cất tiếng"},
+		Lines: []Text{
+			{"Listen — the hall is humming. Three rooms are awake.", "Nghe này, Word Hall đang ngân nga. Ba căn phòng đã thức dậy."},
+			{"Pip, Thump and Fern thank you. But three doors upstairs are still shut tight.", "Pip, Thump và Fern cảm ơn cậu. Nhưng ba cánh cửa trên lầu vẫn còn đóng chặt."},
+			{"Rest a little. When they open, we will need you again.", "Nghỉ ngơi một chút đi. Khi chúng mở ra, chúng tôi sẽ lại cần cậu."},
+		},
+		Objective: Text{"Listen to Mayor Elsa", "Nghe Thị trưởng Elsa kể"},
+		Target:    0,
+		Reward:    Reward{Gold: 50},
+	},
 }
 
 // Daily is one of the day's three small tasks.
@@ -404,15 +467,17 @@ type Daily struct {
 	Town    bool `json:"town"`
 	Glasses bool `json:"-"`
 	Library bool `json:"-"`
+	Rooms   bool `json:"-"`
 }
 
 // Open is what of the world a player has reached, for the day's draw.
 type Open struct {
-	Woods, Town, Glasses, Library bool
+	Woods, Town, Glasses, Library, Rooms bool
 }
 
 func (o Open) has(d Daily) bool {
-	return (!d.Woods || o.Woods) && (!d.Town || o.Town) && (!d.Glasses || o.Glasses) && (!d.Library || o.Library)
+	return (!d.Woods || o.Woods) && (!d.Town || o.Town) && (!d.Glasses || o.Glasses) && (!d.Library || o.Library) &&
+		(!d.Rooms || o.Rooms)
 }
 
 // DailyPool is what the day's tasks are drawn from. The learning ones are
@@ -449,6 +514,8 @@ var DailyPool = []Daily{
 		Learning: true, Counter: Counter{Kind: "event", Item: "note"}, Target: 3, Reward: Reward{Gold: 40, Stamina: 5}},
 	{ID: "donate1", Title: Text{"Give a word to the library", "Tặng thư viện một từ"}, Town: true, Library: true,
 		Learning: true, Counter: Counter{Kind: "event", Item: "donate"}, Target: 1, Reward: Reward{Gold: 40}},
+	{ID: "rooms2", Title: Text{"Put 2 words back in the Word Hall", "Đặt lại 2 từ vào Word Hall"}, Town: true, Rooms: true,
+		Learning: true, Counter: Counter{Kind: "event", Item: "room_word"}, Target: 2, Reward: Reward{Gold: 40, Stamina: 5}},
 }
 
 // DailyCount is how many tasks a day holds.
