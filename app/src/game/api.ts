@@ -61,6 +61,10 @@ export interface GameState {
     /** The Word Hall's door is in the story; Lina takes words. */
     hallOpen: boolean
     libraryOpen: boolean
+    /** Chapter 4: the Word Hall's rooms are open, and how many have their
+     *  words back. */
+    roomsOpen: boolean
+    roomsDone: number
   }
   plots: Plot[]
   inventory: Record<string, number>
@@ -117,6 +121,41 @@ export interface Library {
   available: number
   asked: Quiz | null
   askedWord: string
+}
+
+/** One place in a room's bundle. An empty one shows only what its word means. */
+export interface RoomPlace {
+  vi: string
+  key: string
+  filled: boolean
+  triedToday: boolean
+  word?: string
+  ipa?: string
+}
+
+export interface RoomBundle {
+  id: string
+  name: Bilingual
+  reward: Reward
+  words: RoomPlace[]
+  full: boolean
+  claimed: boolean
+}
+
+export interface Room {
+  id: string
+  name: Bilingual
+  lexi: Bilingual
+  icon: string
+  reward: Reward
+  bundles: RoomBundle[]
+  restored: boolean
+}
+
+/** The Word Hall inside: the rooms open so far, and how many there are. */
+export interface Rooms {
+  rooms: Room[]
+  total: number
 }
 
 export interface HeartEvent {
@@ -306,6 +345,12 @@ export const gameApi = {
     api.send<{ result: QuizAnswer; state: GameState }>('POST', '/api/game/library/donate', { answer }),
   claimMilestone: (words: number) =>
     api.send<{ reward: Reward; state: GameState }>('POST', '/api/game/library/claim', { words }),
+  rooms: () => api.get<Rooms>('/api/game/rooms'),
+  askRoomWord: (place: string) => api.send<Question>('POST', '/api/game/rooms/ask', { place }),
+  answerRoomWord: (answer: string) =>
+    api.send<{ result: QuizAnswer; state: GameState }>('POST', '/api/game/rooms/answer', { answer }),
+  claimBundle: (bundle: string) =>
+    api.send<{ reward: Reward; restored: string; state: GameState }>('POST', '/api/game/rooms/claim', { bundle }),
   deliver: (npc: string) =>
     api.send<{ result: { gold: number; points: number; friend: Friend }; state: GameState }>(
       'POST',

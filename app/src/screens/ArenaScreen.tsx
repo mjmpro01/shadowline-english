@@ -12,9 +12,11 @@ import {
   type HarvestedWord,
   type HeartEvent,
   type Library,
+  type Question,
   type Quests,
   type QuizAnswer,
   type Reward,
+  type Rooms,
   type TalkResult,
   type Turn,
 } from '../game/api'
@@ -28,6 +30,7 @@ import { BagPanel, BramPanel, HousePanel, PlotPanel, ShopPanel, WordCard } from 
 import { QuestBook } from '../game/ui/QuestBook'
 import { TownChat } from '../game/ui/TownChat'
 import { HallPanel, LetterPanel, LibraryPanel } from '../game/ui/WordHall'
+import { RoomsPanel } from '../game/ui/WordRooms'
 import { RewardChips } from '../game/ui/common'
 import { gameError, pick } from '../game/ui/util'
 import { ApiError } from '../lib/api'
@@ -54,6 +57,8 @@ type Panel =
   /** The Word Hall's door: null until it has been looked at. */
   | { kind: 'hall'; hall: Hall | null; result: QuizAnswer | null }
   | { kind: 'library'; library: Library | null; result: QuizAnswer | null }
+  /** Inside the Word Hall: null until the rooms have been fetched. */
+  | { kind: 'rooms'; rooms: Rooms | null; asking: Question | null; result: QuizAnswer | null }
   | { kind: 'letter' }
 
 type Game = { destroy: (removeCanvas: boolean) => void }
@@ -408,6 +413,64 @@ export function ArenaScreen() {
     }
   }
 
+  // Inside the Word Hall: the rooms, fetched on the way in and after each word.
+  const loadRooms = useCallback(async () => {
+    try {
+      const rooms = await gameApi.rooms()
+      setPanel((p) => (p?.kind === 'rooms' ? { ...p, rooms } : p))
+    } catch (err) {
+      setToast({ text: gameError(err, t) })
+    }
+  }, [t])
+  const roomsOpened = panel?.kind === 'rooms' && panel.rooms === null
+  useEffect(() => {
+    if (roomsOpened) void loadRooms()
+  }, [roomsOpened, loadRooms])
+
+  const askRoomWord = async (place: string) => {
+    setBusy(true)
+    try {
+      const asking = await gameApi.askRoomWord(place)
+      setPanel((p) => (p?.kind === 'rooms' ? { ...p, asking, result: null } : p))
+    } catch (err) {
+      setToast({ text: gameError(err, t) })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const answerRoomWord = async (answer: string) => {
+    setBusy(true)
+    try {
+      const res = await gameApi.answerRoomWord(answer)
+      take(res.state)
+      setPanel((p) => (p?.kind === 'rooms' ? { ...p, asking: null, result: res.result } : p))
+      void refreshQuests()
+      if (res.result.right) void refreshVocab()
+      await loadRooms()
+    } catch (err) {
+      setToast({ text: gameError(err, t) })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const claimBundle = async (bundle: string) => {
+    setBusy(true)
+    try {
+      const res = await gameApi.claimBundle(bundle)
+      take(res.state)
+      const room = panel?.kind === 'rooms' ? panel.rooms?.rooms.find((r) => r.id === res.restored) : undefined
+      setToast({ text: room ? t('arena.rooms.restored', pick(room.name, locale)) : t('arena.got'), reward: res.reward })
+      void refreshQuests()
+      await loadRooms()
+    } catch (err) {
+      setToast({ text: gameError(err, t) })
+    } finally {
+      setBusy(false)
+    }
+  }
+
   // Lina's library: the shelves and the words the player could give, by search.
   const librarySearch = useRef('')
   const loadLibrary = useCallback(
@@ -717,8 +780,10 @@ export function ArenaScreen() {
           result={panel.result}
           t={t}
           busy={busy}
+          roomsOpen={state?.profile.roomsOpen ?? false}
           onRead={(answer) => void readNote(answer)}
           onNext={() => setPanel({ kind: 'hall', hall: null, result: null })}
+          onEnter={() => setPanel({ kind: 'rooms', rooms: null, asking: null, result: null })}
           onClose={close}
         />
       )}
@@ -735,6 +800,22 @@ export function ArenaScreen() {
           onAnswer={(answer) => void donate(answer)}
           onClaim={(words) => void claimMilestone(words)}
           onAnother={() => setPanel({ kind: 'library', library: null, result: null })}
+          onClose={close}
+        />
+      )}
+      {state && panel?.kind === 'rooms' && (
+        <RoomsPanel
+          rooms={panel.rooms}
+          asking={panel.asking}
+          result={panel.result}
+          state={state}
+          locale={locale}
+          t={t}
+          busy={busy}
+          onAsk={(place) => void askRoomWord(place)}
+          onAnswer={(answer) => void answerRoomWord(answer)}
+          onBack={() => setPanel({ ...panel, asking: null, result: null })}
+          onClaim={(bundle) => void claimBundle(bundle)}
           onClose={close}
         />
       )}

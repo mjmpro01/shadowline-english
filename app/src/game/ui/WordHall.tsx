@@ -54,25 +54,39 @@ function TheWord({ answer, t }: { answer: QuizAnswer; t: Translate }) {
 export function HallPanel({
   hall,
   result,
+  roomsOpen,
   t,
   busy,
   onRead,
   onNext,
+  onEnter,
   onClose,
 }: {
   /** Null while the door is being looked at. */
   hall: Hall | null
   result: QuizAnswer | null
+  /** Chapter 4: the doors are open, and the rooms inside wait. */
+  roomsOpen: boolean
   t: Translate
   busy: boolean
   onRead: (answer: string) => void
   onNext: () => void
+  onEnter: () => void
   onClose: () => void
 }) {
   return (
     <Sheet title={t('arena.hall.title')} onClose={onClose} t={t}>
       <div className="arena-hall stack gap-3">
-        <p className="arena-muted">{t('arena.hall.closed')}</p>
+        {roomsOpen ? (
+          <>
+            <p className="arena-muted">{t('arena.hall.open')}</p>
+            <button type="button" className="btn btn-primary" onClick={onEnter}>
+              {t('arena.rooms.enter')}
+            </button>
+          </>
+        ) : (
+          <p className="arena-muted">{t('arena.hall.closed')}</p>
+        )}
         {!hall ? (
           <p className="arena-muted">{t('arena.loading')}</p>
         ) : !hall.glasses ? (
