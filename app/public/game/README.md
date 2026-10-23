@@ -53,12 +53,18 @@ From `art/echo_town/`, cut by the same script:
 | `tiles/farm.png` additions | `plaza` (the square's sandstone), `plaza_grey`, `plaza_brick`, and two flower beds, `flowerbed_wood` and `flowerbed_stone` |
 | `items/{flowers,old_book,wool_scarf,honey_cake,coffee,soup}.png` | The gifts and Hugo's café. The pack's hammer and salve are left to the icons pack's |
 
+From `art/echo_town_update/`, the update pack:
+
+| File | What it is |
+|---|---|
+| `characters/{elsa,orin,lina,hugo,vy}.png` + `.json` | Cut from the pack's corrected sheet (`npcs_town_fixed.png`) rather than the first one. Its side rows still do not keep to a side, so the script tells which way each side frame's face looks (the skin in the top of the figure), drops frames seen from behind, and turns the rest to match: the left rows look left and the right rows right. A turned frame mirrors what is written on it — the /ə/ on Sage Orin's hat reads backwards when he walks left |
+| `objects/word_hall.png`, `word_hall_restored.png` | The Word Hall north of the square, 104 map px wide on its 6 × 5 tiles: silenced, with the mist the game draws thinning as each room's words come back; and restored, once all six rooms are awake |
+| `items/ipa_glasses.png` | Sage Orin's glasses, which read the Lexi's notes |
+
 ### Still to draw
 
 | File | What it is |
 |---|---|
-| `objects/word_hall.png` | The Word Hall north of the square, 6×5 tiles, door at the middle of the foot: closed by the Silence, grey with mist and three notes pinned to its door (until then the farmhouse, larger and greyed, with painted mist). A second, restored look will be wanted for chapter 4: for now its mist thins with each room whose words are back |
-| `items/ipa_glasses.png` | Sage Orin's glasses, which read the Lexi's notes (a 👓 stands in) |
 | `rooms/{kitchen,body,nature}.png` (and three more for chapter 4b) | Chapter 4's rooms inside the Word Hall, a picture each for the rooms panel: empty and grey, and full of words with its Lexi awake. Until then the panel shows the room's emoji |
 
 ## What the script does to the pack

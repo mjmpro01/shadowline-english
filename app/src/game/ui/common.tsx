@@ -9,13 +9,8 @@ import { pick } from './util'
 export function ItemIcon({ id, size = 32 }: { id: string; size?: number }) {
   const [missing, setMissing] = useState(false)
   if (missing) {
-    // A picture not drawn yet: a sign of it where there is one, else an empty
-    // space its size.
-    return (
-      <span className="arena-icon arena-icon-standin" style={{ width: size, height: size, fontSize: size * 0.75 }} aria-hidden="true">
-        {ICON_STAND_INS[id] ?? ''}
-      </span>
-    )
+    // A picture not drawn yet: an empty space its size.
+    return <span className="arena-icon arena-icon-standin" style={{ width: size, height: size }} aria-hidden="true" />
   }
   return (
     <img
@@ -28,9 +23,6 @@ export function ItemIcon({ id, size = 32 }: { id: string; size?: number }) {
     />
   )
 }
-
-/** Signs for icons the art pack does not have yet. */
-const ICON_STAND_INS: Record<string, string> = { ipa_glasses: '👓' }
 
 /** One of a character's four faces: neutral, happy, thinking, worried. */
 export function Portrait({ id, mood = 0 }: { id: string; mood?: number }) {

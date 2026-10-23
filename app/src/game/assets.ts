@@ -32,7 +32,19 @@ export const NPC_IDS = ['sir_shadow', 'mira', 'bram'] as const
 export const TOWN_NPC_IDS = ['elsa', 'orin', 'lina', 'hugo', 'vy'] as const
 export const ALL_NPC_IDS = [...NPC_IDS, ...TOWN_NPC_IDS] as const
 /** The town's houses and the things in its square, each a picture of its own. */
-export const TOWN_OBJECTS = ['town_hall', 'clinic', 'tower', 'library', 'cafe', 'bench', 'lamp', 'notice_board'] as const
+export const TOWN_OBJECTS = [
+  'town_hall',
+  'clinic',
+  'tower',
+  'library',
+  'cafe',
+  'bench',
+  'lamp',
+  'notice_board',
+  // The Word Hall as the Silence left it, and with all its rooms' words back.
+  'word_hall',
+  'word_hall_restored',
+] as const
 export const CROP_IDS = ['sprout', 'bloom', 'golden'] as const
 /** Growth stages a crop sheet holds: planted, sprout, growing, nearly, ripe. */
 export const CROP_STAGES = 5
