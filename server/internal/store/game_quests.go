@@ -176,7 +176,7 @@ func readQuests(ctx context.Context, tx pgx.Tx, user uuid.UUID, p profileRow, no
 		return out, err
 	}
 	allClaimed := true
-	glasses, err := hasItem(ctx, tx, user, "ipa_glasses")
+	glasses, err := p.hasGlasses(ctx, tx, user)
 	if err != nil {
 		return out, err
 	}

@@ -287,7 +287,7 @@ func (s *Store) StartBattle(ctx context.Context, user uuid.UUID, spawn string) (
 		if !ok {
 			return badMove("no_spawn", "there is nothing there")
 		}
-		if p.mainStep < sp.Step {
+		if !p.reached(sp.Step) {
 			return refuse("lair_closed", "nothing lives there yet")
 		}
 		m, _ := game.MonsterByID(sp.Monster)
