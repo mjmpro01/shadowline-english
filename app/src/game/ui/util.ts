@@ -25,6 +25,7 @@ const REFUSALS = [
   'woods_locked', 'no_hp', 'in_battle', 'respawning', 'battle_over', 'lair_closed',
   'town_locked', 'talked_today', 'gifted_today', 'not_gift', 'need_glasses', 'no_note',
   'library_closed', 'not_givable', 'no_question', 'no_letter', 'not_the_writer', 'letter_done',
+  'rooms_closed', 'already_filled', 'tried_today', 'bundle_incomplete', 'no_place', 'no_bundle',
 ]
 
 export function gameError(err: unknown, t: Translate): string {

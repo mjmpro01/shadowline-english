@@ -309,6 +309,7 @@ test('a chat a day and a gift they love make a friend in town', async ({ page })
 const HALL_STEP = 21
 const LIBRARY_STEP = 24
 const LETTER_STEP = 25
+const ROOMS_STEP = 27
 /** In town, on the path just below the Word Hall's door. */
 const BELOW_HALL = { map: 'town', x: 12 * 16 + 8, y: 7 * 16 + 12 }
 /** In town, just below the library's door. */
@@ -326,7 +327,7 @@ async function actUp(page: Page, label: string) {
   await page.keyboard.press('e')
 }
 
-async function quizAnswer(page: Page, kind: 'note' | 'donate'): Promise<string> {
+async function quizAnswer(page: Page, kind: 'note' | 'donate' | 'room'): Promise<string> {
   const res = await page.request.get(`${API_URL}/api/test/game/quiz/answer?kind=${kind}`)
   expect(res.ok()).toBe(true)
   return ((await res.json()) as { answer: string }).answer
@@ -356,6 +357,53 @@ test("the Word Hall's notes are read with Sage Orin's glasses", async ({ page })
   await expect(hall.getByTestId('notes-read')).toContainText('1 of 3')
   await hall.getByRole('button', { name: 'Next note' }).click()
   await expect(hall.locator('.arena-option')).toHaveCount(4)
+})
+
+test("chapter 4: words put back in the Word Hall's rooms, a bundle at a time", async ({ page }) => {
+  await setStep(page, ROOMS_STEP)
+  expect((await page.request.post(`${API_URL}/api/game/move`, { data: BELOW_HALL })).status()).toBe(204)
+  await openFarm(page)
+  await actUp(page, 'Read the door')
+  const hall = page.getByRole('dialog', { name: 'The Word Hall' })
+  await hall.getByRole('button', { name: 'Go inside' }).click()
+
+  const rooms = page.getByRole('dialog', { name: 'Inside the Word Hall' })
+  await expect(rooms.getByRole('tab', { name: /The Kitchen/ })).toHaveAttribute('aria-selected', 'true')
+  await expect(rooms.getByRole('tab', { name: /The Body Room/ })).toBeVisible()
+  // An empty place says what its word means, and not the word.
+  const tools = rooms.getByTestId('bundle-kitchen_tools')
+  await expect(tools).toContainText('cái chảo')
+  await expect(tools).not.toContainText('pan')
+  await tools.locator('[data-place="kitchen_tools:0"]').click()
+
+  // Heard among the room's words, or spelled from its letters.
+  const answer = await quizAnswer(page, 'room')
+  const options = rooms.locator('.arena-option')
+  const tiles = rooms.locator('.arena-tile')
+  await expect(options.or(tiles).first()).toBeVisible()
+  if ((await tiles.count()) > 0) await page.keyboard.type(answer)
+  else await options.filter({ hasText: new RegExp(`^\\d${answer}$`) }).click()
+  await expect(rooms.locator('.arena-turn')).toHaveAttribute('data-right', 'true')
+  await expect(rooms).toContainText('It is in your Vocabulary now.')
+  await rooms.getByRole('button', { name: 'Back to the room' }).click()
+  await expect(tools.locator('.arena-place[data-filled="true"]')).toContainText('pan')
+  const vocab = (await (await page.request.get(`${API_URL}/api/vocab`)).json()) as { word: string }[]
+  expect(vocab.map((v) => v.word)).toContain('pan')
+
+  // The rest of the bundle, then its reward.
+  for (const place of ['kitchen_tools:1', 'kitchen_tools:2', 'kitchen_tools:3']) {
+    expect((await page.request.post(`${API_URL}/api/game/rooms/ask`, { data: { place } })).ok()).toBe(true)
+    const key = await quizAnswer(page, 'room')
+    expect((await page.request.post(`${API_URL}/api/game/rooms/answer`, { data: { answer: key } })).ok()).toBe(true)
+  }
+  await page.keyboard.press('Escape')
+  await openFarm(page)
+  await actUp(page, 'Read the door')
+  await hall.getByRole('button', { name: 'Go inside' }).click()
+  await expect(tools).toHaveAttribute('data-full', 'true')
+  await tools.getByRole('button', { name: 'Collect' }).click()
+  await expect(page.locator('.arena-toast')).toContainText('You got')
+  await expect(tools).toContainText('Collected')
 })
 
 test('Lina takes a word for the library once its meaning is known', async ({ page }) => {
