@@ -18,8 +18,9 @@ test('a plank per place, and the one you are on is lit', async ({ page }) => {
   await page.goto('/library')
 
   const planks = page.locator('.menu-plank')
-  // Dashboard, Shadowing, Dictation, Arena, Vocabulary, Progress, Guide, Profile.
-  await expect(planks).toHaveCount(8)
+  // Dashboard, Shadowing, Dictation, Dialogues, Arena, Vocabulary, Progress,
+  // Guide, Profile.
+  await expect(planks).toHaveCount(9)
   await expect(planks.filter({ hasText: 'Shadowing' })).toHaveAttribute('aria-current', 'page')
   await expect(planks.filter({ hasText: 'Shadowing' }).getByText('HERE')).toBeVisible()
 

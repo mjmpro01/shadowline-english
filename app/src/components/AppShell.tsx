@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, matchPath, useLocation, useNavigate } from 'react-router-dom'
 import { useT } from '../i18n'
 import type { MessageKey } from '../i18n/en'
 import { useApp } from '../store/context'
@@ -21,14 +21,22 @@ const TABS: Tab[] = [
   { to: '/dashboard', label: 'nav.dashboard', icon: 'house-plus', short: 'nav.tab.dashboard' },
   { to: '/library', label: 'nav.library', icon: 'book-open', short: 'nav.tab.library' },
   { to: '/dictation', label: 'nav.dictation', icon: 'square-pen', short: 'nav.tab.dictation' },
+  { to: '/dialogues', label: 'nav.dialogues', icon: 'messages-square' },
   { to: '/arena', label: 'nav.arena', icon: 'sprout' },
   { to: '/vocabulary', label: 'nav.vocabulary', icon: 'message-square', short: 'nav.tab.vocabulary' },
   { to: '/progress', label: 'nav.progress', icon: 'chart-line' },
 ]
 
+/** One tab on a phone for both kinds of practice, opening onto a choice of
+ *  them, and lit inside either. */
+const TRAIN: Tab = { to: '/train', label: 'nav.train', icon: 'dumbbell', short: 'nav.tab.train' }
+const TRAINING = ['/train', '/dictation/*', '/dialogues/*']
+
 /** The phone's tab bar holds six, so Progress stays in the side menu and is
- *  reached from Profile there. */
-const PHONE_TABS = TABS.filter((tab) => tab.to !== '/progress')
+ *  reached from Profile there, and the two kinds of practice share a tab. */
+const PHONE_TABS = TABS.flatMap((tab) =>
+  tab.to === '/progress' || tab.to === '/dialogues' ? [] : tab.to === '/dictation' ? [TRAIN] : [tab],
+)
 
 /** In the side menu, where there is room for another plank; the tab bar on a
  *  phone is full, so there the guide is reached from the dashboard's first
@@ -55,13 +63,15 @@ const PROFILE: Tab = {
  * There is no plank for the admin console. It is a separate build at /admin/
  * that its few users open by address; the learner's menu is for learning.
  */
-const TILTS = ['-1.2deg', '1deg', '-0.8deg', '1.3deg', '-1deg', '0.7deg', '-0.6deg', '1.1deg']
+const TILTS = ['-1.2deg', '1deg', '-0.8deg', '1.3deg', '-1deg', '0.7deg', '-0.6deg', '1.1deg', '-0.9deg']
 
 export function AppShell() {
   const t = useT()
   const [collapsed, setCollapsed] = useState(false)
   const { logout } = useApp()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const training = TRAINING.some((pattern) => matchPath(pattern, pathname))
 
   const signOut = () => {
     void logout()
@@ -149,7 +159,20 @@ export function AppShell() {
         <TutorChat />
 
         <nav className="tabbar" aria-label={t('nav.main')}>
-          {[...PHONE_TABS, PROFILE].map((tab) => (
+          {[...PHONE_TABS, PROFILE].map((tab) =>
+            tab === TRAIN ? (
+              <Link
+                key={tab.to}
+                to={tab.to}
+                className="tabbar-link"
+                data-tour={`nav${tab.to}`}
+                title={t(tab.label)}
+                aria-current={training ? 'page' : undefined}
+              >
+                <Icon name={tab.icon} size={19} />
+                <span className="tabbar-label">{t(tab.short ?? tab.label)}</span>
+              </Link>
+            ) : (
             <NavLink
               key={tab.to}
               to={tab.to}
@@ -160,7 +183,8 @@ export function AppShell() {
               <Icon name={tab.icon} size={19} />
               <span className="tabbar-label">{t(tab.short ?? tab.label)}</span>
             </NavLink>
-          ))}
+            ),
+          )}
         </nav>
       </div>
     </TourProvider>

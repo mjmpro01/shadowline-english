@@ -28,8 +28,8 @@ test('the app links nobody to the console, not even an admin', async ({ page }) 
   await asAdmin(page)
   for (const path of ['/library', '/profile']) {
     await page.goto(path)
-    // The learner's eight, and no ninth for the console.
-    await expect(page.locator('.menu-plank')).toHaveCount(8)
+    // The learner's nine, and no tenth for the console.
+    await expect(page.locator('.menu-plank')).toHaveCount(9)
     await expect(page.locator('a[href^="/admin"]')).toHaveCount(0)
   }
 })

@@ -4,6 +4,8 @@ import { RequireAuth } from './components/RequireAuth'
 import { AnalysisScreen } from './screens/AnalysisScreen'
 import { ArenaScreen } from './screens/ArenaScreen'
 import { DashboardScreen } from './screens/DashboardScreen'
+import { DialogueScreen } from './screens/DialogueScreen'
+import { DialoguesScreen } from './screens/DialoguesScreen'
 import { DictationEpisodeScreen } from './screens/DictationEpisodeScreen'
 import { DictationHomeScreen } from './screens/DictationHomeScreen'
 import { DictationScreen } from './screens/DictationScreen'
@@ -15,11 +17,13 @@ import { HomeScreen } from './screens/HomeScreen'
 import { LibraryScreen } from './screens/LibraryScreen'
 import { LegalScreen } from './screens/LegalScreen'
 import { LoginScreen } from './screens/LoginScreen'
+import { PhrasebookScreen } from './screens/PhrasebookScreen'
 import { PracticeScreen } from './screens/PracticeScreen'
 import { ProfileScreen } from './screens/ProfileScreen'
 import { ProgressScreen } from './screens/ProgressScreen'
 import { SeriesScreen } from './screens/SeriesScreen'
 import { ShelfScreen } from './screens/ShelfScreen'
+import { TrainScreen } from './screens/TrainScreen'
 import { VocabularyScreen } from './screens/VocabularyScreen'
 
 export const router = createBrowserRouter([
@@ -55,6 +59,11 @@ export const router = createBrowserRouter([
       { path: 'dictation', element: <DictationHomeScreen /> },
       { path: 'dictation/e/:episodeId', element: <DictationEpisodeScreen /> },
       { path: 'dictation/e/:episodeId/:clipId', element: <DictationScreen /> },
+      { path: 'train', element: <TrainScreen /> },
+      { path: 'dialogues', element: <DialoguesScreen /> },
+      // Under dialogues, so the menu stays lit on the plank it is reached from.
+      { path: 'dialogues/phrasebook', element: <PhrasebookScreen /> },
+      { path: 'dialogues/:ref', element: <DialogueScreen /> },
       { path: 'arena', element: <ArenaScreen /> },
       { path: 'vocabulary', element: <VocabularyScreen /> },
       { path: 'vocabulary/practice', element: <FlashcardsScreen /> },
