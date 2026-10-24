@@ -39,6 +39,7 @@ createServer((req, res) => {
     const answer = system.startsWith('You write short, natural everyday English dialogues') && situation
       ? JSON.stringify({
           title: `Drafted: ${situation}`,
+          situation: 'Bạn mua thuốc ở hiệu thuốc.',
           topic: 'Health',
           lines: [
             { speaker: 'A', name: 'Pharmacist', text: 'Hi, how can I help you today?', vi: 'Chào bạn, tôi giúp gì được?' },

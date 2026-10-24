@@ -246,7 +246,7 @@ func TestTheConsoleKeepsOnlyDialoguesThatHold(t *testing.T) {
 	expectStatus(t, admin.json("PUT", "/api/admin/dialogues/"+first.ID, aDialogue(nil)), http.StatusNotFound)
 }
 
-const drafted = `Sure! {"title": "At the pharmacy", "topic": "Health", "lines": [
+const drafted = `Sure! {"title": "At the pharmacy", "situation": "Bạn mua thuốc ở hiệu thuốc.", "topic": "Health", "lines": [
 	{"speaker": "A", "name": "Pharmacist", "text": "Hi, how can I help?", "vi": "Chào bạn, tôi giúp gì được?"},
 	{"speaker": "B", "name": "You", "text": "Do you have something for a headache?", "vi": "Bạn có thuốc đau đầu không?"}],
 	"phrases": [{"phrase": "Do you have something for …?", "note": "Hỏi mua thuốc."}]}`
@@ -271,7 +271,7 @@ func TestTheTutorDraftsADialogue(t *testing.T) {
 		Lines     []dialogueLineJSON `json:"lines"`
 		Published bool               `json:"published"`
 	}](t, admin.json("POST", "/api/admin/dialogues/draft", draft), http.StatusOK)
-	if got.Title != "At the pharmacy" || got.Situation != draft["situation"] || got.Level != "B1" ||
+	if got.Title != "At the pharmacy" || got.Situation != "Bạn mua thuốc ở hiệu thuốc." || got.Level != "B1" ||
 		len(got.Lines) != 2 || got.Lines[1].Name != "You" || got.Published {
 		t.Fatalf("got %+v", got)
 	}

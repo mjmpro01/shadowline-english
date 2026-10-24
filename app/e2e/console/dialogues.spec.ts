@@ -83,7 +83,7 @@ test('the tutor drafts a dialogue for the admin to edit before saving', async ({
   await expect(form.getByText('Drafted. Read it through')).toBeVisible()
 
   await expect(form.getByLabel('Title')).toHaveValue('Drafted: Buying medicine at a pharmacy')
-  await expect(form.getByLabel('Situation, in Vietnamese')).toHaveValue('Buying medicine at a pharmacy')
+  await expect(form.getByLabel('Situation, in Vietnamese')).toHaveValue('Bạn mua thuốc ở hiệu thuốc.')
   await expect(form.getByTestId('edit-line-1').getByLabel('English')).toHaveValue(
     'Do you have something for a headache?',
   )

@@ -250,7 +250,12 @@ func (s *Server) handleDraftDialogue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	found := store.DialogueInput{Title: draft.Title, Situation: situation, Topic: draft.Topic, Level: level}
+	// The admin's words say what to write about; the draft's own sentence is
+	// the one for learners, in Vietnamese, when it wrote one.
+	found := store.DialogueInput{Title: draft.Title, Situation: draft.Situation, Topic: draft.Topic, Level: level}
+	if strings.TrimSpace(found.Situation) == "" {
+		found.Situation = situation
+	}
 	for _, l := range draft.Lines {
 		found.Lines = append(found.Lines, store.DialogueLine{Speaker: l.Speaker, Name: l.Name, Text: l.Text, Vi: l.Vi})
 	}

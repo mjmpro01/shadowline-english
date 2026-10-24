@@ -30,15 +30,18 @@ type DraftPhrase struct {
 
 // Draft is the model's dialogue.
 type Draft struct {
-	Title   string        `json:"title"`
-	Topic   string        `json:"topic"`
-	Lines   []DraftLine   `json:"lines"`
-	Phrases []DraftPhrase `json:"phrases"`
+	Title string `json:"title"`
+	// Situation is the scene in a sentence of Vietnamese, for the learner.
+	Situation string        `json:"situation"`
+	Topic     string        `json:"topic"`
+	Lines     []DraftLine   `json:"lines"`
+	Phrases   []DraftPhrase `json:"phrases"`
 }
 
 const draftInstructions = `You write short, natural everyday English dialogues for Vietnamese learners of English.
 
 Write one dialogue for the situation the admin gives, at CEFR level %s.
+- A one-sentence situation in Vietnamese saying where this is and who is talking.
 - Two people, A and B, each with a short role name ("Barista", "You"). The learner usually plays "You".
 - 6 to 10 lines, alternating, the way people really talk: contractions, short answers, polite phrases.
 - Each line with a natural Vietnamese translation.
@@ -46,7 +49,7 @@ Write one dialogue for the situation the admin gives, at CEFR level %s.
 - Original writing: do not reproduce dialogues from websites or textbooks.
 
 Answer with JSON only, no prose and no code fence, exactly in this shape:
-{"title": "...", "topic": "...", "lines": [{"speaker": "A", "name": "...", "text": "...", "vi": "..."}], "phrases": [{"phrase": "...", "note": "..."}]}`
+{"title": "...", "situation": "...", "topic": "...", "lines": [{"speaker": "A", "name": "...", "text": "...", "vi": "..."}], "phrases": [{"phrase": "...", "note": "..."}]}`
 
 // DraftMessages asks for a dialogue for a situation, at a level.
 func DraftMessages(situation, level string) []Message {
