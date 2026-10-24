@@ -7,6 +7,7 @@ import { Cut } from './pages/Cut'
 import { Series } from './pages/Series'
 import { Shelves } from './pages/Shelves'
 import { Banners } from './pages/Banners'
+import { Dialogues } from './pages/Dialogues'
 import { Tutor } from './pages/Tutor'
 import { Users } from './pages/Users'
 import { Uploads } from './pages/Uploads'
@@ -40,6 +41,7 @@ export const router = createBrowserRouter(
             { path: 'tutor', element: <Tutor /> },
             { path: 'users', element: <Users /> },
             { path: 'banners', element: <Banners /> },
+            { path: 'dialogues', element: <Dialogues /> },
             { path: 'system', element: <System /> },
             { path: '*', element: <Navigate to="/cut" replace /> },
           ],

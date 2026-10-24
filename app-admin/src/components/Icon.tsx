@@ -159,6 +159,13 @@ const PATHS: Record<string, React.ReactNode> = {
       <path d="m3 17 9 5 9-5" />
     </>
   ),
+  // Lucide's messages-square: two people talking, a dialogue.
+  'messages-square': (
+    <>
+      <path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z" />
+      <path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1" />
+    </>
+  ),
   scissors: (
     <>
       <circle cx="6" cy="6" r="3" />

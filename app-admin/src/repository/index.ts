@@ -146,6 +146,46 @@ export type BannerPlacement = 'dashboard' | 'library'
 /** Everything the form writes; the same shape creates and replaces. */
 export type BannerInput = Omit<Banner, 'id' | 'imageUrl' | 'createdAt' | 'updatedAt'>
 
+/** A dialogue for learners to read aloud, as `server/internal/store/dialogues.go`
+ *  keeps it. */
+export interface DialogueLine {
+  speaker: 'A' | 'B'
+  name: string
+  text: string
+  /** What it means in Vietnamese. */
+  vi: string
+}
+
+export interface DialoguePhrase {
+  phrase: string
+  note: string
+}
+
+export type DialogueLevel = 'A1' | 'A2' | 'B1' | 'B2'
+
+export const DIALOGUE_LEVELS: DialogueLevel[] = ['A1', 'A2', 'B1', 'B2']
+
+/** Everything the editor writes; the same shape creates and replaces, and is
+ *  what a drafted dialogue comes back as. */
+export interface DialogueInput {
+  title: string
+  /** In Vietnamese: where this is and who is talking. */
+  situation: string
+  topic: string
+  level: DialogueLevel
+  lines: DialogueLine[]
+  phrases: DialoguePhrase[]
+  published: boolean
+  position: number
+}
+
+export interface Dialogue extends DialogueInput {
+  id: string
+  slug: string
+  createdAt: string
+  updatedAt: string
+}
+
 /** One person, as the console's list shows them. */
 export interface Account {
   id: string
@@ -294,6 +334,27 @@ export const repository = {
 
   removeBannerImage(id: string) {
     return api.del(`/api/admin/banners/${id}/image`)
+  },
+
+  dialogues() {
+    return api.get<Dialogue[]>('/api/admin/dialogues')
+  },
+
+  createDialogue(input: DialogueInput) {
+    return api.send<Dialogue>('POST', '/api/admin/dialogues', input)
+  },
+
+  updateDialogue(id: string, input: DialogueInput) {
+    return api.send<Dialogue>('PUT', `/api/admin/dialogues/${id}`, input)
+  },
+
+  deleteDialogue(id: string) {
+    return api.del(`/api/admin/dialogues/${id}`)
+  },
+
+  /** A first draft by the tutor, for a situation, to edit; nothing is kept. */
+  draftDialogue(situation: string, level: DialogueLevel) {
+    return api.send<DialogueInput>('POST', '/api/admin/dialogues/draft', { situation, level })
   },
 
   /** Everybody who has signed in, newest first, a page at a time. */
