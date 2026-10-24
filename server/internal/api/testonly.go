@@ -26,6 +26,10 @@ func (s *Server) handleTestReset(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if err := s.Store.SeedStarterDialogues(r.Context()); err != nil {
+		s.failErr(w, err, "reseed starter dialogues")
+		return
+	}
 	// The session cookie survives the truncate but the user behind it does not,
 	// so the caller has to sign in again. Saying so beats a confusing 401 later.
 	s.Sessions.Clear(r.Context(), w, r)

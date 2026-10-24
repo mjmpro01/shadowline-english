@@ -86,11 +86,26 @@ func (u *usageField) usage() Usage {
 // cancelled — the learner closed the chat — or the endpoint fails, and with
 // what the endpoint said the answer cost, when it said.
 func (c *Client) Stream(ctx context.Context, messages []Message, onDelta func(string) error) (Usage, error) {
+	return c.stream(ctx, messages, replyBudget, onDelta)
+}
+
+// Complete asks once and waits for the whole answer, for work that is read
+// as a whole rather than watched being written: up to budget tokens of it.
+func (c *Client) Complete(ctx context.Context, messages []Message, budget int) (string, Usage, error) {
+	var b strings.Builder
+	usage, err := c.stream(ctx, messages, budget, func(piece string) error {
+		b.WriteString(piece)
+		return nil
+	})
+	return b.String(), usage, err
+}
+
+func (c *Client) stream(ctx context.Context, messages []Message, budget int, onDelta func(string) error) (Usage, error) {
 	body, err := json.Marshal(map[string]any{
 		"model":       c.Model,
 		"messages":    messages,
 		"stream":      true,
-		"max_tokens":  replyBudget,
+		"max_tokens":  budget,
 		"temperature": 0.4,
 		// The token counts, on the last chunk. Without this a streamed answer
 		// has no cost attached, and the tutor's bill is a guess.

@@ -127,6 +127,8 @@ func (s *Server) Routes() http.Handler {
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.Timeout(streamTimeout))
 			r.Post("/tutor/chat", s.handleTutorChat)
+			// A drafted dialogue is a long answer, waited for whole.
+			r.With(s.requireAdmin).Post("/admin/dialogues/draft", s.handleDraftDialogue)
 		})
 
 		r.Group(func(r chi.Router) {
@@ -159,6 +161,13 @@ func (s *Server) Routes() http.Handler {
 			r.Get("/dictations", s.handleListDictations)
 			r.Post("/dictations", s.handleSaveDictation)
 			r.Post("/dictations/{id}/review", s.handleReviewDictation)
+			r.Get("/dialogues", s.handleListDialogues)
+			r.Get("/dialogues/{id}", s.handleDialogue)
+			r.Post("/dialogues/{id}/pass", s.handleDialoguePass)
+			r.Get("/phrasebook", s.handlePhrasebook)
+			r.Post("/phrasebook", s.handleAddPhrase)
+			r.Patch("/phrasebook/{id}", s.handleUpdatePhrase)
+			r.Delete("/phrasebook/{id}", s.handleDeletePhrase)
 
 			r.Get("/takes", s.handleListTakes)
 			r.Post("/takes", s.handleCreateTake)
@@ -245,6 +254,10 @@ func (s *Server) Routes() http.Handler {
 				r.Delete("/admin/banners/{id}", s.handleDeleteBanner)
 				r.Put("/admin/banners/{id}/image", s.handleBannerImage)
 				r.Delete("/admin/banners/{id}/image", s.handleRemoveBannerImage)
+				r.Get("/admin/dialogues", s.handleAllDialogues)
+				r.Post("/admin/dialogues", s.handleCreateDialogue)
+				r.Put("/admin/dialogues/{id}", s.handleUpdateDialogue)
+				r.Delete("/admin/dialogues/{id}", s.handleDeleteDialogue)
 				r.Post("/admin/clips", s.handleCreateClips)
 				r.Put("/admin/clips/{id}/audio", s.handleUploadClipAudio)
 				r.Patch("/admin/clips/{id}", s.handleUpdateClip)

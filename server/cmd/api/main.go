@@ -73,6 +73,11 @@ func run(log *slog.Logger) error {
 	log.Info("database ready")
 
 	st := store.New(pool)
+	// The starter dialogues, once per database: an install that deletes them
+	// keeps them deleted.
+	if err := st.SeedStarterDialoguesOnce(ctx); err != nil {
+		return err
+	}
 	signer := auth.NewSigner(cfg.SessionSecret)
 
 	blobs, err := openStorage(ctx, cfg, signer)

@@ -42,6 +42,9 @@ func main() {
 		log.Fatal(err)
 	}
 	st := store.New(pool)
+	if err := st.SeedStarterDialoguesOnce(ctx); err != nil {
+		log.Fatal(err)
+	}
 
 	existing, err := st.ListClips(ctx)
 	if err != nil {
