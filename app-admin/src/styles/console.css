@@ -17,7 +17,7 @@
    The learner app's adventure menu (app/src/styles/app.css), so the console
    reads as the same product: a lit forest, a tree with a rope ladder nailed to
    it, and a plank per section. Narrower planks and tighter spacing than the
-   app's, because there are seven sections and a desk screen to share. */
+   app's, because there are nine sections and a desk screen to share. */
 
 #root {
   min-height: 100vh;
@@ -1036,4 +1036,27 @@ video.clip-preview-media {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* — dialogues — */
+/* A line of a dialogue being written: who, then what they say and what it
+   means, then its place in the order. */
+.dialogue-edit-line {
+  display: grid;
+  grid-template-columns: 70px minmax(90px, 140px) minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+@media (max-width: 900px) {
+  .dialogue-edit-line {
+    grid-template-columns: 70px minmax(0, 1fr) auto;
+  }
+  .dialogue-edit-text {
+    grid-column: 1 / -1;
+  }
+  .dialogue-edit-moves {
+    grid-row: 1;
+    grid-column: 3;
+  }
 }

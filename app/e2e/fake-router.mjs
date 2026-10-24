@@ -33,9 +33,24 @@ createServer((req, res) => {
     const question = last.body.messages.at(-1)?.content ?? ''
     const line = /Line: "([^"]+)"/.exec(system)?.[1]
 
-    const answer = line
-      ? `You asked: ${question}\n\nThe line is **${line}**. Stress the *second* word.`
-      : `You asked: ${question}\n\nNo clip is open, so here is a general tip:\n- keep the **final** sounds`
+    // Asked to draft a dialogue for the console: one, in the JSON asked for,
+    // named after the situation it was given.
+    const situation = /^Situation: (.*)$/s.exec(question)?.[1]
+    const answer = system.startsWith('You write short, natural everyday English dialogues') && situation
+      ? JSON.stringify({
+          title: `Drafted: ${situation}`,
+          situation: 'Bạn mua thuốc ở hiệu thuốc.',
+          topic: 'Health',
+          lines: [
+            { speaker: 'A', name: 'Pharmacist', text: 'Hi, how can I help you today?', vi: 'Chào bạn, tôi giúp gì được?' },
+            { speaker: 'B', name: 'You', text: 'Do you have something for a headache?', vi: 'Bạn có thuốc đau đầu không?' },
+            { speaker: 'A', name: 'Pharmacist', text: 'Sure. Take one of these every six hours.', vi: 'Có. Cứ sáu tiếng uống một viên.' },
+          ],
+          phrases: [{ phrase: 'Do you have something for …?', note: 'Hỏi mua thuốc cho một triệu chứng.' }],
+        })
+      : line
+        ? `You asked: ${question}\n\nThe line is **${line}**. Stress the *second* word.`
+        : `You asked: ${question}\n\nNo clip is open, so here is a general tip:\n- keep the **final** sounds`
 
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' })
     // A few pieces, a little apart, so the stream is a stream.

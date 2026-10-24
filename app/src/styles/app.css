@@ -1212,6 +1212,192 @@ button.clip-preview-face {
   background: var(--color-accent-100);
 }
 
+/* — practice, dialogues and the phrasebook — */
+.train-choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: inherit;
+  text-decoration: none;
+}
+.train-choice:hover {
+  border-color: var(--color-accent);
+}
+.grid-dialogues {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: var(--space-4);
+}
+.dialogue-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  color: inherit;
+  text-decoration: none;
+}
+.dialogue-card:hover {
+  border-color: var(--color-accent);
+}
+.dialogue-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.dialogue-lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-3);
+}
+/* A chat: the two people on either side, the one who speaks first on the left. */
+.dialogue-line {
+  display: flex;
+}
+.dialogue-line[data-speaker='B'] {
+  justify-content: flex-end;
+}
+.dialogue-bubble {
+  display: grid;
+  gap: var(--space-2);
+  width: min(100%, 600px);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-divider);
+  background: var(--color-surface);
+}
+.dialogue-line[data-speaker='A'] .dialogue-bubble {
+  border-bottom-left-radius: 4px;
+}
+.dialogue-line[data-speaker='B'] .dialogue-bubble {
+  border-bottom-right-radius: 4px;
+  background: var(--color-accent-100);
+}
+.dialogue-line[data-current='true'] .dialogue-bubble {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+.dialogue-who {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-accent-ink);
+}
+.dialogue-text {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.5;
+}
+.dialogue-vi {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+/* A line to know by heart: there, but only as the space it takes. */
+.dialogue-hidden {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 10px 12px;
+  font: inherit;
+  color: var(--color-text-muted);
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--color-neutral-100),
+    var(--color-neutral-100) 8px,
+    var(--color-surface) 8px,
+    var(--color-surface) 16px
+  );
+  border: 1px dashed var(--color-divider);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.dialogue-heard {
+  margin: 0;
+  display: grid;
+  gap: 2px;
+}
+.dialogue-heard .dict-w[data-kind='right'] {
+  color: var(--score-good);
+}
+.dialogue-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.dialogue-passes {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+.dialogue-pass {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid var(--color-accent);
+}
+.dialogue-pass[data-done='true'] {
+  background: var(--color-accent);
+}
+.dialogue-phrase {
+  font-size: 17px;
+}
+.phrase-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-3);
+}
+.phrase-form-note,
+.phrase-form > [role='alert'],
+.phrase-form > .row {
+  grid-column: 1 / -1;
+}
+/* Two columns, as the method has it written on paper. */
+.phrasebook {
+  display: grid;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+.phrasebook-head,
+.phrasebook-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) auto;
+  align-items: start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+.phrasebook-head {
+  background: var(--color-accent-100);
+  font-weight: 700;
+  font-size: 14px;
+}
+.phrasebook-row + .phrasebook-row,
+.phrasebook-head + .phrasebook-row {
+  border-top: 1px solid var(--color-divider);
+}
+.phrasebook-row[data-editing='true'] {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (max-width: 620px) {
+  .phrasebook-head > [role='columnheader']:nth-child(2) {
+    display: none;
+  }
+  .phrasebook-head,
+  .phrasebook-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+  .phrase-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* — studio video + filmstrip — */
 .studio-video {
   width: 100%;

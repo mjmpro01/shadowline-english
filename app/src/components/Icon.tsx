@@ -181,6 +181,46 @@ const PATHS: Record<string, React.ReactNode> = {
       <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
     </>
   ),
+  // Lucide's messages-square: two people talking, a dialogue.
+  'messages-square': (
+    <>
+      <path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z" />
+      <path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1" />
+    </>
+  ),
+  // Lucide's notebook-pen: the phrasebook.
+  'notebook-pen': (
+    <>
+      <path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4" />
+      <path d="M2 6h4" />
+      <path d="M2 10h4" />
+      <path d="M2 14h4" />
+      <path d="M2 18h4" />
+      <path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z" />
+    </>
+  ),
+  // Lucide's dumbbell: practice, of either kind.
+  dumbbell: (
+    <>
+      <path d="M17.596 12.768a2 2 0 1 0 2.829-2.829l-1.768-1.767a2 2 0 0 0 2.828-2.829l-2.828-2.828a2 2 0 0 0-2.829 2.828l-1.767-1.768a2 2 0 1 0-2.829 2.829z" />
+      <path d="m2.5 21.5 1.4-1.4" />
+      <path d="m20.1 3.9 1.4-1.4" />
+      <path d="M5.343 21.485a2 2 0 1 0 2.829-2.828l1.767 1.768a2 2 0 1 0 2.829-2.829l-6.364-6.364a2 2 0 1 0-2.829 2.829l1.768 1.767a2 2 0 0 0-2.828 2.829z" />
+      <path d="m9.6 14.4 4.8-4.8" />
+    </>
+  ),
+  plus: (
+    <>
+      <path d="M5 12h14" />
+      <path d="M12 5v14" />
+    </>
+  ),
+  eye: (
+    <>
+      <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
   scissors: (
     <>
       <circle cx="6" cy="6" r="3" />

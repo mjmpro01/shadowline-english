@@ -676,6 +676,7 @@ def monsters(frames):
 # --- Echo Town (chapter 3) ---------------------------------------------------------
 
 TOWN = os.path.join(HERE, "..", "art", "echo_town")
+TOWN_UPDATE = os.path.join(HERE, "..", "art", "echo_town_update")
 TOWN_PEOPLE = ["elsa", "orin", "lina", "hugo", "vy"]
 
 
@@ -683,14 +684,41 @@ def load_town(name):
     return Image.open(os.path.join(TOWN, f"{name}.png")).convert("RGBA")
 
 
+def facing_of(img):
+    """Which way a figure seen from the side looks: "left", "right", or
+    "back" when hardly any face shows. The face is the skin in the top of the
+    figure; hair, hats and beards are behind it."""
+    a = np.asarray(trim(img)).astype(int)
+    head = a[: a.shape[0] * 45 // 100]
+    r, g, b, alpha = head[..., 0], head[..., 1], head[..., 2], head[..., 3]
+    drawn = alpha > 128
+    skin = drawn & (r > 170) & (g > 0.55 * r) & (g < 0.9 * r) & (b > 0.35 * r) & (b < 0.8 * r)
+    if skin.sum() < 0.015 * drawn.sum():
+        return "back"
+    xs = np.nonzero(drawn)[1]
+    return "right" if np.nonzero(skin)[1].mean() > xs.mean() else "left"
+
+
+def turned(frames, way):
+    """Side frames, each turned to look `way`; frames from behind dropped,
+    and the walk filled back up to its length by going round again."""
+    flip = lambda f: f.transpose(Image.FLIP_LEFT_RIGHT)
+    out = [f if facing_of(f) == way else flip(f) for f in frames if facing_of(f) != "back"]
+    return [out[i % len(out)] for i in range(len(frames))] if out else frames
+
+
 def town_people():
     """The five townsfolk: a column each, standing (4 rows of 2) above and
-    walking (4 rows of 4) below, rows facing down, left, right, up — the
-    farm's people's layout."""
-    img = load_town("npcs_town")
-    facing = ["down", "left", "right", "up"]
-    standing = [(80, 20, 305, 610), (360, 20, 625, 610), (660, 20, 885, 610), (940, 20, 1180, 610), (1240, 20, 1470, 610)]
-    walking = [(15, 610, 322, 1024), (330, 610, 636, 1024), (638, 610, 927, 1024), (929, 610, 1218, 1024), (1222, 610, 1530, 1024)]
+    walking (4 rows of 4) below, rows facing down, the two sides, up — the
+    farm's people's layout.
+
+    The pack's side rows do not keep to a side (a standing frame looks left
+    where its walk looks right, a walk turns its back halfway), so the side
+    frames are sorted by which way the face looks and turned to match."""
+    # The update pack's sheet, with the walking rows drawn facing the right way.
+    img = Image.open(os.path.join(TOWN_UPDATE, "npcs_town_fixed.png")).convert("RGBA")
+    standing = [(50, 20, 290, 642), (330, 20, 580, 642), (595, 20, 830, 642), (860, 20, 1100, 642), (1140, 20, 1380, 642)]
+    walking = [(5, 642, 303, 1100), (303, 642, 584, 1100), (584, 642, 838, 1100), (838, 642, 1119, 1100), (1119, 642, 1400, 1100)]
     for name, idle_box, walk_box in zip(TOWN_PEOPLE, standing, walking):
         idle = split_block(img, idle_box, 4, 2)
         walk = split_block(img, walk_box, 4, 4)
@@ -699,10 +727,19 @@ def town_people():
         tall = lambda rows: np.median([trim(f).height for row in rows for f in row])
         k = tall(idle) / tall(walk)
         walk = [[f.resize((round(f.width * k), round(f.height * k)), Image.LANCZOS) for f in row] for row in walk]
-        frames = {}
-        for r, d in enumerate(facing):
-            frames[f"idle-{d}"] = idle[r]
-            frames[f"walk-{d}"] = walk[r]
+        side_idle = idle[1] + idle[2]
+        side_walk = walk[1] + walk[2]
+        frames = {
+            "idle-down": idle[0],
+            "walk-down": walk[0],
+            "idle-up": idle[3],
+            "walk-up": walk[3],
+            "idle-left": turned(side_idle, "left")[:2],
+            "idle-right": turned(side_idle, "right")[:2],
+            "walk-left": turned(side_walk, "left")[:4],
+            "walk-right": turned(side_walk, "right")[:4],
+        }
+        print(name, "sides:", [facing_of(f) for f in side_idle], [facing_of(f) for f in side_walk])
         anims = {f"{a}-{d}": [f"{a}-{d}"] for a in ("idle", "walk") for d in DIRS}
         character(name, frames, anims, "idle-down")
 
@@ -775,6 +812,19 @@ def town_items():
         save(icon(Image.fromarray(a)), f"items/{item}.png")
 
 
+def town_update():
+    """The update pack: the Word Hall as the Silence left it and as its words
+    bring it back, side by side on one board; and Sage Orin's glasses."""
+    img = Image.open(os.path.join(TOWN_UPDATE, "word_hall.png")).convert("RGBA")
+    # Its 6 x 5 tiles are 96 map px; the drawing's eaves and steps a little more.
+    silent, restored = split_block(img, (0, 0, img.width, img.height), 1, 2)[0]
+    save(fit(silent, w=104 * SCALE), "objects/word_hall.png")
+    save(fit(restored, w=104 * SCALE), "objects/word_hall_restored.png")
+    a = np.array(Image.open(os.path.join(TOWN_UPDATE, "ipa_glasses.png")).convert("RGBA"))
+    a[..., 3] = np.where(a[..., 3] > SOLID, 255, np.where(a[..., 3] > 20, a[..., 3], 0))
+    save(icon(Image.fromarray(a)), "items/ipa_glasses.png")
+
+
 def main():
     frames = {}
     people()
@@ -790,6 +840,7 @@ def main():
     town_portraits()
     town_objects(frames)
     town_items()
+    town_update()
     manifest = {"scale": SCALE, "frames": frames}
     with open(os.path.join(OUT, "art.json"), "w") as f:
         json.dump(manifest, f, indent=1)

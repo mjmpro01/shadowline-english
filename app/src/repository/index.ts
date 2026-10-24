@@ -107,6 +107,86 @@ export interface Repository {
   /** The dictations due to be listened to again today, and the latest. */
   dictations(): Promise<DictationList>
   reviewDictation(id: string): Promise<void>
+
+  /** The dialogues to learn, with how many lines of each this learner knows. */
+  dialogues(): Promise<DialogueSummary[]>
+  /** One dialogue, by id or slug, with this learner's readings of each line. */
+  dialogue(ref: string): Promise<LearnerDialogue>
+  /** Counts one reading aloud of a line: heard of total words, when the
+   *  browser could listen; nothing heard of nothing when it could not. */
+  readLine(dialogueId: string, line: number, heard: number, total: number): Promise<LinePasses>
+  phrasebook(): Promise<PhrasebookEntry[]>
+  addPhrase(phrase: PhraseInput): Promise<PhrasebookEntry>
+  updatePhrase(id: string, phrase: PhraseInput): Promise<PhrasebookEntry>
+  deletePhrase(id: string): Promise<void>
+}
+
+export interface DialogueLine {
+  speaker: 'A' | 'B'
+  /** Who they are in the scene: "Barista", "You". */
+  name: string
+  text: string
+  /** What it means in Vietnamese. */
+  vi: string
+}
+
+export interface DialoguePhrase {
+  phrase: string
+  note: string
+}
+
+export type DialogueLevel = 'A1' | 'A2' | 'B1' | 'B2'
+
+export interface DialogueSummary {
+  id: string
+  slug: string
+  title: string
+  /** In Vietnamese: where this is and who is talking. */
+  situation: string
+  topic: string
+  level: DialogueLevel
+  lines: number
+  /** Lines read aloud the goal's number of times. */
+  known: number
+}
+
+export interface LinePasses {
+  passes: number
+  /** The most of the line the browser ever heard, 0 to 1. */
+  best: number
+}
+
+export interface LearnerDialogue {
+  id: string
+  slug: string
+  title: string
+  situation: string
+  topic: string
+  level: DialogueLevel
+  lines: DialogueLine[]
+  phrases: DialoguePhrase[]
+  /** One per line, in order. */
+  passes: LinePasses[]
+  /** How many readings make a line known. */
+  goal: number
+}
+
+export interface PhraseInput {
+  dialogueId?: string | null
+  situation: string
+  phrase: string
+  note: string
+}
+
+export interface PhrasebookEntry {
+  id: string
+  /** Null when written by hand, or once the dialogue is gone. */
+  dialogueId: string | null
+  situation: string
+  phrase: string
+  note: string
+  createdAt: string
+  updatedAt: string
 }
 
 export interface Passage {
@@ -379,6 +459,34 @@ class ApiRepository implements Repository {
 
   reviewDictation(id: string) {
     return api.send<void>('POST', `/api/dictations/${id}/review`, {})
+  }
+
+  dialogues() {
+    return api.get<DialogueSummary[]>('/api/dialogues')
+  }
+
+  dialogue(ref: string) {
+    return api.get<LearnerDialogue>(`/api/dialogues/${encodeURIComponent(ref)}`)
+  }
+
+  readLine(dialogueId: string, line: number, heard: number, total: number) {
+    return api.send<LinePasses>('POST', `/api/dialogues/${dialogueId}/pass`, { line, heard, total })
+  }
+
+  phrasebook() {
+    return api.get<PhrasebookEntry[]>('/api/phrasebook')
+  }
+
+  addPhrase(phrase: PhraseInput) {
+    return api.send<PhrasebookEntry>('POST', '/api/phrasebook', phrase)
+  }
+
+  updatePhrase(id: string, phrase: PhraseInput) {
+    return api.send<PhrasebookEntry>('PATCH', `/api/phrasebook/${id}`, phrase)
+  }
+
+  deletePhrase(id: string) {
+    return api.del(`/api/phrasebook/${id}`)
   }
 }
 

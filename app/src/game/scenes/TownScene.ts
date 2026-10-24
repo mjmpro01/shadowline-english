@@ -29,6 +29,9 @@ const SIGNS: Record<string, string> = {
   cafe: 'Café',
 }
 
+/** How many rooms the Word Hall has (server: game.RoomCount). */
+const HALL_ROOMS = 6
+
 /** The library's door, where Lina's shelves are. */
 const LIBRARY_DOOR = door(BUILDINGS.find((b) => b.id === 'library')!)
 
@@ -43,6 +46,8 @@ export class TownScene extends MapScene {
   /** The hush over the Word Hall, which lifts a little with each room whose
    *  words are back. */
   private mist: Phaser.GameObjects.Ellipse[] = []
+  /** The drawn Word Hall, which changes when its last room wakes. */
+  private hall: Phaser.GameObjects.Image | null = null
 
   constructor() {
     super('town')
@@ -106,36 +111,39 @@ export class TownScene extends MapScene {
     }
 
     this.unsubscribe.push(this.bus.on('questGiver', (g) => this.showQuestGiver(g.giver, g.done)))
-    this.unsubscribe.push(this.bus.on('state', (s) => this.thinMist(s.profile.roomsDone ?? 0)))
+    this.unsubscribe.push(this.bus.on('state', (s) => this.showHall(s.profile.roomsDone ?? 0)))
     const known = this.bus.latest('state')
-    if (known) this.thinMist(known.profile.roomsDone ?? 0)
+    if (known) this.showHall(known.profile.roomsDone ?? 0)
     this.time.delayedCall(0, () => {
       const giver = this.bus.latest('questGiver')
       if (giver) this.showQuestGiver(giver.giver, giver.done)
     })
   }
 
-  /** The Word Hall, until it is drawn: the farmhouse grown larger and gone
-   *  grey, a hush of mist drifting over it, and the Lexi's notes on its door. */
+  /** The Word Hall, silenced, with a hush of mist drifting over it. Until it
+   *  is drawn, the farmhouse grown larger and gone grey, with the Lexi's notes
+   *  painted on its door. */
   private drawHall() {
     const x = (WORD_HALL.x + WORD_HALL.w / 2) * TILE
     const foot = (WORD_HALL.y + WORD_HALL.h) * TILE
-    const hall = this.stand('farmhouse', x, foot).setTint(0x9089a6)
-    hall.setScale(hall.scaleX * 1.2, hall.scaleY * 1.1)
+    const drawn = this.present.has('word_hall')
+    const hall = drawn ? this.stand('word_hall', x, foot) : this.stand('farmhouse', x, foot).setTint(0x9089a6)
+    if (!drawn) hall.setScale(hall.scaleX * 1.2, hall.scaleY * 1.1)
+    this.hall = drawn ? hall : null
     this.mist = []
     for (let i = 0; i < 3; i++) {
       const mist = this.add.ellipse(x + (i - 1) * 26, foot - 30 - i * 8, 70, 22, 0x6b5f8a, 0.28).setDepth(foot + 2)
       this.tweens.add({ targets: mist, x: mist.x + 10, duration: 2600 + i * 500, yoyo: true, repeat: -1 })
       this.mist.push(mist)
     }
-    // Three notes pinned to the door.
-    for (let i = 0; i < 3; i++) {
+    // Three notes pinned to the stand-in's door.
+    for (let i = 0; i < 3 && !drawn; i++) {
       this.add
         .rectangle((HALL_DOOR.x + 0.25 + i * 0.25) * TILE, foot - 14 + (i % 2) * 3, 3, 4, 0xfff8e7)
         .setDepth(foot + 1)
     }
     this.add
-      .text(x, WORD_HALL.y * TILE + 2, 'Word Hall', {
+      .text(x, Math.max(2, foot - hall.displayHeight - 6), 'Word Hall', {
         fontFamily: 'Georgia, serif',
         fontSize: '28px',
         color: '#e8e2f5',
@@ -148,10 +156,13 @@ export class TownScene extends MapScene {
   }
 
   /** Each room with its words back takes a share of the hush away; with all
-   *  six, it is gone. */
-  private thinMist(roomsDone: number) {
-    const left = Math.max(0, 1 - roomsDone / 6)
+   *  six it is gone, and the hall is itself again. */
+  private showHall(roomsDone: number) {
+    const left = Math.max(0, 1 - roomsDone / HALL_ROOMS)
     for (const m of this.mist) m.setFillStyle(0x6b5f8a, 0.28 * left).setVisible(left > 0)
+    if (this.hall && roomsDone >= HALL_ROOMS && this.present.has('word_hall_restored')) {
+      this.hall.setTexture('word_hall_restored')
+    }
   }
 
   /** The story's marker over whoever in town has something to say. */
