@@ -119,6 +119,67 @@ export interface Repository {
   addPhrase(phrase: PhraseInput): Promise<PhrasebookEntry>
   updatePhrase(id: string, phrase: PhraseInput): Promise<PhrasebookEntry>
   deletePhrase(id: string): Promise<void>
+
+  /** The learner's role-plays with the tutor, the latest first. */
+  roleplays(): Promise<Roleplay[]>
+  roleplay(id: string): Promise<RoleplaySession>
+  /** Opens a role-play, with the tutor's first line in its part. */
+  startRoleplay(start: RoleplayStart): Promise<RoleplaySession>
+  /** What the learner said, back said better when it could be, and the
+   *  tutor's next line. */
+  roleplayTurn(id: string, text: string): Promise<RoleplayReply>
+  /** Ends a role-play with feedback on the whole of it. */
+  endRoleplay(id: string): Promise<RoleplayFeedback>
+  deleteRoleplay(id: string): Promise<void>
+}
+
+export type RoleplayScenario = 'interview' | 'presentation' | 'dialogue'
+
+export interface RoleplayStart {
+  scenario: RoleplayScenario
+  /** The job, or what the talk is about. */
+  topic?: string
+  /** For a dialogue: its id or slug, and the side the learner plays. */
+  dialogueId?: string
+  side?: 'A' | 'B'
+}
+
+export interface Roleplay {
+  id: string
+  scenario: RoleplayScenario
+  dialogueId: string | null
+  title: string
+  topic: string
+  ownSide: '' | 'A' | 'B'
+  createdAt: string
+  updatedAt: string
+  endedAt: string | null
+}
+
+export interface RoleplayTurn {
+  role: 'user' | 'assistant'
+  content: string
+  /** On the learner's turns: how it would sound more natural, and why. */
+  better: string
+  why: string
+}
+
+export interface RoleplayReply {
+  better: string
+  why: string
+  reply: string
+}
+
+export interface RoleplayFeedback {
+  summary: string
+  strengths: string[]
+  fixes: { said: string; better: string; why: string }[]
+  phrases: DialoguePhrase[]
+}
+
+export interface RoleplaySession extends Roleplay {
+  turns: RoleplayTurn[]
+  feedback: RoleplayFeedback | null
 }
 
 export interface DialogueLine {
@@ -487,6 +548,30 @@ class ApiRepository implements Repository {
 
   deletePhrase(id: string) {
     return api.del(`/api/phrasebook/${id}`)
+  }
+
+  roleplays() {
+    return api.get<Roleplay[]>('/api/roleplays')
+  }
+
+  roleplay(id: string) {
+    return api.get<RoleplaySession>(`/api/roleplays/${id}`)
+  }
+
+  startRoleplay(start: RoleplayStart) {
+    return api.send<RoleplaySession>('POST', '/api/roleplays', start)
+  }
+
+  roleplayTurn(id: string, text: string) {
+    return api.send<RoleplayReply>('POST', `/api/roleplays/${id}/turns`, { text })
+  }
+
+  endRoleplay(id: string) {
+    return api.send<RoleplayFeedback>('POST', `/api/roleplays/${id}/end`, {})
+  }
+
+  deleteRoleplay(id: string) {
+    return api.del(`/api/roleplays/${id}`)
   }
 }
 

@@ -36,7 +36,27 @@ createServer((req, res) => {
     // Asked to draft a dialogue for the console: one, in the JSON asked for,
     // named after the situation it was given.
     const situation = /^Situation: (.*)$/s.exec(question)?.[1]
-    const answer = system.startsWith('You write short, natural everyday English dialogues') && situation
+    // A role-play: its opening, or a correction when the learner's line has
+    // the mistake it knows, and a reply that quotes them. Feedback quotes it too.
+    const roleplay = system.startsWith('You are the role-play partner')
+      ? JSON.stringify(
+          question.startsWith('(The scene starts')
+            ? { better: '', why: '', reply: /You play (.+?)\./.exec(system)?.[1] === 'Barista' ? 'Hi there! What can I get for you?' : 'Thanks for coming in. Could you tell me about yourself?' }
+            : /since two years/.test(question)
+              ? { better: 'I have worked in marketing for two years.', why: 'Dùng hiện tại hoàn thành với "for", không dùng "since two years".', reply: 'Great. Why do you want this job?' }
+              : { better: '', why: '', reply: `You said: ${question} Tell me more?` },
+        )
+      : system.startsWith('You are an English speaking coach')
+        ? JSON.stringify({
+            summary: 'Bạn trả lời tự tin và rõ ràng.',
+            strengths: ['Câu ngắn, dễ hiểu'],
+            fixes: [{ said: 'I work in marketing since two years', better: 'I have worked in marketing for two years.', why: 'Hiện tại hoàn thành với "for".' }],
+            phrases: [{ phrase: "I'm keen to learn more about…", note: 'Thể hiện mong muốn một cách tích cực.' }],
+          })
+        : null
+    const answer = roleplay
+      ? roleplay
+      : system.startsWith('You write short, natural everyday English dialogues') && situation
       ? JSON.stringify({
           title: `Drafted: ${situation}`,
           situation: 'Bạn mua thuốc ở hiệu thuốc.',

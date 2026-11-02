@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useT, type Translate } from '../i18n'
 import { Icon } from '../components/Icon'
 import { Loading } from '../components/LoadState'
@@ -8,6 +8,7 @@ import { known, reading, speakers, turnMillis, type Reading } from '../lib/dialo
 import { explain } from '../lib/errors'
 import { canListen, useListener } from '../lib/listen'
 import { useRemote } from '../lib/remote'
+import { useTutorEnabled } from '../lib/roleplay'
 import { canSpeak, speak, stopSpeaking } from '../lib/speak'
 import {
   repository,
@@ -225,6 +226,7 @@ function Lesson({ dialogue: d, t }: { dialogue: LearnerDialogue; t: Translate })
         <div className="card-meta" data-testid="dialogue-known">
           {t('dialogue.knownOf', knownLines, d.lines.length)}
         </div>
+        <PlayThis dialogueId={d.id} side={role || undefined} t={t} />
       </div>
 
       <div className="dialogue-tools">
@@ -382,6 +384,44 @@ function Lesson({ dialogue: d, t }: { dialogue: LearnerDialogue; t: Translate })
         </section>
       )}
     </>
+  )
+}
+
+/**
+ * Role-play this dialogue with the tutor taking the other side — the side not
+ * hidden, when one is — where there is a tutor to play it.
+ */
+function PlayThis({ dialogueId, side, t }: { dialogueId: string; side?: 'A' | 'B'; t: Translate }) {
+  const navigate = useNavigate()
+  const enabled = useTutorEnabled()
+  const [starting, setStarting] = useState(false)
+  const [error, setError] = useState('')
+  if (!enabled) return null
+
+  const start = async () => {
+    setStarting(true)
+    setError('')
+    try {
+      const session = await repository.startRoleplay({ scenario: 'dialogue', dialogueId, side })
+      navigate(`/dialogues/roleplay/${session.id}`)
+    } catch (err) {
+      setError(explain(err, t, t('common.loadFailed')))
+      setStarting(false)
+    }
+  }
+
+  return (
+    <div className="row gap-2" style={{ flexWrap: 'wrap', alignItems: 'center' }}>
+      <button type="button" className="btn btn-secondary" disabled={starting} onClick={() => void start()}>
+        <Icon name="messages-square" size={16} />
+        {starting ? t('roleplay.starting') : t('roleplay.playThis')}
+      </button>
+      {error && (
+        <span className="card-meta" role="alert">
+          {error}
+        </span>
+      )}
+    </div>
   )
 }
 

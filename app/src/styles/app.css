@@ -1398,6 +1398,27 @@ button.clip-preview-face {
   }
 }
 
+/* A learner's line said more naturally, under it in the role-play. */
+.roleplay-better {
+  display: grid;
+  gap: 4px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--score-good);
+  background: var(--color-surface);
+}
+.roleplay-input {
+  display: grid;
+  gap: var(--space-2);
+}
+.roleplay-input > .row {
+  justify-content: flex-end;
+}
+.roleplay-list {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
 /* — studio video + filmstrip — */
 .studio-video {
   width: 100%;

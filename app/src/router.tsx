@@ -21,6 +21,8 @@ import { PhrasebookScreen } from './screens/PhrasebookScreen'
 import { PracticeScreen } from './screens/PracticeScreen'
 import { ProfileScreen } from './screens/ProfileScreen'
 import { ProgressScreen } from './screens/ProgressScreen'
+import { RoleplayScreen } from './screens/RoleplayScreen'
+import { RoleplaysScreen } from './screens/RoleplaysScreen'
 import { SeriesScreen } from './screens/SeriesScreen'
 import { ShelfScreen } from './screens/ShelfScreen'
 import { TrainScreen } from './screens/TrainScreen'
@@ -63,6 +65,8 @@ export const router = createBrowserRouter([
       { path: 'dialogues', element: <DialoguesScreen /> },
       // Under dialogues, so the menu stays lit on the plank it is reached from.
       { path: 'dialogues/phrasebook', element: <PhrasebookScreen /> },
+      { path: 'dialogues/roleplay', element: <RoleplaysScreen /> },
+      { path: 'dialogues/roleplay/:id', element: <RoleplayScreen /> },
       { path: 'dialogues/:ref', element: <DialogueScreen /> },
       { path: 'arena', element: <ArenaScreen /> },
       { path: 'vocabulary', element: <VocabularyScreen /> },
