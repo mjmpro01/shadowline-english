@@ -77,7 +77,7 @@ export function RoleplaysScreen() {
         ) : (
           sessions.map((r) => (
             <div key={r.id} className="dict-line" data-testid="roleplay-row">
-              <Link to={`/dialogues/roleplay/${r.id}`} className="stack" style={{ gap: 2, minWidth: 0, color: 'inherit' }}>
+              <Link to={`/dialogues/roleplay/${r.id}`} className="stack" style={{ gap: 2, minWidth: 0, color: 'inherit', textDecoration: 'none' }}>
                 <span className="card-title" style={{ fontSize: 15 }}>
                   {roleplayName(r, t)}
                   {r.topic && ` · ${r.topic}`}
