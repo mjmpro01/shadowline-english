@@ -149,21 +149,7 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if refused != store.TutorAllowed {
-		seconds := max(1, int(math.Ceil(wait.Seconds())))
-		w.Header().Set("Retry-After", fmt.Sprint(seconds))
-		var code, why string
-		switch refused {
-		case store.TutorDayUsed:
-			code = "tutor.day"
-			why = fmt.Sprintf("you have asked the tutor a lot today — it can answer again in about %d hours", max(1, seconds/3600))
-		case store.TutorAllUsed:
-			code = "tutor.everyone"
-			why = "the tutor has answered all it can for today — try again later"
-		default:
-			code = "tutor.window"
-			why = fmt.Sprintf("that is a lot of questions at once — try again in %d seconds", seconds)
-		}
-		failCode(w, http.StatusTooManyRequests, code, why)
+		writeTutorRefusal(w, refused, wait)
 		return
 	}
 	// However the answer ends, it is recorded — on a context of its own, since
@@ -289,6 +275,26 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 		s.Log.Warn("tutor failed mid-answer", "error", err)
 		_ = send(map[string]string{"error": "the answer was cut off — try asking again"})
 	}
+}
+
+// writeTutorRefusal says which allowance turned a question away, and when the
+// tutor can answer again.
+func writeTutorRefusal(w http.ResponseWriter, refused store.TutorRefusal, wait time.Duration) {
+	seconds := max(1, int(math.Ceil(wait.Seconds())))
+	w.Header().Set("Retry-After", fmt.Sprint(seconds))
+	var code, why string
+	switch refused {
+	case store.TutorDayUsed:
+		code = "tutor.day"
+		why = fmt.Sprintf("you have asked the tutor a lot today — it can answer again in about %d hours", max(1, seconds/3600))
+	case store.TutorAllUsed:
+		code = "tutor.everyone"
+		why = "the tutor has answered all it can for today — try again later"
+	default:
+		code = "tutor.window"
+		why = fmt.Sprintf("that is a lot of questions at once — try again in %d seconds", seconds)
+	}
+	failCode(w, http.StatusTooManyRequests, code, why)
 }
 
 // handleTutorUsage is what the tutor has cost: questions and tokens by day,
