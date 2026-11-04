@@ -104,6 +104,8 @@ export interface QuizAnswer {
   ipa: string
   meaning: string
   gold: number
+  /** After a sentence with a gap, the sentence whole. */
+  sentence?: string
 }
 
 export interface Hall {
@@ -150,6 +152,8 @@ export interface Room {
   reward: Reward
   bundles: RoomBundle[]
   restored: boolean
+  /** Upstairs rooms open later in chapter 4, and ask some words in a sentence. */
+  upstairs: boolean
 }
 
 /** The Word Hall inside: the rooms open so far, and how many there are. */
@@ -221,7 +225,7 @@ export interface Spawn {
   respawnAt: string | null
 }
 
-export type QuestionKind = 'meaning' | 'listen' | 'scramble' | 'ipa'
+export type QuestionKind = 'meaning' | 'listen' | 'scramble' | 'ipa' | 'cloze'
 
 export interface Question {
   kind: QuestionKind
@@ -229,6 +233,8 @@ export interface Question {
   prompt: string
   /** The word to say aloud, for listen. */
   say?: string
+  /** For cloze: what the sentence with the gap means, in Vietnamese. */
+  hint?: string
   /** Four to choose from; for scramble, the letters, shuffled. */
   options: string[]
 }

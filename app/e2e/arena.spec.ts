@@ -310,6 +310,8 @@ const HALL_STEP = 21
 const LIBRARY_STEP = 24
 const LETTER_STEP = 25
 const ROOMS_STEP = 27
+/** Where the upstairs rooms open (server: game.UpstairsStep). */
+const UPSTAIRS_STEP = 32
 /** In town, on the path just below the Word Hall's door. */
 const BELOW_HALL = { map: 'town', x: 12 * 16 + 8, y: 7 * 16 + 12 }
 /** In town, just below the library's door. */
@@ -404,6 +406,45 @@ test("chapter 4: words put back in the Word Hall's rooms, a bundle at a time", a
   await tools.getByRole('button', { name: 'Collect' }).click()
   await expect(page.locator('.arena-toast')).toContainText('You got')
   await expect(tools).toContainText('Collected')
+})
+
+test('upstairs, a word is put back into the gap in its sentence', async ({ page }) => {
+  await setStep(page, UPSTAIRS_STEP)
+  // Which of the Room of Feelings' words this player is asked in a sentence:
+  // always the same for the same player and word.
+  let place = ''
+  for (const bundle of ['feelings_good', 'feelings_low', 'feelings_others']) {
+    for (let i = 0; i < 4 && !place; i++) {
+      const res = await page.request.post(`${API_URL}/api/game/rooms/ask`, { data: { place: `${bundle}:${i}` } })
+      expect(res.ok()).toBe(true)
+      if (((await res.json()) as { kind: string }).kind === 'cloze') place = `${bundle}:${i}`
+    }
+  }
+  expect(place).not.toBe('')
+
+  expect((await page.request.post(`${API_URL}/api/game/move`, { data: BELOW_HALL })).status()).toBe(204)
+  await openFarm(page)
+  await actUp(page, 'Read the door')
+  await page.getByRole('dialog', { name: 'The Word Hall' }).getByRole('button', { name: 'Go inside' }).click()
+  const rooms = page.getByRole('dialog', { name: 'Inside the Word Hall' })
+  await expect(rooms.getByRole('tab')).toHaveCount(6)
+  await expect(rooms.locator('[data-asleep="true"]')).toHaveCount(0)
+  await rooms.getByRole('tab', { name: /The Room of Feelings/ }).click()
+  await rooms.locator(`[data-place="${place}"]`).click()
+
+  await expect(rooms.locator('.arena-question-ask')).toHaveText('Which word fills the gap?')
+  await expect(rooms.locator('.arena-cloze .arena-gap')).toHaveCount(1)
+  await expect(rooms.locator('.arena-question-hint')).not.toBeEmpty()
+  const answer = await quizAnswer(page, 'room')
+  await expect(rooms.locator('.arena-cloze')).not.toContainText(answer)
+  await rooms.locator('.arena-option').filter({ hasText: new RegExp(`^\\d${answer}$`) }).click()
+  await expect(rooms.locator('.arena-turn')).toHaveAttribute('data-right', 'true')
+  // The sentence, whole again.
+  await expect(rooms.locator('.arena-sentence')).toContainText(answer)
+
+  // The first upstairs word is Sage Orin's step.
+  const quests = (await (await page.request.get(`${API_URL}/api/game/quests`)).json()) as { main: { id: string; done: boolean } }
+  expect(quests.main).toMatchObject({ id: 'upstairs', done: true })
 })
 
 test('Lina takes a word for the library once its meaning is known', async ({ page }) => {

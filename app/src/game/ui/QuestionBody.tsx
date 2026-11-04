@@ -4,6 +4,27 @@ import { canSpeak, speak } from '../../lib/speak'
 import type { Question } from '../api'
 import { optionKey, pickLetter, pickTile, spelled, type Picks } from '../battle'
 
+/** The gap every cloze sentence has in it, as the server writes it. */
+const GAP = '_____'
+
+/** A sentence with a word left out, the gap drawn as a space to fill, and
+ *  what the sentence means underneath. */
+function Cloze({ sentence, hint }: { sentence: string; hint?: string }) {
+  const [before, after = ''] = sentence.split(GAP)
+  return (
+    <>
+      <p className="arena-question-word arena-cloze">
+        {before}
+        <span className="arena-gap" aria-label="…">
+          {'\u00a0'.repeat(6)}
+        </span>
+        {after}
+      </p>
+      {hint && <p className="arena-question-hint">{hint}</p>}
+    </>
+  )
+}
+
 /**
  * A question and the ways to answer it: four to choose from, with keys 1–4,
  * or letters to put in order, typed or tapped. A word to hear is said as it
@@ -75,6 +96,7 @@ export function QuestionBody({
         </button>
       )}
       {q.kind === 'scramble' && <p className="arena-question-hint">{q.prompt}</p>}
+      {q.kind === 'cloze' && <Cloze sentence={q.prompt} hint={q.hint} />}
 
       {q.kind === 'scramble' ? (
         <div className="arena-scramble">

@@ -4,10 +4,19 @@ import type { GameState, Reward } from '../api'
 import { art } from '../assets'
 import { pick } from './util'
 
+/** Items with no picture yet, shown as a sign of what they are meanwhile. */
+const ICON_STAND_INS: Record<string, string> = { keeper_badge: '🏅' }
 
 /** A 16px icon from items/, drawn at twice its size with square pixels. */
 export function ItemIcon({ id, size = 32 }: { id: string; size?: number }) {
   const [missing, setMissing] = useState(false)
+  if (missing && ICON_STAND_INS[id]) {
+    return (
+      <span className="arena-icon arena-icon-standin" style={{ width: size, height: size, fontSize: size * 0.7 }} aria-hidden="true">
+        {ICON_STAND_INS[id]}
+      </span>
+    )
+  }
   if (missing) {
     // A picture not drawn yet: an empty space its size.
     return <span className="arena-icon arena-icon-standin" style={{ width: size, height: size }} aria-hidden="true" />

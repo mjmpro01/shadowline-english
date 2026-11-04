@@ -65,7 +65,8 @@ From `art/echo_town_update/`, the update pack:
 
 | File | What it is |
 |---|---|
-| `rooms/{kitchen,body,nature}.png` (and three more for chapter 4b) | Chapter 4's rooms inside the Word Hall, a picture each for the rooms panel: empty and grey, and full of words with its Lexi awake. Until then the panel shows the room's emoji |
+| `rooms/{kitchen,body,nature,feelings,streets,work}.png` | Chapter 4's six rooms inside the Word Hall, a picture each for the rooms panel: empty and grey, and full of words with its Lexi awake. Until then the panel shows the room's emoji |
+| `items/keeper_badge.png` | The Word Keeper's badge, Echo Town's thanks once the whole hall sings (end of chapter 4). Until then the bag shows 🏅 |
 
 ## What the script does to the pack
 
