@@ -5,6 +5,7 @@ import { Icon } from '../components/Icon'
 import { Loading } from '../components/LoadState'
 import { topicsOf } from '../lib/dialogue'
 import { useRemote } from '../lib/remote'
+import { useTutorEnabled } from '../lib/roleplay'
 import { repository } from '../repository'
 
 /** The dialogues to learn, by topic, each with how much of it is known. */
@@ -12,6 +13,7 @@ export function DialoguesScreen() {
   const t = useT()
   const remote = useRemote('', () => repository.dialogues())
   const [topic, setTopic] = useState('')
+  const tutor = useTutorEnabled()
 
   return (
     <div className="stack gap-6">
@@ -20,10 +22,18 @@ export function DialoguesScreen() {
           <h1 style={{ margin: 0 }}>{t('nav.dialogues')}</h1>
           <div className="card-meta">{t('dialogue.intro')}</div>
         </div>
-        <Link to="/dialogues/phrasebook" className="btn btn-secondary">
-          <Icon name="notebook-pen" size={16} />
-          {t('phrasebook.title')}
-        </Link>
+        <div className="row gap-2" style={{ flexWrap: 'wrap' }}>
+          {tutor && (
+            <Link to="/dialogues/roleplay" className="btn btn-secondary">
+              <Icon name="messages-square" size={16} />
+              {t('roleplay.open')}
+            </Link>
+          )}
+          <Link to="/dialogues/phrasebook" className="btn btn-secondary">
+            <Icon name="notebook-pen" size={16} />
+            {t('phrasebook.title')}
+          </Link>
+        </div>
       </div>
 
       {remote.state === 'loading' ? (

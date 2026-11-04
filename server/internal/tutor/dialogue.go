@@ -66,11 +66,11 @@ var ErrBadDraft = errors.New("the tutor's draft was not a dialogue")
 // or a code fence around it.
 func ParseDraft(answer string) (Draft, error) {
 	var d Draft
-	start, end := strings.Index(answer, "{"), strings.LastIndex(answer, "}")
-	if start < 0 || end <= start {
+	obj, ok := jsonObject(answer)
+	if !ok {
 		return d, ErrBadDraft
 	}
-	if err := json.Unmarshal([]byte(answer[start:end+1]), &d); err != nil {
+	if err := json.Unmarshal([]byte(obj), &d); err != nil {
 		return d, fmt.Errorf("%w: %v", ErrBadDraft, err)
 	}
 	if strings.TrimSpace(d.Title) == "" || len(d.Lines) < 2 {

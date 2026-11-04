@@ -28,6 +28,8 @@ const BY_CODE: Record<string, MessageKey> = {
   'tutor.tooLong': 'error.tutorTooLong',
   'tutor.unavailable': 'error.tutorUnavailable',
   'tutor.everyone': 'error.tutorEveryone',
+  'tutor.badFeedback': 'error.tutorBadFeedback',
+  'roleplay.ended': 'error.roleplayEnded',
 }
 
 /**

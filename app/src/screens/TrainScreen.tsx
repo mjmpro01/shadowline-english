@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useT } from '../i18n'
 import { Icon } from '../components/Icon'
+import { useTutorEnabled } from '../lib/roleplay'
 
 /**
  * Practice, on a phone: its one tab for both kinds, opening onto a choice of
@@ -8,6 +9,7 @@ import { Icon } from '../components/Icon'
  */
 export function TrainScreen() {
   const t = useT()
+  const tutor = useTutorEnabled()
   return (
     <div className="stack gap-6">
       <div className="stack" style={{ gap: 4 }}>
@@ -29,6 +31,15 @@ export function TrainScreen() {
             <span className="card-meta">{t('train.dialoguesBody')}</span>
           </span>
         </Link>
+        {tutor && (
+          <Link to="/dialogues/roleplay" className="card elev-sm train-choice">
+            <Icon name="mic" size={28} />
+            <span className="stack" style={{ gap: 2 }}>
+              <span className="card-title">{t('roleplay.title')}</span>
+              <span className="card-meta">{t('roleplay.trainBody')}</span>
+            </span>
+          </Link>
+        )}
         <Link to="/dialogues/phrasebook" className="btn btn-secondary" style={{ alignSelf: 'flex-start' }}>
           <Icon name="notebook-pen" size={16} />
           {t('phrasebook.title')}

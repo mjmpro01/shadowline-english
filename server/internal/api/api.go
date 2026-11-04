@@ -129,6 +129,10 @@ func (s *Server) Routes() http.Handler {
 			r.Post("/tutor/chat", s.handleTutorChat)
 			// A drafted dialogue is a long answer, waited for whole.
 			r.With(s.requireAdmin).Post("/admin/dialogues/draft", s.handleDraftDialogue)
+			// Each turn of a role-play waits for the tutor's whole answer.
+			r.Post("/roleplays", s.handleStartRoleplay)
+			r.Post("/roleplays/{id}/turns", s.handleRoleplayTurn)
+			r.Post("/roleplays/{id}/end", s.handleEndRoleplay)
 		})
 
 		r.Group(func(r chi.Router) {
@@ -168,6 +172,9 @@ func (s *Server) Routes() http.Handler {
 			r.Post("/phrasebook", s.handleAddPhrase)
 			r.Patch("/phrasebook/{id}", s.handleUpdatePhrase)
 			r.Delete("/phrasebook/{id}", s.handleDeletePhrase)
+			r.Get("/roleplays", s.handleRoleplays)
+			r.Get("/roleplays/{id}", s.handleRoleplay)
+			r.Delete("/roleplays/{id}", s.handleDeleteRoleplay)
 
 			r.Get("/takes", s.handleListTakes)
 			r.Post("/takes", s.handleCreateTake)
