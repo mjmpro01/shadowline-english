@@ -7,17 +7,17 @@ import (
 )
 
 var pool = []Entry{
-	{"apple", "ˈæpəl", "A round fruit"},
-	{"table", "ˈteɪbəl", "A piece of furniture with a flat top"},
-	{"river", "ˈɹɪvɚ", "A large stream of water"},
-	{"music", "ˈmjuzɪk", "Sounds made to be pleasant"},
-	{"cloud", "ˈklaʊd", "A white mass in the sky"},
-	{"green", "ˈɡɹin", "The colour of grass"},
+	{Word: "apple", IPA: "ˈæpəl", Meaning: "A round fruit"},
+	{Word: "table", IPA: "ˈteɪbəl", Meaning: "A piece of furniture with a flat top"},
+	{Word: "river", IPA: "ˈɹɪvɚ", Meaning: "A large stream of water"},
+	{Word: "music", IPA: "ˈmjuzɪk", Meaning: "Sounds made to be pleasant"},
+	{Word: "cloud", IPA: "ˈklaʊd", Meaning: "A white mass in the sky"},
+	{Word: "green", IPA: "ˈɡɹin", Meaning: "The colour of grass"},
 }
 
 func TestEveryKindOfQuestionHasOneRightAnswerAmongFour(t *testing.T) {
 	r := rand.New(rand.NewSource(1))
-	target := Entry{"bread", "ˈbɹɛd", "Food made from flour and baked"}
+	target := Entry{Word: "bread", IPA: "ˈbɹɛd", Meaning: "Food made from flour and baked"}
 	for _, kind := range []string{GameMeaning, GameListen, GameIPA} {
 		for i := 0; i < 50; i++ {
 			q, ok := NewQuestion(kind, target, pool, r)
@@ -64,7 +64,7 @@ func TestTheListeningQuestionSaysTheWordAndTheOthersDoNotGiveItAway(t *testing.T
 func TestScrambledLettersAreNeverTheWordAlready(t *testing.T) {
 	r := rand.New(rand.NewSource(3))
 	for i := 0; i < 200; i++ {
-		q, ok := NewQuestion(GameScramble, Entry{"tea", "ˈti", "A hot drink"}, nil, r)
+		q, ok := NewQuestion(GameScramble, Entry{Word: "tea", IPA: "ˈti", Meaning: "A hot drink"}, nil, r)
 		if !ok {
 			t.Fatal("no scramble for tea")
 		}
@@ -91,8 +91,8 @@ func TestTooSmallAPoolMakesNoQuestion(t *testing.T) {
 		t.Fatal("two wrong answers are not enough")
 	}
 	// Two words that sound the same cannot both be on an IPA question.
-	homophones := []Entry{{"sea", "ˈsi", "a"}, {"see", "ˈsi", "b"}, {"cat", "ˈkæt", "c"}, {"dog", "ˈdɔɡ", "d"}}
-	more := append(homophones, Entry{"sun", "ˈsʌn", "e"}, Entry{"hat", "ˈhæt", "f"})
+	homophones := []Entry{{Word: "sea", IPA: "ˈsi", Meaning: "a"}, {Word: "see", IPA: "ˈsi", Meaning: "b"}, {Word: "cat", IPA: "ˈkæt", Meaning: "c"}, {Word: "dog", IPA: "ˈdɔɡ", Meaning: "d"}}
+	more := append(homophones, Entry{Word: "sun", IPA: "ˈsʌn", Meaning: "e"}, Entry{Word: "hat", IPA: "ˈhæt", Meaning: "f"})
 	for _, kind := range []string{GameIPA, GameListen} {
 		for i := 0; i < 30; i++ {
 			q, ok := NewQuestion(kind, more[0], more[1:], r)

@@ -71,6 +71,9 @@ const (
 	LetterStep  = 25
 	// RoomsStep is chapter 4's first step: the Word Hall's rooms open.
 	RoomsStep = 27
+	// UpstairsStep opens the hall's three upstairs rooms, once the three
+	// downstairs are awake.
+	UpstairsStep = 32
 )
 
 // MainQuests is the story so far. Chapter 1, the farm, doubles as the
@@ -448,6 +451,75 @@ var MainQuests = []Step{
 			{"Rest a little. When they open, we will need you again.", "Nghỉ ngơi một chút đi. Khi chúng mở ra, chúng tôi sẽ lại cần cậu."},
 		},
 		Objective: Text{"Listen to Mayor Elsa", "Nghe Thị trưởng Elsa kể"},
+		Target:    0,
+		Reward:    Reward{Gold: 50},
+	},
+	{
+		ID: "upstairs", Chapter: 4, Giver: "orin",
+		Title: Text{"The stairs", "Cầu thang"},
+		Lines: []Text{
+			{"Hear that? Three doors upstairs just clicked open.", "Nghe thấy không? Ba cánh cửa trên lầu vừa bật mở."},
+			{"The rooms up there are harder. Their words hide inside whole sentences.", "Các phòng trên ấy khó hơn. Từ của chúng trốn trong cả một câu."},
+			{"Read the sentence, find the word that fits the gap, and it comes home.", "Đọc câu, tìm từ vừa chỗ trống, và từ ấy sẽ trở về."},
+		},
+		Objective: Text{"Put a word back in an upstairs room", "Đặt lại một từ vào một phòng trên lầu"},
+		Counter:   Counter{Kind: "event", Item: "upstairs_word"}, Target: 1,
+		Reward: Reward{Gold: 40},
+	},
+	{
+		ID: "feelings_room", Chapter: 4, Giver: "lina",
+		Title: Text{"Words for how you feel", "Lời cho cảm xúc"},
+		Lines: []Text{
+			{"People come to the library and cannot say they are tired, or worried, or proud.", "Người ta đến thư viện mà không nói được là mình mệt, lo hay tự hào."},
+			{"A feeling with no word stays stuck inside. Fill the Room of Feelings?", "Cảm xúc không có lời thì cứ kẹt mãi bên trong. Cậu lấp đầy Phòng Cảm xúc nhé?"},
+		},
+		Objective: Text{"Fill the Room of Feelings", "Lấp đầy Phòng Cảm xúc"},
+		Counter:   Counter{Kind: "event", Item: "room_done", Of: "feelings", Ever: true}, Target: 1,
+		Reward: Reward{Gold: 100, Items: map[string]int{"honey_cake": 2}},
+	},
+	{
+		ID: "streets_room", Chapter: 4, Giver: "hugo",
+		Title: Text{"Lost on the way", "Lạc đường"},
+		Lines: []Text{
+			{"My deliveries keep going to the wrong door. Nobody can say left, or across, or near.", "Hàng của tôi cứ giao nhầm cửa. Chẳng ai nói được trái, bên kia hay gần."},
+			{"Fill the Room of Streets, and Echo Town finds its way again.", "Lấp đầy Phòng Đường phố, và thị trấn Echo sẽ lại tìm được đường."},
+		},
+		Objective: Text{"Fill the Room of Streets", "Lấp đầy Phòng Đường phố"},
+		Counter:   Counter{Kind: "event", Item: "room_done", Of: "streets", Ever: true}, Target: 1,
+		Reward: Reward{Gold: 100, Items: map[string]int{"coffee": 3}},
+	},
+	{
+		ID: "work_room", Chapter: 4, Giver: "vy",
+		Title: Text{"Come back on Tuesday", "Thứ Ba quay lại nhé"},
+		Lines: []Text{
+			{"I tell a patient to come back tomorrow, early, and they hear nothing at all.", "Tôi dặn bệnh nhân mai quay lại, đến sớm, mà họ chẳng nghe ra gì."},
+			{"Work and time need their words. Fill the last room, please.", "Công việc và thời gian cần có lời. Làm ơn lấp đầy căn phòng cuối cùng."},
+		},
+		Objective: Text{"Fill the Room of Work and Time", "Lấp đầy Phòng Công việc"},
+		Counter:   Counter{Kind: "event", Item: "room_done", Of: "work", Ever: true}, Target: 1,
+		Reward: Reward{Gold: 100, Items: map[string]int{"herb_salve": 2}},
+	},
+	{
+		ID: "hall_sings", Chapter: 4, Giver: "elsa",
+		Title: Text{"The Word Hall sings", "Word Hall cất tiếng"},
+		Lines: []Text{
+			{"Look at it! The mist is gone, and the Word Hall is singing again.", "Nhìn kìa! Sương đã tan, và Word Hall lại cất tiếng hát."},
+			{"Pip, Thump, Fern, Glow, Zip and Tock: all six Lexi are awake, every word in its place.", "Pip, Thump, Fern, Glow, Zip và Tock: cả sáu Lexi đều đã thức, từ nào cũng về đúng chỗ."},
+			{"Echo Town names you its Word Keeper. Wear this, and wear it proudly.", "Thị trấn Echo phong cậu làm Người giữ lời. Hãy đeo huy hiệu này thật tự hào."},
+		},
+		Objective: Text{"Celebrate with Mayor Elsa", "Mừng cùng Thị trưởng Elsa"},
+		Target:    0,
+		Reward:    Reward{Gold: 300, Items: map[string]int{"keeper_badge": 1, "seed_golden": 2}},
+	},
+	{
+		ID: "beyond_the_hall", Chapter: 4, Giver: "orin",
+		Title: Text{"Where the Silence came from", "Màn Im Lặng từ đâu tới"},
+		Lines: []Text{
+			{"While the hall sang, I listened to the echo. It did not come back from the hills.", "Khi Word Hall hát, ta đã lắng nghe tiếng vọng. Nó không dội lại từ những ngọn đồi."},
+			{"Something past the mountains is still drinking words. That is where the Silence began.", "Có thứ gì đó bên kia dãy núi vẫn đang nuốt lấy ngôn từ. Màn Im Lặng bắt đầu từ chính nơi đó."},
+			{"Rest, Word Keeper. When the road opens, the next chapter of our story begins.", "Nghỉ ngơi đi, Người giữ lời. Khi con đường mở ra, chương tiếp theo của câu chuyện sẽ bắt đầu."},
+		},
+		Objective: Text{"Listen to Sage Orin", "Nghe Hiền triết Orin kể"},
 		Target:    0,
 		Reward:    Reward{Gold: 50},
 	},

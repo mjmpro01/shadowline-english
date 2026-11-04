@@ -20,6 +20,10 @@ const (
 	GameScramble = "scramble"
 	// IPA: a pronunciation written in IPA, and four words to choose from.
 	GameIPA = "ipa"
+	// Cloze: a sentence with the word left out, what the sentence means in
+	// Vietnamese as a hint, and four words to choose from. Only for words that
+	// come with a sentence: the Word Hall's upstairs rooms.
+	GameCloze = "cloze"
 )
 
 // Monster is something that lives in the woods.
