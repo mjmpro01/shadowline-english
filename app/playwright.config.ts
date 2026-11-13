@@ -8,6 +8,7 @@ import {
   APP_URL,
   ROUTER_PORT,
   ROUTER_URL,
+  SFTP_PORT,
   SERVER_DIR,
   serverEnv,
 } from './e2e/environment'
@@ -59,6 +60,15 @@ export default defineConfig({
       url: `${ROUTER_URL}/health`,
       reuseExistingServer: false,
       timeout: 20_000,
+    },
+    {
+      // The file server the console's auto import is pointed at.
+      command: 'go run ./cmd/sftp-fixture',
+      cwd: SERVER_DIR,
+      env: { ...process.env, SFTP_FIXTURE_ADDR: `127.0.0.1:${SFTP_PORT}` } as Record<string, string>,
+      port: SFTP_PORT,
+      reuseExistingServer: false,
+      timeout: 120_000,
     },
     {
       command: 'go run ./cmd/api',

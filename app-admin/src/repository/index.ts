@@ -38,6 +38,8 @@ export interface Upload {
   id: string
   name: string
   title: string
+  /** Where on the file server it was taken from, when it came by auto import. */
+  importedFrom: string
   hasVideo: boolean
   bytes: number
   seconds: number
@@ -184,6 +186,43 @@ export interface Dialogue extends DialogueInput {
   slug: string
   createdAt: string
   updatedAt: string
+}
+
+/** The file server videos are imported from, as `PUT /api/admin/import/settings`
+ *  takes it. `secret` is the password or private key as typed; empty keeps the
+ *  one saved. */
+export interface ImportForm {
+  protocol: 'sftp' | 'ftps'
+  host: string
+  port: number
+  username: string
+  secretKind: 'password' | 'key'
+  secret: string
+  tlsMode: 'explicit' | 'implicit'
+  tlsSkipVerify: boolean
+  /** SFTP: the fingerprint of the host key trusted, "SHA256:…". */
+  hostKey: string
+  inbox: string
+  processing: string
+  done: string
+  failed: string
+  defaultSeries: string
+  pollSeconds: number
+}
+
+/** The settings as saved: the secret never comes back, only whether there is one. */
+export type ImportSettings = Omit<ImportForm, 'secret'> & { hasSecret: boolean; updatedAt: string }
+
+export type ImportStep = 'connect' | 'hostKey' | 'login' | 'inbox' | 'write'
+
+/** What testing the connection found, a step at a time. */
+export interface ImportReport {
+  ok: boolean
+  steps: { step: ImportStep; ok: boolean; problem?: string; detail?: string }[]
+  /** An SFTP server's key, when it is not trusted yet. */
+  hostKey?: string
+  videos: number
+  files: { path: string; series: string; bytes: number }[]
 }
 
 /** One person, as the console's list shows them. */
@@ -355,6 +394,19 @@ export const repository = {
   /** A first draft by the tutor, for a situation, to edit; nothing is kept. */
   draftDialogue(situation: string, level: DialogueLevel) {
     return api.send<DialogueInput>('POST', '/api/admin/dialogues/draft', { situation, level })
+  },
+
+  importSettings() {
+    return api.get<ImportSettings | null>('/api/admin/import/settings')
+  },
+
+  saveImportSettings(form: ImportForm) {
+    return api.send<ImportSettings>('PUT', '/api/admin/import/settings', form)
+  },
+
+  /** Tries the form as it is, saved or not. */
+  testImport(form: ImportForm) {
+    return api.send<ImportReport>('POST', '/api/admin/import/test', form)
   },
 
   /** Everybody who has signed in, newest first, a page at a time. */

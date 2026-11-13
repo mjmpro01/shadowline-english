@@ -178,7 +178,14 @@ export function Uploads() {
         <div className="card elev-sm stack gap-2" key={upload.id}>
           <div className="row between wrap gap-2">
             <div className="stack">
-              <div className="card-title">{upload.name || upload.title}</div>
+              <div className="row gap-1 wrap">
+                <span className="card-title">{upload.name || upload.title}</span>
+                {upload.importedFrom && (
+                  <span className="tag tag-outline" title={upload.importedFrom}>
+                    {t('uploads.imported')}
+                  </span>
+                )}
+              </div>
               <span className="card-meta mono">
                 {new Date(upload.createdAt).toLocaleString()}
                 {upload.bytes > 0 && ` · ${megabytes(upload.bytes)}`}

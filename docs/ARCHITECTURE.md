@@ -55,6 +55,7 @@ shadowline-english/
 ├── server/              API Go (chi, pgx), migration, docker-compose của cả hệ thống
 │   ├── cmd/api          main: đọc cấu hình, mở pool, chạy migration, mở HTTP server
 │   ├── cmd/seed         Xuất bản thư viện mẫu một lần
+│   ├── cmd/importer     Nhập tự động: lấy video từ máy chủ SFTP/FTPS, cắt thành clip, xuất bản (docs/remote-import.md)
 │   └── internal/
 │       ├── api          Router và handler HTTP
 │       ├── auth         Nhà cung cấp OAuth, cookie phiên, ký HMAC
@@ -156,6 +157,7 @@ mạng Docker tên `shadowline` (dùng chung với `ops/observability` và `ops/
 | `api` | `server/Dockerfile` | 8080 | API Go; tự chạy migration lúc khởi động |
 | `web` | `app/Dockerfile` | 8088 | nginx phục vụ 2 bản build SPA (`/` và `/admin/`) |
 | `seed` | `server/Dockerfile`, entrypoint `seed` | — | Xuất bản thư viện mẫu một lần rồi thoát |
+| `importer` | `server/Dockerfile`, entrypoint `importer` | — | Nhập tự động từ máy chủ SFTP/FTPS cấu hình trong console (`docs/remote-import.md`) |
 | `scoring` | `scoring/Dockerfile` | — | `python -m shadowline.worker` — chấm điểm bản ghi |
 | `cutting` | cùng image | — | `shadowline.cutter` — cắt audio/video/ảnh bìa cho clip |
 | `transcribing` | cùng image | — | `shadowline.transcriber` — Whisper chép lời bản tải lên |
@@ -485,7 +487,7 @@ Giới hạn mặc định:
 
 | Cột | Ghi chú |
 | --- | --- |
-| `service` | PK: `transcribing`, `cutting`, `scoring`, `dubbing`, `glossing` |
+| `service` | PK: `transcribing`, `cutting`, `scoring`, `dubbing`, `glossing`, `importer` |
 | `seen_at`, `busy` | Lần báo gần nhất; có đang làm việc không. Coi là đang chạy nếu báo trong 45 giây |
 | `version`, `started_at` | Phiên bản code và lúc khởi động, cho trang **Hệ thống** |
 

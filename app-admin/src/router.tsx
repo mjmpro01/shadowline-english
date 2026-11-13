@@ -8,6 +8,7 @@ import { Series } from './pages/Series'
 import { Shelves } from './pages/Shelves'
 import { Banners } from './pages/Banners'
 import { Dialogues } from './pages/Dialogues'
+import { Import } from './pages/Import'
 import { Tutor } from './pages/Tutor'
 import { Users } from './pages/Users'
 import { Uploads } from './pages/Uploads'
@@ -38,6 +39,7 @@ export const router = createBrowserRouter(
             { path: 'series', element: <Series /> },
             { path: 'shelves', element: <Shelves /> },
             { path: 'uploads', element: <Uploads /> },
+            { path: 'import', element: <Import /> },
             { path: 'tutor', element: <Tutor /> },
             { path: 'users', element: <Users /> },
             { path: 'banners', element: <Banners /> },

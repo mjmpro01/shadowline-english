@@ -12,12 +12,12 @@ import { CONSOLE_VERSION, sameCode } from '../lib/version'
  *
  * The learner app's menu, so the two read as one product: the forest, the tree,
  * the rope ladder and a plank per place. Smaller planks than the app's, because
- * there are nine of them and the console is worked at a desk, and no collapsed
+ * there are ten of them and the console is worked at a desk, and no collapsed
  * rail — the pages here want width less than a phone does.
  */
 
 /** How far each plank hangs off true, as in the learner app's menu. */
-const TILTS = ['-1.2deg', '1deg', '-0.8deg', '1.3deg', '-1deg', '0.7deg', '-0.6deg', '1.1deg', '-0.9deg']
+const TILTS = ['-1.2deg', '1deg', '-0.8deg', '1.3deg', '-1deg', '0.7deg', '-0.6deg', '1.1deg', '-0.9deg', '0.8deg']
 
 interface Section {
   to: string
@@ -28,6 +28,7 @@ interface Section {
 const SECTIONS: Section[] = [
   { to: '/cut', label: 'nav.cut', icon: 'scissors' },
   { to: '/uploads', label: 'nav.uploads', icon: 'upload' },
+  { to: '/import', label: 'nav.import', icon: 'folder-sync' },
   { to: '/clips', label: 'nav.clips', icon: 'book-open' },
   { to: '/series', label: 'nav.series', icon: 'layers' },
   { to: '/shelves', label: 'nav.shelves', icon: 'library' },
