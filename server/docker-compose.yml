@@ -153,6 +153,24 @@ services:
       postgres:
         condition: service_healthy
 
+  # Takes videos from the file server set up in the console (Auto import),
+  # and makes published clips of them. Idle until a server is set up.
+  importer:
+    build:
+      context: .
+      args:
+        SHADOWLINE_VERSION: ${SHADOWLINE_VERSION:-}
+    env_file: .env
+    entrypoint: ["/usr/local/bin/importer"]
+    environment:
+      OTEL_SERVICE_NAME: shadowline-importer
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
   scoring:
     build:
       context: ../scoring

@@ -15,6 +15,7 @@ import (
 	"github.com/shadowline/server/internal/auth"
 	"github.com/shadowline/server/internal/config"
 	"github.com/shadowline/server/internal/keycloak"
+	"github.com/shadowline/server/internal/remote"
 	"github.com/shadowline/server/internal/storage"
 	"github.com/shadowline/server/internal/store"
 	"github.com/shadowline/server/internal/telemetry"
@@ -33,6 +34,9 @@ type Server struct {
 	// Users syncs every successful login into Keycloak's Admin API. Nil when
 	// Keycloak is not configured.
 	Users *keycloak.Admin
+	// DialRemote connects to the file server videos are imported from; nil is
+	// remote.Dial. Tests put a stand-in here.
+	DialRemote func(context.Context, remote.Config) (remote.Remote, error)
 	// Tutor answers the learner's chat. Nil when TUTOR_API_KEY is unset, and
 	// the app then leaves the chat out.
 	Tutor *tutor.Client
@@ -261,6 +265,9 @@ func (s *Server) Routes() http.Handler {
 				r.Delete("/admin/banners/{id}", s.handleDeleteBanner)
 				r.Put("/admin/banners/{id}/image", s.handleBannerImage)
 				r.Delete("/admin/banners/{id}/image", s.handleRemoveBannerImage)
+				r.Get("/admin/import/settings", s.handleImportSettings)
+				r.Put("/admin/import/settings", s.handleSaveImportSettings)
+				r.Post("/admin/import/test", s.handleTestImport)
 				r.Get("/admin/dialogues", s.handleAllDialogues)
 				r.Post("/admin/dialogues", s.handleCreateDialogue)
 				r.Put("/admin/dialogues/{id}", s.handleUpdateDialogue)
