@@ -18,6 +18,18 @@ import (
 
 func (p profileRow) roomsOpen() bool { return p.reached(game.RoomsStep) }
 
+// roomOpen is whether a room's door is: upstairs ones open later.
+func (p profileRow) roomOpen(r game.Room) bool {
+	return p.roomsOpen() && (!r.Upstairs || p.reached(game.UpstairsStep))
+}
+
+func roomClosed(p profileRow, r game.Room) error {
+	if !p.roomOpen(r) {
+		return refuse("room_closed", "that room upstairs is still shut")
+	}
+	return nil
+}
+
 func roomsClosed(p profileRow) error {
 	if !p.roomsOpen() {
 		return refuse("rooms_closed", "the Word Hall's rooms are not open yet")
@@ -54,7 +66,7 @@ type RoomView struct {
 }
 
 // RoomsView is the hall inside: the rooms open so far, and how many there
-// are in all.
+// are in all — the rest asleep behind shut doors.
 type RoomsView struct {
 	Rooms []RoomView `json:"rooms"`
 	Total int        `json:"total"`
@@ -76,7 +88,7 @@ func wordAt(key string) (game.Room, game.Bundle, game.RoomWord, bool) {
 	return room, b, b.Words[i], true
 }
 
-func roomsView(ctx context.Context, tx pgx.Tx, user uuid.UUID, day string) (RoomsView, error) {
+func roomsView(ctx context.Context, tx pgx.Tx, p profileRow, user uuid.UUID, day string) (RoomsView, error) {
 	out := RoomsView{Rooms: []RoomView{}, Total: game.RoomCount}
 	filled := map[string]bool{}
 	tried := map[string]bool{}
@@ -104,6 +116,9 @@ func roomsView(ctx context.Context, tx pgx.Tx, user uuid.UUID, day string) (Room
 		return out, err
 	}
 	for _, r := range game.Rooms {
+		if !p.roomOpen(r) {
+			continue
+		}
 		rv := RoomView{Room: r, Restored: claims["room:"+r.ID]}
 		for _, b := range r.Bundles {
 			bv := BundleView{Bundle: b, Full: true, Claimed: claims["bundle:"+b.ID]}
@@ -160,7 +175,7 @@ func (s *Store) Rooms(ctx context.Context, user uuid.UUID) (RoomsView, error) {
 			return err
 		}
 		day, _, _ := game.Day(now)
-		out, err = roomsView(ctx, tx, user, day)
+		out, err = roomsView(ctx, tx, p, user, day)
 		return err
 	})
 	return out, err
@@ -181,6 +196,9 @@ func (s *Store) AskRoomWord(ctx context.Context, user uuid.UUID, key string) (Qu
 		if !ok {
 			return badMove("no_place", "there is no such place in the hall")
 		}
+		if err := roomClosed(p, room); err != nil {
+			return err
+		}
 		day, _, _ := game.Day(now)
 		var filled, tried bool
 		err = tx.QueryRow(ctx, `
@@ -195,9 +213,9 @@ func (s *Store) AskRoomWord(ctx context.Context, user uuid.UUID, key string) (Qu
 		if tried {
 			return refuse("tried_today", "that word waits for tomorrow")
 		}
-		target := game.Entry{Word: w.Word, IPA: w.IPA, Meaning: w.Vi}
+		target := game.Entry{Word: w.Word, IPA: w.IPA, Meaning: w.Vi, Sentence: w.Sentence, SentenceVi: w.SentenceVi}
 		r := rand.New(rand.NewSource(now.UnixNano()))
-		q, ok := game.NewQuestion(game.RoomGame(user.String(), w.Word), target, game.RoomEntries(room), r)
+		q, ok := game.NewQuestion(game.RoomGame(user.String(), w), target, game.RoomEntries(room), r)
 		if !ok {
 			q, _ = game.NewQuestion(game.GameListen, target, game.RoomEntries(room), r)
 		}
@@ -233,7 +251,11 @@ func (s *Store) AnswerRoomWord(ctx context.Context, user uuid.UUID, answer strin
 			return err
 		}
 		res = asked.answered(answer)
-		room, _, _, _ := game.WordInRooms(asked.Word)
+		room, _, w, _ := game.WordInRooms(asked.Word)
+		// After a sentence with a gap, the sentence whole.
+		if asked.Kind == game.GameCloze {
+			res.Sentence = w.Sentence
+		}
 		day, _, _ := game.Day(now)
 		if !res.Right {
 			_, err := tx.Exec(ctx, `
@@ -250,6 +272,11 @@ func (s *Store) AnswerRoomWord(ctx context.Context, user uuid.UUID, answer strin
 			insert into vocab_words (user_id, word, ipa, meaning) values ($1, $2, $3, $4)
 			on conflict (user_id, word) do nothing`, user, asked.Word, asked.IPA, asked.Meaning); err != nil {
 			return err
+		}
+		if room.Upstairs {
+			if err := logEvent(ctx, tx, user, "upstairs_word", room.ID, 0); err != nil {
+				return err
+			}
 		}
 		return logEvent(ctx, tx, user, "room_word", room.ID, 0)
 	})
@@ -274,6 +301,9 @@ func (s *Store) ClaimBundle(ctx context.Context, user uuid.UUID, bundle string) 
 		room, b, ok := game.BundleByID(bundle)
 		if !ok {
 			return badMove("no_bundle", "there is no such bundle")
+		}
+		if err := roomClosed(*p, room); err != nil {
+			return err
 		}
 		words := make([]string, len(b.Words))
 		for i, w := range b.Words {

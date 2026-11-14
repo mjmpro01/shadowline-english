@@ -66,6 +66,7 @@ export function RoomsPanel({
               disabled={asking !== null || result !== null}
               onClick={() => setChosen(r.id)}
             >
+              {r.upstairs && <span className="arena-room-up" aria-hidden="true">↑ </span>}
               <span aria-hidden="true">{r.icon}</span> {pick(r.name, locale)}
               {r.restored && ' ✓'}
             </button>
@@ -89,6 +90,7 @@ export function RoomsPanel({
               )}
               <span className="arena-muted"> — {result.meaning}</span>
             </p>
+            {result.sentence && <p className="arena-sentence">“{result.sentence}”</p>}
             {result.right && <p className="arena-muted">{t('arena.rooms.inVocab')}</p>}
             <button type="button" className="btn btn-primary" disabled={busy} onClick={onBack}>
               {t('arena.rooms.back')}

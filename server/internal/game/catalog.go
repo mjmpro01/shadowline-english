@@ -93,6 +93,8 @@ var Items = []Item{
 	// Sage Orin's glasses, which read the Lexi's notes on the Word Hall's door:
 	// they are written in IPA.
 	{ID: "ipa_glasses", Name: Text{"IPA glasses", "Kính IPA"}, Kind: "tool", UnlockStep: Never},
+	// The Word Keeper's badge, from the town once the whole Word Hall sings.
+	{ID: "keeper_badge", Name: Text{"Word Keeper's badge", "Huy hiệu Người giữ lời"}, Kind: "tool", UnlockStep: Never},
 }
 
 // Never is an unlock step no story reaches: what is never in the shop.

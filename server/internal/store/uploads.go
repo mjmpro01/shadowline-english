@@ -24,6 +24,9 @@ type Upload struct {
 	ID    uuid.UUID `json:"id"`
 	Name  string    `json:"name"`
 	Title string    `json:"title"`
+	// ImportedFrom is where on the file server it was taken from, when it
+	// came by auto import rather than through the console.
+	ImportedFrom string `json:"importedFrom"`
 	// HasVideo decides whether its clips are queued for cutting at all.
 	HasVideo bool    `json:"hasVideo"`
 	Bytes    int64   `json:"bytes"`
@@ -179,7 +182,7 @@ func (s *Store) UploadFailedWith(ctx context.Context, id uuid.UUID, reason strin
 // a different thing over a different table, and grouping four of those together
 // is a query nobody can read.
 const uploadColumns = `
-	s.id, s.name, s.title, s.has_video, s.bytes, s.duration_seconds,
+	s.id, s.name, s.title, s.imported_from, s.has_video, s.bytes, s.duration_seconds,
 	s.upload_state, s.error, s.published, s.created_at,
 	s.playlist_id, coalesce(p.title, ''),
 	(select count(*)::int from clips c where c.source_id = s.id),
@@ -210,7 +213,7 @@ func scanUpload(row pgx.Row) (Upload, error) {
 	var u Upload
 	var queued, transcribed bool
 	if err := row.Scan(
-		&u.ID, &u.Name, &u.Title, &u.HasVideo, &u.Bytes, &u.Seconds,
+		&u.ID, &u.Name, &u.Title, &u.ImportedFrom, &u.HasVideo, &u.Bytes, &u.Seconds,
 		&u.UploadState, &u.Error, &u.Published, &u.CreatedAt,
 		&u.PlaylistID, &u.PlaylistTitle,
 		&u.Clips, &u.ClipsWithoutAudio, &u.CutsLeft, &u.CutsFailed, &u.CutError,

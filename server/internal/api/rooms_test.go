@@ -3,6 +3,7 @@ package api_test
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/shadowline/server/internal/game"
@@ -12,6 +13,7 @@ type roomsJSON struct {
 	Rooms []struct {
 		ID       string `json:"id"`
 		Restored bool   `json:"restored"`
+		Up       bool   `json:"upstairs"`
 		Bundles  []struct {
 			ID      string `json:"id"`
 			Full    bool   `json:"full"`
@@ -31,14 +33,16 @@ type roomsJSON struct {
 type roomQuestionJSON struct {
 	Kind    string   `json:"kind"`
 	Prompt  string   `json:"prompt"`
+	Hint    string   `json:"hint"`
 	Say     string   `json:"say"`
 	Options []string `json:"options"`
 }
 
 type roomAnswerJSON struct {
 	Result struct {
-		Right bool   `json:"right"`
-		Word  string `json:"word"`
+		Right    bool   `json:"right"`
+		Word     string `json:"word"`
+		Sentence string `json:"sentence"`
 	} `json:"result"`
 	State struct {
 		Profile struct {
@@ -71,7 +75,8 @@ func TestTheWordHallsRoomsWaitForChapterFour(t *testing.T) {
 
 	h.setStep(t, game.RoomsStep)
 	got := rooms(t, learner)
-	if len(got.Rooms) != len(game.Rooms) || got.Total != game.RoomCount {
+	// Downstairs only, at first.
+	if len(got.Rooms) != 3 || got.Total != game.RoomCount {
 		t.Fatalf("the rooms: %+v", got)
 	}
 	// An empty place shows what its word means, never the word.
@@ -232,5 +237,86 @@ func TestTheRoomsDailyCountsWordsPutBack(t *testing.T) {
 	}
 	if q := gameQuests(t, learner); q.Main == nil || q.Main.ID != "into_the_hall" || q.Main.Progress != 1 {
 		t.Fatalf("the words put back do not count for the story: %+v", q.Main)
+	}
+}
+
+// The hall's last three rooms are upstairs, open once the first three are
+// awake, and ask some of their words with a gap in a sentence. All six awake,
+// the hall sings, and the chapter ends.
+func TestTheUpstairsRoomsFinishTheChapter(t *testing.T) {
+	h := newHarness(t)
+	learner := h.login("learner@example.com")
+	gameState(t, learner)
+	h.setStep(t, game.RoomsStep)
+
+	expectCode(t, learner.json("POST", "/api/game/rooms/ask", map[string]any{"place": "feelings_good:0"}),
+		http.StatusConflict, "room_closed")
+	expectCode(t, learner.json("POST", "/api/game/rooms/claim", map[string]any{"bundle": "feelings_good"}),
+		http.StatusConflict, "room_closed")
+
+	clozes := 0
+	fillRoom := func(room game.Room) {
+		t.Helper()
+		for _, b := range room.Bundles {
+			for i := range b.Words {
+				q := expect[roomQuestionJSON](t, learner.json("POST", "/api/game/rooms/ask",
+					map[string]any{"place": b.ID + ":" + string(rune('0'+i))}), http.StatusOK)
+				if q.Kind == game.GameCloze {
+					clozes++
+					if strings.Count(q.Prompt, game.Gap) != 1 || q.Hint == "" || len(q.Options) != 4 {
+						t.Fatalf("a sentence with a gap: %+v", q)
+					}
+					if strings.Contains(strings.ToLower(q.Prompt), " "+b.Words[i].Word+" ") {
+						t.Fatalf("the gap gives its word away: %+v", q)
+					}
+				}
+				answer := quizAnswer(t, learner, "room")
+				res := expect[roomAnswerJSON](t, learner.json("POST", "/api/game/rooms/answer", map[string]any{"answer": answer}), http.StatusOK)
+				if !res.Result.Right || (q.Kind == game.GameCloze) != (res.Result.Sentence != "") {
+					t.Fatalf("%s answered: %+v", b.Words[i].Word, res.Result)
+				}
+			}
+			expectStatus(t, learner.json("POST", "/api/game/rooms/claim", map[string]any{"bundle": b.ID}), http.StatusOK)
+		}
+	}
+	walk := func(ids ...string) {
+		t.Helper()
+		for _, id := range ids {
+			if q := gameQuests(t, learner); q.Main == nil || q.Main.ID != id || !q.Main.Done {
+				t.Fatalf("waiting for %s: %+v", id, q.Main)
+			}
+			claim(t, learner, "main")
+		}
+	}
+
+	for _, room := range game.Rooms[:3] {
+		fillRoom(room)
+	}
+	if clozes != 0 {
+		t.Fatalf("%d sentences with gaps downstairs", clozes)
+	}
+	walk("into_the_hall", "kitchen_room", "body_room", "nature_room", "half_the_hall")
+
+	got := rooms(t, learner)
+	if len(got.Rooms) != 6 || !got.Rooms[3].Up {
+		t.Fatalf("upstairs is not open: %d rooms", len(got.Rooms))
+	}
+	for _, room := range game.Rooms[3:] {
+		fillRoom(room)
+	}
+	if clozes == 0 {
+		t.Fatal("no word upstairs was asked with a gap in a sentence")
+	}
+	if awake := rooms(t, learner).Rooms; !awake[0].Restored || !awake[5].Restored {
+		t.Fatal("not every room is awake")
+	}
+	walk("upstairs", "feelings_room", "streets_room", "work_room", "hall_sings", "beyond_the_hall")
+	if q := gameQuests(t, learner); q.Main != nil {
+		t.Fatalf("past the end of the chapter: %+v", q.Main)
+	}
+	var badges int
+	if err := h.pool.QueryRow(context.Background(),
+		`select coalesce(sum(qty), 0)::int from game_inventory where item = 'keeper_badge'`).Scan(&badges); err != nil || badges != 1 {
+		t.Fatalf("the Word Keeper's badge: %d %v", badges, err)
 	}
 }

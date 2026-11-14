@@ -140,6 +140,20 @@ services:
       blobs-init:
         condition: service_completed_successfully
 
+  importer:
+    <<: *restart
+    image: *api-image
+    build: !reset null
+    environment:
+      <<: *disk
+    volumes:
+      - blobs:/data/blobs
+    depends_on: !override
+      postgres:
+        condition: service_healthy
+      blobs-init:
+        condition: service_completed_successfully
+
   # The one worker service that builds; the other four run its image.
   scoring:
     <<: *restart

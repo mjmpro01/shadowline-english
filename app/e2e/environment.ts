@@ -44,6 +44,8 @@ export const BLOB_ROOT = join(process.cwd(), 'test-results', 'blobs')
 /** The stand-in for 9router, in `fake-router.mjs`. */
 export const ROUTER_PORT = Number(process.env.FAKE_ROUTER_PORT ?? 8199)
 export const ROUTER_URL = `http://localhost:${ROUTER_PORT}`
+/** A stand-in SFTP server for the console's auto import (server/cmd/sftp-fixture). */
+export const SFTP_PORT = Number(process.env.E2E_SFTP_PORT ?? 2299)
 
 export const ADMIN_EMAIL = 'admin@example.com'
 export const LEARNER_EMAIL = 'minh@example.com'

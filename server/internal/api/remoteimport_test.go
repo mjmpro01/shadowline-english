@@ -1,0 +1,181 @@
+package api_test
+
+import (
+	"context"
+	"net/http"
+	"strings"
+	"testing"
+
+	"github.com/shadowline/server/internal/remote/remotetest"
+)
+
+// The file server videos are imported from: set up in the console, its
+// secret kept sealed, and tried before it is saved.
+
+type importReportJSON struct {
+	OK    bool `json:"ok"`
+	Steps []struct {
+		Step    string `json:"step"`
+		OK      bool   `json:"ok"`
+		Problem string `json:"problem"`
+	} `json:"steps"`
+	HostKey string `json:"hostKey"`
+	Videos  int    `json:"videos"`
+	Files   []struct {
+		Path   string `json:"path"`
+		Series string `json:"series"`
+	} `json:"files"`
+}
+
+type importSettingsJSON struct {
+	Protocol  string `json:"protocol"`
+	Host      string `json:"host"`
+	HasSecret bool   `json:"hasSecret"`
+	HostKey   string `json:"hostKey"`
+	Inbox     string `json:"inbox"`
+	Secret    string `json:"secret"`
+}
+
+func sftpServer(t *testing.T) *remotetest.SFTPServer {
+	t.Helper()
+	s, err := remotetest.StartSFTP("127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { s.Close() })
+	return s
+}
+
+func importForm(s *remotetest.SFTPServer, fields map[string]any) map[string]any {
+	out := map[string]any{
+		"protocol": "sftp", "host": s.Host, "port": s.Port, "username": remotetest.Username,
+		"secretKind": "password", "secret": remotetest.Password, "tlsMode": "explicit",
+		"inbox": "/inbox", "processing": "/processing", "done": "/done", "failed": "/failed",
+		"defaultSeries": "Imported", "pollSeconds": 300,
+	}
+	for k, v := range fields {
+		out[k] = v
+	}
+	return out
+}
+
+func steps(r importReportJSON) string {
+	var b strings.Builder
+	for _, s := range r.Steps {
+		b.WriteString(s.Step)
+		if s.OK {
+			b.WriteString("✓ ")
+		} else {
+			b.WriteString("✗" + s.Problem + " ")
+		}
+	}
+	return strings.TrimSpace(b.String())
+}
+
+func TestTheFileServerIsTestedBeforeItIsTrusted(t *testing.T) {
+	h := newHarness(t)
+	admin := h.login("admin@example.com")
+	s := sftpServer(t)
+	if err := s.Put("/inbox/Friends/Episode_01.mp4", "v"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Put("/inbox/loose.mov", "v"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Mkdir("/processing"); err != nil {
+		t.Fatal(err)
+	}
+
+	// An untrusted server stops at its key, and says what it is.
+	got := expect[importReportJSON](t, admin.json("POST", "/api/admin/import/test", importForm(s, nil)), http.StatusOK)
+	if got.OK || got.HostKey != s.HostKey || steps(got) != "connect✓ hostKey✗host_key_unknown" {
+		t.Fatalf("untrusted: %s %+v", steps(got), got)
+	}
+	// Saving an SFTP server needs its key trusted.
+	expectCode(t, admin.json("PUT", "/api/admin/import/settings", importForm(s, nil)), http.StatusBadRequest, "import.noHostKey")
+
+	// Trusted, everything is tried: the inbox read, the folders written.
+	got = expect[importReportJSON](t, admin.json("POST", "/api/admin/import/test",
+		importForm(s, map[string]any{"hostKey": s.HostKey})), http.StatusOK)
+	if !got.OK || steps(got) != "connect✓ hostKey✓ login✓ inbox✓ write✓" || got.Videos != 2 {
+		t.Fatalf("trusted: %s %+v", steps(got), got)
+	}
+	series := map[string]string{}
+	for _, f := range got.Files {
+		series[f.Path] = f.Series
+	}
+	if series["/inbox/Friends/Episode_01.mp4"] != "Friends" || series["/inbox/loose.mov"] != "Imported" {
+		t.Fatalf("the files found: %+v", got.Files)
+	}
+	if !s.Exists("/done") || !s.Exists("/failed") || s.Exists("/processing/.shadowline-test") {
+		t.Fatal("the test did not make the folders, or left its probe behind")
+	}
+
+	// A wrong password, and a missing inbox, each say so.
+	got = expect[importReportJSON](t, admin.json("POST", "/api/admin/import/test",
+		importForm(s, map[string]any{"hostKey": s.HostKey, "secret": "nope"})), http.StatusOK)
+	if steps(got) != "connect✓ hostKey✓ login✗login" {
+		t.Fatalf("wrong password: %s", steps(got))
+	}
+	got = expect[importReportJSON](t, admin.json("POST", "/api/admin/import/test",
+		importForm(s, map[string]any{"hostKey": s.HostKey, "inbox": "/nowhere"})), http.StatusOK)
+	if steps(got) != "connect✓ hostKey✓ login✓ inbox✗no_folder" {
+		t.Fatalf("no inbox: %s", steps(got))
+	}
+}
+
+func TestTheFileServersSecretIsKeptSealed(t *testing.T) {
+	h := newHarness(t)
+	admin := h.login("admin@example.com")
+	learner := h.login("learner@example.com")
+	s := sftpServer(t)
+	if err := s.Mkdir("/inbox"); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := expect[*importSettingsJSON](t, admin.json("GET", "/api/admin/import/settings", nil), http.StatusOK); got != nil {
+		t.Fatalf("set up before anyone did: %+v", got)
+	}
+	expectStatus(t, learner.json("GET", "/api/admin/import/settings", nil), http.StatusForbidden)
+	expectStatus(t, learner.json("POST", "/api/admin/import/test", importForm(s, nil)), http.StatusForbidden)
+
+	saved := expect[importSettingsJSON](t, admin.json("PUT", "/api/admin/import/settings",
+		importForm(s, map[string]any{"hostKey": s.HostKey, "host": "sftp://" + s.Host + "/"})), http.StatusOK)
+	if !saved.HasSecret || saved.Secret != "" || saved.Host != s.Host || saved.HostKey != s.HostKey {
+		t.Fatalf("saved: %+v", saved)
+	}
+	var sealed []byte
+	if err := h.pool.QueryRow(context.Background(), `select secret from remote_import_settings`).Scan(&sealed); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(sealed), remotetest.Password) {
+		t.Fatal("the password is stored as it was typed")
+	}
+
+	// Left empty, the saved password is used — for the same server only.
+	got := expect[importReportJSON](t, admin.json("POST", "/api/admin/import/test",
+		importForm(s, map[string]any{"hostKey": s.HostKey, "secret": ""})), http.StatusOK)
+	if !got.OK {
+		t.Fatalf("with the saved password: %s", steps(got))
+	}
+	expectCode(t, admin.json("POST", "/api/admin/import/test",
+		importForm(s, map[string]any{"hostKey": s.HostKey, "secret": "", "host": "elsewhere.example"})),
+		http.StatusBadRequest, "import.noSecret")
+	expect[importSettingsJSON](t, admin.json("PUT", "/api/admin/import/settings",
+		importForm(s, map[string]any{"hostKey": s.HostKey, "secret": "", "inbox": "/drop"})), http.StatusOK)
+	if got := expect[importSettingsJSON](t, admin.json("GET", "/api/admin/import/settings", nil), http.StatusOK); !got.HasSecret || got.Inbox != "/drop" {
+		t.Fatalf("a folder changed without the password: %+v", got)
+	}
+
+	for _, bad := range []map[string]any{
+		{"protocol": "ftp"},
+		{"port": 0},
+		{"inbox": "/"},
+		{"done": "/inbox/done"},
+		{"processing": "/inbox"},
+		{"pollSeconds": 10},
+		{"secretKind": "key", "protocol": "ftps"},
+	} {
+		expectCode(t, admin.json("PUT", "/api/admin/import/settings", importForm(s, bad)), http.StatusBadRequest, "import.invalid")
+	}
+}

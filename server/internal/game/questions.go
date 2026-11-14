@@ -2,6 +2,7 @@ package game
 
 import (
 	"math/rand"
+	"regexp"
 	"strings"
 	"unicode"
 )
@@ -11,6 +12,10 @@ type Entry struct {
 	Word    string `json:"word"`
 	IPA     string `json:"ipa"`
 	Meaning string `json:"meaning"`
+	// Sentence uses the word as it is spelled, and SentenceVi is what it
+	// means: what a cloze question is made of. Most words have none.
+	Sentence   string `json:"sentence,omitempty"`
+	SentenceVi string `json:"sentenceVi,omitempty"`
 }
 
 // Question is one turn of a fight. Answer stays on the server: the browser is
@@ -23,6 +28,8 @@ type Question struct {
 	// Say is the word to speak aloud, for listen. The browser has to know it
 	// to say it.
 	Say string `json:"say,omitempty"`
+	// Hint is what a cloze sentence means, in Vietnamese.
+	Hint string `json:"hint,omitempty"`
 	// Options to choose from; for scramble, the word's letters, shuffled.
 	Options []string `json:"options"`
 	// Word is the word the question is about, and Answer what counts as right.
@@ -78,6 +85,14 @@ func NewQuestion(kind string, target Entry, pool []Entry, r *rand.Rand) (q Quest
 		q.Say = target.Word
 		q.Answer = target.Word
 		q.Options = options(target, soundsDifferent(target, pool), r, func(e Entry) string { return e.Word })
+	case GameCloze:
+		blanked, ok := Blank(target.Sentence, target.Word)
+		if !ok {
+			return q, false
+		}
+		q.Prompt, q.Hint = blanked, target.SentenceVi
+		q.Answer = target.Word
+		q.Options = options(target, pool, r, func(e Entry) string { return e.Word })
 	case GameIPA:
 		if target.IPA == "" {
 			return q, false
@@ -89,6 +104,23 @@ func NewQuestion(kind string, target Entry, pool []Entry, r *rand.Rand) (q Quest
 		return q, false
 	}
 	return q, q.Options != nil
+}
+
+// Gap is what stands in a sentence where its word was.
+const Gap = "_____"
+
+// Blank is a sentence with its word left out: the word as a whole word, in any
+// case, once. ok is false when the sentence does not have it.
+func Blank(sentence, word string) (string, bool) {
+	if sentence == "" || word == "" {
+		return "", false
+	}
+	re := regexp.MustCompile(`(?i)\b` + regexp.QuoteMeta(word) + `\b`)
+	loc := re.FindStringIndex(sentence)
+	if loc == nil {
+		return "", false
+	}
+	return sentence[:loc[0]] + Gap + sentence[loc[1]:], true
 }
 
 // options is the right answer and three wrong ones, shuffled, all different;

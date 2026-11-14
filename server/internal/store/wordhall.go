@@ -34,6 +34,8 @@ type QuizView struct {
 	Kind    string   `json:"kind"`
 	Prompt  string   `json:"prompt"`
 	Options []string `json:"options"`
+	// Hint is what a sentence with a gap means.
+	Hint string `json:"hint,omitempty"`
 	// Say is the word to speak aloud, for a word to be heard.
 	Say string `json:"say,omitempty"`
 }
@@ -42,6 +44,7 @@ type QuizView struct {
 type quiz struct {
 	Kind    string   `json:"kind"`
 	Prompt  string   `json:"prompt"`
+	Hint    string   `json:"hint,omitempty"`
 	Options []string `json:"options"`
 	Word    string   `json:"word"`
 	Answer  string   `json:"answer"`
@@ -50,11 +53,11 @@ type quiz struct {
 }
 
 func (q quiz) view() *QuizView {
-	return &QuizView{Kind: q.Kind, Prompt: q.Prompt, Options: q.Options}
+	return &QuizView{Kind: q.Kind, Prompt: q.Prompt, Options: q.Options, Hint: q.Hint}
 }
 
 func newQuiz(q game.Question, e game.Entry) quiz {
-	return quiz{Kind: q.Kind, Prompt: q.Prompt, Options: q.Options, Word: q.Word, Answer: q.Answer,
+	return quiz{Kind: q.Kind, Prompt: q.Prompt, Hint: q.Hint, Options: q.Options, Word: q.Word, Answer: q.Answer,
 		IPA: e.IPA, Meaning: e.Meaning}
 }
 
@@ -96,6 +99,8 @@ type QuizAnswer struct {
 	IPA     string `json:"ipa"`
 	Meaning string `json:"meaning"`
 	Gold    int    `json:"gold"`
+	// Sentence is the sentence a word was left out of, whole again.
+	Sentence string `json:"sentence,omitempty"`
 }
 
 func (q quiz) answered(answer string) QuizAnswer {

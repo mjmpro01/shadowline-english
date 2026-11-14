@@ -17,7 +17,7 @@
    The learner app's adventure menu (app/src/styles/app.css), so the console
    reads as the same product: a lit forest, a tree with a rope ladder nailed to
    it, and a plank per section. Narrower planks and tighter spacing than the
-   app's, because there are nine sections and a desk screen to share. */
+   app's, because there are ten sections and a desk screen to share. */
 
 #root {
   min-height: 100vh;
@@ -1059,4 +1059,25 @@ video.clip-preview-media {
     grid-row: 1;
     grid-column: 3;
   }
+}
+
+/* — auto import — */
+.import-steps,
+.import-files {
+  margin: 0;
+  padding-left: 1.2em;
+  display: grid;
+  gap: var(--space-1);
+}
+.import-steps > li[data-ok='false'] > strong {
+  color: var(--color-danger, #b3261e);
+}
+.import-detail {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+/* A host key is one long word: on a phone it breaks rather than runs off. */
+.import-key {
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
