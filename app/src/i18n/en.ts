@@ -1071,6 +1071,7 @@ export const en = {
   'arena.battle.ask.listen': 'Which word did you hear?',
   'arena.battle.ask.scramble': 'Put the letters in order.',
   'arena.battle.ask.ipa': 'Which word sounds like this?',
+  'arena.battle.ask.cloze': 'Which word fills the gap?',
   'arena.battle.hearAgain': 'Hear it again',
   'arena.battle.clear': 'Clear',
   'arena.battle.check': 'Check',
