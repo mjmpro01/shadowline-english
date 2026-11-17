@@ -1067,6 +1067,7 @@ export const vi: Messages = {
   'arena.battle.ask.listen': 'Bạn vừa nghe từ nào?',
   'arena.battle.ask.scramble': 'Xếp các chữ cái cho đúng thứ tự.',
   'arena.battle.ask.ipa': 'Từ nào đọc như thế này?',
+  'arena.battle.ask.cloze': 'Từ nào điền vào chỗ trống?',
   'arena.battle.hearAgain': 'Nghe lại',
   'arena.battle.clear': 'Xoá',
   'arena.battle.check': 'Kiểm tra',
