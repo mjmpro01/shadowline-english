@@ -9,6 +9,7 @@ import { ClipFace } from '../components/ClipFace'
 import { Icon } from '../components/Icon'
 import { ListenAgain } from '../components/ListenAgain'
 import { TodayCard } from '../components/TodayCard'
+import { ContinueCard, NewEpisodesRow } from '../components/KeepGoing'
 import { Mascot } from '../components/Mascot'
 import { statsFor } from '../lib/leaderboard'
 import { colorFor } from '../lib/score'
@@ -45,6 +46,9 @@ export function DashboardScreen() {
     chosen?.key === todayKey ? chosen.today : todayRemote.state === 'ready' ? todayRemote.value : null
   const setToday = (next: Today) => setChosen({ key: todayKey, today: next })
   const streak = today?.streak.count ?? mine.streak
+  // Where the learner left off, asked again when the takes change: a take may
+  // have finished the episode, or moved the next line on.
+  const cont = useRemote(todayKey, () => repository.continueWatching())
 
   /* The HUD. Four numbers a learner checks before deciding whether to practise,
      so each carries its own glyph: at a glance the row reads as a row of
@@ -76,6 +80,10 @@ export function DashboardScreen() {
       {today && data.takes.length > 0 && <TodayCard today={today} onChange={setToday} />}
 
       <ListenAgain />
+
+      {cont.state === 'ready' && cont.value && <ContinueCard cont={cont.value} />}
+
+      <NewEpisodesRow />
 
       {data.takes.length === 0 ? (
         <FirstSteps

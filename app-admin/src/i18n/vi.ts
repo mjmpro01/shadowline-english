@@ -350,6 +350,7 @@ export const vi: Messages = {
   'growth.active': 'Mở app',
   'growth.learning': 'Có học',
   'growth.signups': 'Đăng ký',
+  'growth.published': 'Tập xuất bản',
   'growth.cohorts': 'Tỉ lệ quay lại, theo tuần đăng ký',
   'growth.cohortsHint':
     'D1: quay lại ngày hôm sau. D7: quay lại bất kỳ ngày nào trong tuần thứ hai. D30: quay lại trong tuần từ ngày thứ 30. Dấu gạch là chưa đủ ngày để tính.',

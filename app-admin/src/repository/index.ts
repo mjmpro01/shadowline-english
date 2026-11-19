@@ -277,6 +277,8 @@ export interface GrowthDay {
   active: number
   learning: number
   signups: number
+  /** Episodes put on the shelf that day. */
+  published: number
 }
 
 /** How many of those who could have came back, and did. */

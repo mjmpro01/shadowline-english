@@ -95,8 +95,8 @@ func standaloneEpisode(ctx context.Context, tx pgx.Tx, playlistID uuid.UUID) (uu
 		return uuid.Nil, err
 	}
 	err = tx.QueryRow(ctx, `
-		insert into clip_sources (playlist_id, name, title, key, content_type, has_video, published)
-		values ($1, '', $2, '', '', false, true)
+		insert into clip_sources (playlist_id, name, title, key, content_type, has_video, published, published_at)
+		values ($1, '', $2, '', '', false, true, now())
 		returning id`, playlistID, StandaloneEpisodeTitle).Scan(&id)
 	return id, err
 }
@@ -128,7 +128,8 @@ func (s *Store) UpdateEpisode(ctx context.Context, id uuid.UUID, p EpisodePatch)
 				title       = coalesce($2, title),
 				playlist_id = coalesce($3, playlist_id),
 				position    = coalesce($4, position),
-				published   = coalesce($5, published)
+				published   = coalesce($5, published),
+				published_at = case when coalesce($5, published) then coalesce(published_at, now()) else published_at end
 			where id = $1`, id, p.Title, p.PlaylistID, p.Position, p.Published); err != nil {
 			return err
 		}

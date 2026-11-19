@@ -19,6 +19,8 @@ type GrowthDay struct {
 	Active   int    `json:"active"`
 	Learning int    `json:"learning"`
 	Signups  int    `json:"signups"`
+	// Published is episodes put on the shelf that day.
+	Published int `json:"published"`
 }
 
 // Cohort is the learners who joined in one week, and how many came back. A
@@ -81,14 +83,16 @@ func (s *Store) Growth(ctx context.Context, days int, now time.Time) (Growth, er
 			select to_char(d.day, 'YYYY-MM-DD'),
 			  (select count(*) from user_days u where u.day = d.day)::int,
 			  (select count(distinct user_id) from learning_events e where e.day = d.day)::int,
-			  (select count(*) from users where (created_at at time zone 'Asia/Ho_Chi_Minh')::date = d.day)::int
+			  (select count(*) from users where (created_at at time zone 'Asia/Ho_Chi_Minh')::date = d.day)::int,
+			  (select count(*) from clip_sources s
+			   where s.published and (s.published_at at time zone 'Asia/Ho_Chi_Minh')::date = d.day)::int
 			from d order by d.day`, today, days)
 		if err != nil {
 			return err
 		}
 		out.Days, err = pgx.CollectRows(rows, func(r pgx.CollectableRow) (GrowthDay, error) {
 			var g GrowthDay
-			err := r.Scan(&g.Day, &g.Active, &g.Learning, &g.Signups)
+			err := r.Scan(&g.Day, &g.Active, &g.Learning, &g.Signups, &g.Published)
 			return g, err
 		})
 		if err != nil {

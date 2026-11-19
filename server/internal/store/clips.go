@@ -229,7 +229,8 @@ func (s *Store) CreateClip(ctx context.Context, in NewClip, createdBy uuid.UUID)
 			update clip_sources set
 				playlist_id = coalesce(playlist_id, $2),
 				title       = case when title = '' then name else title end,
-				published   = true
+				published   = true,
+				published_at = coalesce(published_at, now())
 			where id = $1`, *in.SourceID, playlistID); err != nil {
 			return err
 		}

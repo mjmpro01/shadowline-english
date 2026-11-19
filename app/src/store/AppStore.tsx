@@ -4,6 +4,7 @@ import { useT } from '../i18n'
 import { explain } from '../lib/errors'
 import { normalizeWord } from '../lib/text'
 import { repository, type LeaderboardRow } from '../repository'
+import { resetNewEpisodes } from '../lib/newEpisodes'
 import { AppContext, type LoadState, type Store, type VideoStats } from './context'
 
 const EMPTY: AppData = { videos: [], takes: [], vocab: [], profile: null }
@@ -135,6 +136,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await repository.logout()
+    resetNewEpisodes()
     setData(EMPTY)
     setLeaderboard([])
   }, [])

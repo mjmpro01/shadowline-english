@@ -1132,6 +1132,14 @@ video.clip-preview-media {
 .growth-line[data-series='signups'] {
   stroke-dasharray: 4 4;
 }
+.growth-line[data-series='published'],
+.growth-key[data-series='published']::before {
+  stroke: var(--color-accent-700);
+  background: var(--color-accent-700);
+}
+.growth-line[data-series='published'] {
+  stroke-dasharray: 1 5;
+}
 .growth-key {
   display: inline-flex;
   align-items: center;
