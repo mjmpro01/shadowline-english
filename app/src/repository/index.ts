@@ -61,6 +61,14 @@ export interface Repository {
   banners(placement: 'dashboard' | 'library', locale: string): Promise<Banner[]>
   /** What the dashboard offers; an admin picks these. */
   featuredClips(): Promise<Video[]>
+  /** Where the learner left off, or null. */
+  continueWatching(): Promise<Continue | null>
+  /** Episodes new to the learner, followed series first. */
+  newEpisodes(): Promise<NewEpisodes>
+  /** Records that the learner opened an episode: no longer new to them. */
+  markSeen(episodeId: string): Promise<void>
+  follow(slug: string): Promise<void>
+  unfollow(slug: string): Promise<void>
   /** Today: points toward the goal, the streak, and what is left to do. */
   today(): Promise<Today>
   /** Chooses the daily goal, in points, and answers with today after it. */
@@ -340,6 +348,37 @@ export interface LibrarySummary {
 export interface PlaylistPage {
   playlist: Playlist
   episodes: Episode[]
+  /** Whether the learner follows this series: by practising in it, or by
+   *  pressing Follow. */
+  following: boolean
+}
+
+/** Where the learner left off: an episode they were practising, how far
+ *  through it they are, and the next clip in it. */
+export interface Continue {
+  episode: Episode
+  playlist: Playlist | null
+  total: number
+  practised: number
+  next: Video
+}
+
+/** An episode new to the learner, with the series it is in. */
+export interface NewEpisode extends Episode {
+  playlistSlug: string
+  playlistTitle: string
+  followed: boolean
+  publishedAt: string
+  /** Published after the last day the learner came. */
+  sinceLastVisit: boolean
+  /** The episode a series' loose clips hang in: its title means nothing. */
+  standalone: boolean
+}
+
+export interface NewEpisodes {
+  episodes: NewEpisode[]
+  /** How many episodes are new in each series, by its id. */
+  series: Record<string, number>
 }
 
 export interface EpisodePage {
@@ -435,6 +474,27 @@ class ApiRepository implements Repository {
 
   today() {
     return api.get<Today>('/api/today')
+  }
+
+  async continueWatching() {
+    const { continue: cont } = await api.get<{ continue: Continue | null }>('/api/continue')
+    return cont
+  }
+
+  newEpisodes() {
+    return api.get<NewEpisodes>('/api/new')
+  }
+
+  markSeen(episodeId: string) {
+    return api.send<void>('POST', `/api/episodes/${episodeId}/seen`, {})
+  }
+
+  follow(slug: string) {
+    return api.send<void>('PUT', `/api/playlists/${encodeURIComponent(slug)}/follow`, {})
+  }
+
+  unfollow(slug: string) {
+    return api.send<void>('DELETE', `/api/playlists/${encodeURIComponent(slug)}/follow`, {})
   }
 
   setGoal(points: DailyGoal) {

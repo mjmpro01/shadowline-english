@@ -8,6 +8,7 @@ import { SeriesCard } from '../components/SeriesCard'
 import { Icon } from '../components/Icon'
 import { Loading } from '../components/LoadState'
 import type { Episode, PlaylistList, SearchResults, SectionRow } from '../data/types'
+import { useNewEpisodes } from '../lib/newEpisodes'
 import { searchIsWorthRunning } from '../lib/library'
 import { useDebounced, useRemote } from '../lib/remote'
 import { iconFor } from '../lib/topics'
@@ -241,6 +242,7 @@ function Found({
 
 function EpisodeHit({ episode, t }: { episode: Episode; t: Translate }) {
   const navigate = useNavigate()
+  const isNew = useNewEpisodes().episodes.some((e) => e.id === episode.id)
   return (
     <button
       type="button"
@@ -253,6 +255,7 @@ function EpisodeHit({ episode, t }: { episode: Episode; t: Translate }) {
       </span>
       <span className="stack" style={{ gap: 2, minWidth: 0 }}>
         <span className="card-title clamp-2" style={{ fontSize: 14 }}>
+          {isNew && <span className="tag tag-accent new-tag">{t('newEps.tag')}</span>}
           {episode.title}
         </span>
         <span className="card-meta mono">{t('series.episodeCounts', episode.clips, clock(episode.seconds))}</span>

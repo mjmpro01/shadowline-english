@@ -192,6 +192,22 @@ export const en = {
   'dash.takesAndClips': (takes: number, clips: number) =>
     `${takes} ${takes === 1 ? 'take' : 'takes'} · ${clips} ${clips === 1 ? 'clip' : 'clips'}`,
 
+  // --- keep going -------------------------------------------------------------
+  'continue.kicker': 'Pick up where you left off',
+  'continue.progress': (done: number, total: number) => `${done} of ${total} lines practised`,
+  'continue.go': 'Practise the next line',
+  'continue.episode': 'See the episode',
+  'newEps.title': 'New episodes',
+  'newEps.sinceVisit': 'New since you were last here',
+  'newEps.tag': 'New',
+  'newEps.inSeries': (n: number) => `${n} new ${n === 1 ? 'episode' : 'episodes'}`,
+  'newEps.followed': 'following',
+  'newEps.newClips': 'New clips',
+  'follow.follow': 'Follow',
+  'follow.following': 'Following ✓',
+  'follow.hint': 'New episodes of series you follow come first. Practising in a series follows it.',
+  'follow.failed': 'Could not change that.',
+
   // --- today ----------------------------------------------------------------
   'today.title': 'Today',
   'today.left': (n: number) => `${n} more ${n === 1 ? 'point' : 'points'} to reach today's goal.`,

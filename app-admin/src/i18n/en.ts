@@ -358,6 +358,7 @@ export const en = {
   'growth.active': 'Opened the app',
   'growth.learning': 'Learned something',
   'growth.signups': 'Signed up',
+  'growth.published': 'Episodes published',
   'growth.cohorts': 'Coming back, by the week they joined',
   'growth.cohortsHint':
     'D1: back the next day. D7: back on any day of their second week. D30: back on any day of the week from day 30. A dash is too soon to tell.',

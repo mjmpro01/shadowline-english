@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import type { Translate } from '../i18n'
 import type { Playlist } from '../data/types'
+import { useNewEpisodes } from '../lib/newEpisodes'
 import { tintOf } from '../lib/score'
 import { Icon } from './Icon'
 
@@ -8,6 +9,7 @@ import { Icon } from './Icon'
  *  on the front screen's grid, on its shelves, and on a shelf's own page. */
 export function SeriesCard({ playlist, t }: { playlist: Playlist; t: Translate }) {
   const navigate = useNavigate()
+  const fresh = useNewEpisodes().series[playlist.id] ?? 0
   return (
     <button
       type="button"
@@ -48,6 +50,7 @@ export function SeriesCard({ playlist, t }: { playlist: Playlist; t: Translate }
         {playlist.recentTakes > 0 && (
           <span className="card-meta">{t('library.takesThisWeek', playlist.recentTakes)}</span>
         )}
+        {fresh > 0 && <span className="tag tag-accent new-tag series-new">{t('newEps.inSeries', fresh)}</span>}
       </span>
     </button>
   )

@@ -1,8 +1,10 @@
+import { useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useT, type Translate } from '../i18n'
 import { Icon } from '../components/Icon'
 import { Loading } from '../components/LoadState'
 import { episodeProgress } from '../lib/clips'
+import { markEpisodeSeen } from '../lib/newEpisodes'
 import { useRemote } from '../lib/remote'
 import { colorFor } from '../lib/score'
 import { clock } from '../lib/time'
@@ -22,6 +24,10 @@ export function EpisodeScreen() {
   const navigate = useNavigate()
   const t = useT()
   const remote = useRemote(episodeId ?? '', (id) => repository.episode(id))
+  // Opened, it is no longer new to this learner.
+  useEffect(() => {
+    if (episodeId) markEpisodeSeen(episodeId)
+  }, [episodeId])
 
   const back = remote.state === 'ready' && remote.value.playlist
   return (

@@ -216,6 +216,22 @@ export const vi: Messages = {
   'dash.takesAndClips': (takes: number, clips: number) =>
     `${takes} bản ghi · ${clips} clip`,
 
+  // --- keep going -------------------------------------------------------------
+  'continue.kicker': 'Học tiếp chỗ bạn đang dở',
+  'continue.progress': (done: number, total: number) => `Đã luyện ${done}/${total} câu`,
+  'continue.go': 'Luyện tiếp câu sau',
+  'continue.episode': 'Xem tập',
+  'newEps.title': 'Tập mới',
+  'newEps.sinceVisit': 'Mới từ lần trước bạn vào',
+  'newEps.tag': 'Mới',
+  'newEps.inSeries': (n: number) => `${n} tập mới`,
+  'newEps.followed': 'đang theo dõi',
+  'newEps.newClips': 'Clip mới',
+  'follow.follow': 'Theo dõi',
+  'follow.following': 'Đang theo dõi ✓',
+  'follow.hint': 'Tập mới của series bạn theo dõi sẽ được đưa lên trước. Luyện một clip trong series là tự theo dõi.',
+  'follow.failed': 'Không đổi được.',
+
   // --- today ----------------------------------------------------------------
   'today.title': 'Hôm nay',
   'today.left': (n: number) => `Còn ${n} điểm nữa là đạt mục tiêu hôm nay.`,

@@ -1,8 +1,11 @@
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useT, type Translate } from '../i18n'
 import { Icon } from '../components/Icon'
 import { Loading } from '../components/LoadState'
 import type { Episode } from '../data/types'
+import { useNewEpisodes } from '../lib/newEpisodes'
+import { explain } from '../lib/errors'
 import { useRemote } from '../lib/remote'
 import { clock } from '../lib/time'
 import { repository } from '../repository'
@@ -46,6 +49,8 @@ export function SeriesScreen() {
 
 function Body({ page, t }: { page: Awaited<ReturnType<typeof repository.playlist>>; t: Translate }) {
   const { playlist, episodes } = page
+  const fresh = useNewEpisodes()
+  const isNew = new Set(fresh.episodes.map((e) => e.id))
   return (
     <>
       <div className="stack" style={{ gap: 6 }}>
@@ -63,6 +68,7 @@ function Body({ page, t }: { page: Awaited<ReturnType<typeof repository.playlist
           {t('library.seriesCounts', playlist.episodes, playlist.clips)}
           {playlist.recentTakes > 0 && ` · ${t('library.takesThisWeek', playlist.recentTakes)}`}
         </div>
+        <FollowButton slug={playlist.slug} initial={page.following} t={t} />
       </div>
 
       {episodes.length === 0 ? (
@@ -70,7 +76,7 @@ function Body({ page, t }: { page: Awaited<ReturnType<typeof repository.playlist
       ) : (
         <div className="stack gap-2">
           {episodes.map((episode) => (
-            <EpisodeRow key={episode.id} episode={episode} t={t} />
+            <EpisodeRow key={episode.id} episode={episode} isNew={isNew.has(episode.id)} t={t} />
           ))}
         </div>
       )}
@@ -78,7 +84,45 @@ function Body({ page, t }: { page: Awaited<ReturnType<typeof repository.playlist
   )
 }
 
-function EpisodeRow({ episode, t }: { episode: Episode; t: Translate }) {
+/**
+ * Following a series: practising in one follows it, and this is where a learner
+ * says so themselves, or stops. A followed series' new episodes come first in
+ * what is new, and are what reminders will be about.
+ */
+function FollowButton({ slug, initial, t }: { slug: string; initial: boolean; t: Translate }) {
+  const [following, setFollowing] = useState(initial)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const toggle = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      if (following) await repository.unfollow(slug)
+      else await repository.follow(slug)
+      setFollowing(!following)
+    } catch (err) {
+      setError(explain(err, t, t('follow.failed')))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="row gap-2 wrap" style={{ alignItems: 'center' }}>
+      <button
+        type="button"
+        className={`btn ${following ? 'btn-secondary' : 'btn-primary'}`}
+        aria-pressed={following}
+        disabled={busy}
+        onClick={() => void toggle()}
+      >
+        {following ? t('follow.following') : t('follow.follow')}
+      </button>
+      <span className="card-meta">{error ?? t('follow.hint')}</span>
+    </div>
+  )
+}
+
+function EpisodeRow({ episode, isNew, t }: { episode: Episode; isNew: boolean; t: Translate }) {
   const navigate = useNavigate()
   return (
     <button
@@ -96,6 +140,7 @@ function EpisodeRow({ episode, t }: { episode: Episode; t: Translate }) {
       </span>
       <span className="stack" style={{ gap: 2, minWidth: 0 }}>
         <span className="card-title clamp-2" style={{ fontSize: 14 }}>
+          {isNew && <span className="tag tag-accent new-tag">{t('newEps.tag')}</span>}
           {episode.title}
         </span>
         <span className="card-meta mono">

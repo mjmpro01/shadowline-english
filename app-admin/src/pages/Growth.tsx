@@ -80,6 +80,7 @@ export function Growth() {
               <span className="growth-key" data-series="active">{t('growth.active')}</span>
               <span className="growth-key" data-series="learning">{t('growth.learning')}</span>
               <span className="growth-key" data-series="signups">{t('growth.signups')}</span>
+              <span className="growth-key" data-series="published">{t('growth.published')}</span>
             </div>
           </section>
 
@@ -154,7 +155,7 @@ function DayChart({ days, locale }: { days: GrowthDay[]; locale: string }) {
   const width = 640
   const height = 180
   const pad = { top: 10, right: 8, bottom: 22, left: 28 }
-  const top = Math.max(1, ...days.flatMap((d) => [d.active, d.learning, d.signups]))
+  const top = Math.max(1, ...days.flatMap((d) => [d.active, d.learning, d.signups, d.published]))
   const x = (i: number) => pad.left + (days.length < 2 ? 0 : (i / (days.length - 1)) * (width - pad.left - pad.right))
   const y = (v: number) => pad.top + (1 - v / top) * (height - pad.top - pad.bottom)
   const line = (pick: (d: GrowthDay) => number) =>
@@ -182,6 +183,7 @@ function DayChart({ days, locale }: { days: GrowthDay[]; locale: string }) {
           {label(days[i].day)}
         </text>
       ))}
+      <path d={line((d) => d.published)} className="growth-line" data-series="published" />
       <path d={line((d) => d.signups)} className="growth-line" data-series="signups" />
       <path d={line((d) => d.learning)} className="growth-line" data-series="learning" />
       <path d={line((d) => d.active)} className="growth-line" data-series="active" />
