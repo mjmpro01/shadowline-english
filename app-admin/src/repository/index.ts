@@ -271,6 +271,42 @@ export interface TutorUsage {
   limit: { questions: number; windowMinutes: number }
 }
 
+/** One day of who came: opened the app, learned something, signed up. */
+export interface GrowthDay {
+  day: string
+  active: number
+  learning: number
+  signups: number
+}
+
+/** How many of those who could have came back, and did. */
+export interface Share {
+  of: number
+  did: number
+}
+
+/** The learners who joined in one week, and how many came back on day 1, in
+ *  the second week, and in the week from day 30; null while too young to tell. */
+export interface Cohort {
+  week: string
+  joined: number
+  d1: Share | null
+  d7: Share | null
+  d30: Share | null
+}
+
+export interface Growth {
+  today: string
+  dau: number
+  wau: number
+  mau: number
+  learners: number
+  days: GrowthDay[]
+  cohorts: Cohort[]
+  funnel: { joined: number; firstTake: number; returned: number; goal3: number }
+  funnelDays: number
+}
+
 export const repository = {
   async me(): Promise<Profile | null> {
     const { user } = await api.get<{ user: Profile | null }>('/auth/me')
@@ -418,6 +454,11 @@ export const repository = {
   /** Gives or takes admin rights, or suspends or restores an account. */
   setAccess(id: string, change: { admin?: boolean; suspended?: boolean }) {
     return api.send<Account>('PATCH', `/api/admin/users/${id}`, change)
+  },
+
+  /** Who came and who came back over the last `days` days. */
+  growth(days: number) {
+    return api.get<Growth>(`/api/admin/growth?days=${days}`)
   },
 
   /** What the tutor has cost over the last `days` days: by day and by learner. */

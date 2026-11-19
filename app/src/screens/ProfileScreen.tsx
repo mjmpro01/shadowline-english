@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { useRemote } from '../lib/remote'
-import { repository } from '../repository'
+import { repository, type Today } from '../repository'
 import { Link, useNavigate } from 'react-router-dom'
 import { AvatarSlot } from '../components/AvatarSlot'
 import { Dialog } from '../components/Dialog'
 import { Icon } from '../components/Icon'
+import { GoalPicker } from '../components/TodayCard'
 import { useTour } from '../tour/context'
 import { LOCALE_CODES, LOCALES, useI18n } from '../i18n'
 import { applyTheme, storedTheme, THEMES, type Theme } from '../lib/theme'
@@ -29,6 +30,8 @@ export function ProfileScreen() {
   // Above the early return: a hook after it runs on some renders and not
   // others, which is the one thing React cannot cope with.
   const summary = useRemote('', () => repository.librarySummary())
+  const today = useRemote('', () => repository.today())
+  const [goal, setGoal] = useState<number | null>(null)
 
   if (!profile) return null
 
@@ -102,6 +105,17 @@ export function ProfileScreen() {
           </div>
         ))}
       </div>
+
+      {today.state === 'ready' && (
+        <div className="card elev-sm stack gap-2" style={{ width: '100%', textAlign: 'left' }}>
+          <div className="card-kicker">{t('today.goalTitle')}</div>
+          <span style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>{t('today.goalBody')}</span>
+          <GoalPicker
+            current={goal ?? today.value.goal}
+            onChange={(next: Today) => setGoal(next.goal)}
+          />
+        </div>
+      )}
 
       {/*
         No switch here any more. Admin is decided by the server from

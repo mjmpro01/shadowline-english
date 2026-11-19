@@ -1,12 +1,14 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { firstToPractise } from '../lib/clips'
 import { useRemote } from '../lib/remote'
-import { repository } from '../repository'
+import { repository, type Today } from '../repository'
 import { useT } from '../i18n'
 import { Banners } from '../components/Banners'
 import { ClipFace } from '../components/ClipFace'
 import { Icon } from '../components/Icon'
 import { ListenAgain } from '../components/ListenAgain'
+import { TodayCard } from '../components/TodayCard'
 import { Mascot } from '../components/Mascot'
 import { statsFor } from '../lib/leaderboard'
 import { colorFor } from '../lib/score'
@@ -30,6 +32,20 @@ export function DashboardScreen() {
   const remote = useRemote('', () => repository.featuredClips())
   const featured = remote.state === 'ready' ? remote.value : []
 
+  // Asked again whenever the takes change, so a take recorded and come back
+  // from shows in the ring. Kept here as well as in the card: the streak tile
+  // reads it, and the server's streak is the one that counts the Vietnam day
+  // every other daily thing counts in.
+  const todayKey = String(data.takes.length)
+  const todayRemote = useRemote(todayKey, () => repository.today())
+  // A goal chosen on the card answers with the day after it; that answer
+  // stands until the takes change and the day is asked for again.
+  const [chosen, setChosen] = useState<{ key: string; today: Today } | null>(null)
+  const today =
+    chosen?.key === todayKey ? chosen.today : todayRemote.state === 'ready' ? todayRemote.value : null
+  const setToday = (next: Today) => setChosen({ key: todayKey, today: next })
+  const streak = today?.streak.count ?? mine.streak
+
   /* The HUD. Four numbers a learner checks before deciding whether to practise,
      so each carries its own glyph: at a glance the row reads as a row of
      things rather than as four numbers that have to be labelled apart.
@@ -45,7 +61,7 @@ export function DashboardScreen() {
       color: mine.averageScore ? colorFor(mine.averageScore) : undefined,
       icon: 'trophy' as const,
     },
-    { label: t('dash.dayStreak'), value: mine.streak, icon: 'flame' as const, lit: mine.streak > 0 },
+    { label: t('dash.dayStreak'), value: streak, icon: 'flame' as const, lit: today ? today.streak.today : streak > 0 },
   ]
 
   return (
@@ -56,6 +72,8 @@ export function DashboardScreen() {
       </div>
 
       <Banners placement="dashboard" />
+
+      {today && data.takes.length > 0 && <TodayCard today={today} onChange={setToday} />}
 
       <ListenAgain />
 

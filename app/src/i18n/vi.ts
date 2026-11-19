@@ -216,6 +216,31 @@ export const vi: Messages = {
   'dash.takesAndClips': (takes: number, clips: number) =>
     `${takes} bản ghi · ${clips} clip`,
 
+  // --- today ----------------------------------------------------------------
+  'today.title': 'Hôm nay',
+  'today.left': (n: number) => `Còn ${n} điểm nữa là đạt mục tiêu hôm nay.`,
+  'today.reached': 'Đã đạt mục tiêu hôm nay — giỏi lắm!',
+  'today.reachedGold': (gold: number) => `Đã đạt mục tiêu hôm nay — +${gold} vàng Arena!`,
+  'today.ringLabel': (points: number, goal: number) => `${points} trên ${goal} điểm hôm nay`,
+  'today.streak': (n: number) => (n === 0 ? 'Chưa có chuỗi ngày' : `Chuỗi ${n} ngày`),
+  'today.freezes': (n: number) => `${n} lượt giữ chuỗi: bỏ lỡ một ngày vẫn không mất chuỗi`,
+  'today.atRisk': 'Luyện 1 lượt hôm nay để giữ chuỗi',
+  'today.todo': 'Việc nên làm hôm nay',
+  'today.practise': (title: string) => `Luyện tiếp: ${title}`,
+  'today.vocab': (n: number) => `Ôn ${n} từ đến hạn`,
+  'today.arena': (done: number, total: number) => `Nhiệm vụ Arena ${done}/${total}`,
+  'today.points': (n: number) => `+${n}`,
+  'today.pointsEach': (n: number) => `+${n} mỗi từ`,
+  'today.pointsShort': (n: number) => `${n} điểm`,
+  'today.goalPrompt': 'Mỗi ngày bao nhiêu? Chọn mục tiêu — đổi được trong Hồ sơ.',
+  'today.goalLabel': 'Mục tiêu mỗi ngày',
+  'today.goalLight': 'Nhẹ',
+  'today.goalSteady': 'Vừa',
+  'today.goalKeen': 'Chăm',
+  'today.goalFailed': 'Không đổi được mục tiêu.',
+  'today.goalTitle': 'Mục tiêu mỗi ngày',
+  'today.goalBody': 'Điểm mỗi ngày: một bản ghi 2, một thẻ từ 1, một bài chép 5, một câu hội thoại 1, một lượt với gia sư 2.',
+
   // --- library --------------------------------------------------------------
   'library.title': 'Shadowing',
   'library.practice': 'Luyện',

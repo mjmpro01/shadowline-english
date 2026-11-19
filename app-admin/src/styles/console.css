@@ -17,7 +17,7 @@
    The learner app's adventure menu (app/src/styles/app.css), so the console
    reads as the same product: a lit forest, a tree with a rope ladder nailed to
    it, and a plank per section. Narrower planks and tighter spacing than the
-   app's, because there are ten sections and a desk screen to share. */
+   app's, because there are eleven sections and a desk screen to share. */
 
 #root {
   min-height: 100vh;
@@ -1080,4 +1080,100 @@ video.clip-preview-media {
 .import-key {
   overflow-wrap: anywhere;
   min-width: 0;
+}
+
+/* — growth — */
+.growth-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: var(--space-2);
+}
+.growth-tile {
+  gap: 2px;
+}
+.growth-tile-value {
+  font-size: 26px;
+  font-weight: 700;
+}
+.growth-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.growth-grid {
+  stroke: var(--color-divider);
+  stroke-width: 1;
+}
+.growth-axis {
+  font-size: 10px;
+  fill: var(--color-text-muted);
+}
+.growth-line {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.growth-line[data-series='active'],
+.growth-key[data-series='active']::before {
+  stroke: var(--color-accent);
+  background: var(--color-accent);
+}
+.growth-line[data-series='learning'],
+.growth-key[data-series='learning']::before {
+  stroke: var(--color-accent-2);
+  background: var(--color-accent-2);
+}
+.growth-line[data-series='signups'],
+.growth-key[data-series='signups']::before {
+  stroke: var(--color-neutral-400);
+  background: var(--color-neutral-400);
+}
+.growth-line[data-series='signups'] {
+  stroke-dasharray: 4 4;
+}
+.growth-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.growth-key::before {
+  content: '';
+  width: 14px;
+  height: 4px;
+  border-radius: 2px;
+}
+.growth-cell {
+  background: color-mix(in srgb, var(--color-accent) calc(var(--share) * 45%), transparent);
+}
+.growth-funnel {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.growth-funnel li {
+  display: grid;
+  grid-template-columns: minmax(120px, 220px) 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+.growth-funnel-bar {
+  height: 14px;
+  border-radius: 7px;
+  background: linear-gradient(var(--color-accent), var(--color-accent)) no-repeat left / calc(var(--share) * 100%) 100%,
+    var(--color-neutral-200);
+}
+.growth-funnel-n {
+  font-size: 13px;
+}
+@media (max-width: 560px) {
+  .growth-funnel li {
+    grid-template-columns: 1fr auto;
+  }
+  .growth-funnel-bar {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
 }

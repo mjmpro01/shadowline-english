@@ -10,6 +10,7 @@ import { Banners } from './pages/Banners'
 import { Dialogues } from './pages/Dialogues'
 import { Import } from './pages/Import'
 import { Tutor } from './pages/Tutor'
+import { Growth } from './pages/Growth'
 import { Users } from './pages/Users'
 import { Uploads } from './pages/Uploads'
 import { Login } from './pages/Login'
@@ -41,6 +42,7 @@ export const router = createBrowserRouter(
             { path: 'uploads', element: <Uploads /> },
             { path: 'import', element: <Import /> },
             { path: 'tutor', element: <Tutor /> },
+            { path: 'growth', element: <Growth /> },
             { path: 'users', element: <Users /> },
             { path: 'banners', element: <Banners /> },
             { path: 'dialogues', element: <Dialogues /> },

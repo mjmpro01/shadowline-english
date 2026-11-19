@@ -61,6 +61,10 @@ export interface Repository {
   banners(placement: 'dashboard' | 'library', locale: string): Promise<Banner[]>
   /** What the dashboard offers; an admin picks these. */
   featuredClips(): Promise<Video[]>
+  /** Today: points toward the goal, the streak, and what is left to do. */
+  today(): Promise<Today>
+  /** Chooses the daily goal, in points, and answers with today after it. */
+  setGoal(points: DailyGoal): Promise<Today>
   /** What to practise next — a clip never tried, or the one that went worst.
    *  A question about the whole library, so the server answers it. */
   nextUp(): Promise<Video | null>
@@ -293,6 +297,35 @@ export interface Dictation {
   reviewedAt: string | null
 }
 
+/** Daily goals a learner can choose, in points: a take is 2, a flashcard 1, a
+ *  dictation 5, listening to one again 3, a dialogue line 1, a tutor turn 2. */
+export const DAILY_GOALS = [10, 20, 40] as const
+export type DailyGoal = (typeof DAILY_GOALS)[number]
+
+export interface Today {
+  day: string
+  goal: number
+  goalChosen: boolean
+  points: number
+  reached: boolean
+  /** What reaching the goal adds to the Arena purse; 0 for a learner who does not play. */
+  goalGold: number
+  streak: {
+    count: number
+    best: number
+    freezes: number
+    /** Today already has learning in it. */
+    today: boolean
+    /** Alive, but it ends tonight unless something is learned today. */
+    atRisk: boolean
+  }
+  nextClip: Video | null
+  vocabDue: number
+  dictationsDue: number
+  firstDictation: Dictation | null
+  arena: { done: number; total: number } | null
+}
+
 export interface DictationList {
   due: Dictation[]
   recent: Dictation[]
@@ -398,6 +431,14 @@ class ApiRepository implements Repository {
 
   featuredClips() {
     return api.get<Video[]>('/api/clips/featured')
+  }
+
+  today() {
+    return api.get<Today>('/api/today')
+  }
+
+  setGoal(points: DailyGoal) {
+    return api.send<Today>('PUT', '/api/goal', { dailyPoints: points })
   }
 
   exportAccount() {
