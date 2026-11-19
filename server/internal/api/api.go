@@ -196,6 +196,9 @@ func (s *Server) Routes() http.Handler {
 			r.Patch("/vocab/{id}", s.handleUpdateVocab)
 			r.Delete("/vocab/{id}", s.handleDeleteVocab)
 
+			r.Get("/today", s.handleToday)
+			r.Put("/goal", s.handleSetGoal)
+
 			r.Get("/profile", s.handleGetProfile)
 			r.Patch("/profile", s.handleUpdateProfile)
 			r.Put("/profile/avatar", s.handleUploadAvatar)
@@ -257,6 +260,7 @@ func (s *Server) Routes() http.Handler {
 				r.Post("/admin/uploads/{id}/autocut", s.handleAutocutUpload)
 				r.Get("/admin/uploads/{id}/transcript", s.handleSourceTranscript)
 				r.Get("/admin/services", s.handleServices)
+				r.Get("/admin/growth", s.handleGrowth)
 				r.Get("/admin/tutor/usage", s.handleTutorUsage)
 				r.Get("/admin/users", s.handleListAccounts)
 				r.Patch("/admin/users/{id}", s.handleUpdateAccount)

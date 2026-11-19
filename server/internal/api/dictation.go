@@ -40,6 +40,7 @@ func (s *Server) handleSaveDictation(w http.ResponseWriter, r *http.Request) {
 		s.failErr(w, err, "save dictation")
 		return
 	}
+	s.logActivity(r.Context(), u.ID, store.ActDictation)
 	writeJSON(w, http.StatusCreated, saved)
 }
 
@@ -59,9 +60,13 @@ func (s *Server) handleReviewDictation(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if err := s.Store.ReviewDictation(r.Context(), u.ID, id); err != nil {
+	first, err := s.Store.ReviewDictation(r.Context(), u.ID, id)
+	if err != nil {
 		s.failErr(w, err, "review dictation")
 		return
+	}
+	if first {
+		s.logActivity(r.Context(), u.ID, store.ActDictationReview)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

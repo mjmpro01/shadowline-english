@@ -76,6 +76,7 @@ func (s *Server) handleCreateTake(w http.ResponseWriter, r *http.Request) {
 		s.failErr(w, err, "create take")
 		return
 	}
+	s.logActivity(r.Context(), u.ID, store.ActTake)
 	writeJSON(w, http.StatusCreated, take)
 }
 

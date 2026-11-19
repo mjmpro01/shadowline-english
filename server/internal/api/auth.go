@@ -240,6 +240,9 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"user": nil})
 		return
 	}
+	if err := s.Store.SawToday(r.Context(), u.ID, time.Now()); err != nil {
+		s.Log.Warn("cannot record a day seen", "user", u.ID, "error", err)
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"user": s.profileOf(r.Context(), u)})
 }
 

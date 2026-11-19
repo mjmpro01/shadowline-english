@@ -163,6 +163,9 @@ func (s *Server) handleUpdateVocab(w http.ResponseWriter, r *http.Request) {
 		s.failErr(w, err, "update vocab word")
 		return
 	}
+	if patch.Reviewed {
+		s.logActivity(r.Context(), u.ID, store.ActReview)
+	}
 	writeJSON(w, http.StatusOK, word)
 }
 
