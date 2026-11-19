@@ -382,17 +382,16 @@ func (s *Store) Dictations(ctx context.Context, user uuid.UUID, now time.Time) (
 	return out, err
 }
 
-// ReviewDictation marks a dictation listened to again.
-func (s *Store) ReviewDictation(ctx context.Context, user, id uuid.UUID) error {
-	tag, err := s.pool.Exec(ctx, `
-		update dictations set reviewed_at = coalesce(reviewed_at, now()) where id = $1 and user_id = $2`, id, user)
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return ErrNotFound
-	}
-	return nil
+// ReviewDictation marks a dictation listened to again, and says whether this
+// was the first time: listening twice counts once.
+func (s *Store) ReviewDictation(ctx context.Context, user, id uuid.UUID) (bool, error) {
+	var first bool
+	err := s.pool.QueryRow(ctx, `
+		update dictations d set reviewed_at = coalesce(d.reviewed_at, now())
+		from (select reviewed_at is null as first from dictations where id = $1 and user_id = $2) before
+		where d.id = $1 and d.user_id = $2
+		returning before.first`, id, user).Scan(&first)
+	return first, mapErr(err)
 }
 
 // MakeDictationsDue moves a learner's dictations to be listened to again

@@ -192,6 +192,31 @@ export const en = {
   'dash.takesAndClips': (takes: number, clips: number) =>
     `${takes} ${takes === 1 ? 'take' : 'takes'} · ${clips} ${clips === 1 ? 'clip' : 'clips'}`,
 
+  // --- today ----------------------------------------------------------------
+  'today.title': 'Today',
+  'today.left': (n: number) => `${n} more ${n === 1 ? 'point' : 'points'} to reach today's goal.`,
+  'today.reached': 'Goal reached for today — well done!',
+  'today.reachedGold': (gold: number) => `Goal reached for today — +${gold} Arena gold!`,
+  'today.ringLabel': (points: number, goal: number) => `${points} of ${goal} points today`,
+  'today.streak': (n: number) => (n === 0 ? 'No streak yet' : `${n}-day streak`),
+  'today.freezes': (n: number) => `${n} streak ${n === 1 ? 'freeze' : 'freezes'}: a missed day is covered`,
+  'today.atRisk': 'Practise once today to keep it',
+  'today.todo': 'What to do today',
+  'today.practise': (title: string) => `Practise next: ${title}`,
+  'today.vocab': (n: number) => `Review ${n} ${n === 1 ? 'word' : 'words'} due`,
+  'today.arena': (done: number, total: number) => `Arena tasks ${done}/${total}`,
+  'today.points': (n: number) => `+${n}`,
+  'today.pointsEach': (n: number) => `+${n} each`,
+  'today.pointsShort': (n: number) => `${n} pts`,
+  'today.goalPrompt': 'How much a day? Pick a goal — you can change it in Profile.',
+  'today.goalLabel': 'Daily goal',
+  'today.goalLight': 'Light',
+  'today.goalSteady': 'Steady',
+  'today.goalKeen': 'Keen',
+  'today.goalFailed': 'Could not change the goal.',
+  'today.goalTitle': 'Daily goal',
+  'today.goalBody': 'Points a day: a take is 2, a flashcard 1, a dictation 5, a dialogue line 1, a tutor turn 2.',
+
   // --- library --------------------------------------------------------------
   'library.title': 'Shadowing',
   'library.practice': 'Practice',

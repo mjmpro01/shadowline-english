@@ -69,6 +69,7 @@ func (s *Server) handleDialoguePass(w http.ResponseWriter, r *http.Request) {
 		s.failDialogue(w, err, "record a pass")
 		return
 	}
+	s.logActivity(r.Context(), u.ID, store.ActDialoguePass)
 	writeJSON(w, http.StatusOK, passes)
 }
 

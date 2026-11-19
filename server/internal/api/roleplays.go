@@ -260,6 +260,7 @@ func (s *Server) handleRoleplayTurn(w http.ResponseWriter, r *http.Request) {
 		s.failRoleplay(w, err, "keep a role-play turn")
 		return
 	}
+	s.logActivity(r.Context(), u.ID, store.ActRoleplayTurn)
 	writeJSON(w, http.StatusOK, turn)
 }
 
