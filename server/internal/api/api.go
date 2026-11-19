@@ -15,6 +15,7 @@ import (
 	"github.com/shadowline/server/internal/auth"
 	"github.com/shadowline/server/internal/config"
 	"github.com/shadowline/server/internal/keycloak"
+	"github.com/shadowline/server/internal/notify"
 	"github.com/shadowline/server/internal/remote"
 	"github.com/shadowline/server/internal/storage"
 	"github.com/shadowline/server/internal/store"
@@ -37,6 +38,9 @@ type Server struct {
 	// DialRemote connects to the file server videos are imported from; nil is
 	// remote.Dial. Tests put a stand-in here.
 	DialRemote func(context.Context, remote.Config) (remote.Remote, error)
+	// PushSend delivers a study reminder to a browser; nil is Web Push with
+	// the VAPID keys in Cfg. Tests put a stand-in here.
+	PushSend notify.SendFunc
 	// Tutor answers the learner's chat. Nil when TUTOR_API_KEY is unset, and
 	// the app then leaves the chat out.
 	Tutor *tutor.Client
@@ -197,6 +201,14 @@ func (s *Server) Routes() http.Handler {
 			r.Delete("/vocab/{id}", s.handleDeleteVocab)
 
 			r.Get("/today", s.handleToday)
+			r.Get("/push/key", s.handlePushKey)
+			r.Post("/push/subscribe", s.handleSubscribe)
+			r.Delete("/push/subscribe", s.handleUnsubscribe)
+			r.Post("/push/test", s.handlePushTest)
+			r.Post("/push/opened", s.handlePushOpened)
+			r.Get("/reminders", s.handleReminders)
+			r.Put("/reminders", s.handleSaveReminders)
+			r.Post("/reminders/prompt-dismissed", s.handleDismissReminderPrompt)
 			r.Get("/continue", s.handleContinue)
 			r.Get("/new", s.handleNewEpisodes)
 			r.Post("/episodes/{id}/seen", s.handleEpisodeSeen)
@@ -252,6 +264,7 @@ func (s *Server) Routes() http.Handler {
 				r.Get("/test/game/letter", s.handleTestLetter)
 				r.Post("/test/game/gold", s.handleTestGold)
 				r.Post("/test/dictations/due", s.handleTestDictationsDue)
+				r.Post("/test/activity", s.handleTestActivity)
 			}
 
 			r.Group(func(r chi.Router) {

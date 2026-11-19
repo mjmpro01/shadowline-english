@@ -56,6 +56,8 @@ shadowline-english/
 │   ├── cmd/api          main: đọc cấu hình, mở pool, chạy migration, mở HTTP server
 │   ├── cmd/seed         Xuất bản thư viện mẫu một lần
 │   ├── cmd/importer     Nhập tự động: lấy video từ máy chủ SFTP/FTPS, cắt thành clip, xuất bản (docs/remote-import.md)
+│   ├── cmd/notifier     Nhắc học qua Web Push: mục tiêu ngày, chuỗi sắp mất, tập mới (docs/push.md)
+│   ├── cmd/vapid        In cặp khoá VAPID mới cho .env (chạy một lần trên server)
 │   └── internal/
 │       ├── api          Router và handler HTTP
 │       ├── auth         Nhà cung cấp OAuth, cookie phiên, ký HMAC
@@ -158,6 +160,7 @@ mạng Docker tên `shadowline` (dùng chung với `ops/observability` và `ops/
 | `web` | `app/Dockerfile` | 8088 | nginx phục vụ 2 bản build SPA (`/` và `/admin/`) |
 | `seed` | `server/Dockerfile`, entrypoint `seed` | — | Xuất bản thư viện mẫu một lần rồi thoát |
 | `importer` | `server/Dockerfile`, entrypoint `importer` | — | Nhập tự động từ máy chủ SFTP/FTPS cấu hình trong console (`docs/remote-import.md`) |
+| `notifier` | `server/Dockerfile`, entrypoint `notifier` | — | Gửi lời nhắc học qua Web Push mỗi phút; không gửi gì khi chưa có khoá VAPID (`docs/push.md`) |
 | `scoring` | `scoring/Dockerfile` | — | `python -m shadowline.worker` — chấm điểm bản ghi |
 | `cutting` | cùng image | — | `shadowline.cutter` — cắt audio/video/ảnh bìa cho clip |
 | `transcribing` | cùng image | — | `shadowline.transcriber` — Whisper chép lời bản tải lên |
@@ -487,7 +490,7 @@ Giới hạn mặc định:
 
 | Cột | Ghi chú |
 | --- | --- |
-| `service` | PK: `transcribing`, `cutting`, `scoring`, `dubbing`, `glossing`, `importer` |
+| `service` | PK: `transcribing`, `cutting`, `scoring`, `dubbing`, `glossing`, `importer`, `notifier` |
 | `seen_at`, `busy` | Lần báo gần nhất; có đang làm việc không. Coi là đang chạy nếu báo trong 45 giây |
 | `version`, `started_at` | Phiên bản code và lúc khởi động, cho trang **Hệ thống** |
 

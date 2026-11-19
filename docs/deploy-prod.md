@@ -301,7 +301,7 @@ its own project name — so the steps are known to work.
 
 ```bash
 cd /opt/shadowline/server
-docker compose stop api importer scoring cutting dubbing transcribing glossing keycloak
+docker compose stop api importer notifier scoring cutting dubbing transcribing glossing keycloak
 
 # The databases: from /var/backups/shadowline, or fetched from the bucket.
 sudo rclone copy oci:shadowline-backups/db/shadowline-<stamp>.sql.gz .

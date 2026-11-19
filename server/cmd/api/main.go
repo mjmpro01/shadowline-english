@@ -11,6 +11,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	// Time zones for reminder settings, in an image with no tzdata.
+	_ "time/tzdata"
 
 	"github.com/shadowline/server/internal/api"
 	"github.com/shadowline/server/internal/auth"

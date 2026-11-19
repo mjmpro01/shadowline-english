@@ -47,6 +47,24 @@ type Funnel struct {
 	Goal3     int `json:"goal3"`
 }
 
+// PushKind is one kind of reminder over the period: sent, and opened.
+type PushKind struct {
+	Kind   string `json:"kind"`
+	Sent   int    `json:"sent"`
+	Opened int    `json:"opened"`
+}
+
+// PushGrowth is how reminders are doing: who gets them, what is opened, and
+// whether those who get them come back more.
+type PushGrowth struct {
+	Subscribers int        `json:"subscribers"`
+	Kinds       []PushKind `json:"kinds"`
+	// On and Off are learners who joined at least a week ago, with reminders
+	// on and off, and how many of them were active in the last 7 days.
+	On  Share `json:"on"`
+	Off Share `json:"off"`
+}
+
 // Growth is the console's Growth page.
 type Growth struct {
 	Today      string      `json:"today"`
@@ -58,6 +76,7 @@ type Growth struct {
 	Cohorts    []Cohort    `json:"cohorts"`
 	Funnel     Funnel      `json:"funnel"`
 	FunnelDays int         `json:"funnelDays"`
+	Push       PushGrowth  `json:"push"`
 }
 
 // CohortWeeks is how many weeks of sign-ups the retention table shows.
@@ -137,6 +156,43 @@ func (s *Store) Growth(ctx context.Context, days int, now time.Time) (Growth, er
 		})
 		if err != nil {
 			return err
+		}
+
+		if err := tx.QueryRow(ctx, `
+			select count(*)::int from reminder_prefs p
+			where p.enabled and exists (select 1 from push_subscriptions s where s.user_id = p.user_id and s.failures < $1)`,
+			MaxPushFailures).Scan(&out.Push.Subscribers); err != nil {
+			return err
+		}
+		rows, err = tx.Query(ctx, `
+			select kind, count(*)::int, count(opened_at)::int from notifications_sent
+			where kind <> 'test' and sent_at > now() - make_interval(days => $1)
+			group by kind order by kind`, days)
+		if err != nil {
+			return err
+		}
+		out.Push.Kinds, err = pgx.CollectRows(rows, func(r pgx.CollectableRow) (PushKind, error) {
+			var k PushKind
+			err := r.Scan(&k.Kind, &k.Sent, &k.Opened)
+			return k, err
+		})
+		if err != nil {
+			return err
+		}
+		if err := tx.QueryRow(ctx, `
+			with u as (
+			  select u.id, coalesce(p.enabled, false) as reminded,
+			         exists (select 1 from user_days d where d.user_id = u.id and d.day > $1::date - 7) as active
+			  from users u left join reminder_prefs p on p.user_id = u.id
+			  where u.created_at < now() - interval '7 days'
+			)
+			select count(*) filter (where reminded)::int, count(*) filter (where reminded and active)::int,
+			       count(*) filter (where not reminded)::int, count(*) filter (where not reminded and active)::int
+			from u`, today).Scan(&out.Push.On.Of, &out.Push.On.Did, &out.Push.Off.Of, &out.Push.Off.Did); err != nil {
+			return err
+		}
+		if out.Push.Kinds == nil {
+			out.Push.Kinds = []PushKind{}
 		}
 
 		return tx.QueryRow(ctx, `

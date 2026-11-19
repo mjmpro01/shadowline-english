@@ -232,6 +232,24 @@ export const vi: Messages = {
   'follow.hint': 'Tập mới của series bạn theo dõi sẽ được đưa lên trước. Luyện một clip trong series là tự theo dõi.',
   'follow.failed': 'Không đổi được.',
 
+  // --- reminders ----------------------------------------------------------------
+  'reminders.title': 'Nhắc học',
+  'reminders.body': 'Thông báo trên thiết bị này khi hôm nay chưa luyện đủ, khi chuỗi ngày sắp mất, hoặc khi series bạn theo dõi có tập mới. Không bao giờ nhắc ban đêm, tối đa 2 lần mỗi ngày.',
+  'reminders.on': 'Nhắc tôi học mỗi ngày',
+  'reminders.at': 'Nhắc lúc',
+  'reminders.streak': 'Khi chuỗi ngày sắp mất',
+  'reminders.newEpisodes': 'Tập mới của series đang theo dõi',
+  'reminders.test': 'Gửi thử',
+  'reminders.testSent': (n: number) => `Đã gửi tới ${n} thiết bị — thông báo sẽ hiện trong giây lát.`,
+  'reminders.testNone': 'Chưa thiết bị nào nhận được. Thử tắt rồi bật lại nhắc học ở đây.',
+  'reminders.denied': 'Trình duyệt đang chặn thông báo của trang này. Cho phép trong phần cài đặt trang của trình duyệt rồi thử lại.',
+  'reminders.unsupported': 'Trình duyệt này không nhận được thông báo nhắc học.',
+  'reminders.install': 'Trên iPhone và iPad, nhắc học chỉ chạy khi mở app từ Màn hình chính: bấm Chia sẻ → Thêm vào Màn hình chính, mở Shadowline từ đó rồi bật nhắc học (iOS 16.4 trở lên).',
+  'reminders.failed': 'Không đổi được cài đặt nhắc học.',
+  'reminders.promptTitle': 'Bật nhắc học để giữ chuỗi ngày mai?',
+  'reminders.promptOn': 'Bật',
+  'reminders.promptLater': 'Để sau',
+
   // --- today ----------------------------------------------------------------
   'today.title': 'Hôm nay',
   'today.left': (n: number) => `Còn ${n} điểm nữa là đạt mục tiêu hôm nay.`,

@@ -6,6 +6,7 @@
  * another's takes — are all server behaviour, and a mocked API would assert
  * only that the mock matches itself.
  */
+import { createECDH } from 'node:crypto'
 import { join } from 'node:path'
 
 export const API_PORT = Number(process.env.E2E_API_PORT ?? 8099)
@@ -50,6 +51,20 @@ export const SFTP_PORT = Number(process.env.E2E_SFTP_PORT ?? 2299)
 export const ADMIN_EMAIL = 'admin@example.com'
 export const LEARNER_EMAIL = 'minh@example.com'
 
+/**
+ * A VAPID key pair made for this run, so study reminders are on in the tests
+ * without a key in the repository. Nothing is delivered: the browser's push
+ * subscription is a stand-in, and delivery is tested in Go.
+ */
+const vapid = (() => {
+  const ecdh = createECDH('prime256v1')
+  ecdh.generateKeys()
+  return {
+    publicKey: ecdh.getPublicKey().toString('base64url'),
+    privateKey: ecdh.getPrivateKey().toString('base64url'),
+  }
+})()
+
 /** Shared by the API and the worker, so both read the same objects. */
 export function serverEnv(): NodeJS.ProcessEnv {
   return {
@@ -66,6 +81,9 @@ export function serverEnv(): NodeJS.ProcessEnv {
     OAUTH_REDIRECT_URL: `${API_URL}/auth/google/callback`,
     ADMIN_EMAILS: ADMIN_EMAIL,
     LOG_LEVEL: 'WARNING',
+    VAPID_PUBLIC_KEY: vapid.publicKey,
+    VAPID_PRIVATE_KEY: vapid.privateKey,
+    VAPID_SUBJECT: 'mailto:e2e@example.com',
     // The fake microphone plays a synthetic melody, not speech, so the scorer's
     // check that the words were said has nothing to hear. Mostly Whisper hears
     // nothing and the check stands aside; but each take starts at a different

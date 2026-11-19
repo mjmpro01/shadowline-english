@@ -171,6 +171,22 @@ services:
       minio:
         condition: service_healthy
 
+  # Sends study reminders by Web Push (docs/push.md). Sends nothing until the
+  # VAPID keys are in .env.
+  notifier:
+    build:
+      context: .
+      args:
+        SHADOWLINE_VERSION: ${SHADOWLINE_VERSION:-}
+    env_file: .env
+    entrypoint: ["/usr/local/bin/notifier"]
+    environment:
+      OTEL_SERVICE_NAME: shadowline-notifier
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   scoring:
     build:
       context: ../scoring

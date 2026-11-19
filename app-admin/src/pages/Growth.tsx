@@ -124,6 +124,43 @@ export function Growth() {
             )}
           </section>
 
+          <section className="card elev-sm stack gap-2" aria-labelledby="growth-push">
+            <h2 id="growth-push" className="card-title">
+              {t('growth.push')}
+            </h2>
+            <div className="card-meta">{t('growth.pushSubscribers', growth.push.subscribers)}</div>
+            {growth.push.kinds.length === 0 ? (
+              <div className="card-meta">{t('growth.pushNone')}</div>
+            ) : (
+              <div className="table-scroll">
+                <table className="table" data-testid="push-kinds">
+                  <thead>
+                    <tr>
+                      <th>{t('growth.pushKind')}</th>
+                      <th className="num">{t('growth.pushSent')}</th>
+                      <th className="num">{t('growth.pushOpened')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {growth.push.kinds.map((k) => (
+                      <tr key={k.kind}>
+                        <td>{t(`growth.push.${k.kind}`)}</td>
+                        <td className="num">{k.sent}</td>
+                        <td className="num">
+                          {k.opened}
+                          {k.sent > 0 && ` · ${Math.round((k.opened / k.sent) * 100)}%`}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div className="card-meta">
+              {t('growth.pushD7', percent(growth.push.on), percent(growth.push.off))}
+            </div>
+          </section>
+
           <section className="card elev-sm stack gap-2">
             <h2 className="card-title">{t('growth.funnel', growth.funnelDays)}</h2>
             <Funnel

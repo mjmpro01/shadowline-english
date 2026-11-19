@@ -76,3 +76,54 @@ self.addEventListener('fetch', (event) => {
     })(),
   )
 })
+
+// --- Study reminders --------------------------------------------------------
+// The server sends a reminder as JSON: {id, kind, title, body, url}. Shown with
+// the app's icon; one of a kind replaces the last, so a phone that was off all
+// day does not wake to a pile of them.
+self.addEventListener('push', (event) => {
+  let note = {}
+  try {
+    note = event.data ? event.data.json() : {}
+  } catch {
+    note = { title: 'Shadowline', body: event.data ? event.data.text() : '' }
+  }
+  event.waitUntil(
+    self.registration.showNotification(note.title || 'Shadowline', {
+      body: note.body || '',
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      tag: note.kind || 'shadowline',
+      data: { url: note.url || '/dashboard', id: note.id || null },
+    }),
+  )
+})
+
+// Tapped: say so (the console counts it), then bring the app forward at the
+// reminder's page — the tab already open if there is one.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const { url, id } = event.notification.data || {}
+  const target = new URL(url || '/dashboard', self.location.origin).href
+  event.waitUntil(
+    (async () => {
+      if (id) {
+        fetch('/api/push/opened', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id }),
+        }).catch(() => undefined)
+      }
+      const open = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      for (const client of open) {
+        if (new URL(client.url).origin === self.location.origin && 'focus' in client) {
+          await client.focus()
+          if ('navigate' in client) await client.navigate(target)
+          return
+        }
+      }
+      await self.clients.openWindow(target)
+    })(),
+  )
+})

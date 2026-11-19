@@ -208,6 +208,24 @@ export const en = {
   'follow.hint': 'New episodes of series you follow come first. Practising in a series follows it.',
   'follow.failed': 'Could not change that.',
 
+  // --- reminders ----------------------------------------------------------------
+  'reminders.title': 'Study reminders',
+  'reminders.body': 'A nudge on this device when today is not done yet, when a streak is about to end, or when a series you follow has new episodes. Never at night, two a day at most.',
+  'reminders.on': 'Remind me to practise every day',
+  'reminders.at': 'Remind me at',
+  'reminders.streak': 'When my streak is about to end',
+  'reminders.newEpisodes': 'New episodes of series I follow',
+  'reminders.test': 'Send a test',
+  'reminders.testSent': (n: number) => `Sent to ${n} ${n === 1 ? 'device' : 'devices'} — it should appear in a moment.`,
+  'reminders.testNone': 'No device took it. Turn reminders off and on again here.',
+  'reminders.denied': 'Notifications are blocked for this site. Allow them in the browser’s site settings, then try again.',
+  'reminders.unsupported': 'This browser cannot receive reminders.',
+  'reminders.install': 'On iPhone and iPad, reminders work from the app on the Home Screen: tap Share → Add to Home Screen, open Shadowline from there, then turn them on (iOS 16.4 or later).',
+  'reminders.failed': 'Could not change the reminders.',
+  'reminders.promptTitle': 'Want a reminder tomorrow to keep your streak?',
+  'reminders.promptOn': 'Turn on',
+  'reminders.promptLater': 'Later',
+
   // --- today ----------------------------------------------------------------
   'today.title': 'Today',
   'today.left': (n: number) => `${n} more ${n === 1 ? 'point' : 'points'} to reach today's goal.`,

@@ -4666,3 +4666,26 @@ h1.shelf-title.shelf-title {
   top: 8px;
   left: 8px;
 }
+
+/* --- Reminders ---------------------------------------------------------------- */
+.reminder-prompt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-100);
+  border: 1px solid var(--color-accent-300);
+}
+.reminder-prompt-text {
+  font-weight: 600;
+  font-size: 14px;
+}
+.reminders-switch input,
+.reminders-options input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-accent);
+}

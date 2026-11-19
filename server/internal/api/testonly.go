@@ -176,3 +176,25 @@ func (s *Server) handleTestGameStep(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
+
+// handleTestActivity records learning for the signed-in learner, as though
+// they had done it, so a browser test can reach the day's goal without
+// recording takes one by one. AUTH_FAKE=1 only.
+func (s *Server) handleTestActivity(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	var body struct {
+		Kind  string `json:"kind"`
+		Times int    `json:"times"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		fail(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	for range max(1, min(body.Times, 50)) {
+		if _, err := s.Store.LogActivity(r.Context(), u.ID, body.Kind, time.Now()); err != nil {
+			fail(w, http.StatusBadRequest, err.Error())
+			return
+		}
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
