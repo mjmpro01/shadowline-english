@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
@@ -77,6 +78,11 @@ func (s *Server) handleCreateTake(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.logActivity(r.Context(), u.ID, store.ActTake)
+	if clip.PlaylistID != nil {
+		if err := s.Store.AutoFollow(context.WithoutCancel(r.Context()), u.ID, *clip.PlaylistID); err != nil {
+			s.Log.Warn("cannot follow a series", "user", u.ID, "error", err)
+		}
+	}
 	writeJSON(w, http.StatusCreated, take)
 }
 

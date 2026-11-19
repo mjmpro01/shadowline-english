@@ -326,12 +326,23 @@ func (s *Store) Today(ctx context.Context, user uuid.UUID, now time.Time) (Today
 		return out, err
 	}
 
-	clip, err := s.NextUp(ctx, user)
-	switch {
-	case err == nil:
-		out.NextClip = &clip
-	case !errors.Is(err, ErrNotFound):
+	// The next line of the episode they were in, when there is one: the same
+	// clip the dashboard's "pick up where you left off" offers. Otherwise the
+	// library's next.
+	cont, err := s.ContinueFor(ctx, user)
+	if err != nil {
 		return out, err
+	}
+	if cont != nil {
+		out.NextClip = &cont.Next
+	} else {
+		clip, err := s.NextUp(ctx, user)
+		switch {
+		case err == nil:
+			out.NextClip = &clip
+		case !errors.Is(err, ErrNotFound):
+			return out, err
+		}
 	}
 
 	dictations, err := s.Dictations(ctx, user, now)

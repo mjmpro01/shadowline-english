@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/shadowline/server/internal/auth"
 	"github.com/shadowline/server/internal/storage"
 	"github.com/shadowline/server/internal/store"
 )
@@ -169,7 +170,14 @@ func (s *Server) handleGetPlaylist(w http.ResponseWriter, r *http.Request) {
 	}
 	playlist.CoverURL = s.signPoster(r.Context(), playlist.CoverKey, "playlist", playlist.Slug)
 	s.signEpisodes(r.Context(), episodes)
-	writeJSON(w, http.StatusOK, map[string]any{"playlist": playlist, "episodes": episodes})
+	following := false
+	if u, ok := auth.UserFrom(r.Context()); ok {
+		if following, err = s.Store.Following(r.Context(), u.ID, playlist.ID); err != nil {
+			s.failErr(w, err, "following")
+			return
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"playlist": playlist, "episodes": episodes, "following": following})
 }
 
 // handleGetEpisode answers with the episode, the series it is in, and its clips.

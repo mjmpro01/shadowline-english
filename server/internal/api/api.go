@@ -197,6 +197,11 @@ func (s *Server) Routes() http.Handler {
 			r.Delete("/vocab/{id}", s.handleDeleteVocab)
 
 			r.Get("/today", s.handleToday)
+			r.Get("/continue", s.handleContinue)
+			r.Get("/new", s.handleNewEpisodes)
+			r.Post("/episodes/{id}/seen", s.handleEpisodeSeen)
+			r.Put("/playlists/{slug}/follow", s.handleFollow(true))
+			r.Delete("/playlists/{slug}/follow", s.handleFollow(false))
 			r.Put("/goal", s.handleSetGoal)
 
 			r.Get("/profile", s.handleGetProfile)
