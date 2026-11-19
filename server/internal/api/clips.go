@@ -389,11 +389,9 @@ func (s *Server) handleCreateClips(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, created)
 }
 
-// MaxClipSeconds mirrors MAX_CLIP_SECONDS in app/src/data/types.ts and in
-// app-admin/src/data/types.ts. A clip is usually one line to shadow, but a
-// karaoke video can be taken whole, a song sung through, and six minutes holds
-// nearly any song; the console already refuses longer cuts, and so does this.
-const MaxClipSeconds = 360
+// MaxClipSeconds is store.MaxClipSeconds: the console already refuses longer
+// cuts, and so does this.
+const MaxClipSeconds = store.MaxClipSeconds
 
 func validateClip(in store.NewClip) error {
 	if in.Title == "" {

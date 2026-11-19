@@ -12,6 +12,11 @@
 //	failed/<series>/<episode>.mp4      gave up, with <episode>.mp4.txt saying why
 //
 // so whoever drops files can see what became of them without the console.
+//
+// Songs are the exception to a clip per line: a video in the inbox's music
+// folder (MusicFolder, in any case: inbox/music/<song>.mp4) becomes one clip of
+// the whole video, its lyrics the captions line by line, to be sung through
+// karaoke-style. A song longer than a clip can be goes to failed.
 package importer
 
 import (
@@ -40,6 +45,17 @@ const MaxBytes = 2 << 30
 
 // SecretPurpose is what the file server's password is sealed for.
 const SecretPurpose = "remote-import"
+
+// MusicFolder is the series folder in the inbox whose videos are songs: each
+// published whole as one clip rather than cut a line at a time. Matched in any
+// case, so inbox/Music works as well as inbox/music; the series is the folder's
+// name as it is written.
+const MusicFolder = "music"
+
+// IsMusic is whether a series is the music folder's, whose videos are songs.
+func IsMusic(series string) bool {
+	return strings.EqualFold(strings.TrimSpace(series), MusicFolder)
+}
 
 // ErrNotSetUp is an importer with no file server to read from yet.
 var ErrNotSetUp = errors.New("no file server is set up for importing yet")
@@ -375,11 +391,13 @@ func (p *pass) cutWhenTranscribed(ctx context.Context, imp store.RemoteImport) {
 		// way, not this pass's to cut.
 		return
 	}
-	made, err := Publish(ctx, p.im.Store, *imp.SourceID, imp.Series, path.Base(imp.ProcessingPath))
+	made, err := Publish(ctx, p.im.Store, *imp.SourceID, imp.Series, path.Base(imp.ProcessingPath), imp.Episode)
 	switch {
-	case errors.Is(err, ErrNoSpeech):
+	case errors.Is(err, ErrNoSpeech), errors.Is(err, ErrTooLong), errors.Is(err, ErrNoLength):
+		// Nothing was made, and cutting again will not change that: the file
+		// goes to failed saying why, once the file server is reached.
 		_ = p.im.Store.ReleaseImportClaim(ctx, imp.ID)
-		giveUp("no speech was found in the recording")
+		giveUp(err.Error())
 		return
 	case err != nil:
 		reason := fmt.Sprintf("could not publish its clips: %v", err)
@@ -399,14 +417,26 @@ func (p *pass) cutWhenTranscribed(ctx context.Context, imp store.RemoteImport) {
 // ErrNoSpeech is a recording whose transcript has no line to make a clip of.
 var ErrNoSpeech = errors.New("no speech was found in the recording")
 
+// ErrTooLong is a song longer than a clip can be, so it cannot be published
+// whole.
+var ErrTooLong = fmt.Errorf("the video is longer than %d minutes, the longest a clip can be", store.MaxClipSeconds/60)
+
+// ErrNoLength is a song whose length is not known: neither measured when it
+// was transcribed nor given away by its words.
+var ErrNoLength = errors.New("the length of the video is not known")
+
 // Publish cuts a transcribed recording into a clip per line and publishes them
 // in a series, created if there is none by that name: the importer's own cut,
-// and the console's "Cut automatically". It says how many it made, which is
-// some even when it fails part of the way.
-func Publish(ctx context.Context, st *store.Store, source uuid.UUID, series, sourceName string) (int, error) {
+// and the console's "Cut automatically". A song — a recording in the music
+// folder's series — is published whole instead, as one clip. It says how many
+// it made, which is some even when it fails part of the way.
+func Publish(ctx context.Context, st *store.Store, source uuid.UUID, series, sourceName, episode string) (int, error) {
 	transcript, err := st.TranscriptBySource(ctx, source)
 	if err != nil {
 		return 0, fmt.Errorf("read the transcript: %w", err)
+	}
+	if IsMusic(series) {
+		return publishWhole(ctx, st, source, series, sourceName, episode, transcript.Words)
 	}
 	lines := autocut.Lines(transcript.Words, 0)
 	if len(lines) == 0 {
@@ -435,6 +465,52 @@ func Publish(ctx context.Context, st *store.Store, source uuid.UUID, series, sou
 		made++
 	}
 	return made, nil
+}
+
+// publishWhole publishes a song as one clip from its start to its end, as the
+// studio's "Whole video as one clip" does, with its lyrics as the captions a
+// line at a time. A song with no words, an instrumental, is still published,
+// with no captions.
+func publishWhole(ctx context.Context, st *store.Store, source uuid.UUID, series, sourceName, episode string, words []store.Word) (int, error) {
+	upload, err := st.UploadByID(ctx, source)
+	if err != nil {
+		return 0, fmt.Errorf("read the recording: %w", err)
+	}
+	// The length is measured when the recording is transcribed; one
+	// transcribed before that was measured ends with its last word.
+	duration := upload.Seconds
+	lines := autocut.Lines(words, duration)
+	if duration <= 0 && len(lines) > 0 {
+		duration = lines[len(lines)-1].End
+	}
+	switch {
+	case duration <= 0:
+		return 0, ErrNoLength
+	case duration > store.MaxClipSeconds+0.1:
+		return 0, ErrTooLong
+	}
+	captions := make([]store.CaptionLine, 0, len(lines))
+	for _, line := range lines {
+		captions = append(captions, store.CaptionLine{Text: line.Text, IPA: line.IPA})
+	}
+	title := strings.TrimSpace(episode)
+	if title == "" {
+		title = EpisodeTitle(sourceName)
+	}
+	if _, err := st.CreateClip(ctx, store.NewClip{
+		Title:           title,
+		Source:          sourceName,
+		Playlist:        series,
+		TimestampLabel:  Timestamp(0, duration),
+		DurationSeconds: duration,
+		Captions:        captions,
+		SourceID:        &source,
+		StartSeconds:    0,
+		EndSeconds:      duration,
+	}, uuid.Nil); err != nil {
+		return 0, fmt.Errorf("the song: %w", err)
+	}
+	return 1, nil
 }
 
 // finishWhenCut moves the file to done once the cutter has made every clip's

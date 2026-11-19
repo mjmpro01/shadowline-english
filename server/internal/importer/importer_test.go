@@ -540,3 +540,159 @@ func TestATranscriptWithNoLinesFailsOnceTheServerIsBack(t *testing.T) {
 		t.Fatalf("not moved to failed: %v", mem.files)
 	}
 }
+
+// measure does the transcriber's measuring: the recording imported from a
+// path runs this long.
+func (f *fixture) measure(t *testing.T, from string, seconds float64) {
+	t.Helper()
+	if _, err := f.pool.Exec(context.Background(),
+		`update clip_sources set duration_seconds = $2 where imported_from = $1`, from, seconds); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// song is the one clip a song became.
+type song struct {
+	title, timestamp     string
+	start, end, duration float64
+	captions             []store.CaptionLine
+}
+
+func (f *fixture) songs(t *testing.T, series string) []song {
+	t.Helper()
+	rows, err := f.pool.Query(context.Background(), `select c.title, c.timestamp_label, c.start_seconds,
+		c.end_seconds, c.duration_seconds, c.captions from clips c join playlists p on p.id = c.playlist_id
+		where p.title = $1 order by c.start_seconds`, series)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	var out []song
+	for rows.Next() {
+		var s song
+		if err := rows.Scan(&s.title, &s.timestamp, &s.start, &s.end, &s.duration, &s.captions); err != nil {
+			t.Fatal(err)
+		}
+		out = append(out, s)
+	}
+	return out
+}
+
+func TestASongInTheMusicFolderIsPublishedWhole(t *testing.T) {
+	mem := newMem(map[string]string{
+		"/inbox/Music/Song_One.mp4":  "a song",
+		"/inbox/Friends/Episode.mp4": "a talk",
+	})
+	f := newFixture(t, mem)
+	f.run(t)
+	f.measure(t, "/inbox/Music/Song_One.mp4", 200.25)
+	f.transcribe(t, twoSentences)
+	f.run(t)
+
+	got := f.songs(t, "Music")
+	if len(got) != 1 {
+		t.Fatalf("%d clips of the song, want 1: %+v", len(got), got)
+	}
+	s := got[0]
+	if s.title != "Song One" || s.start != 0 || s.end != 200.25 || s.duration != 200.25 || s.timestamp != "0:00–3:20" {
+		t.Fatalf("the song: %+v", s)
+	}
+	if len(s.captions) != 2 || s.captions[0].Text != "Hello everyone." || s.captions[0].IPA != "/həˈloʊ ˈɛvriwʌn/" ||
+		s.captions[1].Text != "Welcome to class." {
+		t.Fatalf("the lyrics: %+v", s.captions)
+	}
+	// Any other folder is still cut a line at a time.
+	if n := len(f.songs(t, "Friends")); n != 2 {
+		t.Fatalf("%d clips of the talk, want 2", n)
+	}
+	var published bool
+	if err := f.pool.QueryRow(context.Background(), `select published from clip_sources
+		where imported_from = '/inbox/Music/Song_One.mp4'`).Scan(&published); err != nil || !published {
+		t.Fatalf("the song is not published: %v", err)
+	}
+	for _, imp := range f.imports(t) {
+		if imp.Series == "Music" && (imp.State != store.ImportCutting || imp.Clips != 1) {
+			t.Fatalf("the song's import: %+v", imp)
+		}
+	}
+
+	f.cut(t)
+	f.run(t)
+	if !mem.has("/done/Music/Song_One.mp4") {
+		t.Fatalf("not moved to done: %v", mem.files)
+	}
+}
+
+func TestAnInstrumentalIsStillOneClip(t *testing.T) {
+	mem := newMem(map[string]string{"/inbox/music/Theme.mp4": "no words"})
+	f := newFixture(t, mem)
+	f.run(t)
+	f.measure(t, "/inbox/music/Theme.mp4", 95)
+	f.transcribe(t, `[]`)
+	f.run(t)
+
+	got := f.songs(t, "music")
+	if len(got) != 1 || got[0].start != 0 || got[0].end != 95 || len(got[0].captions) != 0 || got[0].title != "Theme" {
+		t.Fatalf("the instrumental: %+v", got)
+	}
+	if imp := f.imports(t)[0]; imp.State != store.ImportCutting || imp.Clips != 1 {
+		t.Fatalf("the import: %+v", imp)
+	}
+}
+
+func TestASongLongerThanAClipGoesToFailed(t *testing.T) {
+	mem := newMem(map[string]string{"/inbox/music/Long.mp4": "an opera"})
+	f := newFixture(t, mem)
+	f.run(t)
+	f.measure(t, "/inbox/music/Long.mp4", store.MaxClipSeconds+40)
+	f.transcribe(t, twoSentences)
+	f.run(t)
+
+	if !mem.has("/failed/music/Long.mp4") {
+		t.Fatalf("not moved to failed: %v", mem.files)
+	}
+	if note := mem.read("/failed/music/Long.mp4.txt"); !strings.Contains(note, "longer than 6 minutes") {
+		t.Fatalf("the note: %q", note)
+	}
+	if imp := f.imports(t)[0]; imp.State != store.ImportFailed || !strings.Contains(imp.Error, "longer than 6 minutes") {
+		t.Fatalf("the import: %+v", imp)
+	}
+	if n := len(f.songs(t, "music")); n != 0 {
+		t.Fatalf("%d clips of a song too long", n)
+	}
+}
+
+func TestASongNeverMeasuredEndsWithItsLastWord(t *testing.T) {
+	mem := newMem(map[string]string{"/inbox/MUSIC/Old.mp4": "transcribed before lengths were kept"})
+	f := newFixture(t, mem)
+	f.run(t)
+	f.transcribe(t, twoSentences)
+	f.run(t)
+
+	got := f.songs(t, "MUSIC")
+	// The last word ends at 3.6, and a line keeps its tail after it.
+	if len(got) != 1 || got[0].start != 0 || got[0].end != 3.85 {
+		t.Fatalf("the song: %+v", got)
+	}
+}
+
+func TestAnInstrumentalNeverMeasuredGoesToFailed(t *testing.T) {
+	mem := newMem(map[string]string{"/inbox/music/Hum.mp4": "no words, no length"})
+	f := newFixture(t, mem)
+	f.run(t)
+	f.transcribe(t, `[]`)
+	f.run(t)
+	if note := mem.read("/failed/music/Hum.mp4.txt"); !strings.Contains(note, "length of the video is not known") {
+		t.Fatalf("the note: %q (%v)", note, mem.files)
+	}
+}
+
+func TestIsMusic(t *testing.T) {
+	for series, want := range map[string]bool{
+		"music": true, "Music": true, " MUSIC ": true, "Musicals": false, "Imported": false, "": false,
+	} {
+		if got := IsMusic(series); got != want {
+			t.Errorf("IsMusic(%q) = %v", series, got)
+		}
+	}
+}

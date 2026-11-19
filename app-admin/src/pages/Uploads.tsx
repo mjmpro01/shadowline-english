@@ -132,15 +132,20 @@ export function Uploads() {
     setCutting(upload.id)
     try {
       const made = await repository.autocutUpload(upload.id)
-      setNote(t('uploads.autocutDone', made.clips))
+      // A song from the music folder is published whole, as one clip.
+      setNote(made.whole ? t('uploads.autocutDoneWhole') : t('uploads.autocutDone', made.clips))
       refresh()
     } catch (err) {
       setNote(
-        err instanceof ApiError && err.status === 422
-          ? t('uploads.autocutNoSpeech')
-          : err instanceof ApiError
-            ? err.message
-            : t('uploads.autocutFailed'),
+        !(err instanceof ApiError)
+          ? t('uploads.autocutFailed')
+          : err.code === 'upload.tooLong'
+            ? t('uploads.autocutTooLong')
+            : err.code === 'upload.noLength'
+              ? t('uploads.autocutNoLength')
+              : err.code === 'upload.noSpeech'
+                ? t('uploads.autocutNoSpeech')
+                : err.message,
       )
     } finally {
       setCutting(null)

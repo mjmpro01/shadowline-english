@@ -27,7 +27,7 @@ from .heartbeat import Heartbeat
 from .storage import ObjectMissing, Storage, from_env as storage_from_env
 from .transcribe import TranscribeFailed, Transcriber, WhisperTranscriber
 from .transcribequeue import TranscribeJob, TranscribeQueue
-from .video import has_audio_stream, has_video_stream
+from .video import has_audio_stream, has_video_stream, probe_duration
 
 log = logging.getLogger("shadowline.transcriber")
 
@@ -46,15 +46,18 @@ class Untranscribable(Exception):
 
 def transcribe_job(
     job: TranscribeJob, blobs: Storage, transcriber: Transcriber, workdir: Path
-) -> tuple[str, list[dict]]:
-    """Transcribes one source. Returns its language and words, IPA included."""
+) -> tuple[str, list[dict], float]:
+    """Transcribes one source. Returns its language, its words with their IPA,
+    and how long it runs (0.0 when that cannot be told)."""
     path = workdir / ("source" + Path(job.source_key).suffix)
     try:
         blobs.download("clips", job.source_key, path)
     except ObjectMissing as err:
         raise Untranscribable(f"source is missing: {err}") from err
 
+    duration = 0.0
     try:
+        duration = probe_duration(path)
         result = transcriber.transcribe(path)
     except TranscribeFailed as err:
         # A picture with no sound fails inside Whisper with an error that says
@@ -71,7 +74,7 @@ def transcribe_job(
     return result.language, [
         {"start": word.start, "end": word.end, "text": word.text, "ipa": ipa.for_word(word.text)}
         for word in result.words
-    ]
+    ], duration
 
 
 def run_once(
@@ -88,7 +91,7 @@ def run_once(
         {"job.type": "transcribe", "source_id": str(job.source_id)},
     ) as traced:
         try:
-            language, words = transcribe_job(job, blobs, transcriber, workdir)
+            language, words, duration = transcribe_job(job, blobs, transcriber, workdir)
         except Untranscribable as err:
             traced["status"] = "rejected"
             # The studio falls back to what it always did: the admin types the
@@ -102,7 +105,7 @@ def run_once(
             queue.fail(job, "transcription failed")
             return True
 
-        queue.complete(job, language, words)
+        queue.complete(job, language, words, duration)
         log.info(
             "transcribed source %s: %d words (%.0fs)",
             job.source_id,
