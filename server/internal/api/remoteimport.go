@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"path"
@@ -236,4 +237,69 @@ func (s *Server) handleTestImport(w http.ResponseWriter, r *http.Request) {
 	s.Log.Info("import connection tested", "host", body.Host, "protocol", body.Protocol, "ok", report.OK,
 		"steps", fmt.Sprint(len(report.Steps)))
 	writeJSON(w, http.StatusOK, report)
+}
+
+// handleAutocutUpload cuts an imported recording into a clip per line and
+// publishes them, as the importer would: for when the importer has not, and an
+// admin would rather not wait for it. The importer moves the file to done once
+// the cutter has made the clips.
+func (s *Server) handleAutocutUpload(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	ctx := r.Context()
+	upload, err := s.Store.UploadByID(ctx, id)
+	if errors.Is(err, store.ErrNotFound) {
+		fail(w, http.StatusNotFound, "no such recording")
+		return
+	}
+	if err != nil {
+		s.failErr(w, err, "read a recording")
+		return
+	}
+	imp, err := s.Store.RemoteImportBySource(ctx, id)
+	if errors.Is(err, store.ErrNotFound) {
+		failCode(w, http.StatusConflict, "upload.notImported", "only a recording from the file server is cut automatically")
+		return
+	}
+	if err != nil {
+		s.failErr(w, err, "read an import")
+		return
+	}
+	switch {
+	case upload.Transcript != "ready":
+		failCode(w, http.StatusConflict, "upload.notTranscribed", "the recording has no transcript to cut it by yet")
+		return
+	case upload.Clips > 0:
+		failCode(w, http.StatusConflict, "upload.hasClips", "the recording already has its clips")
+		return
+	}
+	claimed, err := s.Store.ClaimImportForCutting(ctx, imp.ID)
+	if err != nil {
+		s.failErr(w, err, "claim an import")
+		return
+	}
+	if !claimed {
+		failCode(w, http.StatusConflict, "upload.cutting", "the recording is being cut already, or its import has ended")
+		return
+	}
+	made, err := importer.Publish(ctx, s.Store, id, imp.Series, path.Base(imp.ProcessingPath))
+	if errors.Is(err, importer.ErrNoSpeech) {
+		// The importer moves the file to failed, saying why, once it reaches
+		// the file server.
+		_ = s.Store.ReleaseImportClaim(context.WithoutCancel(ctx), imp.ID)
+		failCode(w, http.StatusUnprocessableEntity, "upload.noSpeech", "no speech was found in the recording")
+		return
+	}
+	if err != nil {
+		_ = s.Store.MoveRemoteImport(context.WithoutCancel(ctx), imp.ID, store.ImportFailed, nil, made, "could not publish its clips: "+err.Error())
+		s.failErr(w, err, "cut a recording")
+		return
+	}
+	if err := s.Store.MoveRemoteImport(ctx, imp.ID, store.ImportCutting, nil, made, ""); err != nil {
+		s.Log.Warn("cannot record the clips of an import", "import", imp.ID, "error", err)
+	}
+	s.Log.Info("recording cut from the console", "source", id, "series", imp.Series, "clips", made)
+	writeJSON(w, http.StatusOK, map[string]int{"clips": made})
 }

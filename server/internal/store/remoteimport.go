@@ -171,6 +171,46 @@ func (s *Store) MoveRemoteImport(ctx context.Context, id uuid.UUID, state string
 	return err
 }
 
+// ClaimImportForCutting moves a transcribed import on to cutting, and says
+// whether this caller did: the importer and the console's "Cut automatically"
+// both cut, and only the one that claims an import makes its clips.
+func (s *Store) ClaimImportForCutting(ctx context.Context, id uuid.UUID) (bool, error) {
+	tag, err := s.pool.Exec(ctx, `
+		update remote_imports set state = 'cutting', updated_at = now()
+		where id = $1 and state = 'transcribing'`, id)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() == 1, nil
+}
+
+// ReleaseImportClaim hands a claimed import back to transcribing, when it was
+// claimed and nothing was cut: the importer decides what becomes of it next.
+func (s *Store) ReleaseImportClaim(ctx context.Context, id uuid.UUID) error {
+	_, err := s.pool.Exec(ctx, `
+		update remote_imports set state = 'transcribing', updated_at = now()
+		where id = $1 and state = 'cutting' and clips = 0`, id)
+	return err
+}
+
+// RemoteImportBySource is the newest import of a recording; ErrNotFound when
+// it did not come from the file server.
+func (s *Store) RemoteImportBySource(ctx context.Context, source uuid.UUID) (RemoteImport, error) {
+	rows, err := s.pool.Query(ctx, `select `+remoteImportColumns+` from remote_imports
+		where source_id = $1 order by created_at desc limit 1`, source)
+	if err != nil {
+		return RemoteImport{}, err
+	}
+	got, err := pgx.CollectRows(rows, scanRemoteImport)
+	if err != nil {
+		return RemoteImport{}, err
+	}
+	if len(got) == 0 {
+		return RemoteImport{}, ErrNotFound
+	}
+	return got[0], nil
+}
+
 // MarkImported says where a recording came from, for the console, and names
 // the episode it will be.
 func (s *Store) MarkImported(ctx context.Context, source uuid.UUID, from, title string) error {

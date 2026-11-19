@@ -254,6 +254,7 @@ func (s *Server) Routes() http.Handler {
 				r.Post("/admin/uploads", s.handleCreateUpload)
 				r.Get("/admin/uploads/{id}", s.handleGetUpload)
 				r.Post("/admin/uploads/{id}/retry", s.handleRetryUpload)
+				r.Post("/admin/uploads/{id}/autocut", s.handleAutocutUpload)
 				r.Get("/admin/uploads/{id}/transcript", s.handleSourceTranscript)
 				r.Get("/admin/services", s.handleServices)
 				r.Get("/admin/tutor/usage", s.handleTutorUsage)

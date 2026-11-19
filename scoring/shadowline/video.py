@@ -132,11 +132,24 @@ def has_video_stream(path: Path) -> bool:
     and produces an mp4 with no picture in it, which is worse than no video: the
     app would offer a player showing black.
     """
+    return _has_stream(path, "v")
+
+
+def has_audio_stream(path: Path) -> bool:
+    """Whether the file has any sound.
+
+    A video downloaded as its picture alone has nothing to transcribe, and
+    Whisper says so only as an index error from deep inside its decoder.
+    """
+    return _has_stream(path, "a")
+
+
+def _has_stream(path: Path, kind: str) -> bool:
     try:
         done = subprocess.run(
             [
                 "ffprobe", "-v", "error",
-                "-select_streams", "v:0",
+                "-select_streams", f"{kind}:0",
                 "-show_entries", "stream=codec_type",
                 "-of", "csv=p=0",
                 str(path),
@@ -147,7 +160,8 @@ def has_video_stream(path: Path) -> bool:
         )
     except (subprocess.TimeoutExpired, FileNotFoundError):
         return False
-    return done.returncode == 0 and b"video" in done.stdout
+    want = b"video" if kind == "v" else b"audio"
+    return done.returncode == 0 and want in done.stdout
 
 
 def poster(source: Path, at: float, dest: Path, height: int = 360) -> None:

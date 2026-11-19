@@ -72,6 +72,11 @@ export const vi: Messages = {
   'uploads.nothingToRetry': 'Không có việc nào bỏ dở, nên không xếp lại gì.',
   'uploads.retried': (transcribe: number, cuts: number) =>
     `Đã xếp lại: ${transcribe} lần chép lời và ${cuts} lần cắt hình.`,
+  'uploads.autocut': 'Cắt tự động',
+  'uploads.autocutting': 'Đang cắt…',
+  'uploads.autocutDone': (clips: number) => `Đã xuất bản ${clips} clip, mỗi câu một clip.`,
+  'uploads.autocutNoSpeech': 'Không tìm thấy lời nói nào, nên không có gì để cắt.',
+  'uploads.autocutFailed': 'Không cắt được.',
   'uploads.clips': 'Clip đã publish',
   'uploads.transcript': 'Chép lời',
   'uploads.attempts': 'Số lần chép lời',

@@ -50,6 +50,7 @@ export function Uploads() {
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
+  const [cutting, setCutting] = useState<string | null>(null)
   // The workers' last heartbeats: null when one has never run, undefined
   // until the server has answered.
   const [transcriber, setTranscriber] = useState<WorkerStatus | null | undefined>(undefined)
@@ -115,6 +116,34 @@ export function Uploads() {
       refresh()
     } catch (err) {
       setNote(err instanceof ApiError ? err.message : 'Could not retry that.')
+    }
+  }
+
+  // A recording from the file server, its words in and no clip made of it
+  // yet: what the importer would cut, for when it has not.
+  const canAutocut = (upload: Upload) =>
+    Boolean(upload.importedFrom) &&
+    upload.transcript === 'ready' &&
+    upload.clips === 0 &&
+    upload.status === 'ready'
+
+  const autocut = async (upload: Upload) => {
+    setNote(null)
+    setCutting(upload.id)
+    try {
+      const made = await repository.autocutUpload(upload.id)
+      setNote(t('uploads.autocutDone', made.clips))
+      refresh()
+    } catch (err) {
+      setNote(
+        err instanceof ApiError && err.status === 422
+          ? t('uploads.autocutNoSpeech')
+          : err instanceof ApiError
+            ? err.message
+            : t('uploads.autocutFailed'),
+      )
+    } finally {
+      setCutting(null)
     }
   }
 
@@ -200,6 +229,16 @@ export function Uploads() {
               {(upload.status === 'transcribe-failed' || upload.status === 'cut-failed') && (
                 <button type="button" className="btn btn-secondary" onClick={() => void retry(upload)}>
                   {t('uploads.retry')}
+                </button>
+              )}
+              {canAutocut(upload) && (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={cutting !== null}
+                  onClick={() => void autocut(upload)}
+                >
+                  {cutting === upload.id ? t('uploads.autocutting') : t('uploads.autocut')}
                 </button>
               )}
               <button
