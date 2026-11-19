@@ -82,7 +82,7 @@ const TranscriberService = "transcribing"
 
 // WorkerServices are every worker that beats, in the order the console lists
 // them: the ones an admin waits on first.
-var WorkerServices = []string{TranscriberService, CutterService, "scoring", "dubbing", "glossing", "importer"}
+var WorkerServices = []string{TranscriberService, CutterService, "scoring", "dubbing", "glossing", "importer", "notifier"}
 
 // CutterService is the name the cutting worker beats under. A cutter from
 // before it beat is also the one that cut only pictures, so "never seen" beside

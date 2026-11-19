@@ -298,6 +298,10 @@ type Today struct {
 	DictationsDue  int         `json:"dictationsDue"`
 	FirstDictation *Dictation  `json:"firstDictation"`
 	Arena          *TodayArena `json:"arena"`
+	// RemindersOn is reminders turned on with a browser to send to;
+	// ReminderPromptDismissed is the learner saying "later" to being asked.
+	RemindersOn             bool `json:"remindersOn"`
+	ReminderPromptDismissed bool `json:"reminderPromptDismissed"`
 }
 
 // Today is the learner's day so far, and the list of what is worth doing.
@@ -352,6 +356,15 @@ func (s *Store) Today(ctx context.Context, user uuid.UUID, now time.Time) (Today
 	out.DictationsDue = len(dictations.Due)
 	if len(dictations.Due) > 0 {
 		out.FirstDictation = &dictations.Due[0]
+	}
+
+	if err := s.pool.QueryRow(ctx, `
+		select coalesce(p.enabled, false) and exists (
+		         select 1 from push_subscriptions s where s.user_id = $1 and s.failures < $2),
+		       coalesce(p.prompt_dismissed, false)
+		from (select 1) one left join reminder_prefs p on p.user_id = $1`, user, MaxPushFailures).
+		Scan(&out.RemindersOn, &out.ReminderPromptDismissed); err != nil {
+		return out, err
 	}
 
 	// The Arena's tasks, only for a learner who has been there: asking makes

@@ -154,6 +154,14 @@ services:
       blobs-init:
         condition: service_completed_successfully
 
+  notifier:
+    <<: *restart
+    image: *api-image
+    build: !reset null
+    depends_on: !override
+      postgres:
+        condition: service_healthy
+
   # The one worker service that builds; the other four run its image.
   scoring:
     <<: *restart

@@ -70,6 +70,14 @@ type Config struct {
 	// free. Zero turns a cap off.
 	TutorDailyPerLearner int
 	TutorDailyTotal      int
+
+	// Study reminders by Web Push: the VAPID key pair `go run ./cmd/vapid`
+	// prints, and a mailto: or https: address the push services can write to.
+	// All three or none: without them push is off and the app does not offer
+	// reminders.
+	VAPIDPublicKey  string
+	VAPIDPrivateKey string
+	VAPIDSubject    string
 }
 
 func Load() (Config, error) {
@@ -104,6 +112,9 @@ func Load() (Config, error) {
 		TutorAPIURL:          strings.TrimRight(env("TUTOR_API_URL", "http://localhost:20128/v1"), "/"),
 		TutorAPIKey:          env("TUTOR_API_KEY", ""),
 		TutorModel:           env("TUTOR_MODEL", ""),
+		VAPIDPublicKey:       env("VAPID_PUBLIC_KEY", ""),
+		VAPIDPrivateKey:      env("VAPID_PRIVATE_KEY", ""),
+		VAPIDSubject:         env("VAPID_SUBJECT", ""),
 	}
 	var err error
 	if c.TutorDailyPerLearner, err = envCount("TUTOR_DAILY_PER_LEARNER", 100); err != nil {
@@ -169,6 +180,12 @@ func Load() (Config, error) {
 
 // TutorConfigured reports whether the chat tutor has somewhere to send
 // messages. Off by default: it spends money per message.
+// PushConfigured is whether study reminders can be sent: all three VAPID
+// settings are there.
+func (c Config) PushConfigured() bool {
+	return c.VAPIDPublicKey != "" && c.VAPIDPrivateKey != "" && c.VAPIDSubject != ""
+}
+
 func (c Config) TutorConfigured() bool {
 	return c.TutorAPIKey != ""
 }
