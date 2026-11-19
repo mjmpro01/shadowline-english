@@ -90,6 +90,13 @@ func (im *Importer) RunOnce(ctx context.Context) error {
 	if settings == nil {
 		return ErrNotSetUp
 	}
+	// Cutting needs only the database, so it happens before the file server is
+	// reached: a server that is down holds back no clips of what is already in.
+	offline := &pass{im: im, s: *settings}
+	if err := offline.cutTranscribed(ctx); err != nil {
+		return err
+	}
+
 	config, err := RemoteConfig(*settings, im.Box)
 	if err != nil {
 		return err
@@ -107,11 +114,29 @@ func (im *Importer) RunOnce(ctx context.Context) error {
 	return pass.takeNew(ctx)
 }
 
-// pass is one connection's worth of work.
+// pass is one connection's worth of work. r is nil in the part of a pass that
+// runs before connecting, which does nothing that needs the file server.
 type pass struct {
 	im *Importer
 	r  remote.Remote
 	s  store.ImportSettings
+}
+
+// cutTranscribed makes the clips of every import whose words are in.
+func (p *pass) cutTranscribed(ctx context.Context) error {
+	working, err := p.im.Store.RemoteImportsWorking(ctx)
+	if err != nil {
+		return err
+	}
+	for _, imp := range working {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if imp.State == store.ImportTranscribing {
+			p.cutWhenTranscribed(ctx, imp)
+		}
+	}
+	return nil
 }
 
 // carryOn moves every import still working one step on, where it can.
@@ -306,15 +331,21 @@ func (p *pass) download(ctx context.Context, imp store.RemoteImport) {
 }
 
 // cutWhenTranscribed makes the clips once the words are in, or gives up when
-// the transcriber did.
+// the transcriber did. Giving up moves the file, so before the file server is
+// reached (p.r nil) it is left for the pass that has.
 func (p *pass) cutWhenTranscribed(ctx context.Context, imp store.RemoteImport) {
+	giveUp := func(reason string) {
+		if p.r != nil {
+			p.fail(ctx, imp, reason)
+		}
+	}
 	if imp.SourceID == nil {
-		p.fail(ctx, imp, "the recording was deleted before it was cut")
+		giveUp("the recording was deleted before it was cut")
 		return
 	}
 	upload, err := p.im.Store.UploadByID(ctx, *imp.SourceID)
 	if errors.Is(err, store.ErrNotFound) {
-		p.fail(ctx, imp, "the recording was deleted before it was cut")
+		giveUp("the recording was deleted before it was cut")
 		return
 	}
 	if err != nil {
@@ -329,7 +360,7 @@ func (p *pass) cutWhenTranscribed(ctx context.Context, imp store.RemoteImport) {
 		if upload.TranscribeError != "" {
 			reason += ": " + upload.TranscribeError
 		}
-		p.fail(ctx, imp, reason)
+		giveUp(reason)
 		return
 	}
 	// Clips already there were made by a pass that stopped before it could
@@ -338,44 +369,72 @@ func (p *pass) cutWhenTranscribed(ctx context.Context, imp store.RemoteImport) {
 		_ = p.im.Store.MoveRemoteImport(ctx, imp.ID, store.ImportCutting, nil, upload.Clips, "")
 		return
 	}
-	transcript, err := p.im.Store.TranscriptBySource(ctx, *imp.SourceID)
-	if err != nil {
-		p.im.Log.Warn("cannot read an imported transcript", "file", imp.ProcessingPath, "error", err)
+	claimed, err := p.im.Store.ClaimImportForCutting(ctx, imp.ID)
+	if err != nil || !claimed {
+		// Cut from the console in the meantime, or not reachable: either
+		// way, not this pass's to cut.
 		return
 	}
-	lines := autocut.Lines(transcript.Words, 0)
-	if len(lines) == 0 {
-		p.fail(ctx, imp, "no speech was found in the recording")
+	made, err := Publish(ctx, p.im.Store, *imp.SourceID, imp.Series, path.Base(imp.ProcessingPath))
+	switch {
+	case errors.Is(err, ErrNoSpeech):
+		_ = p.im.Store.ReleaseImportClaim(ctx, imp.ID)
+		giveUp("no speech was found in the recording")
 		return
-	}
-	next, err := p.im.Store.NextClipNumber(ctx, imp.Series)
-	if err != nil {
-		p.im.Log.Warn("cannot number the clips", "series", imp.Series, "error", err)
-		return
-	}
-	made := 0
-	for i, line := range lines {
-		_, err := p.im.Store.CreateClip(ctx, store.NewClip{
-			Title:           fmt.Sprintf("Clip %d", next+i),
-			Source:          path.Base(imp.ProcessingPath),
-			Playlist:        imp.Series,
-			TimestampLabel:  Timestamp(line.Start, line.End),
-			DurationSeconds: line.Duration(),
-			Captions:        []store.CaptionLine{{Text: line.Text, IPA: line.IPA}},
-			SourceID:        imp.SourceID,
-			StartSeconds:    line.Start,
-			EndSeconds:      line.End,
-		}, uuid.Nil)
-		if err != nil {
-			p.fail(ctx, imp, fmt.Sprintf("could not publish clip %d of %d: %v", i+1, len(lines), err))
-			return
+	case err != nil:
+		reason := fmt.Sprintf("could not publish its clips: %v", err)
+		if p.r != nil {
+			p.fail(ctx, imp, reason)
+		} else if err := p.im.Store.MoveRemoteImport(ctx, imp.ID, store.ImportFailed, nil, made, reason); err != nil {
+			p.im.Log.Warn("cannot record an import failed", "file", imp.ProcessingPath, "error", err)
 		}
-		made++
+		return
 	}
 	p.im.Log.Info("published", "file", imp.RemotePath, "clips", made)
 	if err := p.im.Store.MoveRemoteImport(ctx, imp.ID, store.ImportCutting, nil, made, ""); err != nil {
 		p.im.Log.Warn("cannot record the clips", "file", imp.ProcessingPath, "error", err)
 	}
+}
+
+// ErrNoSpeech is a recording whose transcript has no line to make a clip of.
+var ErrNoSpeech = errors.New("no speech was found in the recording")
+
+// Publish cuts a transcribed recording into a clip per line and publishes them
+// in a series, created if there is none by that name: the importer's own cut,
+// and the console's "Cut automatically". It says how many it made, which is
+// some even when it fails part of the way.
+func Publish(ctx context.Context, st *store.Store, source uuid.UUID, series, sourceName string) (int, error) {
+	transcript, err := st.TranscriptBySource(ctx, source)
+	if err != nil {
+		return 0, fmt.Errorf("read the transcript: %w", err)
+	}
+	lines := autocut.Lines(transcript.Words, 0)
+	if len(lines) == 0 {
+		return 0, ErrNoSpeech
+	}
+	next, err := st.NextClipNumber(ctx, series)
+	if err != nil {
+		return 0, fmt.Errorf("number the clips: %w", err)
+	}
+	made := 0
+	for i, line := range lines {
+		_, err := st.CreateClip(ctx, store.NewClip{
+			Title:           fmt.Sprintf("Clip %d", next+i),
+			Source:          sourceName,
+			Playlist:        series,
+			TimestampLabel:  Timestamp(line.Start, line.End),
+			DurationSeconds: line.Duration(),
+			Captions:        []store.CaptionLine{{Text: line.Text, IPA: line.IPA}},
+			SourceID:        &source,
+			StartSeconds:    line.Start,
+			EndSeconds:      line.End,
+		}, uuid.Nil)
+		if err != nil {
+			return made, fmt.Errorf("clip %d of %d: %w", i+1, len(lines), err)
+		}
+		made++
+	}
+	return made, nil
 }
 
 // finishWhenCut moves the file to done once the cutter has made every clip's

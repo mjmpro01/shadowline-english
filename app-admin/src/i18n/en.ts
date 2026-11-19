@@ -77,6 +77,11 @@ export const en = {
   'uploads.nothingToRetry': 'Nothing had given up, so nothing was queued.',
   'uploads.retried': (transcribe: number, cuts: number) =>
     `Queued again: ${transcribe} transcript${transcribe === 1 ? '' : 's'} and ${cuts} cut${cuts === 1 ? '' : 's'}.`,
+  'uploads.autocut': 'Cut automatically',
+  'uploads.autocutting': 'Cutting…',
+  'uploads.autocutDone': (clips: number) => `Published ${clips} clip${clips === 1 ? '' : 's'}, a line each.`,
+  'uploads.autocutNoSpeech': 'No speech was found in it, so there is nothing to cut.',
+  'uploads.autocutFailed': 'Could not cut that.',
   'uploads.clips': 'Clips published',
   'uploads.transcript': 'Transcript',
   'uploads.attempts': 'Transcription attempts',

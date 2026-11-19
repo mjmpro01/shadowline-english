@@ -27,6 +27,7 @@ from .heartbeat import Heartbeat
 from .storage import ObjectMissing, Storage, from_env as storage_from_env
 from .transcribe import TranscribeFailed, Transcriber, WhisperTranscriber
 from .transcribequeue import TranscribeJob, TranscribeQueue
+from .video import has_audio_stream, has_video_stream
 
 log = logging.getLogger("shadowline.transcriber")
 
@@ -34,6 +35,9 @@ log = logging.getLogger("shadowline.transcriber")
 # is minutes long, so polling can be gentle.
 IDLE_SLEEP = 3.0
 MAX_BACKOFF = 30.0
+
+
+NO_SOUND = "the file has no sound track: download it again with its audio"
 
 
 class Untranscribable(Exception):
@@ -53,6 +57,10 @@ def transcribe_job(
     try:
         result = transcriber.transcribe(path)
     except TranscribeFailed as err:
+        # A picture with no sound fails inside Whisper with an error that says
+        # nothing about why; this says what to do about it.
+        if has_video_stream(path) and not has_audio_stream(path):
+            raise Untranscribable(NO_SOUND) from err
         raise Untranscribable(str(err)) from err
     finally:
         path.unlink(missing_ok=True)

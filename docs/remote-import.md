@@ -68,6 +68,19 @@ cannot be inside the inbox, where they would be read as series.
 To try a failed file again, move it from `failed` back into the inbox and
 delete its `.txt`.
 
+## When the file server is down
+
+Cutting needs only the database, so the importer cuts and publishes whatever
+is already transcribed even while the file server refuses connections. What
+needs the server waits for it: taking new files, and moving files to `done` or
+to `failed` (a recording that cannot be transcribed is failed only once its
+file can be moved and its note written).
+
+In the console, **Uploads** offers **Cut automatically** on an imported
+recording whose words are in and which has no clips yet: it does the
+importer's cut straight away. A video with no sound track fails transcription
+saying so; download it again with its audio.
+
 ## Running it
 
 The importer runs from the API's image, with the same `.env` and the same

@@ -206,3 +206,32 @@ def test_a_model_that_is_not_there_says_so_rather_than_raising():
 
     whisper = WhisperTranscriber(model="no-such-model-anywhere")
     assert whisper.ready() is False
+
+
+def test_a_picture_with_no_sound_says_so(db, blobs, tmp_path):
+    """Whisper fails on it with an index error that tells nobody anything; a
+    video downloaded without its audio is the usual reason, and the fix."""
+    import shutil
+    import subprocess
+
+    if shutil.which("ffmpeg") is None:
+        pytest.skip("needs ffmpeg")
+    store, root = blobs
+    source_id = seed(db, root)
+    subprocess.run(
+        [
+            "ffmpeg", "-nostdin", "-loglevel", "error", "-y",
+            "-f", "lavfi", "-i", "color=c=black:s=64x64:d=1",
+            "-c:v", "libx264", "-pix_fmt", "yuv420p", "-f", "mp4",
+            str(root / "clips" / "source" / "one.mp4"),
+        ],
+        check=True,
+    )
+    queue = TranscribeQueue(db)
+    for _ in range(MAX_ATTEMPTS):
+        run_once(queue, store, FakeTranscriber(fails=True), tmp_path)
+
+    error = db.execute(
+        "select error from transcribe_jobs where source_id = %s", (source_id,)
+    ).fetchone()[0]
+    assert "no sound track" in error

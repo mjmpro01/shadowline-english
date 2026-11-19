@@ -3,6 +3,7 @@ package importer
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -459,5 +460,83 @@ func TestAnImportOverSFTP(t *testing.T) {
 	}
 	if got := f.imports(t); len(got) != 1 || got[0].State != store.ImportDone || got[0].Clips != 2 {
 		t.Fatalf("imports: %+v", got)
+	}
+}
+
+// down makes the file server refuse every connection until up is called.
+func (f *fixture) down() (up func()) {
+	dial := f.im.Dial
+	f.im.Dial = func(context.Context, remote.Config) (remote.Remote, error) {
+		return nil, errors.New("connection refused")
+	}
+	return func() { f.im.Dial = dial }
+}
+
+func TestAServerThatIsDownHoldsBackNoClips(t *testing.T) {
+	mem := newMem(map[string]string{"/inbox/Friends/Blues.mp4": "a video"})
+	f := newFixture(t, mem)
+	f.run(t)
+	f.transcribe(t, twoSentences)
+
+	up := f.down()
+	if err := f.im.RunOnce(context.Background()); err == nil || !strings.Contains(err.Error(), "connection refused") {
+		t.Fatalf("a pass with the server down: %v", err)
+	}
+	if got := f.imports(t)[0]; got.State != store.ImportCutting || got.Clips != 2 {
+		t.Fatalf("not cut while the server was down: %+v", got)
+	}
+
+	// Back up, the file goes to done once the cutter has finished.
+	up()
+	f.cut(t)
+	f.run(t)
+	if !mem.has("/done/Friends/Blues.mp4") {
+		t.Fatalf("not moved to done: %v", mem.files)
+	}
+}
+
+func TestAFailureWaitsForTheServerToMoveTheFile(t *testing.T) {
+	mem := newMem(map[string]string{"/inbox/Friends/Breaking news.mp4": "no sound"})
+	f := newFixture(t, mem)
+	f.run(t)
+	if _, err := f.pool.Exec(context.Background(),
+		`update transcribe_jobs set state = 'failed', error = 'the file has no sound track'`); err != nil {
+		t.Fatal(err)
+	}
+
+	up := f.down()
+	_ = f.im.RunOnce(context.Background())
+	if got := f.imports(t)[0]; got.State != store.ImportTranscribing {
+		t.Fatalf("gave up with nowhere to move the file: %+v", got)
+	}
+
+	up()
+	f.run(t)
+	if note := mem.read("/failed/Friends/Breaking news.mp4.txt"); !strings.Contains(note, "no sound track") {
+		t.Fatalf("the note: %q (%v)", note, mem.files)
+	}
+	if got := f.imports(t)[0]; got.State != store.ImportFailed {
+		t.Fatalf("the import: %+v", got)
+	}
+}
+
+func TestATranscriptWithNoLinesFailsOnceTheServerIsBack(t *testing.T) {
+	mem := newMem(map[string]string{"/inbox/Talks/hum.mp4": "music"})
+	f := newFixture(t, mem)
+	f.run(t)
+	f.transcribe(t, `[]`)
+
+	up := f.down()
+	_ = f.im.RunOnce(context.Background())
+	if got := f.imports(t)[0]; got.State != store.ImportTranscribing {
+		t.Fatalf("offline, with no lines: %+v", got)
+	}
+	up()
+	f.run(t)
+	if got := f.imports(t)[0]; got.State != store.ImportFailed || !strings.Contains(got.Error, "no speech") {
+		t.Fatalf("the import: %+v", got)
+	}
+	if !mem.has("/failed/Talks/hum.mp4") {
+		t.Fatalf("not moved to failed: %v", mem.files)
 	}
 }

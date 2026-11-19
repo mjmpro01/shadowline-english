@@ -435,6 +435,12 @@ export const repository = {
     )
   },
 
+  /** Cuts a recording from the file server into a clip per line and publishes
+   *  them, as the importer would. Answers with how many. */
+  autocutUpload(id: string) {
+    return api.send<{ clips: number }>('POST', `/api/admin/uploads/${id}/autocut`, {})
+  },
+
   /** The words Whisper found in a recording, or word that they are still coming. */
   sourceTranscript(sourceId: string) {
     return api.get<Transcript>(`/api/admin/uploads/${sourceId}/transcript`)
