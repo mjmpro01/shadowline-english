@@ -12,7 +12,8 @@ it:
 3. **Cuts it**: one clip per line (`server/internal/autocut`), at sentence ends
    and pauses, never longer than 30 seconds. Captions and IPA come from the
    transcript, and the clips are published straight away in the series named
-   by the folder.
+   by the folder. A song in the `music` folder is not cut: it becomes one clip
+   of the whole video (see [Songs](#songs-the-music-folder)).
 4. **Waits for the cutter** to make each clip's sound and picture.
 5. **Moves the file to done**, or to failed with a note saying why.
 
@@ -51,6 +52,7 @@ the secret again.
 /processing/<Series>/<Episode>.mp4  taken, being transcribed and cut
 /done/<Series>/<Episode>.mp4        published
 /failed/<Series>/<Episode>.mp4      gave up; <Episode>.mp4.txt says why
+/inbox/music/<Song>.mp4             a song: published whole, as one clip
 ```
 
 The folder names can be changed in the console. Processing, done and failed
@@ -67,6 +69,33 @@ cannot be inside the inbox, where they would be read as series.
 
 To try a failed file again, move it from `failed` back into the inbox and
 delete its `.txt`.
+
+## Songs: the music folder
+
+Videos in the inbox's `music` folder are songs, to be sung through
+karaoke-style rather than shadowed a line at a time. Each one becomes **one
+clip of the whole video** instead of a clip per line.
+
+- **The folder:** `music` in any case (`/inbox/music`, `/inbox/Music`). It is
+  a fixed name (`importer.MusicFolder` in `server/internal/importer`), not a
+  console setting. The series is the folder's name as written, so
+  `/inbox/Music/<Song>.mp4` goes to the series "Music".
+- **The clip:** named after the episode (`Let_It_Be.mp4` becomes "Let It
+  Be"), from 0 to the end of the video, published straight away like any
+  import.
+- **Captions:** the lyrics from the transcript, a line at a time, cut the same
+  way as other imports' lines. An instrumental with no words is still
+  published, with no captions.
+- **Length:** the transcriber measures each recording (with `ffprobe`) when it
+  transcribes it. A recording transcribed before lengths were measured ends
+  with its last word. One with neither a length nor words goes to `failed`.
+- **Too long:** a clip can be at most 6 minutes (`MaxClipSeconds`; the
+  console's studio keeps to the same limit). A longer song goes to `failed`
+  with a note saying it is longer than 6 minutes. To use it, trim it, or move
+  it to another folder to have it cut a line at a time.
+
+**Cut automatically** in the console follows the same rule for a recording
+imported from the music folder.
 
 ## When the file server is down
 
@@ -116,6 +145,9 @@ Tests:
   - `internal/remote`: SFTP over a real SSH handshake. FTPS runs only when
     `FTPS_TEST_ADDR` points at a server.
   - `internal/importer`: the whole flow, against an in-memory server and over
-    SFTP.
-  - `internal/api/remoteimport_test.go`: the settings and the connection test.
+    SFTP, songs from the music folder included.
+  - `internal/api/remoteimport_test.go`: the settings, the connection test and
+    **Cut automatically**.
+- **Python:** `scoring/tests/test_transcriber.py` checks a recording's length
+  is measured.
 - **Browser:** `app/e2e/console/import.spec.ts`.

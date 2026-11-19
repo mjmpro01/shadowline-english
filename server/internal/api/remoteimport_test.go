@@ -270,7 +270,7 @@ func TestOnlyAnImportedRecordingWithWordsIsCutFromTheConsole(t *testing.T) {
 	expectStatus(t, admin.json("POST", "/api/admin/uploads/"+uuid.NewString()+"/autocut", nil), http.StatusNotFound)
 
 	// No line to cut: refused, and left for the importer to fail with a note.
-	src, imp := h.importedRecording(t, "Music", "hum.mp4")
+	src, imp := h.importedRecording(t, "Talks", "hum.mp4")
 	if _, err := h.pool.Exec(context.Background(), `
 		insert into transcripts (source_id, words, language) values ($1, '[]', 'en')`, src); err != nil {
 		t.Fatal(err)
@@ -284,10 +284,57 @@ func TestOnlyAnImportedRecordingWithWordsIsCutFromTheConsole(t *testing.T) {
 	}
 
 	// An import the importer has already given up on is not cut.
-	src2, imp2 := h.importedRecording(t, "Music", "gone.mp4")
+	src2, imp2 := h.importedRecording(t, "Talks", "gone.mp4")
 	h.storeTranscript(t, src2.String())
 	if err := h.store.MoveRemoteImport(context.Background(), imp2, store.ImportFailed, nil, 0, "moved away"); err != nil {
 		t.Fatal(err)
 	}
 	expectCode(t, admin.json("POST", "/api/admin/uploads/"+src2.String()+"/autocut", nil), http.StatusConflict, "upload.cutting")
+}
+
+func TestASongIsCutFromTheConsoleWhole(t *testing.T) {
+	h := newHarness(t)
+	admin := h.login("admin@example.com")
+	ctx := context.Background()
+
+	src, imp := h.importedRecording(t, "music", "Yesterday.mp4")
+	h.storeTranscript(t, src.String())
+	if _, err := h.pool.Exec(ctx, `update clip_sources set duration_seconds = 125.5 where id = $1`, src); err != nil {
+		t.Fatal(err)
+	}
+	got := expect[struct {
+		Clips int  `json:"clips"`
+		Whole bool `json:"whole"`
+	}](t, admin.json("POST", "/api/admin/uploads/"+src.String()+"/autocut", nil), http.StatusOK)
+	if got.Clips != 1 || !got.Whole {
+		t.Fatalf("the answer: %+v", got)
+	}
+	var title, caption string
+	var start, end float64
+	if err := h.pool.QueryRow(ctx, `select title, start_seconds, end_seconds, captions->0->>'text'
+		from clips where source_id = $1`, src).Scan(&title, &start, &end, &caption); err != nil {
+		t.Fatal(err)
+	}
+	if title != "Yesterday" || start != 0 || end != 125.5 || caption != "One step" {
+		t.Fatalf("the song: %q %v–%v %q", title, start, end, caption)
+	}
+	if state, clips := h.importState(t, imp); state != store.ImportCutting || clips != 1 {
+		t.Fatalf("the import: %s %d", state, clips)
+	}
+
+	// Longer than a clip can be: refused, and left for the importer to fail
+	// with a note.
+	long, longImp := h.importedRecording(t, "Music", "Opera.mp4")
+	h.storeTranscript(t, long.String())
+	if _, err := h.pool.Exec(ctx, `update clip_sources set duration_seconds = $2 where id = $1`, long, store.MaxClipSeconds+60); err != nil {
+		t.Fatal(err)
+	}
+	expectCode(t, admin.json("POST", "/api/admin/uploads/"+long.String()+"/autocut", nil), http.StatusUnprocessableEntity, "upload.tooLong")
+	if state, _ := h.importState(t, longImp); state != store.ImportTranscribing {
+		t.Fatalf("the long song's import: %s", state)
+	}
+	var clips int
+	if err := h.pool.QueryRow(ctx, `select count(*)::int from clips where source_id = $1`, long).Scan(&clips); err != nil || clips != 0 {
+		t.Fatalf("%d clips of a song too long (%v)", clips, err)
+	}
 }

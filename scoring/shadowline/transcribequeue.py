@@ -76,9 +76,15 @@ class TranscribeQueue:
                 source_key=claimed["source_key"],
             )
 
-    def complete(self, job: TranscribeJob, language: str, words: list[dict]) -> None:
+    def complete(
+        self, job: TranscribeJob, language: str, words: list[dict], duration: float = 0.0
+    ) -> None:
         """Store the transcript and remove the job at once, so the studio never
-        reads a source as still pending when its words are already there."""
+        reads a source as still pending when its words are already there.
+
+        The recording's length is kept too when it had none: an import from the
+        file server arrives without one, and a song is published whole, to its
+        end. A length the browser measured on upload is left as it is."""
         with self.conn.transaction(), self.conn.cursor() as cur:
             cur.execute(
                 """
@@ -89,6 +95,14 @@ class TranscribeQueue:
                 """,
                 (job.source_id, json.dumps(words), language),
             )
+            if duration > 0:
+                cur.execute(
+                    """
+                    update clip_sources set duration_seconds = %s
+                    where id = %s and duration_seconds <= 0
+                    """,
+                    (duration, job.source_id),
+                )
             cur.execute("delete from transcribe_jobs where id = %s", (job.id,))
 
     def fail(self, job: TranscribeJob, reason: str) -> None:

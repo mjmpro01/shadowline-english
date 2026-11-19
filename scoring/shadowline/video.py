@@ -9,6 +9,7 @@ are short, so re-encoding one is cheap.
 from __future__ import annotations
 
 import logging
+import math
 import shutil
 import subprocess
 from pathlib import Path
@@ -142,6 +143,36 @@ def has_audio_stream(path: Path) -> bool:
     Whisper says so only as an index error from deep inside its decoder.
     """
     return _has_stream(path, "a")
+
+
+def probe_duration(path: Path) -> float:
+    """How long the recording runs, in seconds; 0.0 when it cannot be told.
+
+    An import arrives from the file server with no length, as nothing played it
+    in a browser: this is where it gets one, which is what lets a song be
+    published whole, to its last note rather than its last word.
+    """
+    try:
+        done = subprocess.run(
+            [
+                "ffprobe", "-v", "error",
+                "-show_entries", "format=duration",
+                "-of", "csv=p=0",
+                str(path),
+            ],
+            capture_output=True,
+            timeout=60,
+            check=False,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return 0.0
+    if done.returncode != 0:
+        return 0.0
+    try:
+        seconds = float(done.stdout.decode("utf-8", "replace").strip())
+    except ValueError:
+        return 0.0
+    return seconds if math.isfinite(seconds) and seconds > 0 else 0.0
 
 
 def _has_stream(path: Path, kind: str) -> bool:

@@ -241,8 +241,9 @@ func (s *Server) handleTestImport(w http.ResponseWriter, r *http.Request) {
 
 // handleAutocutUpload cuts an imported recording into a clip per line and
 // publishes them, as the importer would: for when the importer has not, and an
-// admin would rather not wait for it. The importer moves the file to done once
-// the cutter has made the clips.
+// admin would rather not wait for it. A song from the music folder is published
+// whole, as one clip, by the same rule. The importer moves the file to done
+// once the cutter has made the clips.
 func (s *Server) handleAutocutUpload(w http.ResponseWriter, r *http.Request) {
 	id, ok := parseID(w, r)
 	if !ok {
@@ -284,13 +285,22 @@ func (s *Server) handleAutocutUpload(w http.ResponseWriter, r *http.Request) {
 		failCode(w, http.StatusConflict, "upload.cutting", "the recording is being cut already, or its import has ended")
 		return
 	}
-	made, err := importer.Publish(ctx, s.Store, id, imp.Series, path.Base(imp.ProcessingPath))
-	if errors.Is(err, importer.ErrNoSpeech) {
-		// The importer moves the file to failed, saying why, once it reaches
-		// the file server.
-		_ = s.Store.ReleaseImportClaim(context.WithoutCancel(ctx), imp.ID)
-		failCode(w, http.StatusUnprocessableEntity, "upload.noSpeech", "no speech was found in the recording")
-		return
+	made, err := importer.Publish(ctx, s.Store, id, imp.Series, path.Base(imp.ProcessingPath), imp.Episode)
+	// Nothing made: the importer moves the file to failed, saying why, once it
+	// reaches the file server.
+	for _, refused := range []struct {
+		err  error
+		code string
+	}{
+		{importer.ErrNoSpeech, "upload.noSpeech"},
+		{importer.ErrTooLong, "upload.tooLong"},
+		{importer.ErrNoLength, "upload.noLength"},
+	} {
+		if errors.Is(err, refused.err) {
+			_ = s.Store.ReleaseImportClaim(context.WithoutCancel(ctx), imp.ID)
+			failCode(w, http.StatusUnprocessableEntity, refused.code, err.Error())
+			return
+		}
 	}
 	if err != nil {
 		_ = s.Store.MoveRemoteImport(context.WithoutCancel(ctx), imp.ID, store.ImportFailed, nil, made, "could not publish its clips: "+err.Error())
@@ -301,5 +311,5 @@ func (s *Server) handleAutocutUpload(w http.ResponseWriter, r *http.Request) {
 		s.Log.Warn("cannot record the clips of an import", "import", imp.ID, "error", err)
 	}
 	s.Log.Info("recording cut from the console", "source", id, "series", imp.Series, "clips", made)
-	writeJSON(w, http.StatusOK, map[string]int{"clips": made})
+	writeJSON(w, http.StatusOK, map[string]any{"clips": made, "whole": importer.IsMusic(imp.Series)})
 }

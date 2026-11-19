@@ -235,3 +235,57 @@ def test_a_picture_with_no_sound_says_so(db, blobs, tmp_path):
         "select error from transcribe_jobs where source_id = %s", (source_id,)
     ).fetchone()[0]
     assert "no sound track" in error
+
+
+def _source_seconds(conn, source_id):
+    return conn.execute(
+        "select duration_seconds from clip_sources where id = %s", (source_id,)
+    ).fetchone()[0]
+
+
+def test_an_import_with_no_length_is_given_its_length(db, blobs, tmp_path, monkeypatch):
+    """A recording from the file server arrives with no length; the transcriber
+    measures it, so a song can be published whole, to its last note."""
+    import shadowline.transcriber as transcriber
+
+    monkeypatch.setattr(transcriber, "probe_duration", lambda path: 187.5)
+    store, root = blobs
+    source_id = seed(db, root)
+
+    run_once(TranscribeQueue(db), store, FakeTranscriber(words=[]), tmp_path)
+
+    assert _source_seconds(db, source_id) == pytest.approx(187.5)
+
+
+def test_a_length_measured_on_upload_is_kept(db, blobs, tmp_path, monkeypatch):
+    import shadowline.transcriber as transcriber
+
+    monkeypatch.setattr(transcriber, "probe_duration", lambda path: 187.5)
+    store, root = blobs
+    source_id = seed(db, root)
+    db.execute("update clip_sources set duration_seconds = 42 where id = %s", (source_id,))
+
+    run_once(TranscribeQueue(db), store, FakeTranscriber(), tmp_path)
+
+    assert _source_seconds(db, source_id) == pytest.approx(42)
+
+
+def test_the_length_is_read_from_the_file(tmp_path):
+    import shutil
+    import subprocess
+
+    from shadowline.video import probe_duration
+
+    if shutil.which("ffmpeg") is None:
+        pytest.skip("needs ffmpeg")
+    song = tmp_path / "song.mp4"
+    subprocess.run(
+        [
+            "ffmpeg", "-nostdin", "-loglevel", "error", "-y",
+            "-f", "lavfi", "-i", "sine=frequency=440:duration=2",
+            "-c:a", "aac", str(song),
+        ],
+        check=True,
+    )
+    assert probe_duration(song) == pytest.approx(2.0, abs=0.1)
+    assert probe_duration(tmp_path / "not-there.mp4") == 0.0

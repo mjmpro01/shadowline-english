@@ -10,6 +10,13 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// MaxClipSeconds is the longest a clip can be, and mirrors MAX_CLIP_SECONDS in
+// app/src/data/types.ts and in app-admin/src/data/types.ts. A clip is usually
+// one line to shadow, but a karaoke video can be taken whole, a song sung
+// through, and six minutes holds nearly any song. It lives here rather than in
+// the API so the importer, which publishes songs whole, keeps to it too.
+const MaxClipSeconds = 360
+
 type CaptionLine struct {
 	Text string `json:"text"`
 	IPA  string `json:"ipa"`

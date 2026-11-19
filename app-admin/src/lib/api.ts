@@ -18,11 +18,15 @@ export const API_URL = ''
 
 export class ApiError extends Error {
   readonly status: number
+  /** The server's code for what went wrong, like `upload.tooLong`, when it
+   *  gave one: what a page tells apart, as the message is for people. */
+  readonly code: string
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, code = '') {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.code = code
   }
 
   /** True when the session has expired or was never there. */
@@ -42,20 +46,21 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
 
   if (!response.ok) {
-    throw new ApiError(response.status, await errorMessage(response))
+    const { message, code } = await errorBody(response)
+    throw new ApiError(response.status, message, code)
   }
   if (response.status === 204) return undefined as T
   return (await response.json()) as T
 }
 
-async function errorMessage(response: Response): Promise<string> {
+async function errorBody(response: Response): Promise<{ message: string; code: string }> {
   try {
-    const body = (await response.json()) as { error?: string }
-    if (body.error) return body.error
+    const body = (await response.json()) as { error?: string; code?: string }
+    if (body.error) return { message: body.error, code: body.code ?? '' }
   } catch {
     /* not JSON — fall through to the status text */
   }
-  return response.statusText || `Request failed (${response.status})`
+  return { message: response.statusText || `Request failed (${response.status})`, code: '' }
 }
 
 export const api = {
