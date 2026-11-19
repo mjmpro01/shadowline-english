@@ -6,6 +6,7 @@ import { AvatarSlot } from '../components/AvatarSlot'
 import { Dialog } from '../components/Dialog'
 import { Icon } from '../components/Icon'
 import { GoalPicker } from '../components/TodayCard'
+import { RemindersCard } from '../components/RemindersCard'
 import { useTour } from '../tour/context'
 import { LOCALE_CODES, LOCALES, useI18n } from '../i18n'
 import { applyTheme, storedTheme, THEMES, type Theme } from '../lib/theme'
@@ -116,6 +117,8 @@ export function ProfileScreen() {
           />
         </div>
       )}
+
+      <RemindersCard />
 
       {/*
         No switch here any more. Admin is decided by the server from

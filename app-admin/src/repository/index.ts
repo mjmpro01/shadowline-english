@@ -307,6 +307,15 @@ export interface Growth {
   cohorts: Cohort[]
   funnel: { joined: number; firstTake: number; returned: number; goal3: number }
   funnelDays: number
+  push: {
+    /** Learners with reminders on and a browser to send to. */
+    subscribers: number
+    kinds: { kind: 'goal' | 'streak' | 'new_episode'; sent: number; opened: number }[]
+    /** Learners who joined over a week ago, with reminders on and off, and
+     *  how many were active in the last 7 days. */
+    on: Share
+    off: Share
+  }
 }
 
 export const repository = {

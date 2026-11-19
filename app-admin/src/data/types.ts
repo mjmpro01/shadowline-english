@@ -72,7 +72,7 @@ export interface WorkerStatus {
 }
 
 /** Every worker that beats, by the name it beats under. */
-export type WorkerService = 'transcribing' | 'cutting' | 'scoring' | 'dubbing' | 'glossing' | 'importer'
+export type WorkerService = 'transcribing' | 'cutting' | 'scoring' | 'dubbing' | 'glossing' | 'importer' | 'notifier'
 
 /** Which code every part runs, and which workers are alive.
  *

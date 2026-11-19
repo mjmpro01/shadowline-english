@@ -4,6 +4,7 @@ import { useT } from '../i18n'
 import { explain } from '../lib/errors'
 import { DAILY_GOALS, repository, type DailyGoal, type Today } from '../repository'
 import { Icon } from './Icon'
+import { ReminderPrompt } from './RemindersCard'
 
 /**
  * The top of the dashboard: how today is going and what to do next.
@@ -71,6 +72,11 @@ export function TodayCard({ today, onChange }: { today: Today; onChange: (next: 
       </div>
 
       {!today.goalChosen && <GoalPicker current={today.goal} onChange={onChange} prompt />}
+
+      {/* The day it went well is the day to offer tomorrow's reminder. */}
+      {today.reached && !today.remindersOn && !today.reminderPromptDismissed && (
+        <ReminderPrompt onDone={() => onChange({ ...today, reminderPromptDismissed: true })} />
+      )}
 
       {items.length > 0 && (
         <ul className="today-list" aria-label={t('today.todo')}>

@@ -14,6 +14,7 @@ const WORKERS: { service: WorkerService; label: MessageKey }[] = [
   { service: 'dubbing', label: 'system.dubbing' },
   { service: 'glossing', label: 'system.glossing' },
   { service: 'importer', label: 'system.importer' },
+  { service: 'notifier', label: 'system.notifier' },
 ]
 
 type Health = 'same' | 'different' | 'unknown' | 'offline' | 'never' | 'unreported'

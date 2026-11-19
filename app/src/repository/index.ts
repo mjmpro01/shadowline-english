@@ -61,6 +61,15 @@ export interface Repository {
   banners(placement: 'dashboard' | 'library', locale: string): Promise<Banner[]>
   /** What the dashboard offers; an admin picks these. */
   featuredClips(): Promise<Video[]>
+  /** The server's public key for push, or null when reminders are off there. */
+  pushKey(): Promise<string | null>
+  subscribePush(sub: PushSubscriptionBody): Promise<void>
+  unsubscribePush(endpoint: string): Promise<void>
+  reminders(): Promise<Reminders>
+  saveReminders(prefs: Omit<Reminders, 'subscribed' | 'promptDismissed'>): Promise<Reminders>
+  /** Sends a reminder now; answers how many of the learner's browsers took it. */
+  testReminder(): Promise<number>
+  dismissReminderPrompt(): Promise<void>
   /** Where the learner left off, or null. */
   continueWatching(): Promise<Continue | null>
   /** Episodes new to the learner, followed series first. */
@@ -332,6 +341,29 @@ export interface Today {
   dictationsDue: number
   firstDictation: Dictation | null
   arena: { done: number; total: number } | null
+  /** Reminders on, with a browser to send to. */
+  remindersOn: boolean
+  /** The learner said "later" to being asked to turn reminders on. */
+  reminderPromptDismissed: boolean
+}
+
+/** What the learner wants to be reminded of, and when. */
+export interface Reminders {
+  enabled: boolean
+  /** "HH:MM" in `tz`. */
+  remindAt: string
+  tz: string
+  locale: 'vi' | 'en'
+  streak: boolean
+  newEpisodes: boolean
+  promptDismissed: boolean
+  /** A browser of theirs is subscribed. */
+  subscribed: boolean
+}
+
+export interface PushSubscriptionBody {
+  endpoint: string
+  keys: { p256dh: string; auth: string }
 }
 
 export interface DictationList {
@@ -474,6 +506,41 @@ class ApiRepository implements Repository {
 
   today() {
     return api.get<Today>('/api/today')
+  }
+
+  async pushKey() {
+    try {
+      const { publicKey } = await api.get<{ publicKey: string }>('/api/push/key')
+      return publicKey
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) return null
+      throw err
+    }
+  }
+
+  subscribePush(sub: PushSubscriptionBody) {
+    return api.send<void>('POST', '/api/push/subscribe', sub)
+  }
+
+  unsubscribePush(endpoint: string) {
+    return api.send<void>('DELETE', '/api/push/subscribe', { endpoint })
+  }
+
+  reminders() {
+    return api.get<Reminders>('/api/reminders')
+  }
+
+  saveReminders(prefs: Omit<Reminders, 'subscribed' | 'promptDismissed'>) {
+    return api.send<Reminders>('PUT', '/api/reminders', prefs)
+  }
+
+  async testReminder() {
+    const { delivered } = await api.send<{ delivered: number }>('POST', '/api/push/test', {})
+    return delivered
+  }
+
+  dismissReminderPrompt() {
+    return api.send<void>('POST', '/api/reminders/prompt-dismissed', {})
   }
 
   async continueWatching() {

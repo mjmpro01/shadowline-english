@@ -77,7 +77,8 @@ export function DashboardScreen() {
 
       <Banners placement="dashboard" />
 
-      {today && data.takes.length > 0 && <TodayCard today={today} onChange={setToday} />}
+      {/* Once there is something to show: a take, or any learning today. */}
+      {today && (data.takes.length > 0 || today.points > 0) && <TodayCard today={today} onChange={setToday} />}
 
       <ListenAgain />
 
