@@ -11,8 +11,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-
-	"github.com/shadowline/server/internal/game"
 )
 
 // Dictation: a learner listens to half a minute to a minute and a half of an
@@ -315,8 +313,8 @@ func (s *Store) SaveDictation(ctx context.Context, user uuid.UUID, in NewDictati
 	if err != nil {
 		return out, err
 	}
-	_, _, end := game.Day(now)
-	tomorrow, _, _ := game.Day(end.Add(time.Hour))
+	_, _, end := VietnamDay(now)
+	tomorrow, _, _ := VietnamDay(end.Add(time.Hour))
 	var id uuid.UUID
 	if err := s.pool.QueryRow(ctx, `
 		insert into dictations (user_id, episode_id, first_clip_id, clip_ids, total, "right", errors, review_on)
@@ -373,7 +371,7 @@ type DictationList struct {
 
 func (s *Store) Dictations(ctx context.Context, user uuid.UUID, now time.Time) (DictationList, error) {
 	var out DictationList
-	today, _, _ := game.Day(now)
+	today, _, _ := VietnamDay(now)
 	var err error
 	if out.Due, err = s.dictations(ctx, user, `d.reviewed_at is null and d.review_on <= $2::date and d.first_clip_id is not null`, today); err != nil {
 		return out, err
@@ -397,7 +395,7 @@ func (s *Store) ReviewDictation(ctx context.Context, user, id uuid.UUID) (bool, 
 // MakeDictationsDue moves a learner's dictations to be listened to again
 // today, for a browser test that cannot wait for tomorrow.
 func (s *Store) MakeDictationsDue(ctx context.Context, user uuid.UUID, now time.Time) error {
-	today, _, _ := game.Day(now)
+	today, _, _ := VietnamDay(now)
 	_, err := s.pool.Exec(ctx, `update dictations set review_on = $2::date where user_id = $1`, user, today)
 	return err
 }

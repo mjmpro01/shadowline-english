@@ -13,10 +13,9 @@ import (
 // The weekly leaderboard: practice points from Monday to Sunday on Vietnam's
 // clock, so everyone starts level each week and a learner who joined
 // yesterday can be on it. When a week is over its top three keep a medal, and
-// those who play the Arena are paid in gold.
+// they are paid in coins.
 
-// WeeklyGold is what first, second and third place are paid, into the Arena
-// purse of a learner who plays.
+// WeeklyGold is the coins first, second and third place are paid.
 var WeeklyGold = [3]int{100, 60, 40}
 
 // settleWeeksBack is how many past weeks a settling looks at: a server nobody
@@ -140,7 +139,7 @@ func (s *Store) WeeklyBoard(ctx context.Context, viewer uuid.UUID, limit int, no
 }
 
 // SettleWeeks gives out the medals of every recent week that is over and has
-// not been settled: its top three, and their gold for those who play. Safe to
+// not been settled: its top three, and their coins. Safe to
 // call from every request: one settles at a time, and a week only once.
 func (s *Store) SettleWeeks(ctx context.Context, now time.Time) error {
 	current, _ := WeekOf(now)
@@ -178,14 +177,7 @@ func (s *Store) SettleWeeks(ctx context.Context, now time.Time) error {
 			}
 			for _, w := range winners {
 				gold := WeeklyGold[w.place-1]
-				// Into the purse of a learner who plays; a medal either way.
-				tag, err := tx.Exec(ctx, `update game_profiles set gold = gold + $2 where user_id = $1`, w.user, gold)
-				if err != nil {
-					return err
-				}
-				if tag.RowsAffected() == 0 {
-					gold = 0
-				} else if err := logEvent(ctx, tx, w.user, "weekly", week, gold); err != nil {
+				if err := credit(ctx, tx, w.user, "weekly", week, gold); err != nil {
 					return err
 				}
 				if _, err := tx.Exec(ctx, `

@@ -8,8 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-
-	"github.com/shadowline/server/internal/game"
 )
 
 // What a learner does each day, counted toward a daily goal and a streak. The
@@ -44,8 +42,9 @@ var ErrBadGoal = errors.New("a daily goal is 10, 20 or 40 points")
 // DefaultGoal is the goal of a learner who has not chosen one.
 const DefaultGoal = 20
 
-// GoalGold is what reaching the day's goal adds to the Arena purse, once a day.
-const GoalGold = 20
+// GoalCoins is what reaching the day's goal adds to the wallet, once a day, on
+// top of the coin every point of practice pays.
+const GoalCoins = 20
 
 // MaxFreezes is how many missed days a streak can have saved up to cover.
 const MaxFreezes = 2
@@ -187,14 +186,15 @@ func nullDay(day string) any {
 }
 
 // LogActivity records a piece of learning: it counts toward today's goal and
-// keeps the streak going. Reaching the goal for the first time today puts
-// GoalGold in the Arena purse. It answers whether the goal was reached by this.
+// keeps the streak going, and pays a coin a point. Reaching the goal for the
+// first time today pays GoalCoins more. It answers whether the goal was
+// reached by this.
 func (s *Store) LogActivity(ctx context.Context, user uuid.UUID, kind string, now time.Time) (bool, error) {
 	points, ok := activityPoints[kind]
 	if !ok {
 		return false, fmt.Errorf("unknown activity %q", kind)
 	}
-	day, start, end := game.Day(now)
+	day, start, end := VietnamDay(now)
 	reached := false
 	err := s.inTx(ctx, func(tx pgx.Tx) error {
 		goal, _, streak, err := lockGoal(ctx, tx, user)
@@ -204,6 +204,9 @@ func (s *Store) LogActivity(ctx context.Context, user uuid.UUID, kind string, no
 		if _, err := tx.Exec(ctx, `
 			insert into learning_events (user_id, kind, points, at, day) values ($1, $2, $3, $4, $5)`,
 			user, kind, points, now, day); err != nil {
+			return err
+		}
+		if err := credit(ctx, tx, user, "practice", kind, points); err != nil {
 			return err
 		}
 		next := streak.Advance(day)
@@ -229,13 +232,7 @@ func (s *Store) LogActivity(ctx context.Context, user uuid.UUID, kind string, no
 			return err
 		}
 		reached = true
-		// Into the Arena purse of a learner who plays; nobody is given a farm
-		// for reaching a goal.
-		tag, err = tx.Exec(ctx, `update game_profiles set gold = gold + $2 where user_id = $1`, user, GoalGold)
-		if err != nil || tag.RowsAffected() == 0 {
-			return err
-		}
-		return logEvent(ctx, tx, user, "goal", "", GoalGold)
+		return credit(ctx, tx, user, "goal", day, GoalCoins)
 	})
 	return reached, err
 }
@@ -243,7 +240,7 @@ func (s *Store) LogActivity(ctx context.Context, user uuid.UUID, kind string, no
 // SawToday records that a learner opened the app today, for daily actives and
 // retention.
 func (s *Store) SawToday(ctx context.Context, user uuid.UUID, now time.Time) error {
-	day, _, _ := game.Day(now)
+	day, _, _ := VietnamDay(now)
 	_, err := s.pool.Exec(ctx, `insert into user_days (user_id, day) values ($1, $2) on conflict do nothing`, user, day)
 	return err
 }
@@ -275,12 +272,6 @@ type TodayStreak struct {
 	AtRisk  bool `json:"atRisk"`
 }
 
-// TodayArena is the day's three Arena tasks, for a learner who plays.
-type TodayArena struct {
-	Done  int `json:"done"`
-	Total int `json:"total"`
-}
-
 // Today is what a learner has done today and what is left to do.
 type Today struct {
 	Day        string `json:"day"`
@@ -288,16 +279,14 @@ type Today struct {
 	GoalChosen bool   `json:"goalChosen"`
 	Points     int    `json:"points"`
 	Reached    bool   `json:"reached"`
-	// GoalGold is what reaching the goal adds to the Arena purse; 0 for a
-	// learner who does not play.
-	GoalGold int         `json:"goalGold"`
-	Streak   TodayStreak `json:"streak"`
+	// GoalCoins is what reaching the goal adds to the wallet.
+	GoalCoins int         `json:"goalCoins"`
+	Streak    TodayStreak `json:"streak"`
 	// NextClip is the clip to practise next; nil for an empty library.
-	NextClip       *Clip       `json:"nextClip"`
-	VocabDue       int         `json:"vocabDue"`
-	DictationsDue  int         `json:"dictationsDue"`
-	FirstDictation *Dictation  `json:"firstDictation"`
-	Arena          *TodayArena `json:"arena"`
+	NextClip       *Clip      `json:"nextClip"`
+	VocabDue       int        `json:"vocabDue"`
+	DictationsDue  int        `json:"dictationsDue"`
+	FirstDictation *Dictation `json:"firstDictation"`
 	// RemindersOn is reminders turned on with a browser to send to;
 	// ReminderPromptDismissed is the learner saying "later" to being asked.
 	RemindersOn             bool `json:"remindersOn"`
@@ -306,8 +295,8 @@ type Today struct {
 
 // Today is the learner's day so far, and the list of what is worth doing.
 func (s *Store) Today(ctx context.Context, user uuid.UUID, now time.Time) (Today, error) {
-	day, start, end := game.Day(now)
-	out := Today{Day: day}
+	day, start, end := VietnamDay(now)
+	out := Today{Day: day, GoalCoins: GoalCoins}
 	err := s.inTx(ctx, func(tx pgx.Tx) error {
 		goal, chosen, streak, err := lockGoal(ctx, tx, user)
 		if err != nil {
@@ -367,25 +356,5 @@ func (s *Store) Today(ctx context.Context, user uuid.UUID, now time.Time) (Today
 		return out, err
 	}
 
-	// The Arena's tasks, only for a learner who has been there: asking makes
-	// a farm for whoever asks.
-	var plays bool
-	if err := s.pool.QueryRow(ctx, `select exists (select 1 from game_profiles where user_id = $1)`, user).Scan(&plays); err != nil {
-		return out, err
-	}
-	if plays {
-		quests, err := s.GameQuests(ctx, user)
-		if err != nil {
-			return out, err
-		}
-		arena := &TodayArena{Total: len(quests.Daily)}
-		for _, q := range quests.Daily {
-			if q.Done {
-				arena.Done++
-			}
-		}
-		out.Arena = arena
-		out.GoalGold = GoalGold
-	}
 	return out, nil
 }

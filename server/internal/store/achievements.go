@@ -12,8 +12,8 @@ import (
 
 // Milestone achievements. Each track is a ladder of targets counted from the
 // tables that already record the learning, so nothing new has to be kept up
-// to date as a learner practises; reaching a target unlocks it for good and,
-// for a learner who plays the Arena, pays gold.
+// to date as a learner practises; reaching a target unlocks it for good and
+// pays coins.
 
 // AchievementTrack is one ladder: what it counts and the targets on it.
 type AchievementTrack struct {
@@ -35,7 +35,7 @@ var Achievements = []AchievementTrack{
 	{"medal", []int{1, 5}},
 }
 
-// AchievementGold is what a tier pays, by its place on the ladder.
+// AchievementGold is the coins a tier pays, by its place on the ladder.
 var AchievementGold = []int{20, 50, 100, 200}
 
 // AchievementID names a tier: "takes.50".
@@ -133,20 +133,11 @@ func (s *Store) SyncAchievements(ctx context.Context, user uuid.UUID, now time.T
 				if tag.RowsAffected() == 0 {
 					continue
 				}
-				// Into the purse of a learner who plays; the tier either way.
-				paid, err := tx.Exec(ctx, `update game_profiles set gold = gold + $2 where user_id = $1`, user, gold)
-				if err != nil {
+				if err := credit(ctx, tx, user, "achievement", id, gold); err != nil {
 					return err
 				}
-				if paid.RowsAffected() == 0 {
-					gold = 0
-				} else {
-					if err := logEvent(ctx, tx, user, "achievement", id, gold); err != nil {
-						return err
-					}
-					if _, err := tx.Exec(ctx, `update learner_achievements set gold = $3 where user_id = $1 and id = $2`, user, id, gold); err != nil {
-						return err
-					}
+				if _, err := tx.Exec(ctx, `update learner_achievements set gold = $3 where user_id = $1 and id = $2`, user, id, gold); err != nil {
+					return err
 				}
 				out = append(out, UnlockedAchievement{ID: id, Track: t.Track, Target: target, Gold: gold})
 			}
