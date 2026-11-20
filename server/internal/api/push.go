@@ -117,12 +117,28 @@ func (s *Server) handleSaveReminders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	u, _ := auth.UserFrom(r.Context())
-	var body store.ReminderPrefs
+	// Competition is optional: an app from before it existed sends none, and
+	// that must not read as turning it off.
+	var body struct {
+		store.ReminderPrefs
+		Competition *bool `json:"competition"`
+	}
 	if err := decodeJSON(r, &body); err != nil {
 		fail(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if err := s.Store.SaveReminderPrefs(r.Context(), u.ID, body); err != nil {
+	prefs := body.ReminderPrefs
+	if body.Competition != nil {
+		prefs.Competition = *body.Competition
+	} else {
+		current, err := s.Store.ReminderPrefs(r.Context(), u.ID)
+		if err != nil {
+			s.failErr(w, err, "save reminders")
+			return
+		}
+		prefs.Competition = current.Competition
+	}
+	if err := s.Store.SaveReminderPrefs(r.Context(), u.ID, prefs); err != nil {
 		if errors.Is(err, store.ErrBadReminder) {
 			failCode(w, http.StatusBadRequest, "reminders.invalid", err.Error())
 			return

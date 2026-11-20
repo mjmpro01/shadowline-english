@@ -20,6 +20,10 @@ const Service = "notifier"
 // Tick is how often the notifier looks.
 const Tick = time.Minute
 
+// AchievementWait is how long an achievement waits for the app's own
+// celebration before it is told of by push.
+const AchievementWait = 10 * time.Minute
+
 // NewSince is how recent a followed series' episode has to be for the evening
 // reminder: since the last one.
 const NewSince = 24 * time.Hour
@@ -44,6 +48,11 @@ func (n *Notifier) now() time.Time {
 func (n *Notifier) RunOnce(ctx context.Context) error {
 	if n.Send == nil {
 		return nil
+	}
+	// Weeks are settled here as well as when the board is read, so a medal
+	// is given out, and told of, on Monday morning even if nobody looks.
+	if err := n.Store.SettleWeeks(ctx, n.now()); err != nil {
+		n.Log.Warn("cannot settle the weekly leaderboard", "error", err)
 	}
 	learners, err := n.Store.RemindableLearners(ctx)
 	if err != nil {
@@ -121,6 +130,34 @@ func (n *Notifier) consider(ctx context.Context, user uuid.UUID) error {
 		in.NewEpisodes = len(fresh)
 	}
 
+	var race *store.Race
+	var medalGold int
+	var untold []store.UnlockedAchievement
+	if prefs.Competition {
+		in.CompetitionOn = true
+		_, end := store.WeekOf(now)
+		in.WeekEndsToday = end.Sub(now) <= 24*time.Hour
+		if in.WeekEndsToday {
+			if race, err = n.Store.WeeklyRace(ctx, user, now); err != nil {
+				return err
+			}
+			in.Racing = race != nil
+		}
+		if in.Medal, medalGold, err = n.Store.LastWeekPlace(ctx, user, now); err != nil {
+			return err
+		}
+		if in.Medal > 0 {
+			start, _ := store.WeekOf(now)
+			if in.MedalSent, err = n.Store.SentSince(ctx, user, string(Medal), start.AddDate(0, 0, -1).Format("2006-01-02")); err != nil {
+				return err
+			}
+		}
+		if untold, err = n.Store.UnnotifiedAchievements(ctx, user, now, AchievementWait); err != nil {
+			return err
+		}
+		in.Achievements = len(untold)
+	}
+
 	kind, due := Next(in)
 	if !due {
 		return nil
@@ -135,6 +172,14 @@ func (n *Notifier) consider(ctx context.Context, user uuid.UUID) error {
 		if today.NextClip != nil {
 			url = "/library/" + today.NextClip.ID.String() + "/practice"
 		}
+	case Rank:
+		facts.Rank, facts.Gap = race.Rank, race.Gap
+	case Medal:
+		facts.Place, facts.Gold = in.Medal, medalGold
+		url = "/profile"
+	case Achievement:
+		facts.AchTrack, facts.AchTarget, facts.AchCount = untold[0].Track, untold[0].Target, len(untold)
+		url = "/achievements"
 	case NewEpisode:
 		series := map[string]bool{}
 		for _, e := range fresh {
@@ -145,8 +190,17 @@ func (n *Notifier) consider(ctx context.Context, user uuid.UUID) error {
 			url = "/library/e/" + fresh[0].ID.String()
 		}
 	}
-	_, err = n.send(ctx, user, kind, prefs.Locale, day, facts, url)
-	return err
+	if _, err = n.send(ctx, user, kind, prefs.Locale, day, facts, url); err != nil {
+		return err
+	}
+	if kind == Achievement {
+		ids := make([]string, len(untold))
+		for i, a := range untold {
+			ids[i] = a.ID
+		}
+		return n.Store.MarkAchievementsNotified(ctx, user, ids, now)
+	}
+	return nil
 }
 
 // SendTest sends a learner a reminder now, so they can see what one looks

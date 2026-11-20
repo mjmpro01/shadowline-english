@@ -379,6 +379,9 @@ export const en = {
   'growth.push.goal': 'Daily goal',
   'growth.push.streak': 'Streak about to end',
   'growth.push.new_episode': 'New episodes',
+  'growth.push.rank': 'Close race on Sunday',
+  'growth.push.medal': 'Weekly medal',
+  'growth.push.achievement': 'Achievements',
   'growth.pushD7': (on: string, off: string) =>
     `Active in the last 7 days, of learners who joined over a week ago: ${on} with reminders on, ${off} without.`,
   'growth.funnel': (days: number) => `How far the last ${days} days' new learners got`,

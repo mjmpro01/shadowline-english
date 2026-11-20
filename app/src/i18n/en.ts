@@ -215,6 +215,7 @@ export const en = {
   'reminders.at': 'Remind me at',
   'reminders.streak': 'When my streak is about to end',
   'reminders.newEpisodes': 'New episodes of series I follow',
+  'reminders.competition': 'The weekly race: medals, achievements, a close finish on Sunday',
   'reminders.test': 'Send a test',
   'reminders.testSent': (n: number) => `Sent to ${n} ${n === 1 ? 'device' : 'devices'} — it should appear in a moment.`,
   'reminders.testNone': 'No device took it. Turn reminders off and on again here.',

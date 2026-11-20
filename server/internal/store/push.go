@@ -82,17 +82,21 @@ func (s *Store) SubscriptionSent(ctx context.Context, id uuid.UUID, ok, gone boo
 type ReminderPrefs struct {
 	Enabled bool `json:"enabled"`
 	// RemindAt is "HH:MM" in TZ.
-	RemindAt        string `json:"remindAt"`
-	TZ              string `json:"tz"`
-	Locale          string `json:"locale"`
-	Streak          bool   `json:"streak"`
-	NewEpisodes     bool   `json:"newEpisodes"`
-	PromptDismissed bool   `json:"promptDismissed"`
+	RemindAt    string `json:"remindAt"`
+	TZ          string `json:"tz"`
+	Locale      string `json:"locale"`
+	Streak      bool   `json:"streak"`
+	NewEpisodes bool   `json:"newEpisodes"`
+	// Competition is the weekly race: a medal won, achievements unseen, and a
+	// top-three place close on the week's last evening.
+	Competition     bool `json:"competition"`
+	PromptDismissed bool `json:"promptDismissed"`
 }
 
 // DefaultReminderPrefs is a learner who has not been asked.
 var DefaultReminderPrefs = ReminderPrefs{
 	RemindAt: "20:00", TZ: "Asia/Ho_Chi_Minh", Locale: "vi", Streak: true, NewEpisodes: true,
+	Competition: true,
 }
 
 // ErrBadReminder is a reminder setting that cannot be kept.
@@ -116,9 +120,9 @@ func (p ReminderPrefs) Check() error {
 func (s *Store) ReminderPrefs(ctx context.Context, user uuid.UUID) (ReminderPrefs, error) {
 	p := DefaultReminderPrefs
 	err := s.pool.QueryRow(ctx, `
-		select enabled, to_char(remind_at, 'HH24:MI'), tz, locale, streak, new_episodes, prompt_dismissed
+		select enabled, to_char(remind_at, 'HH24:MI'), tz, locale, streak, new_episodes, competition, prompt_dismissed
 		from reminder_prefs where user_id = $1`, user).
-		Scan(&p.Enabled, &p.RemindAt, &p.TZ, &p.Locale, &p.Streak, &p.NewEpisodes, &p.PromptDismissed)
+		Scan(&p.Enabled, &p.RemindAt, &p.TZ, &p.Locale, &p.Streak, &p.NewEpisodes, &p.Competition, &p.PromptDismissed)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return DefaultReminderPrefs, nil
 	}
@@ -132,13 +136,13 @@ func (s *Store) SaveReminderPrefs(ctx context.Context, user uuid.UUID, p Reminde
 		return err
 	}
 	_, err := s.pool.Exec(ctx, `
-		insert into reminder_prefs (user_id, enabled, remind_at, tz, locale, streak, new_episodes)
-		values ($1, $2, $3::time, $4, $5, $6, $7)
+		insert into reminder_prefs (user_id, enabled, remind_at, tz, locale, streak, new_episodes, competition)
+		values ($1, $2, $3::time, $4, $5, $6, $7, $8)
 		on conflict (user_id) do update
 		set enabled = excluded.enabled, remind_at = excluded.remind_at, tz = excluded.tz,
 		    locale = excluded.locale, streak = excluded.streak, new_episodes = excluded.new_episodes,
-		    updated_at = now()`,
-		user, p.Enabled, p.RemindAt, p.TZ, p.Locale, p.Streak, p.NewEpisodes)
+		    competition = excluded.competition, updated_at = now()`,
+		user, p.Enabled, p.RemindAt, p.TZ, p.Locale, p.Streak, p.NewEpisodes, p.Competition)
 	return err
 }
 
@@ -195,6 +199,16 @@ func (s *Store) RecordNotification(ctx context.Context, user uuid.UUID, day stri
 		return false, err
 	}
 	return tag.RowsAffected() == 1, nil
+}
+
+// SentSince is whether a reminder of this kind went to a learner on or after
+// their day `day`: a medal is told of once a week, not once a day.
+func (s *Store) SentSince(ctx context.Context, user uuid.UUID, kind, day string) (bool, error) {
+	var sent bool
+	err := s.pool.QueryRow(ctx, `
+		select exists (select 1 from notifications_sent where user_id = $1 and kind = $2 and day >= $3::date)`,
+		user, kind, day).Scan(&sent)
+	return sent, err
 }
 
 // SentOn is what was sent to a learner on their day, by kind, tests left out.
