@@ -19,7 +19,7 @@ type todayJSON struct {
 	GoalChosen bool `json:"goalChosen"`
 	Points     int  `json:"points"`
 	Reached    bool `json:"reached"`
-	GoalGold   int  `json:"goalGold"`
+	GoalCoins  int  `json:"goalCoins"`
 	Streak     struct {
 		Count   int  `json:"count"`
 		Freezes int  `json:"freezes"`
@@ -28,10 +28,6 @@ type todayJSON struct {
 	} `json:"streak"`
 	VocabDue      int `json:"vocabDue"`
 	DictationsDue int `json:"dictationsDue"`
-	Arena         *struct {
-		Done  int `json:"done"`
-		Total int `json:"total"`
-	} `json:"arena"`
 }
 
 func (h *harness) userID(t *testing.T, email string) uuid.UUID {
@@ -43,13 +39,14 @@ func (h *harness) userID(t *testing.T, email string) uuid.UUID {
 	return id
 }
 
-func (h *harness) gold(t *testing.T, user uuid.UUID) int {
+func (h *harness) coins(t *testing.T, user uuid.UUID) int {
 	t.Helper()
-	var gold int
-	if err := h.pool.QueryRow(context.Background(), `select gold from game_profiles where user_id = $1`, user).Scan(&gold); err != nil {
+	var coins int
+	if err := h.pool.QueryRow(context.Background(),
+		`select coalesce((select coins from wallets where user_id = $1), 0)`, user).Scan(&coins); err != nil {
 		t.Fatal(err)
 	}
-	return gold
+	return coins
 }
 
 func TestADayOfLearningCountsTowardTheGoalAndTheStreak(t *testing.T) {
@@ -58,7 +55,7 @@ func TestADayOfLearningCountsTowardTheGoalAndTheStreak(t *testing.T) {
 	id := h.userID(t, "learner@example.com")
 
 	day := expect[todayJSON](t, learner.json("GET", "/api/today", nil), http.StatusOK)
-	if day.Goal != store.DefaultGoal || day.GoalChosen || day.Points != 0 || day.Streak.Count != 0 || day.Arena != nil {
+	if day.Goal != store.DefaultGoal || day.GoalChosen || day.Points != 0 || day.Streak.Count != 0 || day.GoalCoins != store.GoalCoins {
 		t.Fatalf("a fresh learner's day: %+v", day)
 	}
 
@@ -80,10 +77,8 @@ func TestADayOfLearningCountsTowardTheGoalAndTheStreak(t *testing.T) {
 		t.Fatalf("goal chosen: %+v", day)
 	}
 
-	// A learner who plays has the Arena's tasks on the list, and the goal
-	// reached pays into the purse — once.
-	expectStatus(t, learner.json("GET", "/api/game/state", nil), http.StatusOK)
-	before := h.gold(t, id)
+	// Every point pays a coin, and the goal reached pays more — once.
+	before := h.coins(t, id)
 	ctx := context.Background()
 	for range 5 {
 		if _, err := h.store.LogActivity(ctx, id, store.ActTake, time.Now()); err != nil {
@@ -91,17 +86,17 @@ func TestADayOfLearningCountsTowardTheGoalAndTheStreak(t *testing.T) {
 		}
 	}
 	day = expect[todayJSON](t, learner.json("GET", "/api/today", nil), http.StatusOK)
-	if !day.Reached || day.Points != 11 || day.GoalGold != store.GoalGold || day.Arena == nil || day.Arena.Total != 3 {
+	if !day.Reached || day.Points != 11 {
 		t.Fatalf("the goal reached: %+v", day)
 	}
-	if got := h.gold(t, id); got != before+store.GoalGold {
-		t.Fatalf("gold %d, want %d", got, before+store.GoalGold)
+	if got := h.coins(t, id); got != before+10+store.GoalCoins {
+		t.Fatalf("coins %d, want %d", got, before+10+store.GoalCoins)
 	}
 	if _, err := h.store.LogActivity(ctx, id, store.ActTake, time.Now()); err != nil {
 		t.Fatal(err)
 	}
-	if got := h.gold(t, id); got != before+store.GoalGold {
-		t.Fatal("the goal paid twice in a day")
+	if got := h.coins(t, id); got != before+12+store.GoalCoins {
+		t.Fatalf("coins %d after another take: the goal paid twice in a day?", got)
 	}
 }
 

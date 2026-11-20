@@ -77,101 +77,19 @@ func (s *Server) handleTestTranscriptFail(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
-// handleTestRipen makes every crop in every farm ready to pick, so a browser
-// test does not wait out a growing time. Registered only when AUTH_FAKE=1.
-func (s *Server) handleTestRipen(w http.ResponseWriter, r *http.Request) {
-	if err := s.Store.RipenAllCrops(r.Context()); err != nil {
-		s.failErr(w, err, "ripen test crops")
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
-}
-
-// handleTestRespawn brings every beaten monster back at once. Registered only
-// when AUTH_FAKE=1.
-func (s *Server) handleTestRespawn(w http.ResponseWriter, r *http.Request) {
-	if err := s.Store.RespawnAll(r.Context()); err != nil {
-		s.failErr(w, err, "respawn test monsters")
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
-}
-
-// handleTestBattleAnswer tells a browser test the answer to the question in
-// play, so it can win (or lose) on purpose. Registered only when AUTH_FAKE=1.
-func (s *Server) handleTestBattleAnswer(w http.ResponseWriter, r *http.Request) {
-	u, _ := auth.UserFrom(r.Context())
-	answer, err := s.Store.BattleAnswerKey(r.Context(), u.ID)
-	if err != nil {
-		s.failErr(w, err, "test answer key")
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"answer": answer})
-}
-
-// handleTestTalkAnswer tells a browser test which of today's replies to a
-// townsperson is right. Registered only when AUTH_FAKE=1.
-func (s *Server) handleTestTalkAnswer(w http.ResponseWriter, r *http.Request) {
-	u, _ := auth.UserFrom(r.Context())
-	reply, err := s.Store.TalkAnswerKey(r.Context(), u.ID, r.URL.Query().Get("npc"))
-	if err != nil {
-		fail(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"reply": reply})
-}
-
-// handleTestQuizAnswer is the answer to the note or library question waiting
-// for the signed-in player. AUTH_FAKE=1 only.
-func (s *Server) handleTestQuizAnswer(w http.ResponseWriter, r *http.Request) {
-	u, _ := auth.UserFrom(r.Context())
-	answer, err := s.Store.QuizAnswerKey(r.Context(), u.ID, r.URL.Query().Get("kind"))
-	if err != nil {
-		fail(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"answer": answer})
-}
-
-// handleTestLetter is what today's letter asks for, which the browser is never
-// told. AUTH_FAKE=1 only.
-func (s *Server) handleTestLetter(w http.ResponseWriter, r *http.Request) {
-	u, _ := auth.UserFrom(r.Context())
-	npc, item, qty := store.LetterKey(u.ID, time.Now())
-	writeJSON(w, http.StatusOK, map[string]any{"npc": npc, "item": item, "qty": qty})
-}
-
-// handleTestGold sets the signed-in player's gold, for a test that has to buy
-// what a letter asks for. AUTH_FAKE=1 only.
-func (s *Server) handleTestGold(w http.ResponseWriter, r *http.Request) {
+// handleTestCoins sets the signed-in learner's coins, for a test that has to
+// buy something without practising for it first. AUTH_FAKE=1 only.
+func (s *Server) handleTestCoins(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.UserFrom(r.Context())
 	var body struct {
-		Gold int `json:"gold"`
+		Coins int `json:"coins"`
 	}
-	if err := decodeJSON(r, &body); err != nil {
-		fail(w, http.StatusBadRequest, err.Error())
+	if err := decodeJSON(r, &body); err != nil || body.Coins < 0 {
+		fail(w, http.StatusBadRequest, "coins is a number, 0 or more")
 		return
 	}
-	if err := s.Store.SetGold(r.Context(), u.ID, body.Gold); err != nil {
-		s.failErr(w, err, "test gold")
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
-
-// handleTestGameStep moves the signed-in player's story to a step, so a test
-// can start in the woods without playing chapter 1. AUTH_FAKE=1 only.
-func (s *Server) handleTestGameStep(w http.ResponseWriter, r *http.Request) {
-	u, _ := auth.UserFrom(r.Context())
-	var body struct {
-		Step int `json:"step"`
-	}
-	if err := decodeJSON(r, &body); err != nil {
-		fail(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	if err := s.Store.SetMainStep(r.Context(), u.ID, body.Step); err != nil {
-		s.failErr(w, err, "test story step")
+	if err := s.Store.SetCoins(r.Context(), u.ID, body.Coins); err != nil {
+		s.failErr(w, err, "test coins")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

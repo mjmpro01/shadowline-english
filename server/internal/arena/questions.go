@@ -1,0 +1,187 @@
+package arena
+
+import (
+	"math/rand"
+	"regexp"
+	"strings"
+	"unicode"
+)
+
+// Entry is a word with what the dictionary says about it.
+type Entry struct {
+	Word    string `json:"word"`
+	IPA     string `json:"ipa"`
+	Meaning string `json:"meaning"`
+	// Sentence uses the word as it is spelled, and SentenceVi is what it
+	// means: what a cloze question is made of. Most words have none.
+	Sentence   string `json:"sentence,omitempty"`
+	SentenceVi string `json:"sentenceVi,omitempty"`
+}
+
+// Question is one turn of a duel. Answer stays on the server: the browser is
+// sent the rest.
+type Question struct {
+	Kind string `json:"kind"`
+	// Prompt is what the player is asked about: the word (meaning), the IPA
+	// (ipa), or the definition as a hint (scramble). Empty for listen.
+	Prompt string `json:"prompt"`
+	// Say is the word to speak aloud, for listen. The browser has to know it
+	// to say it.
+	Say string `json:"say,omitempty"`
+	// Hint is what a cloze sentence means, in Vietnamese.
+	Hint string `json:"hint,omitempty"`
+	// Options to choose from; for scramble, the word's letters, shuffled.
+	Options []string `json:"options"`
+	// Word is the word the question is about, and Answer what counts as right.
+	Word   string `json:"-"`
+	Answer string `json:"-"`
+}
+
+// Scrambles reports whether a word can be put back from its letters: plain
+// letters, short enough to rearrange in the time.
+func Scrambles(word string) bool {
+	n := 0
+	for _, r := range word {
+		if !unicode.IsLetter(r) {
+			return false
+		}
+		n++
+	}
+	return n >= 3 && n <= 9
+}
+
+// NewQuestion makes a question of a kind about target, with wrong answers from
+// pool. ok is false when the pool cannot make that kind (too few distinct
+// entries, or a word that does not scramble), so the caller can try another.
+func NewQuestion(kind string, target Entry, pool []Entry, r *rand.Rand) (q Question, ok bool) {
+	q = Question{Kind: kind, Word: target.Word}
+	switch kind {
+	case AskScramble:
+		if !Scrambles(target.Word) {
+			return q, false
+		}
+		letters := []rune(strings.ToLower(target.Word))
+		shuffled := append([]rune{}, letters...)
+		for i := 0; i < 20; i++ {
+			r.Shuffle(len(shuffled), func(a, b int) { shuffled[a], shuffled[b] = shuffled[b], shuffled[a] })
+			if string(shuffled) != string(letters) {
+				break
+			}
+		}
+		if string(shuffled) == string(letters) {
+			return q, false // every letter the same: nothing to unscramble
+		}
+		q.Prompt = target.Meaning
+		for _, l := range shuffled {
+			q.Options = append(q.Options, string(l))
+		}
+		q.Answer = strings.ToLower(target.Word)
+		return q, true
+	case AskMeaning:
+		q.Prompt = target.Word
+		q.Answer = target.Meaning
+		q.Options = options(target, pool, r, func(e Entry) string { return e.Meaning })
+	case AskListen:
+		q.Say = target.Word
+		q.Answer = target.Word
+		q.Options = options(target, soundsDifferent(target, pool), r, func(e Entry) string { return e.Word })
+	case AskCloze:
+		blanked, ok := Blank(target.Sentence, target.Word)
+		if !ok {
+			return q, false
+		}
+		q.Prompt, q.Hint = blanked, target.SentenceVi
+		q.Answer = target.Word
+		q.Options = options(target, pool, r, func(e Entry) string { return e.Word })
+	case AskIPA:
+		if target.IPA == "" {
+			return q, false
+		}
+		q.Prompt = target.IPA
+		q.Answer = target.Word
+		q.Options = options(target, soundsDifferent(target, pool), r, func(e Entry) string { return e.Word })
+	default:
+		return q, false
+	}
+	return q, q.Options != nil
+}
+
+// Gap is what stands in a sentence where its word was.
+const Gap = "_____"
+
+// Blank is a sentence with its word left out: the word as a whole word, in any
+// case, once. ok is false when the sentence does not have it.
+func Blank(sentence, word string) (string, bool) {
+	if sentence == "" || word == "" {
+		return "", false
+	}
+	re := regexp.MustCompile(`(?i)\b` + regexp.QuoteMeta(word) + `\b`)
+	loc := re.FindStringIndex(sentence)
+	if loc == nil {
+		return "", false
+	}
+	return sentence[:loc[0]] + Gap + sentence[loc[1]:], true
+}
+
+// options is the right answer and three wrong ones, shuffled, all different;
+// nil when the pool has too few.
+func options(target Entry, pool []Entry, r *rand.Rand, field func(Entry) string) []string {
+	right := field(target)
+	seen := map[string]bool{norm(right): true}
+	out := []string{right}
+	order := r.Perm(len(pool))
+	for _, i := range order {
+		v := field(pool[i])
+		if v == "" || seen[norm(v)] || norm(pool[i].Word) == norm(target.Word) {
+			continue
+		}
+		seen[norm(v)] = true
+		out = append(out, v)
+		if len(out) == 4 {
+			break
+		}
+	}
+	if len(out) < 4 {
+		return nil
+	}
+	r.Shuffle(len(out), func(a, b int) { out[a], out[b] = out[b], out[a] })
+	return out
+}
+
+// soundsDifferent is the pool without words pronounced like the target: on a
+// listening or an IPA question, "see" beside "sea" would make two answers
+// right.
+func soundsDifferent(target Entry, pool []Entry) []Entry {
+	out := make([]Entry, 0, len(pool))
+	for _, e := range pool {
+		if norm(e.IPA) != norm(target.IPA) {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// Right reports whether an answer is the right one.
+func (q Question) Right(answer string) bool {
+	return answer != "" && norm(answer) == norm(q.Answer)
+}
+
+func norm(s string) string {
+	return strings.ToLower(strings.TrimSpace(s))
+}
+
+// The kinds of question a duel asks.
+const (
+	// AskMeaning: a word, and four definitions to choose from.
+	AskMeaning = "meaning"
+	// AskListen: a word spoken aloud, and four words to choose from.
+	AskListen = "listen"
+	// AskScramble: the word's letters shuffled, its definition as a hint; the
+	// player puts them back in order.
+	AskScramble = "scramble"
+	// AskIPA: a pronunciation written in IPA, and four words to choose from.
+	AskIPA = "ipa"
+	// AskCloze: a sentence with the word left out, what it means in Vietnamese
+	// as a hint, and four words to choose from. Only for words with a sentence.
+	AskCloze = "cloze"
+)

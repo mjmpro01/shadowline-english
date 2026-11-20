@@ -40,18 +40,6 @@ export function TodayCard({ today, onChange }: { today: Today; onChange: (next: 
       go: () => navigate('/vocabulary/practice'),
     })
   }
-  if (today.arena) {
-    const arena = today.arena
-    items.push({
-      key: 'arena',
-      icon: 'sprout',
-      label: t('today.arena', arena.done, arena.total),
-      hint: '',
-      done: arena.done >= arena.total,
-      go: () => navigate('/arena'),
-    })
-  }
-
   return (
     <section className="card elev-sm today-card" aria-labelledby="today-title" data-reached={today.reached ? '' : undefined}>
       <div className="today-head">
@@ -62,8 +50,8 @@ export function TodayCard({ today, onChange }: { today: Today; onChange: (next: 
           </h2>
           <p className="today-status" data-testid="today-status">
             {today.reached
-              ? today.goalGold > 0
-                ? t('today.reachedGold', today.goalGold)
+              ? today.goalCoins > 0
+                ? t('today.reachedGold', today.goalCoins)
                 : t('today.reached')
               : t('today.left', left)}
           </p>

@@ -97,7 +97,7 @@ func TestAFirstTakeIsCelebratedOnce(t *testing.T) {
 	record(t, learner, clips[0].ID)
 
 	got := expect[[]achievementJSON](t, learner.json("GET", "/api/achievements/new", nil), http.StatusOK)
-	if len(got) != 1 || got[0].ID != "takes.1" || got[0].Track != "takes" || got[0].Target != 1 || got[0].Gold != 0 {
+	if len(got) != 1 || got[0].ID != "takes.1" || got[0].Track != "takes" || got[0].Target != 1 || got[0].Gold != store.AchievementGold[0] {
 		t.Fatalf("first take: %+v", got)
 	}
 	// Somebody else cannot mark it seen for them.
@@ -119,12 +119,11 @@ func TestAFirstTakeIsCelebratedOnce(t *testing.T) {
 	}
 }
 
-func TestAchievementGoldIsPaidOnce(t *testing.T) {
+func TestAchievementCoinsArePaidOnce(t *testing.T) {
 	h := newHarness(t)
 	player := h.login("player@example.com")
-	expectStatus(t, player.json("GET", "/api/game/state", nil), http.StatusOK)
 	id := h.userID(t, "player@example.com")
-	before := h.gold(t, id)
+	before := h.coins(t, id)
 	h.plantMedals(t, id, 1)
 
 	var wg sync.WaitGroup
@@ -138,12 +137,12 @@ func TestAchievementGoldIsPaidOnce(t *testing.T) {
 	wg.Wait()
 	expectStatus(t, player.json("GET", "/api/achievements", nil), http.StatusOK)
 
-	if got := h.gold(t, id) - before; got != store.AchievementGold[0] {
-		t.Fatalf("paid %d gold, want %d", got, store.AchievementGold[0])
+	if got := h.coins(t, id) - before; got != store.AchievementGold[0] {
+		t.Fatalf("paid %d coins, want %d", got, store.AchievementGold[0])
 	}
 	var events int
 	if err := h.pool.QueryRow(context.Background(),
-		`select count(*) from game_events where user_id = $1 and kind = 'achievement'`, id).Scan(&events); err != nil || events != 1 {
+		`select count(*) from coin_events where user_id = $1 and kind = 'achievement'`, id).Scan(&events); err != nil || events != 1 {
 		t.Fatalf("%d events (%v)", events, err)
 	}
 	got := expect[[]achievementJSON](t, player.json("GET", "/api/achievements/new", nil), http.StatusOK)
