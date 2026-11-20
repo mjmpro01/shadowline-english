@@ -14,6 +14,12 @@ const (
 	Streak     Kind = "streak"
 	NewEpisode Kind = "new_episode"
 	Test       Kind = "test"
+	// Rank is the week's last evening, a top-three place close to won or lost.
+	Rank Kind = "rank"
+	// Medal is a place in last week's top three.
+	Medal Kind = "medal"
+	// Achievement is milestones unlocked that the learner has not seen.
+	Achievement Kind = "achievement"
 )
 
 // The day's shape, in minutes after the learner's own midnight.
@@ -25,6 +31,9 @@ const (
 	StreakAt = 21*60 + 30
 	// NewAt is when new episodes are told of: the evening, once.
 	NewAt = 18 * 60
+	// RankAt is when, on the week's last day, a close race is worth a word:
+	// early enough in the evening to still do something about it.
+	RankAt = 19 * 60
 	// MaxPerDay is the most reminders a learner gets in a day.
 	MaxPerDay = 2
 	// Gap is how long after one of goal or streak the other waits.
@@ -43,6 +52,19 @@ type Input struct {
 	StreakCount   int
 	LearnedToday  bool
 	NewEpisodes   int
+	// CompetitionOn is the weekly race's reminders: rank, medal, achievement.
+	CompetitionOn bool
+	// WeekEndsToday is the board's week ending at the coming midnight
+	// (Vietnam's clock, as the board keeps it).
+	WeekEndsToday bool
+	// Racing is a top-three place close to won or lost this week.
+	Racing bool
+	// Medal is the place the learner finished last week, 0 for none, and
+	// MedalSent whether it was already told of this week.
+	Medal     int
+	MedalSent bool
+	// Achievements is how many unlocked milestones wait unseen and untold.
+	Achievements int
 	// Sent is what was already sent on the learner's day, and when.
 	Sent map[Kind]time.Time
 }
@@ -62,6 +84,8 @@ func Next(in Input) (Kind, bool) {
 	_, sentGoal := in.Sent[Goal]
 	_, sentStreak := in.Sent[Streak]
 	_, sentNew := in.Sent[NewEpisode]
+	_, sentRank := in.Sent[Rank]
+	_, sentAchievement := in.Sent[Achievement]
 	recently := func(k Kind) bool {
 		at, ok := in.Sent[k]
 		return ok && in.Local.Sub(at) < Gap
@@ -70,8 +94,17 @@ func Next(in Input) (Kind, bool) {
 	if in.StreakOn && !sentStreak && minute >= StreakAt && in.StreakCount >= 2 && !in.LearnedToday && !recently(Goal) {
 		return Streak, true
 	}
+	if in.CompetitionOn && !sentRank && in.WeekEndsToday && minute >= RankAt && in.Racing {
+		return Rank, true
+	}
 	if !sentGoal && minute >= in.RemindAt && !in.Reached && !recently(Streak) {
 		return Goal, true
+	}
+	if in.CompetitionOn && in.Medal > 0 && !in.MedalSent {
+		return Medal, true
+	}
+	if in.CompetitionOn && !sentAchievement && in.Achievements > 0 {
+		return Achievement, true
 	}
 	if in.NewEpisodesOn && !sentNew && minute >= NewAt && in.NewEpisodes > 0 {
 		return NewEpisode, true

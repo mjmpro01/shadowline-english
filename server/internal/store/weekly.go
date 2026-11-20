@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"math"
 	"time"
 
@@ -237,4 +238,61 @@ func (s *Store) MedalsOf(ctx context.Context, user uuid.UUID) (LearnerMedals, er
 		out.Recent = []MedalAward{}
 	}
 	return out, err
+}
+
+// Race is a learner close to a top-three place on the week's board: holding
+// one with fourth place close behind, or just outside with third close ahead.
+type Race struct {
+	Rank   int
+	Points int
+	// Gap is the points between them and the place that matters: fourth's
+	// lead to catch them, or what they need to catch third.
+	Gap int
+}
+
+// RaceHold and RaceChase are how close counts: fourth within RaceHold of a
+// learner in the top three, or a learner within RaceChase of third.
+const (
+	RaceHold  = 10
+	RaceChase = 20
+)
+
+// WeeklyRace is where a learner stands in this week's race for a medal, or nil
+// when nothing is close: well clear, far behind, or not on the board.
+func (s *Store) WeeklyRace(ctx context.Context, user uuid.UUID, now time.Time) (*Race, error) {
+	start, end := WeekOf(now)
+	var rank, points, third, fourth int
+	err := s.pool.QueryRow(ctx, `
+		with r as (`+rankedWeek+`)
+		select me.rank, me.points,
+		       coalesce((select points from r where rank = 3), 0),
+		       coalesce((select points from r where rank = 4), 0)
+		from r me where me.user_id = $3`,
+		start.Format(dayLayout), end.Format(dayLayout), user).Scan(&rank, &points, &third, &fourth)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	switch {
+	case rank <= 3 && fourth > 0 && points-fourth <= RaceHold:
+		return &Race{Rank: rank, Points: points, Gap: points - fourth}, nil
+	case rank > 3 && rank <= 10 && points > 0 && third-points <= RaceChase:
+		return &Race{Rank: rank, Points: points, Gap: third - points}, nil
+	}
+	return nil, nil
+}
+
+// LastWeekPlace is the place a learner finished last week, 0 for none, and the
+// gold it paid.
+func (s *Store) LastWeekPlace(ctx context.Context, user uuid.UUID, now time.Time) (place, gold int, err error) {
+	start, _ := WeekOf(now)
+	err = s.pool.QueryRow(ctx, `
+		select place, gold from weekly_awards where user_id = $1 and week = $2::date`,
+		user, start.AddDate(0, 0, -7).Format(dayLayout)).Scan(&place, &gold)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, 0, nil
+	}
+	return place, gold, err
 }

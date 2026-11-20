@@ -247,3 +247,33 @@ func (s *Store) MarkAchievementsSeen(ctx context.Context, user uuid.UUID, ids []
 		where user_id = $1 and id = any($2) and seen_at is null`, user, ids, now)
 	return err
 }
+
+// UnnotifiedAchievements is what a learner unlocked more than `wait` ago and
+// has neither seen in the app nor been told of by push, oldest first. The wait
+// gives the app's own celebration the first chance.
+func (s *Store) UnnotifiedAchievements(ctx context.Context, user uuid.UUID, now time.Time, wait time.Duration) ([]UnlockedAchievement, error) {
+	rows, err := s.pool.Query(ctx, `
+		select id, gold from learner_achievements
+		where user_id = $1 and seen_at is null and notified_at is null and unlocked_at <= $2
+		order by unlocked_at, id`, user, now.Add(-wait))
+	if err != nil {
+		return nil, err
+	}
+	out := []UnlockedAchievement{}
+	var id string
+	var gold int
+	_, err = pgx.ForEachRow(rows, []any{&id, &gold}, func() error {
+		if track, target, ok := parseAchievement(id); ok {
+			out = append(out, UnlockedAchievement{ID: id, Track: track, Target: target, Gold: gold})
+		}
+		return nil
+	})
+	return out, err
+}
+
+// MarkAchievementsNotified records that a learner was told of these by push.
+func (s *Store) MarkAchievementsNotified(ctx context.Context, user uuid.UUID, ids []string, now time.Time) error {
+	_, err := s.pool.Exec(ctx, `
+		update learner_achievements set notified_at = $3 where user_id = $1 and id = any($2)`, user, ids, now)
+	return err
+}
