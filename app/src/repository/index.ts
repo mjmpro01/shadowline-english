@@ -119,6 +119,10 @@ export interface Repository {
   uploadAvatar(avatar: Blob): Promise<Profile>
 
   leaderboard(): Promise<LeaderboardRow[]>
+  /** This week's board; a week just ended has its medals given out first. */
+  weeklyLeaderboard(): Promise<WeeklyBoard>
+  /** The learner's weekly medals. */
+  medals(): Promise<LearnerMedals>
 
   /** A passage to write down, starting at one line of an episode: the lines
    *  after it to make half a minute to a minute and a half, cut into phrases. */
@@ -434,6 +438,29 @@ export interface VocabPatch {
   reviewed?: boolean
 }
 
+export interface WeeklyMedals {
+  gold: number
+  silver: number
+  bronze: number
+}
+
+/** This week's board, by practice points, Monday to Sunday on Vietnam's clock. */
+export interface WeeklyBoard {
+  week: string
+  endsAt: string
+  /** Days until it ends, today counted: 1 on a Sunday. */
+  daysLeft: number
+  rows: { rank: number; userId: string; name: string; points: number; isYou: boolean; medals: WeeklyMedals }[]
+  /** The learner, when they are on the board below the rows shown. */
+  you: { rank: number; points: number } | null
+  /** Last week's podium. */
+  lastWeek: { place: number; name: string; points: number; isYou: boolean }[]
+}
+
+export interface LearnerMedals extends WeeklyMedals {
+  recent: { week: string; place: number }[]
+}
+
 export interface LeaderboardRow {
   userId: string
   name: string
@@ -672,6 +699,14 @@ class ApiRepository implements Repository {
 
   leaderboard() {
     return api.get<LeaderboardRow[]>('/api/leaderboard')
+  }
+
+  weeklyLeaderboard() {
+    return api.get<WeeklyBoard>('/api/leaderboard/week')
+  }
+
+  medals() {
+    return api.get<LearnerMedals>('/api/medals')
   }
 
   dictation(clipId: string) {

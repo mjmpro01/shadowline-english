@@ -250,6 +250,21 @@ export const vi: Messages = {
   'reminders.promptOn': 'Bật',
   'reminders.promptLater': 'Để sau',
 
+  // --- weekly leaderboard ------------------------------------------------------
+  'weekly.tab': 'Tuần này',
+  'weekly.allTab': 'Mọi thời gian',
+  'weekly.points': (n: number) => `${n} điểm`,
+  'weekly.pointsHeader': 'Điểm',
+  'weekly.endsIn': (days: number) => `Còn ${days} ngày; top 3 nhận huy hiệu`,
+  'weekly.lastWeek': 'Tuần trước:',
+  'weekly.empty': 'Tuần này chưa ai có điểm — luyện 1 clip để lên bảng.',
+  'weekly.you': (rank: number, points: number) => `Bạn: hạng ${rank} · ${points} điểm`,
+  'weekly.medalsTitle': 'Huy hiệu tuần',
+  'weekly.firsts': 'Số tuần đứng nhất',
+  'weekly.seconds': 'Số tuần đứng nhì',
+  'weekly.thirds': 'Số tuần đứng ba',
+  'weekly.weekOf': (date: string) => `Tuần ${date}`,
+
   // --- today ----------------------------------------------------------------
   'today.title': 'Hôm nay',
   'today.left': (n: number) => `Còn ${n} điểm nữa là đạt mục tiêu hôm nay.`,

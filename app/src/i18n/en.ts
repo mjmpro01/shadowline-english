@@ -226,6 +226,21 @@ export const en = {
   'reminders.promptOn': 'Turn on',
   'reminders.promptLater': 'Later',
 
+  // --- weekly leaderboard ------------------------------------------------------
+  'weekly.tab': 'This week',
+  'weekly.allTab': 'All time',
+  'weekly.points': (n: number) => `${n} ${n === 1 ? 'point' : 'points'}`,
+  'weekly.pointsHeader': 'Points',
+  'weekly.endsIn': (days: number) => `Ends in ${days} ${days === 1 ? 'day' : 'days'}; the top three get a medal`,
+  'weekly.lastWeek': 'Last week:',
+  'weekly.empty': 'Nobody has points this week yet — practise one clip to get on the board.',
+  'weekly.you': (rank: number, points: number) => `You: #${rank} · ${points} ${points === 1 ? 'point' : 'points'}`,
+  'weekly.medalsTitle': 'Weekly medals',
+  'weekly.firsts': 'Weeks finished first',
+  'weekly.seconds': 'Weeks finished second',
+  'weekly.thirds': 'Weeks finished third',
+  'weekly.weekOf': (date: string) => `Week of ${date}`,
+
   // --- today ----------------------------------------------------------------
   'today.title': 'Today',
   'today.left': (n: number) => `${n} more ${n === 1 ? 'point' : 'points'} to reach today's goal.`,
