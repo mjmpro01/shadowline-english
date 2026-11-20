@@ -21,6 +21,7 @@ type remindersBody struct {
 	Locale          string `json:"locale"`
 	Streak          bool   `json:"streak"`
 	NewEpisodes     bool   `json:"newEpisodes"`
+	Competition     bool   `json:"competition"`
 	PromptDismissed bool   `json:"promptDismissed"`
 	Subscribed      bool   `json:"subscribed"`
 }
@@ -109,6 +110,28 @@ func TestALearnerTurnsRemindersOnAndIsSentATest(t *testing.T) {
 	expectStatus(t, learner.json("DELETE", "/api/push/subscribe", map[string]any{"endpoint": "https://push.example/a"}), http.StatusNoContent)
 	if prefs := expect[remindersBody](t, learner.json("GET", "/api/reminders", nil), http.StatusOK); prefs.Subscribed {
 		t.Fatal("still subscribed")
+	}
+}
+
+// The weekly race's reminders are on by default, can be turned off, and an
+// app from before the setting existed leaves it as it was.
+func TestTheRaceRemindersCanBeTurnedOff(t *testing.T) {
+	h := newHarness(t)
+	h.withPush()
+	learner := h.login("learner@example.com")
+	if prefs := expect[remindersBody](t, learner.json("GET", "/api/reminders", nil), http.StatusOK); !prefs.Competition {
+		t.Fatal("off by default")
+	}
+	base := map[string]any{"enabled": true, "remindAt": "20:00", "tz": "Asia/Ho_Chi_Minh", "locale": "vi", "streak": true, "newEpisodes": true}
+	off := map[string]any{"competition": false}
+	for k, v := range base {
+		off[k] = v
+	}
+	if prefs := expect[remindersBody](t, learner.json("PUT", "/api/reminders", off), http.StatusOK); prefs.Competition {
+		t.Fatal("not turned off")
+	}
+	if prefs := expect[remindersBody](t, learner.json("PUT", "/api/reminders", base), http.StatusOK); prefs.Competition {
+		t.Fatal("an older app turned it back on")
 	}
 }
 
