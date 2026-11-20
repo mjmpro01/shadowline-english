@@ -16,10 +16,6 @@
   grid-template-columns: auto 1fr;
   gap: var(--space-5);
   align-items: center;
-  /* A floor for the fighter to stand on. */
-  background:
-    linear-gradient(to top, var(--color-accent-100) 0 18%, transparent 18%),
-    var(--color-surface);
 }
 @media (max-width: 700px) {
   .arena-stage {
@@ -101,6 +97,7 @@
 
 .arena-soon {
   display: flex;
+  flex-direction: row;
   gap: var(--space-3);
   align-items: center;
   opacity: 0.85;
