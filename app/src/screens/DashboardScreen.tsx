@@ -9,6 +9,7 @@ import { ClipFace } from '../components/ClipFace'
 import { Icon } from '../components/Icon'
 import { ListenAgain } from '../components/ListenAgain'
 import { TodayCard } from '../components/TodayCard'
+import { LeaderboardSection } from '../components/Leaderboard'
 import { ContinueCard, NewEpisodesRow } from '../components/KeepGoing'
 import { Mascot } from '../components/Mascot'
 import { statsFor } from '../lib/leaderboard'
@@ -22,11 +23,6 @@ export function DashboardScreen() {
 
   const mine = statsFor(data.takes)
   const t = useT()
-  // Ranked by the server from everyone's scored takes. There is no filler: an
-  // app with one learner shows one row.
-  const rows = leaderboard.map((row, index) => ({ ...row, rank: index + 1 }))
-  const podium = rows.slice(0, 3)
-  const rest = rows.slice(3)
   // An admin picks these, so there are a handful of them and they have an
   // endpoint of their own. The app used to filter them out of every clip in
   // the library, which is why it was being sent every clip.
@@ -49,6 +45,7 @@ export function DashboardScreen() {
   // Where the learner left off, asked again when the takes change: a take may
   // have finished the episode, or moved the next line on.
   const cont = useRemote(todayKey, () => repository.continueWatching())
+  const weekly = useRemote(todayKey, () => repository.weeklyLeaderboard())
 
   /* The HUD. Four numbers a learner checks before deciding whether to practise,
      so each carries its own glyph: at a glance the row reads as a row of
@@ -119,82 +116,7 @@ export function DashboardScreen() {
       </div>
       )}
 
-      {/* Only once somebody is on it. An empty board with "0 learners" beside
-          it told a new learner the app was deserted. */}
-      {rows.length > 0 && (
-      <div>
-        <div className="row between wrap gap-2" style={{ marginBottom: 'var(--space-2)' }}>
-          <div className="card-kicker" style={{ margin: 0 }}>
-            {t('dash.leaderboard')}
-          </div>
-          <span className="tag tag-neutral">{t('dash.learners', rows.length)}</span>
-        </div>
-
-        <div className="podium">
-          {podium.map((row) => (
-            <div
-              className="card elev-sm"
-              key={row.userId}
-              style={{
-                alignItems: 'center',
-                textAlign: 'center',
-                gap: 6,
-                background: row.isYou ? 'var(--color-accent-100)' : undefined,
-              }}
-            >
-              <div
-                className="podium-rank"
-                style={{
-                  background: row.rank === 1 ? 'var(--color-accent)' : 'var(--color-accent-300)',
-                  color: 'var(--color-on-accent)',
-                }}
-              >
-                <span className="mono">{row.rank}</span>
-              </div>
-              <div className="podium-avatar">{row.name.charAt(0) || '?'}</div>
-              <div style={{ fontSize: 14, fontWeight: row.isYou ? 700 : 400 }}>
-                {row.name}
-                {row.isYou && ` (${t('dash.you')})`}
-              </div>
-              <div className="mono" style={{ fontSize: 26, color: colorFor(row.avg) }}>
-                {Math.round(row.avg)}
-              </div>
-              <div className="card-meta mono">
-                {t('dash.takesAndClips', row.takes, row.clips)}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {rest.length > 0 && (
-          <div className="card elev-sm" style={{ padding: 0, overflow: 'hidden', borderRadius: 0, marginTop: 'var(--space-3)' }}>
-            <table className="table" style={{ margin: 0 }}>
-              <thead>
-                <tr>
-                  <th>{t('dash.rank')}</th>
-                  <th>{t('dash.learner')}</th>
-                  <th>{t('dash.avgScore')}</th>
-                  <th>{t('dash.takes')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rest.map((row) => (
-                  <tr key={row.userId} style={{ background: row.isYou ? 'var(--color-accent-100)' : undefined }}>
-                    <td className="mono">{row.rank}</td>
-                    <td style={{ fontWeight: row.isYou ? 700 : 400 }}>
-                      {row.name}
-                      {row.isYou && ` (${t('dash.you')})`}
-                    </td>
-                    <td className="mono" style={{ color: colorFor(row.avg) }}>{Math.round(row.avg)}</td>
-                    <td className="mono">{row.takes}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-      )}
+      <LeaderboardSection allTime={leaderboard} weekly={weekly.state === 'ready' ? weekly.value : null} />
 
       <div>
         <div className="card-kicker" style={{ marginBottom: 'var(--space-2)' }}>

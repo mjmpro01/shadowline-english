@@ -117,3 +117,26 @@ test('featured clips come from the studio and lead straight into practice', asyn
   await featured.getByRole('button', { name: 'Practice', exact: true }).click()
   await expect(page).toHaveURL(/\/practice$/)
 })
+
+// This week is by practice points, which anyone can top by practising this
+// week; all time is the average score it always was.
+test('the leaderboard opens on this week, by practice points', async ({ page }) => {
+  await publishLesson(page)
+  await asLearner(page)
+  await practisePublished(page)
+  await page.getByRole('button', { name: 'Record', exact: true }).click()
+  await page.waitForTimeout(2600)
+  await page.getByRole('button', { name: 'Stop' }).click()
+  await expect(page.locator('.card', { hasText: 'PITCH MATCH SCORE' })).toBeVisible({ timeout: 30_000 })
+
+  await page.goto('/dashboard')
+  const board = page.locator('section', { has: page.getByRole('heading', { name: 'Leaderboard' }) })
+  await expect(board.getByRole('tab', { name: 'This week' })).toHaveAttribute('aria-selected', 'true')
+  await expect(board.getByText(/Ends in \d+ days?/)).toBeVisible()
+  const me = board.locator('.podium .card', { hasText: '(You)' })
+  await expect(me).toContainText('2 points')
+
+  await board.getByRole('tab', { name: 'All time' }).click()
+  await expect(board.getByRole('tab', { name: 'All time' })).toHaveAttribute('aria-selected', 'true')
+  await expect(board.locator('.podium .card', { hasText: '(You)' })).toContainText('1 take · 1 clip')
+})

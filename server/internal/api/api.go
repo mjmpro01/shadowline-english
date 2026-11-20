@@ -221,6 +221,8 @@ func (s *Server) Routes() http.Handler {
 			r.Put("/profile/avatar", s.handleUploadAvatar)
 
 			r.Get("/leaderboard", s.handleLeaderboard)
+			r.Get("/leaderboard/week", s.handleWeeklyLeaderboard)
+			r.Get("/medals", s.handleMedals)
 
 			r.Get("/game/state", s.handleGameState)
 			r.Post("/game/plant", s.handleGamePlant)
