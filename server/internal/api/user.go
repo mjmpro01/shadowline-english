@@ -198,3 +198,31 @@ func (s *Server) handleLeaderboard(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, rows)
 }
+
+// handleWeeklyLeaderboard is this week's board, by practice points. A week
+// that ended since anyone last asked has its medals given out first.
+func (s *Server) handleWeeklyLeaderboard(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	now := time.Now()
+	if err := s.Store.SettleWeeks(r.Context(), now); err != nil {
+		// The board is still worth showing; the medals wait for the next ask.
+		s.Log.Warn("cannot settle the weekly leaderboard", "error", err)
+	}
+	board, err := s.Store.WeeklyBoard(r.Context(), u.ID, leaderboardSize, now)
+	if err != nil {
+		s.failErr(w, err, "weekly leaderboard")
+		return
+	}
+	writeJSON(w, http.StatusOK, board)
+}
+
+// handleMedals is the signed-in learner's weekly medals.
+func (s *Server) handleMedals(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.UserFrom(r.Context())
+	medals, err := s.Store.MedalsOf(r.Context(), u.ID)
+	if err != nil {
+		s.failErr(w, err, "medals")
+		return
+	}
+	writeJSON(w, http.StatusOK, medals)
+}
