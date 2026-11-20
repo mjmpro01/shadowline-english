@@ -223,6 +223,9 @@ func (s *Server) Routes() http.Handler {
 			r.Get("/leaderboard", s.handleLeaderboard)
 			r.Get("/leaderboard/week", s.handleWeeklyLeaderboard)
 			r.Get("/medals", s.handleMedals)
+			r.Get("/achievements", s.handleAchievements)
+			r.Get("/achievements/new", s.handleNewAchievements)
+			r.Post("/achievements/seen", s.handleAchievementsSeen)
 
 			r.Get("/game/state", s.handleGameState)
 			r.Post("/game/plant", s.handleGamePlant)

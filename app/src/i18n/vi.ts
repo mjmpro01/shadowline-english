@@ -265,6 +265,59 @@ export const vi: Messages = {
   'weekly.thirds': 'Số tuần đứng ba',
   'weekly.weekOf': (date: string) => `Tuần ${date}`,
 
+  // --- achievements -----------------------------------------------------------
+  'ach.title': 'Thành tích',
+  'ach.intro': 'Các cột mốc cho những gì bạn luyện. Mỗi mốc thưởng vàng Đấu trường ở lần đầu đạt được.',
+  'ach.new': 'Thành tích mới',
+  'ach.unlockedOf': (n: number, total: number) => `Đã mở ${n}/${total} thành tích`,
+  'ach.seeAll': 'Xem tất cả',
+  'ach.close': 'Đóng',
+  'ach.gold': (gold: number) => `+${gold} 🪙`,
+  'ach.toNext': (left: number) => `Còn ${left} nữa tới mốc tiếp`,
+  'ach.allDone': 'Đã đạt mọi mốc',
+  'ach.unlockedOn': (date: string) => `Mở ngày ${date}`,
+  'ach.locked': 'Chưa mở',
+  'ach.none': 'Bản ghi đầu tiên sẽ mở thành tích đầu tiên.',
+  'ach.track': (track: string) =>
+    ({
+      takes: 'Ghi âm',
+      score: 'Điểm vàng',
+      streak: 'Chuỗi ngày',
+      goal: 'Mục tiêu ngày',
+      dictation: 'Chép chính tả',
+      perfect: 'Chép không sai',
+      words: 'Từ đã thuộc',
+      dialogue: 'Hội thoại',
+      tutor: 'Gia sư',
+      medal: 'Huy hiệu tuần',
+    })[track] ?? track,
+  'ach.tier': (track: string, n: number) => {
+    switch (track) {
+      case 'takes':
+        return n === 1 ? 'Bản ghi đầu tiên' : `Ghi âm ${n} lần`
+      case 'score':
+        return `${n} bản ghi đạt 90+`
+      case 'streak':
+        return `Chuỗi ${n} ngày`
+      case 'goal':
+        return `Đạt mục tiêu ${n} ngày`
+      case 'dictation':
+        return n === 1 ? 'Bài chép đầu tiên' : `Chép ${n} bài`
+      case 'perfect':
+        return `${n} bài chép không sai chữ nào`
+      case 'words':
+        return `Thuộc ${n} từ`
+      case 'dialogue':
+        return `Nói ${n} câu hội thoại`
+      case 'tutor':
+        return n === 1 ? 'Lượt đầu tiên với gia sư' : `${n} lượt nói với gia sư`
+      case 'medal':
+        return n === 1 ? 'Huy hiệu tuần đầu tiên' : `${n} huy hiệu tuần`
+      default:
+        return `${track} ${n}`
+    }
+  },
+
   // --- today ----------------------------------------------------------------
   'today.title': 'Hôm nay',
   'today.left': (n: number) => `Còn ${n} điểm nữa là đạt mục tiêu hôm nay.`,

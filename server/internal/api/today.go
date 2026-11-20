@@ -22,6 +22,9 @@ func (s *Server) logActivity(ctx context.Context, user uuid.UUID, kind string) {
 	if _, err := s.Store.LogActivity(context.WithoutCancel(ctx), user, kind, time.Now()); err != nil {
 		s.Log.Warn("cannot record learning", "kind", kind, "user", user, "error", err)
 	}
+	// What was just done may have reached a milestone: unlocked now, so the
+	// app can celebrate it on the screen the learner goes to next.
+	s.syncAchievements(ctx, user)
 }
 
 func (s *Server) handleToday(w http.ResponseWriter, r *http.Request) {

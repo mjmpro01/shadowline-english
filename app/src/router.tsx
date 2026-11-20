@@ -1,6 +1,7 @@
 import { Navigate, createBrowserRouter, useLocation, useParams } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
 import { RequireAuth } from './components/RequireAuth'
+import { AchievementsScreen } from './screens/AchievementsScreen'
 import { AnalysisScreen } from './screens/AnalysisScreen'
 import { ArenaScreen } from './screens/ArenaScreen'
 import { DashboardScreen } from './screens/DashboardScreen'
@@ -74,6 +75,7 @@ export const router = createBrowserRouter([
       { path: 'progress', element: <ProgressScreen /> },
       { path: 'guide', element: <GuideScreen /> },
       { path: 'profile', element: <ProfileScreen /> },
+      { path: 'achievements', element: <AchievementsScreen /> },
       { path: '*', element: <Navigate to="/library" replace /> },
     ],
   },
