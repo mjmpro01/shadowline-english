@@ -7,6 +7,7 @@ import { Dialog } from '../components/Dialog'
 import { Icon } from '../components/Icon'
 import { GoalPicker } from '../components/TodayCard'
 import { RemindersCard } from '../components/RemindersCard'
+import { AchievementsCard } from '../components/AchievementsCard'
 import { MedalsCard } from '../components/MedalsCard'
 import { useTour } from '../tour/context'
 import { LOCALE_CODES, LOCALES, useI18n } from '../i18n'
@@ -119,6 +120,7 @@ export function ProfileScreen() {
         </div>
       )}
 
+      <AchievementsCard />
       <MedalsCard />
 
       <RemindersCard />

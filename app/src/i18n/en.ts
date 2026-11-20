@@ -241,6 +241,60 @@ export const en = {
   'weekly.thirds': 'Weeks finished third',
   'weekly.weekOf': (date: string) => `Week of ${date}`,
 
+  // --- achievements -----------------------------------------------------------
+  'ach.title': 'Achievements',
+  'ach.intro': 'Milestones for the learning you do. Each pays Arena gold the first time it is reached.',
+  'ach.new': 'New achievement',
+  'ach.unlockedOf': (n: number, total: number) => `${n} of ${total} unlocked`,
+  'ach.seeAll': 'See all',
+  'ach.close': 'Close',
+  'ach.gold': (gold: number) => `+${gold} 🪙`,
+  'ach.toNext': (left: number) => `${left} more to the next`,
+  'ach.allDone': 'Every milestone reached',
+  'ach.unlockedOn': (date: string) => `Unlocked ${date}`,
+  'ach.locked': 'Not yet',
+  'ach.none': 'Your first take unlocks the first one.',
+  'ach.track': (track: string) =>
+    ({
+      takes: 'Recordings',
+      score: 'Gold takes',
+      streak: 'Streak',
+      goal: 'Daily goal',
+      dictation: 'Dictation',
+      perfect: 'Perfect dictation',
+      words: 'Words known',
+      dialogue: 'Dialogues',
+      tutor: 'Tutor',
+      medal: 'Weekly medals',
+    })[track] ?? track,
+  'ach.tier': (track: string, n: number) => {
+    const s = n === 1 ? '' : 's'
+    switch (track) {
+      case 'takes':
+        return n === 1 ? 'First take' : `${n} takes`
+      case 'score':
+        return `${n} take${s} scoring 90+`
+      case 'streak':
+        return `${n}-day streak`
+      case 'goal':
+        return `Daily goal reached on ${n} day${s}`
+      case 'dictation':
+        return n === 1 ? 'First dictation' : `${n} dictations`
+      case 'perfect':
+        return `${n} dictation${s} without a mistake`
+      case 'words':
+        return `${n} words known`
+      case 'dialogue':
+        return `${n} dialogue lines spoken`
+      case 'tutor':
+        return n === 1 ? 'First turn with the tutor' : `${n} turns with the tutor`
+      case 'medal':
+        return n === 1 ? 'First weekly medal' : `${n} weekly medals`
+      default:
+        return `${track} ${n}`
+    }
+  },
+
   // --- today ----------------------------------------------------------------
   'today.title': 'Today',
   'today.left': (n: number) => `${n} more ${n === 1 ? 'point' : 'points'} to reach today's goal.`,

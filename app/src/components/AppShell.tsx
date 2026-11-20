@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, matchPath, useLocation, useNavigate } from 'reac
 import { useT } from '../i18n'
 import type { MessageKey } from '../i18n/en'
 import { useApp } from '../store/context'
+import { AchievementCelebration } from './AchievementCelebration'
 import { Icon, type IconName } from './Icon'
 import { TutorChat } from './TutorChat'
 import { TourProvider } from '../tour/TourProvider'
@@ -157,6 +158,8 @@ export function AppShell() {
         {/* In the shell rather than on a screen, so the conversation survives
             moving from a line to its analysis and back. */}
         <TutorChat />
+
+        <AchievementCelebration />
 
         <nav className="tabbar" aria-label={t('nav.main')}>
           {[...PHONE_TABS, PROFILE].map((tab) =>

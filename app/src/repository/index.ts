@@ -123,6 +123,12 @@ export interface Repository {
   weeklyLeaderboard(): Promise<WeeklyBoard>
   /** The learner's weekly medals. */
   medals(): Promise<LearnerMedals>
+  /** Where the learner stands on every achievement track. */
+  achievements(): Promise<AchievementBoard>
+  /** Achievements unlocked and not yet celebrated, oldest first. */
+  newAchievements(): Promise<UnlockedAchievement[]>
+  /** Records that these have been celebrated. */
+  markAchievementsSeen(ids: string[]): Promise<void>
 
   /** A passage to write down, starting at one line of an episode: the lines
    *  after it to make half a minute to a minute and a half, cut into phrases. */
@@ -461,6 +467,35 @@ export interface LearnerMedals extends WeeklyMedals {
   recent: { week: string; place: number }[]
 }
 
+/** A milestone reached: "takes.50" is the takes track's target of 50. */
+export interface UnlockedAchievement {
+  id: string
+  track: string
+  target: number
+  /** Arena gold it paid: 0 for a learner who does not play. */
+  gold: number
+}
+
+export interface AchievementTier {
+  id: string
+  target: number
+  gold: number
+  unlockedAt: string | null
+}
+
+/** One ladder of milestones and how far up it the learner is. */
+export interface AchievementTrack {
+  track: string
+  count: number
+  tiers: AchievementTier[]
+}
+
+export interface AchievementBoard {
+  tracks: AchievementTrack[]
+  unlocked: number
+  total: number
+}
+
 export interface LeaderboardRow {
   userId: string
   name: string
@@ -707,6 +742,18 @@ class ApiRepository implements Repository {
 
   medals() {
     return api.get<LearnerMedals>('/api/medals')
+  }
+
+  achievements() {
+    return api.get<AchievementBoard>('/api/achievements')
+  }
+
+  newAchievements() {
+    return api.get<UnlockedAchievement[]>('/api/achievements/new')
+  }
+
+  markAchievementsSeen(ids: string[]) {
+    return api.send<void>('POST', '/api/achievements/seen', { ids })
   }
 
   dictation(clipId: string) {
