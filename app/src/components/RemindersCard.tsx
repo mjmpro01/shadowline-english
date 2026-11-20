@@ -37,6 +37,7 @@ export function RemindersCard() {
           locale: locale === 'en' ? 'en' : 'vi',
           streak: merged.streak,
           newEpisodes: merged.newEpisodes,
+          competition: merged.competition,
         }),
       )
     } catch (err) {
@@ -144,6 +145,15 @@ export function RemindersCard() {
                 />
                 <span>{t('reminders.newEpisodes')}</span>
               </label>
+              <label className="row gap-2" style={{ alignItems: 'center' }}>
+                <input
+                  type="checkbox"
+                  checked={current.competition}
+                  disabled={busy}
+                  onChange={(e) => void save({ competition: e.target.checked })}
+                />
+                <span>{t('reminders.competition')}</span>
+              </label>
               <div>
                 <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => void test()}>
                   {t('reminders.test')}
@@ -191,6 +201,7 @@ export function ReminderPrompt({ onDone }: { onDone: () => void }) {
         locale: locale === 'en' ? 'en' : 'vi',
         streak: prefs.streak,
         newEpisodes: prefs.newEpisodes,
+        competition: prefs.competition,
       })
       onDone()
     } catch (err) {

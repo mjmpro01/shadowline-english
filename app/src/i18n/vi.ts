@@ -239,6 +239,7 @@ export const vi: Messages = {
   'reminders.at': 'Nhắc lúc',
   'reminders.streak': 'Khi chuỗi ngày sắp mất',
   'reminders.newEpisodes': 'Tập mới của series đang theo dõi',
+  'reminders.competition': 'Thi đua: huy hiệu, thành tích, thứ hạng cuối tuần',
   'reminders.test': 'Gửi thử',
   'reminders.testSent': (n: number) => `Đã gửi tới ${n} thiết bị — thông báo sẽ hiện trong giây lát.`,
   'reminders.testNone': 'Chưa thiết bị nào nhận được. Thử tắt rồi bật lại nhắc học ở đây.',

@@ -371,6 +371,9 @@ export const vi: Messages = {
   'growth.push.goal': 'Mục tiêu ngày',
   'growth.push.streak': 'Chuỗi sắp mất',
   'growth.push.new_episode': 'Tập mới',
+  'growth.push.rank': 'Đua top cuối tuần',
+  'growth.push.medal': 'Huy hiệu tuần',
+  'growth.push.achievement': 'Thành tích',
   'growth.pushD7': (on: string, off: string) =>
     `Hoạt động trong 7 ngày qua, trong số người đăng ký trên một tuần: ${on} khi bật nhắc học, ${off} khi không bật.`,
   'growth.funnel': (days: number) => `Người học mới trong ${days} ngày qua đi được tới đâu`,

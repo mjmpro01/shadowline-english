@@ -366,6 +366,8 @@ export interface Reminders {
   locale: 'vi' | 'en'
   streak: boolean
   newEpisodes: boolean
+  /** The weekly race: a medal won, achievements unseen, a close Sunday. */
+  competition: boolean
   promptDismissed: boolean
   /** A browser of theirs is subscribed. */
   subscribed: boolean

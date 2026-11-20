@@ -57,20 +57,31 @@ test('reminders are turned on in the profile, and kept', async ({ page }) => {
   await card.getByLabel('Remind me at').fill('07:30')
   await card.getByRole('checkbox', { name: 'When my streak is about to end' }).click()
   await expect(card.getByRole('checkbox', { name: 'When my streak is about to end' })).not.toBeChecked()
+  const race = card.getByRole('checkbox', { name: /The weekly race/ })
+  await expect(race).toBeChecked()
+  await race.click()
+  await expect(race).not.toBeChecked()
 
   // The server has it: this browser, the time, the choice.
   await expect
     .poll(async () => {
       const res = await page.request.get(`${API_URL}/api/reminders`)
-      const prefs = (await res.json()) as { enabled: boolean; remindAt: string; streak: boolean; subscribed: boolean }
-      return `${prefs.enabled} ${prefs.subscribed} ${prefs.remindAt} ${prefs.streak}`
+      const prefs = (await res.json()) as {
+        enabled: boolean
+        remindAt: string
+        streak: boolean
+        competition: boolean
+        subscribed: boolean
+      }
+      return `${prefs.enabled} ${prefs.subscribed} ${prefs.remindAt} ${prefs.streak} ${prefs.competition}`
     })
-    .toBe('true true 07:30 false')
+    .toBe('true true 07:30 false false')
 
   await page.reload()
   const again = page.locator('section', { has: page.getByRole('heading', { name: 'Study reminders' }) })
   await expect(again.getByRole('switch', { name: 'Remind me to practise every day' })).toBeChecked()
   await expect(again.getByLabel('Remind me at')).toHaveValue('07:30')
+  await expect(again.getByRole('checkbox', { name: /The weekly race/ })).not.toBeChecked()
 
   // A test goes nowhere from here — the address is a stand-in — and says so.
   await again.getByRole('button', { name: 'Send a test' }).click()
