@@ -47,17 +47,16 @@ tree.** This machine's network could not reach Figma's asset host, so
 Export the design's `Enchanted forest` layer as a PNG to
 `public/menu/forest.png` and it appears; nothing else needs changing.
 
-The design's `Arena` plank is the farm game (`/arena`). On a phone it takes
+The design's `Arena` plank is the word-duel Arena (`/arena`). On a phone it takes
 Progress's place in the tab bar; Progress is reached from Profile there. The
 green plank and its badge are the selected state, applied to whichever place
 you are actually in.
 
-The Arena draws with Phaser, imported only when the screen opens so no other
-screen downloads it. `src/game/scenes/` is the Phaser side, `src/game/ui/` the
-panels over it, and `src/screens/ArenaScreen.tsx` holds the farm the server
-sent and makes the moves; the server decides every outcome. The art lives in
-`public/game/`, whose README lists every file the game reads; a missing one
-is painted in code instead.
+The Arena (`src/screens/ArenaScreen.tsx`) is a fighter who starts as a beggar,
+coins earned by practising, a shop and a bag; the server decides every outcome.
+Fighters are drawn by `components/FighterSprite.tsx` from the artist's sheets in
+`public/arena/` (format: `../docs/arena-sprites.md`); until a fighter's every
+layer is there, it is drawn in SVG from the same choices.
 
 Clips are curated, not collected: learners practise what is in the library and
 cannot import or upload anything themselves. `/admin` holds the clip studio,

@@ -23,7 +23,7 @@ const TABS: Tab[] = [
   { to: '/library', label: 'nav.library', icon: 'book-open', short: 'nav.tab.library' },
   { to: '/dictation', label: 'nav.dictation', icon: 'square-pen', short: 'nav.tab.dictation' },
   { to: '/dialogues', label: 'nav.dialogues', icon: 'messages-square' },
-  { to: '/arena', label: 'nav.arena', icon: 'sprout' },
+  { to: '/arena', label: 'nav.arena', icon: 'sword' },
   { to: '/vocabulary', label: 'nav.vocabulary', icon: 'message-square', short: 'nav.tab.vocabulary' },
   { to: '/progress', label: 'nav.progress', icon: 'chart-line' },
 ]

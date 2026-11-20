@@ -5,6 +5,14 @@ const PATHS: Record<string, React.ReactNode> = {
   flame: (
     <path d="M12 2c1 4 4 5 4 9a4 4 0 0 1-8 0c0-1.5.6-2.4 1.2-3.3C8.4 9.6 7 11.4 7 14a5 5 0 0 0 10 0c0-5-3-8-5-12z" />
   ),
+  sword: (
+    <>
+      <polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5" />
+      <line x1="13" y1="19" x2="19" y2="13" />
+      <line x1="16" y1="16" x2="20" y2="20" />
+      <line x1="19" y1="21" x2="21" y2="19" />
+    </>
+  ),
   trophy: (
     <>
       <path d="M7 4h10v5a5 5 0 0 1-10 0z" />

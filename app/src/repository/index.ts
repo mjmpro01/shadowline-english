@@ -130,6 +130,16 @@ export interface Repository {
   /** Records that these have been celebrated. */
   markAchievementsSeen(ids: string[]): Promise<void>
 
+  /** The learner's coins, today's, and where the latest came from. */
+  wallet(): Promise<Wallet>
+  /** The learner's fighter, gear and the shop. */
+  arena(): Promise<ArenaState>
+  createFighter(look: FighterLook): Promise<ArenaState>
+  updateFighter(look: FighterLook): Promise<ArenaState>
+  buyGear(item: string): Promise<ArenaState>
+  /** Wears a piece of gear, or with `null` takes off what is in the slot. */
+  equip(item: string | null, slot?: GearSlot): Promise<ArenaState>
+
   /** A passage to write down, starting at one line of an episode: the lines
    *  after it to make half a minute to a minute and a half, cut into phrases. */
   dictation(clipId: string): Promise<Passage>
@@ -335,8 +345,8 @@ export interface Today {
   goalChosen: boolean
   points: number
   reached: boolean
-  /** What reaching the goal adds to the Arena purse; 0 for a learner who does not play. */
-  goalGold: number
+  /** The coins reaching the goal adds to the wallet. */
+  goalCoins: number
   streak: {
     count: number
     best: number
@@ -350,7 +360,6 @@ export interface Today {
   vocabDue: number
   dictationsDue: number
   firstDictation: Dictation | null
-  arena: { done: number; total: number } | null
   /** Reminders on, with a browser to send to. */
   remindersOn: boolean
   /** The learner said "later" to being asked to turn reminders on. */
@@ -467,6 +476,59 @@ export interface WeeklyBoard {
 
 export interface LearnerMedals extends WeeklyMedals {
   recent: { week: string; place: number }[]
+}
+
+export interface Wallet {
+  coins: number
+  /** Coins earned today. */
+  today: number
+  recent: { kind: string; item: string; amount: number; at: string }[]
+}
+
+export const GEAR_SLOTS = ['head', 'body', 'hands', 'weapon', 'feet', 'charm'] as const
+export type GearSlot = (typeof GEAR_SLOTS)[number]
+export type Rarity = 'common' | 'rare' | 'epic' | 'legendary'
+
+export interface GearStats {
+  atk: number
+  def: number
+  hp: number
+  /** Seconds added to the time to answer. */
+  time: number
+  /** Extra rage for each right answer. */
+  rage: number
+}
+
+export interface GearItem {
+  id: string
+  slot: GearSlot
+  name: { en: string; vi: string }
+  rarity: Rarity
+  price: number
+  stats: GearStats
+  starter: boolean
+}
+
+export interface FighterLook {
+  name: string
+  body: 'a' | 'b'
+  skin: number
+  hair: number
+}
+
+export interface Fighter extends FighterLook {
+  level: number
+  xp: number
+}
+
+export interface ArenaState {
+  coins: number
+  fighter: Fighter | null
+  stats: GearStats
+  /** Slot to the item worn there. */
+  equipped: Partial<Record<GearSlot, string>>
+  owned: string[]
+  shop: (GearItem & { owned: boolean })[]
 }
 
 /** A milestone reached: "takes.50" is the takes track's target of 50. */
@@ -756,6 +818,30 @@ class ApiRepository implements Repository {
 
   markAchievementsSeen(ids: string[]) {
     return api.send<void>('POST', '/api/achievements/seen', { ids })
+  }
+
+  wallet() {
+    return api.get<Wallet>('/api/wallet')
+  }
+
+  arena() {
+    return api.get<ArenaState>('/api/arena')
+  }
+
+  createFighter(look: FighterLook) {
+    return api.send<ArenaState>('POST', '/api/arena/fighter', look)
+  }
+
+  updateFighter(look: FighterLook) {
+    return api.send<ArenaState>('PUT', '/api/arena/fighter', look)
+  }
+
+  buyGear(item: string) {
+    return api.send<ArenaState>('POST', '/api/arena/buy', { item })
+  }
+
+  equip(item: string | null, slot?: GearSlot) {
+    return api.send<ArenaState>('POST', '/api/arena/equip', item ? { item } : { item: null, slot })
   }
 
   dictation(clipId: string) {
