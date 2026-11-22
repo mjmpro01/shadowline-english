@@ -36,6 +36,10 @@ const BY_CODE: Record<string, MessageKey> = {
   'arena.exists': 'error.arenaExists',
   'arena.noFighter': 'error.arenaNoFighter',
   'arena.bare': 'error.arenaBare',
+  'duel.locked': 'error.duelLocked',
+  'duel.noEnergy': 'error.duelNoEnergy',
+  'duel.over': 'error.duelOver',
+  'duel.stale': 'error.duelStale',
 }
 
 /**

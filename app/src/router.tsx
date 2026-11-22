@@ -5,6 +5,7 @@ import { AchievementsScreen } from './screens/AchievementsScreen'
 import { AnalysisScreen } from './screens/AnalysisScreen'
 import { ArenaScreen } from './screens/ArenaScreen'
 import { DashboardScreen } from './screens/DashboardScreen'
+import { DuelScreen } from './screens/DuelScreen'
 import { DialogueScreen } from './screens/DialogueScreen'
 import { DialoguesScreen } from './screens/DialoguesScreen'
 import { DictationEpisodeScreen } from './screens/DictationEpisodeScreen'
@@ -70,6 +71,7 @@ export const router = createBrowserRouter([
       { path: 'dialogues/roleplay/:id', element: <RoleplayScreen /> },
       { path: 'dialogues/:ref', element: <DialogueScreen /> },
       { path: 'arena', element: <ArenaScreen /> },
+      { path: 'arena/duel', element: <DuelScreen /> },
       { path: 'vocabulary', element: <VocabularyScreen /> },
       { path: 'vocabulary/practice', element: <FlashcardsScreen /> },
       { path: 'progress', element: <ProgressScreen /> },

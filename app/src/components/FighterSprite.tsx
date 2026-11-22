@@ -18,6 +18,9 @@ export interface SpriteProps {
   facing?: 'right' | 'left'
   size?: number
   label?: string
+  /** A whole sheet that, once delivered, draws this fighter instead of the
+   *  layers: "opponent/{id}" for the tower's own art. */
+  sheet?: string
 }
 
 /**
@@ -38,7 +41,8 @@ export function FighterSprite(props: SpriteProps) {
 
   const gear = DRAW_ORDER.map((slot) => props.equipped[slot]).filter((id): id is string => !!id)
   const layers = layersFor(props.body, props.skin, props.hair, gear)
-  const sheets = art ? layers.map((l) => art.layers[l]) : []
+  const whole = props.sheet && art?.layers[props.sheet]
+  const sheets = whole ? [whole] : art ? layers.map((l) => art.layers[l]) : []
   const drawn = art != null && sheets.every(Boolean)
 
   return (

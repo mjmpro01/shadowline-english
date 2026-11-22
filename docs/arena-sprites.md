@@ -94,11 +94,20 @@ mặc, tóc) đều có trong `layers`. Thiếu bất kỳ lớp nào, app vẽ 
 võ sĩ đó. Nhờ vậy có thể giao hình dần dần: thêm lớp nào thì lớp đó có hiệu lực
 ngay khi bộ đồ của võ sĩ đã đủ.
 
-## 5. Đối thủ (PvE, bước sau)
+## 5. Đối thủ (tháp đấu chữ)
 
-Đối thủ máy dùng cùng định dạng 256 px và cùng 9 hàng động tác, mỗi đối thủ một
-sheet hoàn chỉnh, không chia lớp: `opponents/{mã đối thủ}.png`, khai báo trong
-`layers` với tên `opponent/{mã}`.
+Mười lăm đối thủ của tháp được ghép **từ chính các lớp ở trên**: mỗi người có
+dáng, màu da, kiểu tóc và bộ đồ lấy trong danh mục (xem
+`server/internal/arena/tower.go`). Vì vậy khi thân, tóc và đồ đã có hình thì đối
+thủ cũng có hình, không cần vẽ riêng. Tầng 13 ("Bóng gương") vẽ giống hệt người
+chơi.
+
+Muốn một đối thủ có hình riêng hoàn toàn (thường là trùm ở tầng 5, 10, 15), có thể
+nộp một sheet đủ 9 hàng động tác: `opponents/{mã}.png`, khai báo trong `layers`
+với tên `opponent/{mã}`. Mã các tầng: `pickpocket`, `dockhand`, `market_bully`,
+`stick_fighter`, `alley_boss`, `novice`, `wandering_monk`, `fan_dancer`,
+`iron_guard`, `iron_general`, `wind_walker`, `jade_duelist`, `mirror`,
+`thunder_fist`, `tower_master`.
 
 ## 6. Gợi ý khi vẽ
 

@@ -502,9 +502,11 @@ Giới hạn mặc định:
 | --- | --- |
 | `wallets` | Số xu của mỗi người học (`coins` ≥ 0) |
 | `coin_events` | Sổ xu: mỗi lần vào (`practice`, `goal`, `weekly`, `achievement`, `migrated`) và ra (`buy`), kèm `item` và `amount` |
-| `fighters` | Võ sĩ: `name`, `body` (`a`/`b`), `skin`, `hair` (0–3), `level`, `xp` |
+| `fighters` | Võ sĩ: `name`, `body` (`a`/`b`), `skin`, `hair` (0–3), `level`, `xp`, năng lượng (`energy` + `energy_at`, hồi theo giờ), tầng cao nhất đã mở (`floor`) |
 | `fighter_gear` | Đồ đã có |
 | `fighter_equipped` | Đồ đang mặc, một món mỗi ô (`slot`) |
+| `duels` | Một dòng mỗi trận đấu chữ: tầng, máu hai bên, chỉ số võ sĩ chụp lúc vào trận, nộ, combo, lượt, câu hỏi đang hỏi (`question`, kèm `q_word`/`q_answer` — đáp án không gửi về trình duyệt), `q_block` (đòn mạnh cần đỡ), hạn trả lời, các từ đã hỏi/đã ôn, kết quả (xu, EXP, đồ rơi, lên cấp, lần đầu thắng). Tối đa một trận `active` mỗi người |
+| `duel_clears` | Tầng đã thắng và lần đầu thắng lúc nào |
 | `word_ranks` | Độ phổ biến của từ, dùng để chọn từ cho câu hỏi |
 
 ### 7.7 Lịch sử migration
@@ -538,6 +540,7 @@ Giới hạn mặc định:
 | `00027_battles` | Máu (`game_profiles.hp`, `hp_at`), `game_battles`, `game_spawns` |
 | `00028_hammer_soil` | `game_plots.level` cho phép tới 4 (đất làm bằng búa của Bram) |
 | `00029_townsfolk` | `game_friendship` (thị trấn Echo, 7.6) |
+| `00043_duels` | `duels`, `duel_clears`; `fighters.energy`, `energy_at`, `floor` |
 | `00042_arena` | Arena mới: `wallets`, `coin_events`, `fighters`, `fighter_gear`, `fighter_equipped`; vàng cũ thành xu; xoá mọi bảng `game_*` (giữ `word_ranks`) |
 
 Số `00008` bị bỏ trống, không phải thiếu file. Việc giữ lại job cắt / chép lời
@@ -825,8 +828,22 @@ Server giữ toàn bộ trạng thái và quyết định mọi kết quả; tr�
 4. **Hình**: `FighterSprite` chồng các lớp sprite của họa sĩ theo
    `/arena/manifest.json` (xem `docs/arena-sprites.md`); lớp nào chưa có thì cả
    võ sĩ được vẽ tạm bằng SVG từ cùng lựa chọn, nên đồ mua vẫn hiện trên người.
-5. **Câu hỏi** cho trận đấu (`internal/arena/questions.go`: nghĩa, nghe, xếp chữ,
-   IPA, điền chỗ trống) giữ lại từ Arena cũ để dùng cho đấu chữ (PvE) ở bước sau.
+5. **Đấu chữ (PvE)**: tháp 15 tầng (`internal/arena/tower.go`), mỗi tầng một võ
+   sĩ máy mặc đồ trong danh mục, cứ 5 tầng một trùm. Luật nằm trong
+   `internal/arena/duel.go` (thuần, có test):
+   - thời gian trả lời = `time` của võ sĩ (10 + đồ) trừ của đối thủ, tối thiểu 5 giây;
+   - đúng trong 40% thời gian đầu là đòn nặng, đúng sau đó là đòn nhẹ; sai hoặc
+     trễ (quá hạn + 1,5 giây) thì bị đánh;
+   - đúng tăng nộ, đủ 100 thì tung tuyệt chiêu (gấp 3);
+   - cứ vài lượt đối thủ báo đòn mạnh: một câu nghe nhanh, đúng thì đỡ được;
+   - năng lượng: tối đa 5, hồi 1 mỗi giờ, cứ 10 điểm luyện tập trong ngày được 1;
+     mỗi trận tốn 1;
+   - thắng: xu của tầng (gấp đôi lần đầu, mở tầng tiếp), EXP, có thể rơi đồ;
+     thua: không mất gì thêm.
+6. **Câu hỏi** (`internal/arena/questions.go`: nghĩa, nghe, xếp chữ, IPA) lấy từ
+   của chính người học trước (đến hạn ôn trước), thiếu thì lấy từ phổ biến trong
+   dải của tầng (`word_ranks` + `glosses`); mỗi câu cập nhật lịch ôn của từ như
+   khi ôn thẻ. Mỗi câu trả lời kèm số lượt, nên bấm hai lần chỉ tính một.
 
 ## 13. Cấu hình
 

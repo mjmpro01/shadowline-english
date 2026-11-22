@@ -139,6 +139,13 @@ export interface Repository {
   buyGear(item: string): Promise<ArenaState>
   /** Wears a piece of gear, or with `null` takes off what is in the slot. */
   equip(item: string | null, slot?: GearSlot): Promise<ArenaState>
+  /** The tower's floors, the fighter's energy and level, and a duel under way. */
+  tower(): Promise<Tower>
+  /** The duel under way, or null. */
+  duel(): Promise<Duel | null>
+  startDuel(floor: number): Promise<Duel>
+  answerDuel(duel: Duel, answer: string, special: boolean): Promise<{ turn: DuelTurn; duel: Duel }>
+  fleeDuel(): Promise<void>
 
   /** A passage to write down, starting at one line of an episode: the lines
    *  after it to make half a minute to a minute and a half, cut into phrases. */
@@ -531,6 +538,89 @@ export interface ArenaState {
   shop: (GearItem & { owned: boolean })[]
 }
 
+/** One floor's fighter. Their look is drawn like a learner's. */
+export interface Opponent {
+  floor: number
+  id: string
+  name: { en: string; vi: string }
+  boss: boolean
+  look: FighterLook
+  equipped: Partial<Record<GearSlot, string>>
+  /** Drawn as the learner themselves. */
+  mirror?: boolean
+  atk: number
+  def: number
+  hp: number
+  coins: number
+  xp: number
+  drop?: string
+}
+
+export interface Tower {
+  floors: (Opponent & { locked: boolean; cleared: boolean })[]
+  energy: number
+  energyMax: number
+  /** When the next unit of energy comes back; null when full. */
+  nextEnergy: string | null
+  /** Minutes until then, rounded up; 0 when full. */
+  nextEnergyIn: number
+  level: number
+  xp: number
+  xpNext: number
+  activeDuel: number | null
+}
+
+export type QuestionKind = 'meaning' | 'listen' | 'scramble' | 'ipa' | 'cloze'
+
+export interface DuelQuestion {
+  kind: QuestionKind
+  prompt: string
+  say?: string
+  hint?: string
+  options: string[]
+}
+
+export interface Duel {
+  id: number
+  floor: number
+  opponent: Opponent
+  state: 'active' | 'won' | 'lost' | 'fled'
+  hp: number
+  hpMax: number
+  oppHp: number
+  oppMax: number
+  rage: number
+  combo: number
+  turn: number
+  question: DuelQuestion | null
+  /** This turn is the opponent's big attack: answer to block it. */
+  block: boolean
+  seconds: number
+  deadline: string
+  right: number
+  wrong: number
+  coins: number
+  xp: number
+  drop: string
+  levelUp: boolean
+  firstClear: boolean
+  words: string[]
+}
+
+export type DuelMove = 'light' | 'heavy' | 'special' | 'block' | 'hit'
+
+export interface DuelTurn {
+  move: DuelMove
+  dealt: number
+  taken: number
+  rage: number
+  combo: number
+  right: boolean
+  late: boolean
+  answer: string
+  entry: { word: string; ipa: string; meaning: string }
+}
+
 /** A milestone reached: "takes.50" is the takes track's target of 50. */
 export interface UnlockedAchievement {
   id: string
@@ -842,6 +932,33 @@ class ApiRepository implements Repository {
 
   equip(item: string | null, slot?: GearSlot) {
     return api.send<ArenaState>('POST', '/api/arena/equip', item ? { item } : { item: null, slot })
+  }
+
+  tower() {
+    return api.get<Tower>('/api/arena/tower')
+  }
+
+  async duel() {
+    const { duel } = await api.get<{ duel: Duel | null }>('/api/arena/duel')
+    return duel
+  }
+
+  async startDuel(floor: number) {
+    const { duel } = await api.send<{ duel: Duel }>('POST', '/api/arena/duel/start', { floor })
+    return duel
+  }
+
+  answerDuel(duel: Duel, answer: string, special: boolean) {
+    return api.send<{ turn: DuelTurn; duel: Duel }>('POST', '/api/arena/duel/answer', {
+      id: duel.id,
+      turn: duel.turn,
+      answer,
+      special,
+    })
+  }
+
+  fleeDuel() {
+    return api.send<void>('POST', '/api/arena/duel/flee', {})
   }
 
   dictation(clipId: string) {

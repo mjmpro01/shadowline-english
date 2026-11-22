@@ -534,6 +534,15 @@ func isSource(contentType string) bool {
 	return strings.HasPrefix(mt, "audio/") || strings.HasPrefix(mt, "video/") || mt == "application/octet-stream"
 }
 
+// isMP4 reports whether a file is an MP4 (an "ftyp" box first), leaving it
+// read from the start again either way.
+func isMP4(f io.ReadSeeker) bool {
+	var head [8]byte
+	n, _ := io.ReadFull(f, head[:])
+	_, _ = f.Seek(0, io.SeekStart)
+	return n == len(head) && string(head[4:8]) == "ftyp"
+}
+
 // contentTypeFor is extensionFor in reverse, for serving an object back. The
 // disk backend stores no metadata, and an <audio> element handed a response
 // with no usable type refuses to play it — "The element has no supported
@@ -548,6 +557,8 @@ func contentTypeFor(key string) string {
 		return "audio/ogg"
 	case ".webm":
 		return "audio/webm"
+	case ".m4a":
+		return "audio/mp4"
 	case ".mp4":
 		return "video/mp4"
 	case ".m4v":
@@ -566,13 +577,24 @@ func contentTypeFor(key string) string {
 }
 
 func extensionFor(contentType string) string {
+	// By the media type alone: a recorder names its codec too
+	// ("audio/mp4;codecs=mp4a.40.2"), and the codec is not the file's kind.
+	if mt := mediaType(contentType); mt != "" {
+		contentType = mt
+	}
 	switch {
 	case contentType == "audio/wav" || contentType == "audio/x-wav":
 		return ".wav"
 	case contentType == "audio/mpeg":
 		return ".mp3"
-	case contentType == "audio/ogg" || contentType == "audio/ogg; codecs=opus":
+	case contentType == "audio/ogg":
 		return ".ogg"
+	// What MediaRecorder makes on an iPhone. It used to fall through to
+	// ".webm" below, and as the disk backend serves a file by its extension,
+	// every take recorded on an iPhone came back as audio/webm, which Safari
+	// does not play: Dub review was silent on the very phone it was made on.
+	case contentType == "audio/mp4" || contentType == "audio/x-m4a" || contentType == "audio/m4a" || contentType == "audio/aac":
+		return ".m4a"
 	case contentType == "image/png":
 		return ".png"
 	case contentType == "image/jpeg":
@@ -647,6 +669,11 @@ func (s *Server) handleFile(w http.ResponseWriter, r *http.Request) {
 	// through here at all: the browser goes straight to the presigned URL, and
 	// S3 answers ranges itself.
 	if seeker, ok := rc.(io.ReadSeeker); ok {
+		// A take recorded on an iPhone before .m4a was known was kept as
+		// ".webm" with an MP4 inside. Its first bytes say what it is.
+		if strings.EqualFold(path.Ext(key), ".webm") && isMP4(seeker) {
+			w.Header().Set("Content-Type", "audio/mp4")
+		}
 		// An empty name and no modtime: the Content-Type above is this project's
 		// own mapping, and ServeContent leaves a header that is already set.
 		http.ServeContent(w, r, "", time.Time{}, seeker)
