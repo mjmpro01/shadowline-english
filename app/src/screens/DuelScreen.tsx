@@ -133,6 +133,7 @@ export function DuelScreen() {
             animation={moves.opp}
             facing="left"
             label={o.name[lang]}
+            sheet={o.mirror ? undefined : `opponent/${o.id}`}
             size={o.boss ? 230 : 200}
           />
           {turn && moves.key > 0 && turn.dealt > 0 && <span className="duel-pop">−{turn.dealt}</span>}

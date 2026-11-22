@@ -492,6 +492,7 @@ function TowerSection({ fighter, equipped }: { fighter: Fighter; equipped: Arena
                 equipped={f.mirror ? equipped : f.equipped}
                 facing="left"
                 size={72}
+                sheet={f.mirror ? undefined : `opponent/${f.id}`}
                 animation="idle"
               />
               <div className="stack gap-1" style={{ minWidth: 0 }}>

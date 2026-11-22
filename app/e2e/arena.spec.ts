@@ -82,3 +82,79 @@ test('a rich fighter buys a blade and the look can change', async ({ page }) => 
   await expect(page.getByRole('heading', { name: 'An the Brave' })).toBeVisible()
   await expect(page.getByRole('img', { name: 'An the Brave' }).locator('[data-item="twin_blades"]')).toHaveCount(1)
 })
+
+async function beggar(page: import('@playwright/test').Page, name = 'Minh') {
+  await asLearner(page)
+  await page.goto('/arena')
+  await page.getByLabel('Fighter name').fill(name)
+  await page.getByRole('button', { name: 'Start as a beggar' }).click()
+  await expect(page.getByTestId('arena')).toBeVisible()
+}
+
+function escape(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/** Answers the question on screen, rightly or not, once it is the server's. */
+async function answer(page: import('@playwright/test').Page, right: boolean): Promise<boolean> {
+  const res = await page.request.get(`${API_URL}/api/arena/duel`)
+  const { duel } = (await res.json()) as { duel: { turn: number } | null }
+  if (!duel) return false
+  await expect(page.getByText(`Round ${duel.turn}`, { exact: true })).toBeVisible()
+  const options = page.locator('.duel-option')
+  await expect(options.first()).toBeEnabled()
+  const key = (await (await page.request.get(`${API_URL}/api/test/arena/duel/answer`)).json()) as { answer: string }
+  const match = options.filter({ hasText: new RegExp(`^\\d${escape(key.answer)}$`) })
+  if (right) await match.click()
+  else await options.filter({ hasNotText: new RegExp(`^\\d${escape(key.answer)}$`) }).first().click()
+  return true
+}
+
+// The tower's first floor, beaten with right answers: coins, experience, the
+// next floor open; and a duel survives a reload on the way.
+test('a beggar climbs the first floor of the tower', async ({ page }) => {
+  await beggar(page)
+  const floor1 = page.getByRole('listitem', { name: 'Floor 1: Pickpocket' })
+  await expect(page.getByTestId('energy')).toHaveText('Energy 5/5')
+  await expect(page.getByRole('listitem', { name: 'Floor 2: Dockhand' })).toContainText('Beat the floor below first')
+  await floor1.getByRole('button', { name: 'Fight' }).click()
+  await page.waitForURL('**/arena/duel')
+  const duel = page.getByTestId('duel')
+  await expect(duel.getByRole('meter', { name: 'Pickpocket' })).toBeVisible()
+
+  await answer(page, true)
+  await page.reload()
+  await expect(page.getByTestId('duel').getByText('Round 2', { exact: true })).toBeVisible()
+
+  for (let i = 0; i < 30; i++) {
+    if (await page.getByRole('heading', { name: 'You win!' }).isVisible()) break
+    if (!(await answer(page, true))) break
+  }
+  const outcome = page.getByRole('region', { name: 'You win!' })
+  await expect(outcome).toBeVisible()
+  await expect(outcome).toContainText('+32 coins')
+  await expect(outcome).toContainText('First win on this floor')
+  await expect(outcome).toContainText('+20 XP')
+
+  await outcome.getByRole('link', { name: 'Back to the Arena' }).click()
+  await expect(page.getByRole('listitem', { name: 'Floor 1: Pickpocket' })).toContainText('Beaten')
+  await expect(page.getByRole('listitem', { name: 'Floor 2: Dockhand' }).getByRole('button', { name: 'Fight' })).toBeVisible()
+  await expect(page.getByTestId('energy')).toHaveText('Energy 4/5')
+})
+
+test('wrong answers end in a knock-out, and no energy means no duel', async ({ page }) => {
+  await beggar(page, 'An')
+  await page.getByRole('listitem', { name: 'Floor 1: Pickpocket' }).getByRole('button', { name: 'Fight' }).click()
+  await page.waitForURL('**/arena/duel')
+  for (let i = 0; i < 30; i++) {
+    if (await page.getByRole('heading', { name: 'Knocked out' }).isVisible()) break
+    if (!(await answer(page, false))) break
+  }
+  await expect(page.getByRole('region', { name: 'Knocked out' })).toContainText('Nothing is lost but the energy')
+
+  await page.request.post(`${API_URL}/api/test/arena/energy`, { data: { energy: 0 } })
+  await page.goto('/arena')
+  await expect(page.getByTestId('energy')).toHaveText('Energy 0/5')
+  await expect(page.getByText('No energy left — practise to earn more.')).toBeVisible()
+  await expect(page.getByRole('listitem', { name: 'Floor 1: Pickpocket' }).getByRole('button', { name: 'Fight' })).toBeDisabled()
+})
