@@ -330,8 +330,9 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  padding: 0 4%;
+  padding: 0 8%;
   min-height: 220px;
+  overflow: hidden;
   border-radius: var(--radius-lg);
   background:
     linear-gradient(to top, color-mix(in srgb, var(--color-accent) 25%, transparent) 0 14%, transparent 14%),
@@ -638,7 +639,7 @@
 }
 @keyframes doll-ko {
   to {
-    transform: rotate(-80deg) translateY(10%);
+    transform: rotate(-75deg) translate(20%, 15%);
     opacity: 0.85;
   }
 }
