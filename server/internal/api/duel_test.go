@@ -2,9 +2,8 @@ package api_test
 
 import (
 	"context"
-	"io"
+	"encoding/json"
 	"net/http"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -77,7 +76,7 @@ func (h *harness) answer(t *testing.T, c *client, d duelJSON, answer string) (du
 	t.Helper()
 	got := expect[struct {
 		Turn duelTurnJSON `json:"turn"`
-		Duel duelJSON `json:"duel"`
+		Duel duelJSON     `json:"duel"`
 	}](t, c.json("POST", "/api/arena/duel/answer", map[string]any{"id": d.ID, "turn": d.Turn, "answer": answer}), http.StatusOK)
 	return got.Turn, got.Duel
 }
@@ -121,12 +120,19 @@ func TestRightAnswersWinTheFloorAndPayOnce(t *testing.T) {
 	if again := h.startDuel(t, c, 1); again.ID != d.ID {
 		t.Fatalf("a second duel: %+v", again)
 	}
-	// The answer is never sent.
+	// The question goes without its answer: what is right is decided here.
 	resp := c.json("GET", "/api/arena/duel", nil)
-	raw, _ := io.ReadAll(resp.Body)
+	var raw struct {
+		Duel struct {
+			Question map[string]any `json:"question"`
+		} `json:"duel"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
+		t.Fatal(err)
+	}
 	resp.Body.Close()
-	if strings.Contains(string(raw), `"`+h.key(t, id)+`"`) && d.Question.Kind != arena.AskMeaning {
-		t.Fatalf("the answer went to the browser: %s", raw)
+	if _, ok := raw.Duel.Question["answer"]; ok || len(raw.Duel.Question) == 0 {
+		t.Fatalf("the question as sent: %v", raw.Duel.Question)
 	}
 
 	for range 40 {
@@ -236,7 +242,7 @@ func TestASpecialLandsWhenRageIsFull(t *testing.T) {
 	}
 	got := expect[struct {
 		Turn duelTurnJSON `json:"turn"`
-		Duel duelJSON `json:"duel"`
+		Duel duelJSON     `json:"duel"`
 	}](t, c.json("POST", "/api/arena/duel/answer", map[string]any{"id": d.ID, "turn": d.Turn, "answer": h.key(t, id), "special": true}), http.StatusOK)
 	if got.Turn.Move != arena.MoveSpecial || got.Duel.Rage != 0 || got.Turn.Dealt < 3*4-1 {
 		t.Fatalf("special: %+v", got)
