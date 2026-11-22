@@ -30,6 +30,12 @@ const BY_CODE: Record<string, MessageKey> = {
   'tutor.everyone': 'error.tutorEveryone',
   'tutor.badFeedback': 'error.tutorBadFeedback',
   'roleplay.ended': 'error.roleplayEnded',
+  'arena.notEnoughCoins': 'error.arenaNotEnoughCoins',
+  'arena.owned': 'error.arenaOwned',
+  'arena.invalid': 'error.arenaInvalid',
+  'arena.exists': 'error.arenaExists',
+  'arena.noFighter': 'error.arenaNoFighter',
+  'arena.bare': 'error.arenaBare',
 }
 
 /**

@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-
-	"github.com/shadowline/server/internal/game"
 )
 
 // Who comes back: the console's Growth page. Days are Vietnam's, as everywhere
@@ -84,7 +82,7 @@ const CohortWeeks = 8
 
 // Growth is the last `days` days of who came and who came back.
 func (s *Store) Growth(ctx context.Context, days int, now time.Time) (Growth, error) {
-	today, _, _ := game.Day(now)
+	today, _, _ := VietnamDay(now)
 	out := Growth{Today: today, Days: []GrowthDay{}, Cohorts: []Cohort{}, FunnelDays: days}
 	err := s.inTx(ctx, func(tx pgx.Tx) error {
 		if err := tx.QueryRow(ctx, `

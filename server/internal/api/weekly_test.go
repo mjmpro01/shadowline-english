@@ -100,10 +100,8 @@ func TestLastWeeksTopThreeGetMedalsAndGoldOnce(t *testing.T) {
 	for i, e := range emails {
 		h.learn(t, h.userID(t, e), store.ActTake, 10-2*i, lastWeek)
 	}
-	// The first plays the Arena; the second does not.
-	expectStatus(t, clients["first@example.com"].json("GET", "/api/game/state", nil), http.StatusOK)
 	first := h.userID(t, "first@example.com")
-	before := h.gold(t, first)
+	before := h.coins(t, first)
 
 	// Asked at once from several places: given out once.
 	var wg sync.WaitGroup
@@ -123,8 +121,8 @@ func TestLastWeeksTopThreeGetMedalsAndGoldOnce(t *testing.T) {
 	if err := h.pool.QueryRow(ctx, `select count(*) from weekly_awards`).Scan(&awards); err != nil || awards != 3 {
 		t.Fatalf("%d awards, %v", awards, err)
 	}
-	if after := h.gold(t, first); after != before+store.WeeklyGold[0] {
-		t.Fatalf("gold %d, want %d", after, before+store.WeeklyGold[0])
+	if after := h.coins(t, first); after != before+store.WeeklyGold[0] {
+		t.Fatalf("coins %d, want %d", after, before+store.WeeklyGold[0])
 	}
 	if len(got.LastWeek) != 3 || !strings.EqualFold(got.LastWeek[0].Name, "first") || !got.LastWeek[1].IsYou {
 		t.Fatalf("last week's podium: %+v", got.LastWeek)

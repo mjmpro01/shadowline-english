@@ -190,7 +190,7 @@ buộc hai ngôn ngữ có cùng khoá.
 | `/library/:videoId` | Phân tích chi tiết một bản ghi |
 | `/library/:videoId/dub` | Nghe bản lồng tiếng (giọng mình trên hình clip) |
 | `/vocabulary`, `/vocabulary/practice` | Từ vựng đã lưu, ôn bằng thẻ (lặp lại ngắt quãng) |
-| `/arena` | Trò chơi trang trại: trồng cây, thu hoạch ra từ mới, nhiệm vụ chính và nhiệm vụ ngày (xem 12.7) |
+| `/arena` | Đấu trường: tạo võ sĩ (khởi đầu là kẻ ăn mày), xu kiếm từ luyện tập, cửa hàng và túi đồ (xem 12.7) |
 | `/progress` | Tiến độ theo thời gian, câu yếu nhất (trên điện thoại, vào từ Hồ sơ vì ô Arena thay chỗ nó) |
 | `/guide` | Hướng dẫn sử dụng |
 | `/profile` | Hồ sơ, ngôn ngữ, giao diện sáng/tối, xuất dữ liệu, xoá tài khoản |
@@ -259,7 +259,7 @@ API.
 | Hồ sơ | `GET /profile`, `PATCH /profile`, `PUT /profile/avatar` |
 | Tài khoản | `GET /account/export`, `POST /account/password`, `DELETE /account` |
 | Gia sư | `GET /tutor`, `POST /tutor/chat` (stream), `GET /tutor/conversations`, `GET/DELETE /tutor/conversations/{id}` |
-| Arena | `GET /game/state`, `GET /game/quests`, `POST /game/{plant,harvest,unlock,upgrade,buy,use,sleep,listen,move}`, `POST /game/quests/claim`; trận đánh: `GET /game/battle` (trận đang dở, hoặc `null`), `POST /game/battle/{start,answer,flee}`. Từ chối có mã trả 409 `{error, code}` (`no_gold`, `no_stamina`, `not_ripe`, `woods_locked`, `no_hp`, `in_battle`, `respawning`, `battle_over`, `lair_closed`, `town_locked`, `talked_today`, `gifted_today`…); thị trấn: `GET /game/talk/{npc}` (đoạn hội thoại hôm nay, không kèm đáp án), `POST /game/{talk,gift,heart,clinic}` |
+| Arena | `GET /arena` (võ sĩ, xu, chỉ số, đồ, cửa hàng), `POST /arena/fighter` (tạo), `PUT /arena/fighter` (đổi ngoại hình), `POST /arena/buy {item}`, `POST /arena/equip {item}` hoặc `{slot, item: null}` để tháo; `GET /wallet`. Từ chối có mã: 409 `arena.notEnoughCoins`, `arena.owned`, `arena.notOwned`, `arena.noFighter`, `arena.exists`, `arena.bare`; 400 `arena.invalid` |
 | Khác | `GET /leaderboard`, `GET /banners` |
 
 **Quản trị (`/api/admin`, cần quyền admin)**
@@ -500,18 +500,12 @@ Giới hạn mặc định:
 
 | Bảng | Nội dung |
 | --- | --- |
-| `game_profiles` | Một dòng mỗi người chơi: `gold`, `stamina` + `stamina_at` (thể lực tính lại theo thời gian, không cần job), máu `hp` + `hp_at` (cùng cách), `slept_at`, vị trí `map` (`farm`/`woods`)/`x`/`y`, bước truyện `main_step` + `main_step_at` |
-| `game_plots` | 12 ô đất mỗi người (`idx` 0–11): `unlocked`, `level` 0–3, `crop`, `planted_at` |
-| `game_inventory` | `item`, `qty` |
-| `game_events` | Nhật ký việc làm (`plant`, `harvest`, `buy`, `sleep`, `unlock`, `listen`…, kèm vàng đã tiêu) — nhiệm vụ đếm tiến độ từ đây |
-| `game_quest_claims` | Thưởng đã nhận: `(user_id, quest, day)` là khoá chính nên không nhận trùng |
-| `game_battles` | Một dòng mỗi trận: quái, máu quái, lượt, số câu đúng/sai, câu hỏi đang hỏi (`question`, kèm `q_word`/`q_answer` — đáp án không bao giờ gửi về trình duyệt), `issued_at`/`deadline`, các từ đã hỏi (`asked`) và đã cập nhật lịch ôn (`reviewed`), `state` (`active`/`won`/`lost`/`fled`), vàng, đồ rơi, tiền phạt. Mỗi người tối đa một trận `active` (unique index một phần) |
-| `game_spawns` | Điểm quái nào bị hạ lúc nào; quái về chỗ sau 10 phút (troll: 24 giờ) |
-| `game_friendship` | Thân thiết với từng người trong thị trấn: `points` (100 điểm một tim, tối đa 10), ngày trò chuyện và ngày tặng quà gần nhất (`talked_on`, `gifted_on`, mỗi thứ một lần một ngày), các sự kiện tim đã nghe (`heart_claims`) |
-| `word_ranks` | Thứ hạng tần suất của từ (nạp một lần từ `common_words.txt`), để mỗi loại hạt ra từ ở độ khó của nó |
-
-Luật chơi (giá, thời gian lớn, thưởng, cốt truyện, mẫu nhiệm vụ ngày) nằm trong
-code ở `server/internal/game/`, không nằm trong DB.
+| `wallets` | Số xu của mỗi người học (`coins` ≥ 0) |
+| `coin_events` | Sổ xu: mỗi lần vào (`practice`, `goal`, `weekly`, `achievement`, `migrated`) và ra (`buy`), kèm `item` và `amount` |
+| `fighters` | Võ sĩ: `name`, `body` (`a`/`b`), `skin`, `hair` (0–3), `level`, `xp` |
+| `fighter_gear` | Đồ đã có |
+| `fighter_equipped` | Đồ đang mặc, một món mỗi ô (`slot`) |
+| `word_ranks` | Độ phổ biến của từ, dùng để chọn từ cho câu hỏi |
 
 ### 7.7 Lịch sử migration
 
@@ -544,6 +538,7 @@ code ở `server/internal/game/`, không nằm trong DB.
 | `00027_battles` | Máu (`game_profiles.hp`, `hp_at`), `game_battles`, `game_spawns` |
 | `00028_hammer_soil` | `game_plots.level` cho phép tới 4 (đất làm bằng búa của Bram) |
 | `00029_townsfolk` | `game_friendship` (thị trấn Echo, 7.6) |
+| `00042_arena` | Arena mới: `wallets`, `coin_events`, `fighters`, `fighter_gear`, `fighter_equipped`; vàng cũ thành xu; xoá mọi bảng `game_*` (giữ `word_ranks`) |
 
 Số `00008` bị bỏ trống, không phải thiếu file. Việc giữ lại job cắt / chép lời
 thất bại (`state='failed'`) nằm trong code worker và API, không cần migration vì
@@ -812,61 +807,26 @@ Phiên bản lấy theo thứ tự:
 2. commit git (7 ký tự, thêm `-dirty` nếu có sửa đổi chưa commit);
 3. `unknown`.
 
-### 12.7 Arena
+### 12.7 Arena (đấu chữ)
 
 Server giữ toàn bộ trạng thái và quyết định mọi kết quả; trình duyệt chỉ vẽ.
 
-1. Mỗi việc (`POST /api/game/…`) là một transaction khoá dòng `game_profiles`
-   (`select … for update`), kiểm tra luật trong `internal/game`, rồi trả lại
-   toàn bộ trạng thái mới.
-2. Thu hoạch chọn ngẫu nhiên một từ trong dải tần suất của hạt, chỉ lấy từ đã có
-   nghĩa và IPA trong `glosses` và chưa có trong Từ vựng của người học, rồi thêm
-   vào `vocab_words` ngay trong transaction đó.
-3. Tiến độ nhiệm vụ được đếm lúc hỏi từ `game_events`, `takes` (luyện Shadowing)
-   và `vocab_words.reviewed_at` (ôn thẻ), nên việc học ngoài game cũng được tính.
-   Ngày nhiệm vụ tính theo giờ Việt Nam; 3 việc của ngày được chọn cố định theo
-   (người dùng, ngày).
-4. App: `src/screens/ArenaScreen.tsx` giữ trạng thái và các bảng (React);
-   `src/game/` là cảnh Phaser, chỉ tải khi mở Arena. Hai bên nói chuyện qua
-   `GameBus`. Hình nằm ở `app/public/game/` (xem README ở đó); thiếu file nào
-   thì game tự vẽ hình tạm. `MapScene` là phần chung (người chơi, camera, phím,
-   cổng); `FarmScene` và `WoodsScene` kế thừa nó. Rừng mở từ bước chương 2
-   (`game.WoodsStep`); trước đó cổng đẩy người chơi lại.
-5. Trận đánh (chương 2), theo lượt:
-   - `start`: kiểm tra rừng đã mở, quái còn ở đó, máu ≥ 6, không có trận dở;
-     trừ 3 thể lực, chọn từ, ra câu hỏi đầu.
-   - Từ được chọn trong Từ vựng của người học (đến hạn ôn trước); Từ vựng ít hơn
-     8 từ thì xen từ `word_ranks` trong dải độ khó của quái. 4 kiểu câu: chọn
-     nghĩa, nghe chọn từ, xếp chữ, nhìn IPA chọn từ.
-   - `answer`: quá `deadline` + 1,5s là trễ (tính sai). Đúng thì quái mất 1 máu
-     (2 nếu trả lời trong 1/3 thời gian đầu); sai thì người chơi mất máu theo sức
-     đánh của quái. Lần trả lời đầu cho mỗi từ trong Từ vựng cập nhật lịch ôn như
-     ôn thẻ (`Recalled`/`Forgotten`).
-   - Thắng: vàng (thêm nếu không trúng đòn nào), có thể rơi đồ, ghi `game_spawns`.
-     Thua: về cửa nhà với 15 máu, mất `min(50, 10% vàng)`.
-   - Mỗi lượt ghi `game_events` (`fight`, `answer_right`/`answer_wrong`, `win`
-     kèm loại quái, `win_clean`, `faint`), nên nhiệm vụ chương 2 và nhiệm vụ ngày
-     của rừng đếm từ đó như mọi nhiệm vụ khác.
-   - Tải lại trang giữa trận thì `GET /game/battle` mở lại đúng câu đang hỏi.
-   - Boss (Mumble Troll) đánh theo pha (`Monster.Phases`): mỗi pha một phần
-     bằng nhau của máu, có kiểu câu hỏi và thời gian riêng (`game.PhaseOf`);
-     `BattleView` trả `phase`/`phases`. Hang của nó (`Spawn.Step`) trống đến bước
-     `game.TrollStep` (`lair_closed`), và quái về chỗ theo `Monster.Respawn`.
-   - Hạ troll là bước truyện của Bram; thưởng là `bram_hammer`, có nó thì
-     `UpgradePlot` cho lên cấp 4 (`game.MaxLevelFor`).
-6. Thị trấn Echo (chương 3), mở từ `game.TownStep`:
-   - 5 người dân (`game.Townsfolk`), mỗi người một mảng tiếng Anh. Mỗi ngày
-     trò chuyện một lần: họ nói một câu, người chơi chọn 1 trong 3 câu đáp (một
-     câu hợp ngữ cảnh, một câu đúng ngữ pháp nhưng lạc đề, một câu sai ngữ pháp)
-     và được giải thích vì sao.
-   - Đoạn hội thoại của ngày và thứ tự câu đáp tính lại từ (người chơi, ngày,
-     người dân) ở mỗi request (`game.ChatFor`), nên đáp án không lưu và không
-     gửi về trình duyệt.
-   - Tặng quà mỗi ngày một lần, kèm một trong 3 cách nói khi tặng; điểm tính
-     theo sở thích (`game.Taste`, `game.GiftPoints`). Ở 2 tim, người dân kể
-     chuyện và tặng quà một lần (`ClaimHeart`).
-   - Nhiệm vụ đếm từ `game_events` (`enter_town`, `talk`, `gift`, `gift_loved`)
-     và từ `game_friendship` (số tim cao nhất).
+1. **Xu** là đồng tiền duy nhất (`wallets`, sổ `coin_events`). Mỗi điểm luyện
+   tập trả 1 xu, cộng trong cùng transaction với `LogActivity`; đạt mục tiêu
+   ngày (+20), huy hiệu tuần (100/60/40) và thành tích (20/50/100/200) cũng trả
+   xu, cho mọi người học, không cần đã mở Arena.
+2. **Võ sĩ** (`fighters`) tạo một lần, khởi đầu là kẻ ăn mày: `rags`,
+   `bare_fists`, `bare_feet` được tặng và mặc sẵn. Đổi ngoại hình miễn phí.
+3. **Trang bị**: danh mục nằm trong code (`internal/arena/catalog.go`): 6 ô
+   (`head`, `body`, `hands`, `weapon`, `feet`, `charm`), độ hiếm, giá, chỉ số
+   (`atk`, `def`, `hp`, `time`, `rage`). Mua là một transaction: khoá theo người
+   học, thêm `fighter_gear` rồi trừ xu; thiếu xu thì không có gì xảy ra. Chỉ số
+   võ sĩ = chỉ số theo cấp + đồ đang mặc.
+4. **Hình**: `FighterSprite` chồng các lớp sprite của họa sĩ theo
+   `/arena/manifest.json` (xem `docs/arena-sprites.md`); lớp nào chưa có thì cả
+   võ sĩ được vẽ tạm bằng SVG từ cùng lựa chọn, nên đồ mua vẫn hiện trên người.
+5. **Câu hỏi** cho trận đấu (`internal/arena/questions.go`: nghĩa, nghe, xếp chữ,
+   IPA, điền chỗ trống) giữ lại từ Arena cũ để dùng cho đấu chữ (PvE) ở bước sau.
 
 ## 13. Cấu hình
 
