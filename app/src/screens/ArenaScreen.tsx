@@ -1,6 +1,6 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { FighterSprite } from '../components/FighterSprite'
-import { Icon } from '../components/Icon'
 import { useI18n } from '../i18n'
 import { explain } from '../lib/errors'
 import { useRemote } from '../lib/remote'
@@ -8,6 +8,7 @@ import {
   GEAR_SLOTS,
   repository,
   type ArenaState,
+  type Fighter,
   type FighterLook,
   type GearItem,
   type GearSlot,
@@ -101,15 +102,7 @@ export function ArenaScreen() {
       {tab === 'shop' && <Shop state={current} onChange={setState} />}
       {tab === 'bag' && <Bag state={current} onChange={setState} />}
 
-      <section className="card elev-sm arena-soon" aria-labelledby="duel-title">
-        <Icon name="sword" size={22} />
-        <div>
-          <h2 id="duel-title" className="card-title" style={{ margin: 0, fontSize: 17 }}>
-            {t('arena.duel.title')}
-          </h2>
-          <div className="card-meta">{t('arena.duel.soon')}</div>
-        </div>
-      </section>
+      <TowerSection fighter={fighter} equipped={current.equipped} />
     </div>
   )
 }
@@ -421,5 +414,113 @@ function CharacterCreator({
         </form>
       </section>
     </div>
+  )
+}
+
+/** The tower: energy, the fighter's level, and a floor at a time to fight. */
+function TowerSection({ fighter, equipped }: { fighter: Fighter; equipped: ArenaState['equipped'] }) {
+  const { t, locale } = useI18n()
+  const navigate = useNavigate()
+  const lang = locale === 'vi' ? 'vi' : 'en'
+  const remote = useRemote('', () => repository.tower())
+  const [busy, setBusy] = useState(false)
+  const [note, setNote] = useState<string | null>(null)
+  if (remote.state !== 'ready') return null
+  const tower = remote.value
+  const minutes = tower.nextEnergyIn
+
+  const fight = async (floor: number) => {
+    setBusy(true)
+    setNote(null)
+    try {
+      await repository.startDuel(floor)
+      navigate('/arena/duel')
+    } catch (err) {
+      setNote(explain(err, t, t('error.server')))
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="stack gap-3" aria-labelledby="tower-title">
+      <div className="row between wrap gap-2">
+        <div>
+          <h2 id="tower-title" style={{ margin: 0 }}>
+            {t('arena.tower.title')}
+          </h2>
+          <div className="card-meta">{t('arena.tower.intro')}</div>
+        </div>
+        <div className="arena-energy" title={t('arena.tower.energyHow')}>
+          <span className="arena-pips" aria-hidden="true">
+            {Array.from({ length: tower.energyMax }, (_, i) => (
+              <span key={i} data-on={i < tower.energy} />
+            ))}
+          </span>
+          <strong data-testid="energy">{t('arena.tower.energy', tower.energy, tower.energyMax)}</strong>
+          {minutes > 0 && <span className="card-meta">{t('arena.tower.next', minutes)}</span>}
+        </div>
+      </div>
+      <div className="card-meta">
+        {t('arena.level', tower.level)} · {t('arena.xp', tower.xp, tower.xpNext)}
+      </div>
+      {tower.activeDuel && (
+        <button type="button" className="btn btn-primary" onClick={() => navigate('/arena/duel')}>
+          {t('arena.tower.continue')}
+        </button>
+      )}
+      {tower.energy === 0 && !tower.activeDuel && <div className="card-meta">{t('arena.tower.noEnergy')}</div>}
+      {note && (
+        <div className="card-meta" role="alert">
+          {note}
+        </div>
+      )}
+      <ol className="arena-floors">
+        {tower.floors.map((f) => {
+          const look = f.mirror ? fighter : f.look
+          return (
+            <li
+              key={f.floor}
+              className="card elev-sm arena-floor"
+              data-boss={f.boss || undefined}
+              data-locked={f.locked || undefined}
+              aria-label={`${t('arena.tower.floor', f.floor)}: ${f.name[lang]}`}
+            >
+              <FighterSprite
+                body={look.body}
+                skin={look.skin}
+                hair={look.hair}
+                equipped={f.mirror ? equipped : f.equipped}
+                facing="left"
+                size={72}
+                animation="idle"
+              />
+              <div className="stack gap-1" style={{ minWidth: 0 }}>
+                <span className="card-kicker">
+                  {t('arena.tower.floor', f.floor)}
+                  {f.boss && ` · ${t('arena.tower.boss')}`}
+                </span>
+                <strong>{f.name[lang]}</strong>
+                <span className="card-meta">
+                  {f.locked ? t('arena.tower.locked') : t('arena.tower.reward', f.coins, f.xp)}
+                </span>
+              </div>
+              <div className="arena-floor-act">
+                {f.cleared && <span className="tag tag-neutral">✓ {t('arena.tower.cleared')}</span>}
+                {!f.locked && (
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={busy || (tower.energy === 0 && !tower.activeDuel)}
+                    onClick={() => void fight(f.floor)}
+                  >
+                    {t('arena.tower.fight')}
+                  </button>
+                )}
+              </div>
+            </li>
+          )
+        })}
+      </ol>
+    </section>
   )
 }

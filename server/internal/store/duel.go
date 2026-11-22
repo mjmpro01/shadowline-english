@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math"
 	"math/rand"
 	"slices"
 	"time"
@@ -549,10 +550,12 @@ type TowerView struct {
 	Energy     int          `json:"energy"`
 	EnergyMax  int          `json:"energyMax"`
 	NextEnergy *time.Time   `json:"nextEnergy"`
-	Level      int          `json:"level"`
-	XP         int          `json:"xp"`
-	XPNext     int          `json:"xpNext"`
-	ActiveDuel *int64       `json:"activeDuel"`
+	// NextEnergyIn is the minutes until then, rounded up; 0 when full.
+	NextEnergyIn int    `json:"nextEnergyIn"`
+	Level        int    `json:"level"`
+	XP           int    `json:"xp"`
+	XPNext       int    `json:"xpNext"`
+	ActiveDuel   *int64 `json:"activeDuel"`
 }
 
 // TowerOf is the tower as a learner stands in it.
@@ -571,6 +574,7 @@ func (s *Store) TowerOf(ctx context.Context, user uuid.UUID, now time.Time) (Tow
 	out.Energy, out.Level, out.XP, out.XPNext = energy, f.level, f.xp, arena.XPForNext(f.level)
 	if !next.IsZero() {
 		out.NextEnergy = &next
+		out.NextEnergyIn = max(1, int(math.Ceil(next.Sub(now).Minutes())))
 	}
 	rows, err := s.pool.Query(ctx, `select floor from duel_clears where user_id = $1`, user)
 	if err != nil {
