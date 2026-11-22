@@ -102,6 +102,8 @@ export function ArenaScreen() {
       {tab === 'shop' && <Shop state={current} onChange={setState} />}
       {tab === 'bag' && <Bag state={current} onChange={setState} />}
 
+      <PvPSection />
+      <ArenaBoardSection />
       <TowerSection fighter={fighter} equipped={current.equipped} />
     </div>
   )
@@ -522,6 +524,131 @@ function TowerSection({ fighter, equipped }: { fighter: Fighter; equipped: Arena
           )
         })}
       </ol>
+    </section>
+  )
+}
+
+/** Rivals to fight: the learners rated nearest, or sparring bots. */
+function PvPSection() {
+  const { t } = useI18n()
+  const navigate = useNavigate()
+  const [round, setRound] = useState(0)
+  const rivals = useRemote(String(round), () => repository.rivals())
+  const tower = useRemote('', () => repository.tower())
+  const [busy, setBusy] = useState(false)
+  const [note, setNote] = useState<string | null>(null)
+
+  const fight = async (id: string) => {
+    setBusy(true)
+    setNote(null)
+    try {
+      await repository.startPvP(id)
+      navigate('/arena/duel')
+    } catch (err) {
+      setNote(explain(err, t, t('error.server')))
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="stack gap-3" aria-labelledby="pvp-title">
+      <div className="row between wrap gap-2">
+        <div>
+          <h2 id="pvp-title" style={{ margin: 0 }}>
+            {t('arena.pvp.title')}
+          </h2>
+          <div className="card-meta">{t('arena.pvp.intro')}</div>
+        </div>
+        {tower.state === 'ready' && (
+          <div className="arena-rating">
+            <strong data-testid="rating">{t('arena.pvp.rating', tower.value.rating)}</strong>
+            <span className="card-meta">{t('arena.pvp.record', tower.value.pvpWins, tower.value.pvpLosses)}</span>
+          </div>
+        )}
+      </div>
+      {note && (
+        <div className="card-meta" role="alert">
+          {note}
+        </div>
+      )}
+      {rivals.state === 'ready' && rivals.value.length === 0 && <div className="card-meta">{t('arena.pvp.none')}</div>}
+      {rivals.state === 'ready' && rivals.value.length > 0 && (
+        <ul className="arena-rivals">
+          {rivals.value.map((r) => (
+            <li key={r.id} className="card elev-sm arena-rival" aria-label={r.name}>
+              <FighterSprite
+                body={r.look.body}
+                skin={r.look.skin}
+                hair={r.look.hair}
+                equipped={r.equipped}
+                facing="left"
+                size={84}
+              />
+              <div className="stack gap-1" style={{ minWidth: 0 }}>
+                <strong>{r.name}</strong>
+                <span className="card-meta">
+                  {t('arena.pvp.level', r.level)} · {t('arena.pvp.rating', r.rating)}
+                </span>
+                {r.bot && <span className="tag tag-neutral">{t('arena.pvp.bot')}</span>}
+              </div>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={busy || (tower.state === 'ready' && tower.value.energy === 0 && !tower.value.activeDuel)}
+                onClick={() => void fight(r.id)}
+              >
+                {t('arena.pvp.fight')}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div>
+        <button type="button" className="btn btn-ghost" onClick={() => setRound((n) => n + 1)}>
+          {t('arena.pvp.more')}
+        </button>
+      </div>
+    </section>
+  )
+}
+
+/** This week's Arena board: points from wins against shadows. */
+function ArenaBoardSection() {
+  const { t } = useI18n()
+  const remote = useRemote('', () => repository.arenaBoard())
+  if (remote.state !== 'ready') return null
+  const board = remote.value
+  const medal = ['🥇', '🥈', '🥉']
+  return (
+    <section className="stack gap-2" aria-labelledby="arena-board-title">
+      <div className="row between wrap gap-2">
+        <h2 id="arena-board-title" style={{ margin: 0 }}>
+          {t('arena.board.title')}
+        </h2>
+        <span className="tag tag-neutral">{t('arena.board.endsIn', Math.max(1, board.daysLeft))}</span>
+      </div>
+      <div className="card-meta">{t('arena.board.intro', board.prizes[0], board.prizes[1], board.prizes[2])}</div>
+      {board.lastWeek.length > 0 && (
+        <div className="card-meta">
+          {t('arena.board.lastWeek')}{' '}
+          {board.lastWeek.map((p) => `${medal[p.place - 1]} ${p.name}`).join(' · ')}
+        </div>
+      )}
+      {board.rows.length === 0 ? (
+        <div className="card-meta">{t('arena.board.empty')}</div>
+      ) : (
+        <ol className="arena-board">
+          {board.rows.map((row) => (
+            <li key={row.userId} data-you={row.isYou || undefined}>
+              <span className="mono arena-board-rank">{row.rank <= 3 ? medal[row.rank - 1] : row.rank}</span>
+              <strong>{row.name}</strong>
+              <span className="card-meta">{t('arena.board.wins', row.wins)}</span>
+              <span className="mono">{t('arena.board.points', row.points)}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+      {board.you && <div className="card-meta">{t('arena.board.you', board.you.rank, board.you.points)}</div>}
     </section>
   )
 }

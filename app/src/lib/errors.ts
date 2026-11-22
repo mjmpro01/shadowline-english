@@ -40,6 +40,7 @@ const BY_CODE: Record<string, MessageKey> = {
   'duel.noEnergy': 'error.duelNoEnergy',
   'duel.over': 'error.duelOver',
   'duel.stale': 'error.duelStale',
+  'pvp.self': 'error.pvpSelf',
 }
 
 /**
