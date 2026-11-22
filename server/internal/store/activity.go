@@ -8,6 +8,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/shadowline/server/internal/arena"
 )
 
 // What a learner does each day, counted toward a daily goal and a streak. The
@@ -222,6 +224,11 @@ func (s *Store) LogActivity(ctx context.Context, user uuid.UUID, kind string, no
 		if err := tx.QueryRow(ctx, `
 			select coalesce(sum(points), 0)::int from learning_events
 			where user_id = $1 and at >= $2 and at < $3`, user, start, end).Scan(&today); err != nil {
+			return err
+		}
+		// Every PointsPerEnergy points of the day give a fighter a duel's
+		// energy, counted as the day's points cross each ten.
+		if err := addEnergy(ctx, tx, user, today/arena.PointsPerEnergy-(today-points)/arena.PointsPerEnergy, now); err != nil {
 			return err
 		}
 		if today < goal {

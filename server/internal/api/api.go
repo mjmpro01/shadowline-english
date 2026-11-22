@@ -231,11 +231,18 @@ func (s *Server) Routes() http.Handler {
 			r.Put("/arena/fighter", s.handleUpdateFighter)
 			r.Post("/arena/buy", s.handleArenaBuy)
 			r.Post("/arena/equip", s.handleArenaEquip)
+			r.Get("/arena/tower", s.handleTower)
+			r.Get("/arena/duel", s.handleDuel)
+			r.Post("/arena/duel/start", s.handleDuelStart)
+			r.Post("/arena/duel/answer", s.handleDuelAnswer)
+			r.Post("/arena/duel/flee", s.handleDuelFlee)
 
 			if s.Cfg.AuthFake {
 				// For the browser tests: coins, due dictations and learning
 				// for the signed-in learner. Absent from a normal deployment.
 				r.Post("/test/coins", s.handleTestCoins)
+				r.Get("/test/arena/duel/answer", s.handleTestDuelAnswer)
+				r.Post("/test/arena/energy", s.handleTestEnergy)
 				r.Post("/test/dictations/due", s.handleTestDictationsDue)
 				r.Post("/test/activity", s.handleTestActivity)
 			}
