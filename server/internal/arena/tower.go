@@ -32,6 +32,11 @@ type Opponent struct {
 	XP         int    `json:"xp"`
 	Drop       string `json:"drop,omitempty"`
 	DropChance int    `json:"-"`
+
+	// A shadow: another learner's fighter, or a sparring bot, as fought.
+	Level  int  `json:"level,omitempty"`
+	Rating int  `json:"rating,omitempty"`
+	Bot    bool `json:"bot,omitempty"`
 }
 
 type floorDef struct {
