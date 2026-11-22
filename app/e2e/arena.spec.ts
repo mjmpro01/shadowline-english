@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { API_URL } from './environment'
-import { asLearner, startFresh } from './session'
+import { asLearner, signIn, startFresh } from './session'
 
 test.beforeEach(async ({ page }) => {
   await startFresh(page)
@@ -20,7 +20,7 @@ test('a beggar practises, buys a hat, and wears it', async ({ page }) => {
 
   const arena = page.getByTestId('arena')
   await expect(arena.getByRole('heading', { name: 'Minh' })).toBeVisible()
-  await expect(arena.getByText('Level 1')).toBeVisible()
+  await expect(arena.getByText('Level 1', { exact: true })).toBeVisible()
   const fighter = arena.getByRole('img', { name: 'Minh' })
   await expect(fighter.locator('[data-item="rags"]')).toHaveCount(1)
   await expect(arena.getByTestId('coins')).toHaveText('0 coins')
@@ -157,4 +157,51 @@ test('wrong answers end in a knock-out, and no energy means no duel', async ({ p
   await expect(page.getByTestId('energy')).toHaveText('Energy 0/5')
   await expect(page.getByText('No energy left — practise to earn more.')).toBeVisible()
   await expect(page.getByRole('listitem', { name: 'Floor 1: Pickpocket' }).getByRole('button', { name: 'Fight' })).toBeDisabled()
+})
+
+// Another learner's fighter as a shadow: offered as a rival, fought and beaten,
+// the rating up, and a win on this week's Arena board; the sound switch kept.
+test('a learner beats another learner’s shadow and climbs the Arena board', async ({ page, browser }) => {
+  const other = await browser.newContext()
+  const rivalPage = await other.newPage()
+  await signIn(rivalPage, 'rival@example.com')
+  const made = await rivalPage.request.post(`${API_URL}/api/arena/fighter`, {
+    data: { name: 'Lan', body: 'b', skin: 2, hair: 1 },
+  })
+  expect(made.ok()).toBeTruthy()
+  await other.close()
+
+  await beggar(page)
+  await expect(page.getByTestId('rating')).toHaveText('Rating 1000')
+  const lan = page.getByRole('listitem', { name: 'Lan' })
+  await expect(lan).toContainText('Level 1')
+  await expect(page.getByText('Sparring').first()).toBeVisible()
+  await expect(page.getByText('Nobody has won a duel this week yet — be the first.')).toBeVisible()
+
+  await lan.getByRole('button', { name: 'Fight' }).click()
+  await page.waitForURL('**/arena/duel')
+  await expect(page.getByRole('meter', { name: 'Lan’s shadow' })).toBeVisible()
+
+  const sound = page.getByRole('button', { name: 'Sound on' })
+  await sound.click()
+  await expect(page.getByRole('button', { name: 'Sound off' })).toHaveAttribute('aria-pressed', 'false')
+
+  for (let i = 0; i < 30; i++) {
+    if (await page.getByRole('heading', { name: 'You win!' }).isVisible()) break
+    if (!(await answer(page, true))) break
+  }
+  const outcome = page.getByRole('region', { name: 'You win!' })
+  await expect(outcome).toContainText('Rating +16')
+  await expect(outcome).toContainText('+15 coins')
+  // Kept for the next duel: the switch is remembered by this browser.
+  expect(await page.evaluate(() => localStorage.getItem('shadowline.arena.sound'))).toBe('off')
+
+  await page.goto('/arena')
+  await expect(page.getByTestId('rating')).toHaveText('Rating 1016')
+  const board = page.getByRole('region', { name: 'This week in the Arena' })
+  await expect(board.getByRole('listitem')).toHaveCount(1)
+  await expect(board).toContainText('1 win')
+  await expect(board).toContainText('3 points')
+  // Fought today: Lan is not offered again until tomorrow.
+  await expect(page.getByRole('listitem', { name: 'Lan' })).toHaveCount(0)
 })
