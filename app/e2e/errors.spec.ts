@@ -21,7 +21,9 @@ test('an email sign-in this server cannot do is explained in Vietnamese', async 
   await page.goto('/login')
   await page.locator('input[type="email"]').fill('hoc@example.com')
   await page.locator('input[type="password"]').fill('mat-khau-dai')
-  await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click()
+  // The form's own button: the switch above it between signing in and
+  // signing up is called "Đăng nhập" too.
+  await page.locator('form').getByRole('button', { name: 'Đăng nhập', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('Máy chủ này chưa bật đăng nhập bằng email')
   await expect(page.getByText('email login is not configured')).toHaveCount(0)
 })
