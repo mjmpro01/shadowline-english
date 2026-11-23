@@ -29,6 +29,23 @@ describe('the Arena art manifest', () => {
     expect(manifest?.layers['opponent/tower_master']).toBe('opponents/tower_master.png')
   })
 
+  it('takes 64px pixel art, poses or sheets, and marks it to be drawn crisp', () => {
+    const small = buildManifest([{ path: 'base/b-1.png', width: 64, height: 64, alpha: true }])
+    expect(small.manifest?.frame).toBe(64)
+    expect(small.manifest?.pixel).toBe(true)
+    expect(small.mode).toBe('pose')
+    const sheets = buildManifest([{ path: 'gear/rags.png', width: 640, height: 576, alpha: true }])
+    expect(sheets.mode).toBe('sheet')
+    expect(sheets.manifest?.frame).toBe(64)
+    expect(buildManifest([pose('base/a-0.png')]).manifest?.pixel).toBeUndefined()
+  })
+
+  it('refuses frames of different sizes together', () => {
+    const mixed = buildManifest([pose('base/a-0.png'), { path: 'hair/a-0.png', width: 64, height: 64, alpha: true }])
+    expect(mixed.manifest).toBeNull()
+    expect(mixed.errors[0]).toContain('cùng cỡ khung')
+  })
+
   it('refuses a wrong size, and a mix of poses and sheets', () => {
     const wrong = buildManifest([{ path: 'base/a-0.png', width: 1024, height: 1024, alpha: true }])
     expect(wrong.manifest).toBeNull()

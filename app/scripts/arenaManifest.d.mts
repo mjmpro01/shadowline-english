@@ -10,13 +10,14 @@ export interface AnimationRow {
   fps: number
 }
 export interface Built {
-  manifest: { frame: number; animations: Record<string, AnimationRow>; layers: Record<string, string> } | null
+  manifest: { frame: number; pixel?: boolean; animations: Record<string, AnimationRow>; layers: Record<string, string> } | null
   errors: string[]
   warnings: string[]
   missing: string[]
   mode: 'pose' | 'sheet' | null
+  frame: number | null
 }
-export const FRAME: number
+export const FRAMES: number[]
 export const SHEET_ANIMATIONS: Record<string, AnimationRow>
 export const POSE_ANIMATIONS: Record<string, AnimationRow>
 export const GEAR: string[]

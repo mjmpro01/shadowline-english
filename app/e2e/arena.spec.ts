@@ -15,7 +15,7 @@ test('a beggar practises, buys a hat, and wears it', async ({ page }) => {
   await expect(create.getByRole('heading', { name: 'Create your fighter' })).toBeVisible()
   await expect(create.getByText(/You start as a beggar/)).toBeVisible()
   await create.getByLabel('Fighter name').fill('Minh')
-  await create.getByRole('radio', { name: 'Build B' }).check()
+  await create.getByRole('radio', { name: 'Female' }).check()
   await create.getByRole('button', { name: 'Start as a beggar' }).click()
 
   const arena = page.getByTestId('arena')
