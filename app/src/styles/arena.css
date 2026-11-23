@@ -197,6 +197,9 @@
   image-rendering: auto;
   animation: fighter-sheet var(--duration) steps(var(--frames)) infinite;
 }
+.fighter-pixel .fighter-sheet {
+  image-rendering: pixelated;
+}
 @keyframes fighter-sheet {
   from {
     background-position-x: 0;

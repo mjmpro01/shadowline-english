@@ -12,10 +12,15 @@ prompt cho từng lớp, và cách làm để các lớp khớp nhau.
 
 ## 1. Khung hình
 
-- Mỗi khung (frame) là **256 × 256 px**, nền trong suốt (PNG).
+- Có hai cỡ khung, nền trong suốt (PNG):
+  - **64 × 64 px, pixel art** (khuyên dùng). App phóng to bằng pixel vuông sắc
+    nét, không làm mờ. Chân chạm "mặt đất" ở **y = 60**, giữa người ở
+    **x = 32**.
+  - **256 × 256 px**, hình vẽ thường. Chân ở **y = 240**, giữa người ở
+    **x = 128**.
+- Mọi file phải cùng một cỡ khung. Chân và giữa người phải đúng vị trí ở mọi
+  khung và mọi lớp, để các lớp chồng khít lên nhau.
 - Võ sĩ **quay mặt sang phải**. App tự lật khi cần quay trái.
-- Chân chạm "mặt đất" ở **y = 240**, giữa người ở **x = 128**, ở mọi khung và
-  mọi lớp, để các lớp chồng khít lên nhau.
 
 ## 2. Động tác
 
@@ -34,13 +39,13 @@ khung, theo đúng thứ tự hàng dưới đây.
 | 7 | `ko` | 6 | 10 | Gục, giữ khung cuối |
 | 8 | `win` | 6 | 8 | Ăn mừng |
 
-Một sheet đủ 9 hàng, rộng bằng số khung nhiều nhất, tức là
-**10 × 256 = 2560 px** và cao **9 × 256 = 2304 px**. Ô thừa ở các hàng ngắn để
+Một sheet đủ 9 hàng, rộng bằng số khung nhiều nhất, tức là 10 khung × 9 hàng:
+**640 × 576 px** với khung 64, hoặc **2560 × 2304 px** với khung 256. Ô thừa ở các hàng ngắn để
 trống.
 
 ### Chế độ một tư thế (khuyên dùng khi tạo hình bằng AI)
 
-Thay vì sheet 9 hàng, mỗi file có thể chỉ là **một khung 256 × 256** ở tư thế
+Thay vì sheet 9 hàng, mỗi file có thể chỉ là **một khung** (64 × 64 hoặc 256 × 256) ở tư thế
 đứng thủ. App dùng khung đó cho mọi động tác và tự làm chuyển động: lao tới khi
 đánh, rung khi trúng đòn, ngã khi KO, nhún khi thắng, giống hình tạm.
 
@@ -51,8 +56,8 @@ Mọi file phải cùng một kiểu: hoặc đều một tư thế, hoặc đ�
 Võ sĩ được ghép từ nhiều lớp chồng lên nhau, **cùng khung hình, cùng động tác**,
 nên đồ mua về hiện đúng trên người. Thứ tự vẽ từ dưới lên:
 
-1. `base/{dáng}-{màu da}.png`: thân người trần. Có 2 dáng (`a`, `b`) và 4 màu
-   da (`0`–`3`), tổng cộng 8 file.
+1. `base/{dáng}-{màu da}.png`: thân người trần. Có 2 dáng, `a` là **nam** và `b` là
+   **nữ**, và 4 màu da (`0`–`3`), tổng cộng 8 file.
 2. Trang bị theo thứ tự `feet`, `body`, `hands`, `head`, `weapon`, `charm`:
    `gear/{mã món}.png`, mỗi món một file.
 3. `hair/{dáng}-{kiểu tóc}.png`: tóc ở trên cùng. Có 2 dáng × 4 kiểu, tổng cộng

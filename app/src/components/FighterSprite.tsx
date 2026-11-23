@@ -74,7 +74,7 @@ function SheetLayers({ manifest, sheets, animation, size }: { manifest: ArtManif
   // One box for every layer, so the moves in arena.css (the lunge, the hit,
   // the fall) carry the whole drawn fighter, as they carry the stand-in.
   return (
-    <div className="fighter-doll fighter-stack" aria-hidden="true">
+    <div className={`fighter-doll fighter-stack${manifest.pixel ? ' fighter-pixel' : ''}`} aria-hidden="true">
       {sheets.map((sheet, i) => (
         <span
           key={i}
@@ -97,10 +97,11 @@ function SheetLayers({ manifest, sheets, animation, size }: { manifest: ArtManif
 
 /** The stand-in figure: simple shapes in the colours of what is chosen and worn. */
 function PaperDoll({ body, skin, hair, equipped }: SpriteProps) {
-  const broad = body === 'b'
+  // Body a is the male fighter, broader in the shoulder; b the female one.
+  const female = body === 'b'
   const skinColour = SKINS[skin] ?? SKINS[0]
   const hairColour = HAIRS[hair] ?? HAIRS[0]
-  const torsoW = broad ? 40 : 32
+  const torsoW = female ? 32 : 38
   const tx = 60 - torsoW / 2
   const look = GEAR_LOOK
   const bodyGear = look[equipped.body ?? 'rags'] ?? look.rags
@@ -115,7 +116,7 @@ function PaperDoll({ body, skin, hair, equipped }: SpriteProps) {
       {/* legs and feet */}
       <rect x={tx + 4} y="104" width="11" height="40" rx="4" fill={skinColour} />
       <rect x={tx + torsoW - 15} y="104" width="11" height="40" rx="4" fill={skinColour} />
-      <rect x={tx + 2} y="98" width={torsoW - 4} height="22" rx="4" fill={bodyGear.dark} />
+      <rect x={female ? tx - 1 : tx + 2} y="98" width={female ? torsoW + 2 : torsoW - 4} height="22" rx="4" fill={bodyGear.dark} />
       {feetGear && (
         <>
           <rect x={tx + 2} y="138" width="16" height="9" rx="3" fill={feetGear.main} />

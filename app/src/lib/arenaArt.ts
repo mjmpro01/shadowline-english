@@ -11,6 +11,8 @@ export type Animation = 'idle' | 'walk' | 'light' | 'heavy' | 'special' | 'block
 export interface ArtManifest {
   /** The square frame size, in pixels. */
   frame: number
+  /** Pixel art: enlarged with hard square pixels instead of smoothed. */
+  pixel?: boolean
   animations: Partial<Record<Animation, { row: number; frames: number; fps: number }>>
   /** A layer's name ("base/a-1", "hair/a-2", "gear/straw_hat") to its sheet. */
   layers: Record<string, string>

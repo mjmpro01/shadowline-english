@@ -28,7 +28,7 @@ for (const dir of ['base', 'hair', 'gear', 'opponents']) {
   }
 }
 
-const { manifest, errors, warnings, missing, mode } = buildManifest(files)
+const { manifest, errors, warnings, missing, mode, frame } = buildManifest(files)
 for (const w of warnings) console.warn(`! ${w}`)
 for (const e of errors) console.error(`✗ ${e}`)
 if (errors.length) {
@@ -41,7 +41,7 @@ if (!manifest) {
 }
 writeFileSync(join(ROOT, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n')
 const count = Object.keys(manifest.layers).length
-console.log(`✓ ${ROOT}/manifest.json: ${count} lớp, kiểu ${mode === 'pose' ? 'một tư thế' : 'sheet 9 hàng'}.`)
+console.log(`✓ ${ROOT}/manifest.json: ${count} lớp, kiểu ${mode === 'pose' ? 'một tư thế' : 'sheet 9 hàng'}, khung ${frame} px${manifest.pixel ? ' (pixel art)' : ''}.`)
 if (missing.length) {
   console.log(`Còn thiếu ${missing.length} lớp (võ sĩ nào cần lớp thiếu sẽ vẫn vẽ tạm):`)
   console.log('  ' + missing.join(', '))

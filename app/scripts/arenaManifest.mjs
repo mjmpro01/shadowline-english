@@ -4,7 +4,8 @@
  * See docs/arena-sprites.md.
  */
 
-export const FRAME = 256
+/** Frame sizes accepted: 64 px pixel art (drawn crisp), or 256 px painted art. */
+export const FRAMES = [64, 256]
 
 /** The rows of a full sheet, in order, with their frame counts and speed. */
 export const SHEET_ANIMATIONS = {
@@ -69,7 +70,7 @@ export function pngInfo(bytes) {
 
 /**
  * @param files {path, width, height, alpha}[] relative to public/arena
- * @returns {{manifest: object|null, errors: string[], warnings: string[], missing: string[], mode: 'pose'|'sheet'|null}}
+ * @returns {{manifest: object|null, errors: string[], warnings: string[], missing: string[], mode: 'pose'|'sheet'|null, frame: number|null}}
  */
 export function buildManifest(files) {
   const errors = []
@@ -86,10 +87,13 @@ export function buildManifest(files) {
       warnings.push(`${f.path}: không có trong danh mục, vẫn khai báo`)
     }
     let mode
-    if (f.width === FRAME && f.height === FRAME) mode = 'pose'
-    else if (f.width === 10 * FRAME && f.height === 9 * FRAME) mode = 'sheet'
+    const frame = FRAMES.find((n) => (f.width === n && f.height === n) || (f.width === 10 * n && f.height === 9 * n))
+    if (frame && f.width === frame) mode = `pose@${frame}`
+    else if (frame) mode = `sheet@${frame}`
     else {
-      errors.push(`${f.path}: ${f.width}×${f.height}, cần 256×256 (một tư thế) hoặc 2560×2304 (đủ 9 hàng động tác)`)
+      errors.push(
+        `${f.path}: ${f.width}×${f.height}, cần 64×64 hoặc 256×256 (một tư thế), hay 640×576 hoặc 2560×2304 (đủ 9 hàng động tác)`,
+      )
       continue
     }
     if (!f.alpha) warnings.push(`${f.path}: không có kênh trong suốt (alpha), nền sẽ che các lớp dưới`)
@@ -98,18 +102,19 @@ export function buildManifest(files) {
   }
   const kinds = new Set(modes.values())
   if (kinds.size > 1) {
-    const poses = [...modes].filter(([, m]) => m === 'pose').map(([p]) => p)
-    const sheets = [...modes].filter(([, m]) => m === 'sheet').map(([p]) => p)
-    errors.push(`Trộn hai kiểu: ${poses.length} file một tư thế (vd ${poses[0]}) và ${sheets.length} sheet (vd ${sheets[0]}). Mọi file phải cùng một kiểu.`)
+    const example = [...kinds].map((k) => {
+      const [kind, size] = k.split('@')
+      const first = [...modes].find(([, m]) => m === k)[0]
+      return `${kind === 'pose' ? 'một tư thế' : 'sheet'} ${size} px (vd ${first})`
+    })
+    errors.push(`Trộn nhiều kiểu: ${example.join(', ')}. Mọi file phải cùng một kiểu và cùng cỡ khung.`)
   }
   const missing = EXPECTED.filter((name) => !(name in layers))
-  if (errors.length || kinds.size === 0) return { manifest: null, errors, warnings, missing, mode: null }
-  const mode = [...kinds][0]
-  return {
-    manifest: { frame: FRAME, animations: mode === 'pose' ? POSE_ANIMATIONS : SHEET_ANIMATIONS, layers },
-    errors,
-    warnings,
-    missing,
-    mode,
-  }
+  if (errors.length || kinds.size === 0) return { manifest: null, errors, warnings, missing, mode: null, frame: null }
+  const [mode, size] = [...kinds][0].split('@')
+  const frame = Number(size)
+  const manifest = { frame, animations: mode === 'pose' ? POSE_ANIMATIONS : SHEET_ANIMATIONS, layers }
+  // Pixel art is drawn small and enlarged with hard edges, not smoothed.
+  if (frame === 64) manifest.pixel = true
+  return { manifest, errors, warnings, missing, mode, frame }
 }
