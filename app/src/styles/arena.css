@@ -182,7 +182,12 @@
   }
 }
 
-/* The artist's sheets: rows are animations, columns their frames. */
+/* The artist's sheets: rows are animations, columns their frames. A single
+   pose is a sheet of one frame, and moves by the doll's keyframes alone. */
+.fighter-stack {
+  position: relative;
+  transform-origin: 50% 94%;
+}
 .fighter-sheet {
   position: absolute;
   inset: 0;

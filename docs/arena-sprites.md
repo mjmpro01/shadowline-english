@@ -7,6 +7,9 @@ chạy được khi chưa có hình nào: võ sĩ được vẽ tạm bằng SVG
 Nhân vật, trang phục và phong cách phải là **của riêng Shadowline**: không lấy
 nhân vật, hình, tên hay logo của game khác.
 
+Tạo hình bằng AI? Xem [`arena-sprite-prompts.md`](arena-sprite-prompts.md): bộ
+prompt cho từng lớp, và cách làm để các lớp khớp nhau.
+
 ## 1. Khung hình
 
 - Mỗi khung (frame) là **256 × 256 px**, nền trong suốt (PNG).
@@ -35,6 +38,14 @@ Một sheet đủ 9 hàng, rộng bằng số khung nhiều nhất, tức là
 **10 × 256 = 2560 px** và cao **9 × 256 = 2304 px**. Ô thừa ở các hàng ngắn để
 trống.
 
+### Chế độ một tư thế (khuyên dùng khi tạo hình bằng AI)
+
+Thay vì sheet 9 hàng, mỗi file có thể chỉ là **một khung 256 × 256** ở tư thế
+đứng thủ. App dùng khung đó cho mọi động tác và tự làm chuyển động: lao tới khi
+đánh, rung khi trúng đòn, ngã khi KO, nhún khi thắng, giống hình tạm.
+
+Mọi file phải cùng một kiểu: hoặc đều một tư thế, hoặc đều là sheet đủ 9 hàng.
+
 ## 3. Các lớp (paper-doll)
 
 Võ sĩ được ghép từ nhiều lớp chồng lên nhau, **cùng khung hình, cùng động tác**,
@@ -62,7 +73,16 @@ Với `bare_fists` và `bare_feet` có thể nộp một PNG trong suốt cùng 
 
 ## 4. Đặt file và khai báo
 
-Đặt tất cả vào `app/public/arena/` rồi viết `app/public/arena/manifest.json`:
+Đặt tất cả vào `app/public/arena/` (thư mục `base/`, `hair/`, `gear/`,
+`opponents/`) rồi chạy:
+
+```sh
+cd app && npm run arena:manifest
+```
+
+Script đọc kích thước từng PNG và báo lỗi nếu sai cỡ, thiếu nền trong suốt hoặc
+trộn hai kiểu. Sau đó nó ghi `app/public/arena/manifest.json` và liệt kê các lớp
+còn thiếu. Không cần viết tay. File có dạng:
 
 ```json
 {
