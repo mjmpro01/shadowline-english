@@ -236,6 +236,9 @@ func (s *Server) Routes() http.Handler {
 			r.Post("/arena/duel/start", s.handleDuelStart)
 			r.Post("/arena/duel/answer", s.handleDuelAnswer)
 			r.Post("/arena/duel/flee", s.handleDuelFlee)
+			r.Get("/arena/rivals", s.handleRivals)
+			r.Post("/arena/pvp/start", s.handlePvPStart)
+			r.Get("/arena/board", s.handleArenaBoard)
 
 			if s.Cfg.AuthFake {
 				// For the browser tests: coins, due dictations and learning

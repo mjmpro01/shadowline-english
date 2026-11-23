@@ -31,10 +31,21 @@ type duelJSON struct {
 		Prompt  string   `json:"prompt"`
 		Options []string `json:"options"`
 	} `json:"question"`
-	Coins      int      `json:"coins"`
-	XP         int      `json:"xp"`
-	FirstClear bool     `json:"firstClear"`
-	Words      []string `json:"words"`
+	Coins       int      `json:"coins"`
+	XP          int      `json:"xp"`
+	FirstClear  bool     `json:"firstClear"`
+	Words       []string `json:"words"`
+	Kind        string   `json:"kind"`
+	RatingDelta int      `json:"ratingDelta"`
+	Opponent    struct {
+		ID     string `json:"id"`
+		Atk    int    `json:"atk"`
+		Rating int    `json:"rating"`
+		Bot    bool   `json:"bot"`
+		Name   struct {
+			Vi string `json:"vi"`
+		} `json:"name"`
+	} `json:"opponent"`
 }
 
 type duelTurnJSON struct {

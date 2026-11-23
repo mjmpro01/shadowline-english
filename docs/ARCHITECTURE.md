@@ -507,6 +507,9 @@ Giới hạn mặc định:
 | `fighter_equipped` | Đồ đang mặc, một món mỗi ô (`slot`) |
 | `duels` | Một dòng mỗi trận đấu chữ: tầng, máu hai bên, chỉ số võ sĩ chụp lúc vào trận, nộ, combo, lượt, câu hỏi đang hỏi (`question`, kèm `q_word`/`q_answer` — đáp án không gửi về trình duyệt), `q_block` (đòn mạnh cần đỡ), hạn trả lời, các từ đã hỏi/đã ôn, kết quả (xu, EXP, đồ rơi, lên cấp, lần đầu thắng). Tối đa một trận `active` mỗi người |
 | `duel_clears` | Tầng đã thắng và lần đầu thắng lúc nào |
+| `arena_week_points` | Mỗi người mỗi tuần: số trận thắng bóng và điểm (3 điểm một trận, 4 nếu đối thủ xếp hạng cao hơn) |
+| `arena_awards` | Top 3 bảng Đấu trường mỗi tuần và số xu đã trả (150/90/60) |
+| `arena_settled` | Tuần Đấu trường đã chốt, để không trả hai lần |
 | `word_ranks` | Độ phổ biến của từ, dùng để chọn từ cho câu hỏi |
 
 ### 7.7 Lịch sử migration
@@ -540,6 +543,7 @@ Giới hạn mặc định:
 | `00027_battles` | Máu (`game_profiles.hp`, `hp_at`), `game_battles`, `game_spawns` |
 | `00028_hammer_soil` | `game_plots.level` cho phép tới 4 (đất làm bằng búa của Bram) |
 | `00029_townsfolk` | `game_friendship` (thị trấn Echo, 7.6) |
+| `00044_pvp` | `fighters.rating`, `pvp_wins`, `pvp_losses`; `duels.kind`, `opponent` (bản chụp đối thủ), `opponent_user`, `rating_delta`; `arena_week_points`, `arena_awards`, `arena_settled` |
 | `00043_duels` | `duels`, `duel_clears`; `fighters.energy`, `energy_at`, `floor` |
 | `00042_arena` | Arena mới: `wallets`, `coin_events`, `fighters`, `fighter_gear`, `fighter_equipped`; vàng cũ thành xu; xoá mọi bảng `game_*` (giữ `word_ranks`) |
 
@@ -840,7 +844,16 @@ Server giữ toàn bộ trạng thái và quyết định mọi kết quả; tr�
      mỗi trận tốn 1;
    - thắng: xu của tầng (gấp đôi lần đầu, mở tầng tiếp), EXP, có thể rơi đồ;
      thua: không mất gì thêm.
-6. **Câu hỏi** (`internal/arena/questions.go`: nghĩa, nghe, xếp chữ, IPA) lấy từ
+6. **Đấu với bóng (PvP bất đồng bộ)**: "bóng" là võ sĩ của người học khác, mạnh
+   đúng theo cấp và đồ của họ (`arena.Shadow`), do máy điều khiển, nên không cần
+   hai người cùng online. Mỗi lần mời ba đối thủ có điểm xếp hạng gần nhất (bỏ qua
+   người đã đấu trong 24 giờ), thiếu thì bù bằng bot luyện tập lấy từ tháp. Kết
+   quả đổi điểm của người tấn công theo Elo (K = 32, thấp nhất 100); người bị
+   đấu không bị trừ vì họ không chơi. Thắng được xu, EXP và điểm tuần; bảng Đấu
+   trường tuần chốt như bảng luyện tập tuần (khi đọc bảng và trong mỗi vòng
+   notifier), top 3 nhận 150/90/60 xu. Mỗi trận giữ bản chụp đối thủ lúc vào
+   trận (`duels.opponent`), nên đồ của họ đổi giữa trận cũng không ảnh hưởng.
+7. **Câu hỏi** (`internal/arena/questions.go`: nghĩa, nghe, xếp chữ, IPA) lấy từ
    của chính người học trước (đến hạn ôn trước), thiếu thì lấy từ phổ biến trong
    dải của tầng (`word_ranks` + `glosses`); mỗi câu cập nhật lịch ôn của từ như
    khi ôn thẻ. Mỗi câu trả lời kèm số lượt, nên bấm hai lần chỉ tính một.

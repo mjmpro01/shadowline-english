@@ -59,6 +59,10 @@ type DuelView struct {
 	LevelUp    bool     `json:"levelUp"`
 	FirstClear bool     `json:"firstClear"`
 	Words      []string `json:"words"`
+	// Kind is "tower" or "pvp"; RatingDelta what a duel against a shadow did
+	// to the learner's rating.
+	Kind        string `json:"kind"`
+	RatingDelta int    `json:"ratingDelta"`
 }
 
 // DuelTurn is what one answer did.
@@ -85,21 +89,55 @@ type duelRow struct {
 	right, wrong, coins, xp int
 	drop                    string
 	levelUp, firstClear     bool
+	kind                    string
+	opponent                arena.Opponent
+	opponentUser            *uuid.UUID
+	ratingDelta             int
+}
+
+// opponentSnap is an opponent as kept with a duel: every number the rules
+// read, which the browser is not sent.
+type opponentSnap struct {
+	arena.Opponent
+	TimeDelta, Telegraph       int
+	Kinds                      []string
+	RankLo, RankHi, DropChance int
+}
+
+func snapOf(o arena.Opponent) opponentSnap {
+	return opponentSnap{o, o.TimeDelta, o.Telegraph, o.Kinds, o.RankLo, o.RankHi, o.DropChance}
+}
+
+func (s opponentSnap) opponent() arena.Opponent {
+	o := s.Opponent
+	o.TimeDelta, o.Telegraph, o.Kinds, o.RankLo, o.RankHi, o.DropChance = s.TimeDelta, s.Telegraph, s.Kinds, s.RankLo, s.RankHi, s.DropChance
+	return o
 }
 
 const duelColumns = `id, floor, state, hp, hp_max, atk, def, answer_time, rage_stat, opp_hp, opp_max,
 	rage, combo, turn, question, q_word, q_answer, q_block, issued_at, deadline, asked, reviewed,
-	right_count, wrong_count, coins, xp, drop_item, level_up, first_clear`
+	right_count, wrong_count, coins, xp, drop_item, level_up, first_clear,
+	kind, opponent, opponent_user, rating_delta`
 
 func scanDuel(row pgx.Row) (duelRow, error) {
 	var d duelRow
-	var raw []byte
+	var raw, opp []byte
 	err := row.Scan(&d.id, &d.floor, &d.state, &d.hp, &d.hpMax, &d.atk, &d.def, &d.answerTime, &d.rageStat,
 		&d.oppHP, &d.oppMax, &d.rage, &d.combo, &d.turn, &raw, &d.question.Word, &d.question.Answer, &d.block,
 		&d.issuedAt, &d.deadline, &d.asked, &d.reviewed, &d.right, &d.wrong, &d.coins, &d.xp, &d.drop,
-		&d.levelUp, &d.firstClear)
+		&d.levelUp, &d.firstClear, &d.kind, &opp, &d.opponentUser, &d.ratingDelta)
 	if err != nil {
 		return d, err
+	}
+	if opp != nil {
+		var snap opponentSnap
+		if err := json.Unmarshal(opp, &snap); err != nil {
+			return d, err
+		}
+		d.opponent = snap.opponent()
+	} else {
+		// A tower duel from before opponents were kept with their duel.
+		d.opponent, _ = arena.Floor(d.floor)
 	}
 	word, answer := d.question.Word, d.question.Answer
 	if err := json.Unmarshal(raw, &d.question); err != nil {
@@ -110,9 +148,8 @@ func scanDuel(row pgx.Row) (duelRow, error) {
 }
 
 func (d duelRow) view() DuelView {
-	o, _ := arena.Floor(d.floor)
 	v := DuelView{
-		ID: d.id, Floor: d.floor, Opponent: o, State: d.state,
+		ID: d.id, Floor: d.floor, Opponent: d.opponent, State: d.state, Kind: d.kind, RatingDelta: d.ratingDelta,
 		HP: d.hp, HPMax: d.hpMax, OppHP: d.oppHP, OppMax: d.oppMax,
 		Rage: d.rage, Combo: d.combo, Turn: d.turn, Block: d.block,
 		Seconds: int(d.deadline.Sub(d.issuedAt).Round(time.Second) / time.Second), Deadline: d.deadline,
@@ -132,6 +169,7 @@ func (d duelRow) view() DuelView {
 // fighterRow is a fighter locked for a duel.
 type fighterRow struct {
 	level, xp, floor int
+	rating           int
 	energy           int
 	energyAt         time.Time
 }
@@ -139,8 +177,8 @@ type fighterRow struct {
 func lockFighter(ctx context.Context, tx pgx.Tx, user uuid.UUID) (fighterRow, error) {
 	var f fighterRow
 	err := tx.QueryRow(ctx, `
-		select level, xp, floor, energy, energy_at from fighters where user_id = $1 for update`, user).
-		Scan(&f.level, &f.xp, &f.floor, &f.energy, &f.energyAt)
+		select level, xp, floor, rating, energy, energy_at from fighters where user_id = $1 for update`, user).
+		Scan(&f.level, &f.xp, &f.floor, &f.rating, &f.energy, &f.energyAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return f, ErrNoFighter
 	}
@@ -328,12 +366,12 @@ func saveDuel(ctx context.Context, tx pgx.Tx, d *duelRow) error {
 		update duels set state = $2, hp = $3, opp_hp = $4, rage = $5, combo = $6, turn = $7,
 		       question = $8, q_word = $9, q_answer = $10, q_block = $11, issued_at = $12, deadline = $13,
 		       asked = $14, reviewed = $15, right_count = $16, wrong_count = $17, coins = $18, xp = $19,
-		       drop_item = $20, level_up = $21, first_clear = $22,
+		       drop_item = $20, level_up = $21, first_clear = $22, rating_delta = $23,
 		       ended_at = case when $2 = 'active' then null else now() end
 		where id = $1`,
 		d.id, d.state, d.hp, d.oppHP, d.rage, d.combo, d.turn, raw, d.question.Word, d.question.Answer,
 		d.block, d.issuedAt, d.deadline, d.asked, d.reviewed, d.right, d.wrong, d.coins, d.xp, d.drop,
-		d.levelUp, d.firstClear)
+		d.levelUp, d.firstClear, d.ratingDelta)
 	return err
 }
 
@@ -359,43 +397,54 @@ func (s *Store) StartDuel(ctx context.Context, user uuid.UUID, floor int, now ti
 		if floor > f.floor {
 			return ErrFloorLocked
 		}
-		energy, _ := arena.Energy(f.energy, f.energyAt, now)
-		if energy < 1 {
-			return ErrNoEnergy
-		}
-		energy, at := arena.SetEnergy(f.energy, f.energyAt, now, energy-1)
-		if _, err := tx.Exec(ctx, `update fighters set energy = $2, energy_at = $3 where user_id = $1`, user, energy, at); err != nil {
-			return err
-		}
-		stats, err := fighterStats(ctx, tx, user, f.level)
-		if err != nil {
-			return err
-		}
-		d := duelRow{
-			floor: floor, state: "active", hp: stats.HP, hpMax: stats.HP, atk: stats.Atk, def: stats.Def,
-			answerTime: stats.Time, rageStat: stats.Rage, oppHP: o.HP, oppMax: o.HP, turn: 1,
-		}
-		q, err := duelAsk(ctx, tx, user, o, nil, 1, false, newDuelRand())
-		if err != nil {
-			return err
-		}
-		d.setQuestion(q, o, false, now)
-		raw, err := json.Marshal(d.question)
-		if err != nil {
-			return err
-		}
-		if err := tx.QueryRow(ctx, `
-			insert into duels (user_id, floor, hp, hp_max, atk, def, answer_time, rage_stat, opp_hp, opp_max,
-			                   question, q_word, q_answer, issued_at, deadline, asked)
-			values ($1, $2, $3, $3, $4, $5, $6, $7, $8, $8, $9, $10, $11, $12, $13, $14) returning id`,
-			user, floor, d.hp, d.atk, d.def, d.answerTime, d.rageStat, d.oppHP, raw, q.Word, q.Answer,
-			d.issuedAt, d.deadline, d.asked).Scan(&d.id); err != nil {
-			return err
-		}
-		view = d.view()
-		return nil
+		view, err = s.openDuel(ctx, tx, user, f, "tower", floor, o, nil, now)
+		return err
 	})
 	return view, err
+}
+
+// openDuel spends a unit of energy and starts a duel against an opponent,
+// kept with the duel as they are now.
+func (s *Store) openDuel(ctx context.Context, tx pgx.Tx, user uuid.UUID, f fighterRow, kind string, floor int, o arena.Opponent, oppUser *uuid.UUID, now time.Time) (DuelView, error) {
+	energy, _ := arena.Energy(f.energy, f.energyAt, now)
+	if energy < 1 {
+		return DuelView{}, ErrNoEnergy
+	}
+	energy, at := arena.SetEnergy(f.energy, f.energyAt, now, energy-1)
+	if _, err := tx.Exec(ctx, `update fighters set energy = $2, energy_at = $3 where user_id = $1`, user, energy, at); err != nil {
+		return DuelView{}, err
+	}
+	stats, err := fighterStats(ctx, tx, user, f.level)
+	if err != nil {
+		return DuelView{}, err
+	}
+	d := duelRow{
+		floor: floor, state: "active", hp: stats.HP, hpMax: stats.HP, atk: stats.Atk, def: stats.Def,
+		answerTime: stats.Time, rageStat: stats.Rage, oppHP: o.HP, oppMax: o.HP, turn: 1,
+		kind: kind, opponent: o, opponentUser: oppUser,
+	}
+	q, err := duelAsk(ctx, tx, user, o, nil, 1, false, newDuelRand())
+	if err != nil {
+		return DuelView{}, err
+	}
+	d.setQuestion(q, o, false, now)
+	raw, err := json.Marshal(d.question)
+	if err != nil {
+		return DuelView{}, err
+	}
+	opp, err := json.Marshal(snapOf(o))
+	if err != nil {
+		return DuelView{}, err
+	}
+	if err := tx.QueryRow(ctx, `
+		insert into duels (user_id, floor, hp, hp_max, atk, def, answer_time, rage_stat, opp_hp, opp_max,
+		                   question, q_word, q_answer, issued_at, deadline, asked, kind, opponent, opponent_user)
+		values ($1, $2, $3, $3, $4, $5, $6, $7, $8, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) returning id`,
+		user, floor, d.hp, d.atk, d.def, d.answerTime, d.rageStat, d.oppHP, raw, q.Word, q.Answer,
+		d.issuedAt, d.deadline, d.asked, kind, opp, oppUser).Scan(&d.id); err != nil {
+		return DuelView{}, err
+	}
+	return d.view(), nil
 }
 
 // ActiveDuel is the duel under way, or nil.
@@ -433,7 +482,7 @@ func (s *Store) AnswerDuel(ctx context.Context, user uuid.UUID, id int64, turn i
 		if turn != d.turn {
 			return ErrDuelStale
 		}
-		o, _ := arena.Floor(d.floor)
+		o := d.opponent
 		q := d.question
 
 		out.Late = now.After(d.deadline.Add(arena.Grace))
@@ -467,8 +516,16 @@ func (s *Store) AnswerDuel(ctx context.Context, user uuid.UUID, id int64, turn i
 		}
 
 		switch {
+		case d.oppHP <= 0 && d.kind == "pvp":
+			if err := s.pvpFinish(ctx, tx, user, d, f, true, now); err != nil {
+				return err
+			}
 		case d.oppHP <= 0:
 			if err := s.win(ctx, tx, user, d, f, o); err != nil {
+				return err
+			}
+		case d.hp <= 0 && d.kind == "pvp":
+			if err := s.pvpFinish(ctx, tx, user, d, f, false, now); err != nil {
 				return err
 			}
 		case d.hp <= 0:
@@ -556,14 +613,18 @@ type TowerView struct {
 	XP           int    `json:"xp"`
 	XPNext       int    `json:"xpNext"`
 	ActiveDuel   *int64 `json:"activeDuel"`
+	Rating       int    `json:"rating"`
+	PvPWins      int    `json:"pvpWins"`
+	PvPLosses    int    `json:"pvpLosses"`
 }
 
 // TowerOf is the tower as a learner stands in it.
 func (s *Store) TowerOf(ctx context.Context, user uuid.UUID, now time.Time) (TowerView, error) {
 	out := TowerView{EnergyMax: arena.EnergyMax, Floors: []TowerFloor{}}
 	var f fighterRow
-	err := s.pool.QueryRow(ctx, `select level, xp, floor, energy, energy_at from fighters where user_id = $1`, user).
-		Scan(&f.level, &f.xp, &f.floor, &f.energy, &f.energyAt)
+	err := s.pool.QueryRow(ctx, `
+		select level, xp, floor, energy, energy_at, rating, pvp_wins, pvp_losses from fighters where user_id = $1`, user).
+		Scan(&f.level, &f.xp, &f.floor, &f.energy, &f.energyAt, &out.Rating, &out.PvPWins, &out.PvPLosses)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return out, ErrNoFighter
 	}

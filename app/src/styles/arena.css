@@ -182,7 +182,12 @@
   }
 }
 
-/* The artist's sheets: rows are animations, columns their frames. */
+/* The artist's sheets: rows are animations, columns their frames. A single
+   pose is a sheet of one frame, and moves by the doll's keyframes alone. */
+.fighter-stack {
+  position: relative;
+  transform-origin: 50% 94%;
+}
 .fighter-sheet {
   position: absolute;
   inset: 0;
@@ -647,4 +652,67 @@
   50% {
     transform: translateY(-8%);
   }
+}
+
+/* --- Shadows and the Arena board ---------------------------------------------- */
+.arena-rating {
+  display: grid;
+  justify-items: end;
+}
+@media (max-width: 700px) {
+  .arena-rating {
+    justify-items: start;
+  }
+}
+.arena-rivals {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.arena-rival {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 8px 14px;
+}
+.arena-board {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.arena-board li {
+  display: grid;
+  grid-template-columns: 2.2em 1fr auto auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+}
+.arena-board li[data-you] {
+  background: var(--color-accent-100);
+  font-weight: 700;
+}
+.arena-board-rank {
+  text-align: center;
+}
+.duel-sound {
+  justify-self: end;
+}
+.duel-rating {
+  font-weight: 800;
+  font-size: 18px;
+}
+.duel-rating[data-up='true'] {
+  color: #2e7d32;
+}
+.duel-rating[data-up='false'] {
+  color: #c62828;
 }

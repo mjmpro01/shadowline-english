@@ -85,19 +85,18 @@ test('only clips with a line selects the ones that have words', async ({ page })
   await expect(page.getByLabel('Publish clip 4')).not.toBeChecked()
 })
 
-// A clip that is staying behind cannot block the batch: its length is nobody's
-// problem, because it is not going anywhere.
-test('an over-long clip only blocks publishing while it is selected', async ({ page }) => {
+// Merging lines makes one clip of them, and the batch counts it once. Whether
+// an over-long clip blocks publishing only while it is selected is checked in
+// app-admin/test/clipLimit.test.ts: this lesson runs sixteen seconds, and
+// since a clip may run to six minutes no merge of its lines is too long.
+test('merged lines publish as one clip, and an unselected one stays behind', async ({ page }) => {
   await nameTheLines(page)
   await page.getByRole('button', { name: 'Merge next' }).first().click()
-  await page.getByRole('button', { name: 'Merge next' }).first().click()
-
-  await expect(page.getByText(/longer than \d+s/)).toBeVisible()
-  await expect(publishButton(page)).toBeDisabled()
+  await expect(page.locator('.waveform-segment')).toHaveCount(3)
+  await expect(page.getByText('3 of 3 clips selected to publish')).toBeVisible()
 
   await page.getByLabel('Publish clip 1').uncheck()
-
-  await expect(page.getByText(/longer than \d+s/)).toHaveCount(0)
+  await expect(page.getByText('2 of 3 clips selected to publish')).toBeVisible()
   await expect(publishButton(page)).toBeEnabled()
 })
 

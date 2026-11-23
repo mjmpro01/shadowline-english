@@ -54,6 +54,9 @@ func (n *Notifier) RunOnce(ctx context.Context) error {
 	if err := n.Store.SettleWeeks(ctx, n.now()); err != nil {
 		n.Log.Warn("cannot settle the weekly leaderboard", "error", err)
 	}
+	if err := n.Store.SettleArenaWeeks(ctx, n.now()); err != nil {
+		n.Log.Warn("cannot settle the arena board", "error", err)
+	}
 	learners, err := n.Store.RemindableLearners(ctx)
 	if err != nil {
 		return err

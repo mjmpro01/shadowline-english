@@ -146,6 +146,11 @@ export interface Repository {
   startDuel(floor: number): Promise<Duel>
   answerDuel(duel: Duel, answer: string, special: boolean): Promise<{ turn: DuelTurn; duel: Duel }>
   fleeDuel(): Promise<void>
+  /** Three rivals to fight: learners rated nearest, or sparring bots. */
+  rivals(): Promise<Rival[]>
+  startPvP(rival: string): Promise<Duel>
+  /** This week's Arena board; a week just ended has its top three paid first. */
+  arenaBoard(): Promise<ArenaBoard>
 
   /** A passage to write down, starting at one line of an episode: the lines
    *  after it to make half a minute to a minute and a half, cut into phrases. */
@@ -554,6 +559,29 @@ export interface Opponent {
   coins: number
   xp: number
   drop?: string
+  /** A shadow's level and rating; a sparring bot is one from the tower. */
+  level?: number
+  rating?: number
+  bot?: boolean
+}
+
+export interface Rival {
+  id: string
+  name: string
+  look: FighterLook
+  equipped: Partial<Record<GearSlot, string>>
+  level: number
+  rating: number
+  bot: boolean
+}
+
+export interface ArenaBoard {
+  week: string
+  daysLeft: number
+  rows: { rank: number; userId: string; name: string; look: FighterLook; points: number; wins: number; rating: number; isYou: boolean }[]
+  you: { rank: number; points: number; wins: number; rating: number } | null
+  lastWeek: { place: number; name: string; points: number; isYou: boolean }[]
+  prizes: number[]
 }
 
 export interface Tower {
@@ -568,6 +596,9 @@ export interface Tower {
   xp: number
   xpNext: number
   activeDuel: number | null
+  rating: number
+  pvpWins: number
+  pvpLosses: number
 }
 
 export type QuestionKind = 'meaning' | 'listen' | 'scramble' | 'ipa' | 'cloze'
@@ -605,6 +636,9 @@ export interface Duel {
   levelUp: boolean
   firstClear: boolean
   words: string[]
+  kind: 'tower' | 'pvp'
+  /** What a duel against a shadow did to the learner's rating. */
+  ratingDelta: number
 }
 
 export type DuelMove = 'light' | 'heavy' | 'special' | 'block' | 'hit'
@@ -959,6 +993,19 @@ class ApiRepository implements Repository {
 
   fleeDuel() {
     return api.send<void>('POST', '/api/arena/duel/flee', {})
+  }
+
+  rivals() {
+    return api.get<Rival[]>('/api/arena/rivals')
+  }
+
+  async startPvP(rival: string) {
+    const { duel } = await api.send<{ duel: Duel }>('POST', '/api/arena/pvp/start', { rival })
+    return duel
+  }
+
+  arenaBoard() {
+    return api.get<ArenaBoard>('/api/arena/board')
   }
 
   dictation(clipId: string) {

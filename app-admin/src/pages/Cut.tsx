@@ -5,6 +5,7 @@ import { Icon } from '../components/Icon'
 import { ThumbnailStrip } from '../components/ThumbnailStrip'
 import { WaveformEditor } from '../components/WaveformEditor'
 import { LINE_SECONDS, MAX_CLIP_SECONDS, type Playlist, type Transcript } from '../data/types'
+import { isOverLong, overLongSelected } from '../lib/clipLimit'
 import { TranscriptStatus } from '../components/TranscriptStatus'
 import { matchSeries, type SeriesMatch } from '../lib/seriesName'
 import { publishClips, type PublishProgress } from '../lib/publish'
@@ -591,9 +592,7 @@ export function Cut() {
   }
   // Only what is actually going up has to be short enough. A proposal being
   // left behind is not a reason to refuse the batch.
-  const tooLong = segments.filter(
-    (s, i) => lines[i]?.include && s.end - s.start > MAX_CLIP_SECONDS + 0.01,
-  ).length
+  const tooLong = overLongSelected(segments, (i) => !!lines[i]?.include, MAX_CLIP_SECONDS)
 
   const includeAll = (include: boolean) =>
     setLines((previous) => previous.map((line) => ({ ...line, include })))
@@ -847,7 +846,7 @@ export function Cut() {
           <div className="stack gap-2">
             {segments.map((segment, index) => {
               const length = segment.end - segment.start
-              const over = lines[index]?.include && length > MAX_CLIP_SECONDS + 0.01
+              const over = lines[index]?.include && isOverLong(segment, MAX_CLIP_SECONDS)
               return (
                 <div
                   className="card elev-sm stack gap-2"

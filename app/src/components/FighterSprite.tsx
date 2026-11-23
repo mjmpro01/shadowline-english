@@ -71,8 +71,10 @@ export function FighterSprite(props: SpriteProps) {
 function SheetLayers({ manifest, sheets, animation, size }: { manifest: ArtManifest; sheets: string[]; animation: Animation; size: number }) {
   const anim = manifest.animations[animation] ?? manifest.animations.idle ?? { row: 0, frames: 1, fps: 1 }
   const scale = size / manifest.frame
+  // One box for every layer, so the moves in arena.css (the lunge, the hit,
+  // the fall) carry the whole drawn fighter, as they carry the stand-in.
   return (
-    <>
+    <div className="fighter-doll fighter-stack" aria-hidden="true">
       {sheets.map((sheet, i) => (
         <span
           key={i}
@@ -89,7 +91,7 @@ function SheetLayers({ manifest, sheets, animation, size }: { manifest: ArtManif
           }
         />
       ))}
-    </>
+    </div>
   )
 }
 
