@@ -169,3 +169,53 @@ test('a clip with no video wears its own tint in the frame', async ({ page }) =>
   // Still no player, which is the part that matters: there is nothing to play.
   await expect(page.locator('video')).toHaveCount(0)
 })
+
+// Straight after a take, the frame above plays it as a dub — the clip's picture
+// with the learner's voice — so they can hear themselves against the line
+// without leaving Practice. The original is one tap away.
+test('after a take, the frame above plays the dub, and the original is a tap away', async ({ page }) => {
+  test.setTimeout(180_000)
+  await publishVideoClip(page)
+
+  await page.goto('/library')
+  await page.getByLabel('Search the library').fill('Dub this line 1')
+  await page.getByRole('button', { name: 'Practice', exact: true }).first().click()
+  await page.waitForURL('**/practice')
+  await expect(page.getByRole('radio', { name: 'My dub' })).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Record', exact: true }).click()
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: 'Stop' }).click()
+
+  const dub = page.getByRole('radio', { name: 'My dub' })
+  await expect(dub).toBeChecked({ timeout: 20_000 })
+  const frame = page.locator('.practice-video')
+  await expect(frame).toHaveAttribute('data-view', 'dub')
+  await expect(frame.getByText('Your voice')).toBeVisible()
+  await expect(page.getByTestId('dub-inline-video')).toBeVisible()
+  await expect(page.getByTestId('dub-inline-video')).toHaveJSProperty('muted', true)
+  await expect(page.getByTestId('dub-inline-audio')).toHaveAttribute('src', /.+/, { timeout: 20_000 })
+  // One picture on screen: the original waits underneath, hidden.
+  await expect(page.locator('.practice-video video:visible')).toHaveCount(1)
+
+  // The take's voice plays with the picture.
+  await page.getByRole('button', { name: 'Play my dub' }).click()
+  await expect(page.getByRole('button', { name: 'Stop', exact: true }).first()).toBeVisible()
+  await expect
+    .poll(() => page.getByTestId('dub-inline-audio').evaluate((el: HTMLAudioElement) => el.currentTime))
+    .toBeGreaterThan(0)
+
+  // "Watch clip again" means the clip: it switches back to the original.
+  await page.getByRole('button', { name: 'Watch clip again' }).click()
+  await expect(page.getByRole('radio', { name: 'Original' })).toBeChecked()
+  await expect(frame).toHaveAttribute('data-view', 'original')
+  await expect(page.getByTestId('dub-inline-video')).toHaveCount(0)
+
+  // A new recording starts from the original again.
+  // The switch's radios are drawn as a segmented control; tap its label.
+  await page.locator('.practice-view-switch').getByText('My dub').click()
+  await expect(frame).toHaveAttribute('data-view', 'dub')
+  await page.getByRole('button', { name: 'Re-record' }).click()
+  await expect(frame).toHaveAttribute('data-view', 'original')
+  await page.getByRole('button', { name: 'Stop' }).click()
+})

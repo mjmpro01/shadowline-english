@@ -24,9 +24,11 @@ from . import words as wordcheck
 from .analysis import build as build_analysis
 from .audio import DecodeError, decode_to_mono
 from .compare import compare_contours
+from .ease import mark
 from .pitch import ANALYSIS_RATE, track_pitch
 from .speech import missing_speech
 from .queue import Job, Queue
+from .rescore import rescore_batch
 from .storage import ObjectMissing, Storage, from_env as storage_from_env
 from .transcribe import Transcriber, WhisperTranscriber
 from . import telemetry
@@ -77,19 +79,12 @@ def score_job(
         raise Unscoreable("no speech found in the recording")
 
     analysis = build_analysis(comparison, user)
-    score = comparison.score
-
-    # Everything above this line is prosody, and prosody is a measure of how
-    # well you said something. Whether you said it at all is a separate
-    # question, and until now nobody asked it: a hummed line scored like a
-    # spoken one.
     spoken = checker.heard(job, take_audio) if checker else None
     matched = wordcheck.check(job.line, spoken) if spoken is not None else None
     if matched is not None:
         analysis["words"] = matched.as_json()
-        score = wordcheck.gate(score, matched.accuracy)
-
-    return score, comparison.scores, analysis
+    score, scores, analysis["raw"] = mark(comparison.scores, matched)
+    return score, scores, analysis
 
 
 class WordCheck:
@@ -239,6 +234,11 @@ def main() -> int:
                     while running:
                         heartbeat.busy = True
                         worked = run_once(queue, blobs, checker)
+                        # Nothing new to score: mark a few older takes again,
+                        # so a change to the marking reaches the whole history
+                        # without holding up a single learner's new take.
+                        if not worked:
+                            worked = rescore_batch(conn) > 0
                         heartbeat.busy = False
                         if not worked:
                             time.sleep(IDLE_SLEEP)

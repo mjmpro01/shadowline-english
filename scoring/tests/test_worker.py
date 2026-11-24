@@ -399,3 +399,23 @@ def test_a_take_whose_clip_never_got_a_sound_is_final_unscored(db, blobs):
     status, score, *_ = take_row(db, take_id)
     assert status == "scored" and score is None
     assert db.execute("select count(*) from scoring_jobs").fetchone()[0] == 0
+
+
+def test_a_take_is_marked_on_the_generous_scale_and_keeps_what_was_measured(db, blobs, tmp_path):
+    from shadowline.compare import headline
+    from shadowline.ease import SCORING_VERSION, ease, ease_scores
+
+    store, root = blobs
+    take_id = seed(db, root, clip_audio="narrow-range.reference.wav", take_audio="narrow-range.take.wav",
+                   line="We were on a break")
+    checker = WordCheck(FakeTranscriber("we were on a break"), tmp_path)
+    assert run_once(Queue(db), store, checker) is True
+
+    _, score, scores, analysis, _ = take_row(db, take_id)
+    raw = analysis["raw"]
+    assert raw["version"] == SCORING_VERSION
+    assert raw["score"] == headline(raw["scores"])
+    assert score == ease(raw["score"]) and score > raw["score"]
+    assert scores == ease_scores(raw["scores"])
+    version = db.execute("select scoring_version from takes where id = %s", (take_id,)).fetchone()[0]
+    assert version == SCORING_VERSION

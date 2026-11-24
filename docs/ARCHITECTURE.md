@@ -544,6 +544,7 @@ Giới hạn mặc định:
 | `00028_hammer_soil` | `game_plots.level` cho phép tới 4 (đất làm bằng búa của Bram) |
 | `00029_townsfolk` | `game_friendship` (thị trấn Echo, 7.6) |
 | `00044_pvp` | `fighters.rating`, `pvp_wins`, `pvp_losses`; `duels.kind`, `opponent` (bản chụp đối thủ), `opponent_user`, `rating_delta`; `arena_week_points`, `arena_awards`, `arena_settled` |
+| `00045_scoring_version` | `takes.scoring_version`: quy tắc chấm nào đã cho điểm lần ghi này; worker chấm lại lần ghi cũ từ dữ liệu đã lưu khi hàng đợi trống |
 | `00043_duels` | `duels`, `duel_clears`; `fighters.energy`, `energy_at`, `floor` |
 | `00042_arena` | Arena mới: `wallets`, `coin_events`, `fighters`, `fighter_gear`, `fighter_equipped`; vàng cũ thành xu; xoá mọi bảng `game_*` (giữ `word_ranks`) |
 

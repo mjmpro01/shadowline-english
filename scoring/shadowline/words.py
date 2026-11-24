@@ -39,7 +39,105 @@ def normalise(text: str) -> list[str]:
     return [token for token in _STRIP.split(folded) if token.strip("'")]
 
 
-def _matched(expected: list[str], heard: list[str]) -> list[bool]:
+# Spoken English is written more than one way, and a transcriber picks one. A
+# learner who said "it's" has said "it is", and the reverse; the caption and the
+# transcript are both expanded to the long form before they are compared, so
+# neither choice of spelling costs a word.
+_WHOLE = {
+    "gonna": ["going", "to"],
+    "wanna": ["want", "to"],
+    "gotta": ["got", "to"],
+    "kinda": ["kind", "of"],
+    "sorta": ["sort", "of"],
+    "lemme": ["let", "me"],
+    "gimme": ["give", "me"],
+    "'cause": ["because"],
+    "cause": ["because"],
+    "cos": ["because"],
+    "cuz": ["because"],
+    "ok": ["okay"],
+    "can't": ["can", "not"],
+    "cannot": ["can", "not"],
+    "won't": ["will", "not"],
+    "shan't": ["shall", "not"],
+    "ain't": ["is", "not"],
+    "let's": ["let", "us"],
+    "y'all": ["you", "all"],
+}
+# Only the pronouns and question words take "'s" as "is": anywhere else it is a
+# possessive ("John's car"), which is one word however it is said.
+_IS_HOSTS = {
+    "it", "he", "she", "that", "what", "there", "here", "where", "who", "how",
+    "this", "when", "why", "everything", "nothing", "something", "everyone",
+}
+_SUFFIXES = (("n't", ["not"]), ("'m", ["am"]), ("'re", ["are"]), ("'ve", ["have"]),
+             ("'ll", ["will"]), ("'d", ["would"]))
+_NUMBERS = {
+    "0": "zero", "1": "one", "2": "two", "3": "three", "4": "four", "5": "five",
+    "6": "six", "7": "seven", "8": "eight", "9": "nine", "10": "ten",
+    "11": "eleven", "12": "twelve", "13": "thirteen", "14": "fourteen",
+    "15": "fifteen", "16": "sixteen", "17": "seventeen", "18": "eighteen",
+    "19": "nineteen", "20": "twenty",
+}
+# Words a contraction stands for either of: "he'd" is "he would" or "he had",
+# "she's" is "she is" or "she has".
+_EITHER = {frozenset({"would", "had"}), frozenset({"is", "has"})}
+
+
+def _long_form(token: str) -> list[str]:
+    """A token as the words it stands for, spelled out."""
+    if token in _NUMBERS:
+        return [_NUMBERS[token]]
+    if token in _WHOLE:
+        return list(_WHOLE[token])
+    if token.endswith("'s") and token[:-2] in _IS_HOSTS:
+        return [token[:-2], "is"]
+    for suffix, rest in _SUFFIXES:
+        if token.endswith(suffix) and len(token) > len(suffix):
+            return [token[: -len(suffix)], *rest]
+    return [token]
+
+
+def _expand(tokens: list[str]) -> tuple[list[str], list[int]]:
+    """The long form of a list of tokens, and which token each word came from."""
+    words: list[str] = []
+    origin: list[int] = []
+    for index, token in enumerate(tokens):
+        for word in _long_form(token):
+            words.append(word)
+            origin.append(index)
+    return words, origin
+
+
+def _edits(a: str, b: str) -> int:
+    """Levenshtein distance between two short words."""
+    previous = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        current = [i]
+        for j, cb in enumerate(b, 1):
+            current.append(min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + (ca != cb)))
+        previous = current
+    return previous[-1]
+
+
+def _same(expected: str, heard: str) -> bool:
+    """Whether a heard word is the expected one, allowing for the transcriber.
+
+    Long words get a letter's slack, very long ones two: "walkin'" for
+    "walking", "colour" for "color", a plural Whisper added. Short words get
+    none, because "for" and "four", "a" and "the" are different words and a
+    letter is most of them.
+    """
+    if expected == heard or frozenset({expected, heard}) in _EITHER:
+        return True
+    shorter = min(len(expected), len(heard))
+    if shorter < 4:
+        return False
+    allowed = 2 if shorter >= 8 else 1
+    return abs(len(expected) - len(heard)) <= allowed and _edits(expected, heard) <= allowed
+
+
+def _aligned(expected: list[str], heard: list[str]) -> list[bool]:
     """Which expected words appear, in order, in what was heard.
 
     A Levenshtein alignment rather than a set intersection: a line repeats words
@@ -52,6 +150,7 @@ def _matched(expected: list[str], heard: list[str]) -> list[bool]:
     learner.
     """
     rows, cols = len(expected), len(heard)
+    same = [[_same(e, h) for h in heard] for e in expected]
     cost = [[0] * (cols + 1) for _ in range(rows + 1)]
     for i in range(rows + 1):
         cost[i][0] = i
@@ -59,9 +158,8 @@ def _matched(expected: list[str], heard: list[str]) -> list[bool]:
         cost[0][j] = j
     for i in range(1, rows + 1):
         for j in range(1, cols + 1):
-            same = expected[i - 1] == heard[j - 1]
             cost[i][j] = min(
-                cost[i - 1][j - 1] + (0 if same else 1),
+                cost[i - 1][j - 1] + (0 if same[i - 1][j - 1] else 1),
                 cost[i - 1][j] + 1,
                 cost[i][j - 1] + 1,
             )
@@ -69,7 +167,7 @@ def _matched(expected: list[str], heard: list[str]) -> list[bool]:
     hit = [False] * rows
     i, j = rows, cols
     while i > 0 and j > 0:
-        if expected[i - 1] == heard[j - 1] and cost[i][j] == cost[i - 1][j - 1]:
+        if same[i - 1][j - 1] and cost[i][j] == cost[i - 1][j - 1]:
             hit[i - 1] = True
             i, j = i - 1, j - 1
         elif cost[i][j] == cost[i - 1][j - 1] + 1:
@@ -78,6 +176,18 @@ def _matched(expected: list[str], heard: list[str]) -> list[bool]:
             i -= 1  # dropped this word
         else:
             j -= 1  # said a word that is not in the line
+    return hit
+
+
+def _matched(expected: list[str], heard: list[str]) -> list[bool]:
+    """Per expected token, whether it was heard: every word of its long form
+    has to be, so "don't" heard as "do" alone is not "don't"."""
+    expected_words, origin = _expand(expected)
+    heard_words, _ = _expand(heard)
+    word_hit = _aligned(expected_words, heard_words)
+    hit = [True] * len(expected)
+    for index, ok in zip(origin, word_hit):
+        hit[index] = hit[index] and ok
     return hit
 
 
@@ -150,3 +260,18 @@ def gate(score: int, accuracy: float) -> int:
     it. This is the one place that opinion is expressed as arithmetic.
     """
     return round(score * (FLOOR + (1 - FLOOR) * max(0.0, min(1.0, accuracy))))
+
+
+def recheck(stored: dict) -> WordScore | None:
+    """A stored word check, matched again with today's rules.
+
+    `analysis.words` keeps the caption's words and what was heard, which is all
+    the matching needs: a take is marked again without its recording or the
+    transcriber (see `rescore.py`).
+    """
+    line = stored.get("line")
+    heard = stored.get("heard")
+    if not isinstance(line, list) or not isinstance(heard, list):
+        return None
+    caption = " ".join(str(entry.get("text", "")) for entry in line if isinstance(entry, dict))
+    return check(caption, [str(word) for word in heard])
