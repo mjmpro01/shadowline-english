@@ -768,6 +768,34 @@
   object-fit: contain;
   border-radius: inherit;
 }
+/* Right after a take, the frame plays it as a dub: the clip's picture with
+   the learner's voice, a tag saying whose voice it is, and one play button. */
+.practice-view-switch {
+  align-self: center;
+}
+.dub-inline-tag {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1;
+  gap: 4px;
+}
+.dub-inline-play {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  white-space: nowrap;
+  box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.18));
+}
+@media (max-width: 480px) {
+  .dub-inline-play {
+    bottom: 8px;
+    padding: 6px 14px;
+    font-size: 14px;
+  }
+}
 .caption-word {
   cursor: pointer;
   background: none;

@@ -6,6 +6,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useT } from '../i18n'
 import { ClipPlayer } from '../components/ClipPlayer'
 import { DubExport } from '../components/DubExport'
+import { DubInline } from '../components/DubInline'
+import { SegmentedControl } from '../components/SegmentedControl'
 import { Celebrate } from '../components/Celebrate'
 import type { Mood } from '../components/Mascot'
 import { ClipFace } from '../components/ClipFace'
@@ -25,7 +27,7 @@ import {
   envelopePath,
   guideX,
 } from '../lib/practiceGuide'
-import { urlOf, useClipAudio, useClipVideo } from '../lib/useAudioUrl'
+import { urlOf, useClipAudio, useClipVideo, useTakeAudio } from '../lib/useAudioUrl'
 import { useClipPitch } from '../lib/useClipPitch'
 import { useDub } from '../lib/useDub'
 import { SOURCE_LABEL, useGloss } from '../lib/useGloss'
@@ -74,9 +76,15 @@ export function PracticeScreen() {
     sourcePlayer.current = element
     setSourceElement(element)
   }, [])
+  // The take with the clip's picture, played in the clip's own frame once there
+  // is one: the learner hears themselves against the line straight away
+  // instead of leaving for Dub Review. Its audio is held here too, so the
+  // playhead on the wave follows whichever of the two is playing.
+  const [view, setView] = useState<'original' | 'dub'>('original')
+  const [dubElement, setDubElement] = useState<HTMLMediaElement | null>(null)
   // Where the clip is while it plays, so the strip under it shows which part
   // of the purple wave is being heard.
-  const clipTime = usePlayhead(sourceElement)
+  const clipTime = usePlayhead(view === 'dub' ? dubElement : sourceElement)
   // Bumped whenever the screen stops caring about the take being scored — a new
   // recording, a reset, the next line. Scoring is a poll that runs for seconds,
   // so without this the take that finishes last wins rather than the take the
@@ -106,6 +114,9 @@ export function PracticeScreen() {
         // keep — but only shown while it is still the one on screen.
         if (attempt.current === mine) {
           setTake(scored)
+          // Straight to the dub, so the take can be heard against the picture
+          // the moment it is in.
+          if (scored.hasAudio) setView('dub')
           if (scored.score !== null && scored.score >= 75) {
             setCheer(
               scored.score >= 90
@@ -125,6 +136,8 @@ export function PracticeScreen() {
   const sourceVideoUrl = urlOf(useClipVideo(video?.id ?? null, Boolean(video?.videoPending)))
   const clipPitch = useClipPitch(sourceUrl)
   const dubState = useDub(take?.hasAudio ? take.id : null)
+  const takeUrl = urlOf(useTakeAudio(take?.hasAudio ? take.id : null))
+  const showingDub = view === 'dub' && !!take?.hasAudio
   /** Either form of the clip counts as having something to play. */
   const playable = sourceVideoUrl ?? sourceUrl
   const line = video?.captions[Math.min(lineIndex, (video?.captions.length ?? 1) - 1)]
@@ -182,6 +195,7 @@ export function PracticeScreen() {
     }
     attempt.current += 1
     setTake(null)
+    setView('original')
     setAnalysing(false)
     await recorder.start()
   }
@@ -190,6 +204,7 @@ export function PracticeScreen() {
     attempt.current += 1
     recorder.reset()
     setTake(null)
+    setView('original')
     setAnalysing(false)
   }
 
@@ -215,14 +230,53 @@ export function PracticeScreen() {
               and nothing else until clips had video; the player used to be
               bolted on beside the buttons instead, which left the screen with
               two video areas and a picture in the wrong one. */}
-          <div className="practice-video">
-            <ClipPlayer attach={attachSource} videoUrl={sourceVideoUrl} audioUrl={sourceUrl} />
+          {take?.hasAudio && (
+            <SegmentedControl
+              name="practice-view"
+              value={showingDub ? 'dub' : 'original'}
+              onChange={(next) => {
+                if (next === 'dub') sourcePlayer.current?.pause()
+                else dubElement?.pause()
+                setView(next)
+              }}
+              className="practice-view-switch"
+              options={[
+                {
+                  value: 'dub',
+                  label: (
+                    <>
+                      <Icon name="mic" size={14} />
+                      {t('practice.viewDub')}
+                    </>
+                  ),
+                },
+                {
+                  value: 'original',
+                  label: (
+                    <>
+                      <Icon name="volume" size={14} />
+                      {t('practice.viewOriginal')}
+                    </>
+                  ),
+                },
+              ]}
+            />
+          )}
+          <div className="practice-video" data-view={showingDub ? 'dub' : 'original'}>
+            {/* Kept mounted under the dub, so "Watch clip again" always has
+                the original to play, and switching back keeps its place. */}
+            <div className="practice-original" hidden={showingDub}>
+              <ClipPlayer attach={attachSource} videoUrl={sourceVideoUrl} audioUrl={sourceUrl} />
+            </div>
+            {showingDub && <DubInline videoUrl={sourceVideoUrl} takeUrl={takeUrl} attach={setDubElement} />}
             {/* The same tint the library card gives this clip, so it looks like
                 itself wherever it turns up rather than becoming an anonymous
                 brown box the moment it is opened. No line on it: the line is
                 directly below with every word tappable, and that copy is the
                 useful one. */}
-            {!sourceVideoUrl && <ClipFace id={video.id} posterUrl="" line="" categories={video.categories} />}
+            {!sourceVideoUrl && !showingDub && (
+              <ClipFace id={video.id} posterUrl="" line="" categories={video.categories} />
+            )}
           </div>
 
           <div data-tour="caption" style={{ fontSize: 16, fontStyle: 'italic', textAlign: 'center' }}>
@@ -445,7 +499,13 @@ export function PracticeScreen() {
             data-tour="listen"
             disabled={!playable}
             title={playable ? t('practice.hearClipTitle') : t('practice.noOriginal')}
-            onClick={() => void sourcePlayer.current?.play()}
+            onClick={() => {
+              // The original, even while the dub is on screen: this button
+              // says "the clip", so it shows the clip.
+              dubElement?.pause()
+              setView('original')
+              void sourcePlayer.current?.play()
+            }}
           >
             {sourceVideoUrl ? t('practice.watchClip') : t('practice.hearClip')}
           </button>
