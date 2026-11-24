@@ -204,9 +204,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * score arrives afterwards. Polling stops on any settled status, so a take
    * the worker could not measure ends as `failed` rather than as a spinner.
    */
-  const addTake = useCallback(async (videoId: string, audio: Blob): Promise<Take> => {
+  const addTake = useCallback(
+    async (videoId: string, audio: Blob, onStored?: (take: Take) => void): Promise<Take> => {
     const take = await repository.createTake(videoId, audio)
     setData((prev) => ({ ...prev, takes: [...prev.takes, take] }))
+    onStored?.(take)
 
     if (take.status !== 'pending') return take
 
@@ -233,7 +235,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       repository.leaderboard().then(setLeaderboard, () => {})
     }
     return latest
-  }, [])
+    },
+    [],
+  )
 
 
   /**
