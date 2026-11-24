@@ -18,6 +18,8 @@ from dataclasses import dataclass
 import psycopg
 from psycopg.rows import dict_row
 
+from .ease import SCORING_VERSION
+
 # Kept identical to store.MaxAttempts and store.StaleAfter in the Go server.
 MAX_ATTEMPTS = 3
 STALE_AFTER = "5 minutes"
@@ -129,10 +131,11 @@ class Queue:
             cur.execute(
                 """
                 update takes
-                set score = %s, scores = %s, analysis = %s, status = 'scored', error = null
+                set score = %s, scores = %s, analysis = %s, status = 'scored', error = null,
+                    scoring_version = %s
                 where id = %s
                 """,
-                (score, json.dumps(scores), json.dumps(analysis), job.take_id),
+                (score, json.dumps(scores), json.dumps(analysis), SCORING_VERSION, job.take_id),
             )
             cur.execute("delete from scoring_jobs where id = %s", (job.id,))
 

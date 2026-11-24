@@ -59,6 +59,40 @@ was never going to happen. `WORD_CHECK=0` turns it off outright, for a
 deployment that would rather not carry a few hundred megabytes of model per
 scoring replica.
 
+## Generous by design
+
+What `compare.py` measures and what a learner is shown are two layers, and
+only the second is meant to change. The four metrics stay pinned to the
+archived browser scorer (see below); `shadowline/ease.py` turns them into the
+mark:
+
+- every score — the headline and each of the four — is lifted along one
+  curve, `100 · (raw/100) ** 0.4`. Raw 50 is shown as 76, 60 as 82, 80 as 91;
+  0 and 100 stay put, and a better take always still scores higher;
+- hearing 80% of the line counts as all of it;
+- the word check forgives what a transcriber writes differently: a letter off
+  a long word ("walkin'"), contractions and their long form ("it's" / "it
+  is", "gonna" / "going to"), digits and number words. Short words still have
+  to match exactly.
+
+Saying the line is still the point. A hummed take keeps 40% of its eased
+score, so a tune with no words stays low.
+
+Shadowing is practice, and the old scale put a decent take at 55–65, below
+the gold band at 75 — a number telling people who did the thing that they had
+not. The raw scale is kept on every take under `analysis.raw`, so the marking
+can be tuned again without a single recording.
+
+### Marking the history again
+
+`takes.scoring_version` says which rules marked a take (`ease.SCORING_VERSION`,
+now 2). Whenever its queue is empty, the worker marks a batch of older takes
+again from what they stored — the four metrics and the words heard — with
+`shadowline/rescore.py`. No recording, no transcriber, no manual step: after a
+deploy the backlog drains on its own, new takes always first, and replicas
+share it through `for update skip locked`. Change the marking, raise the
+version, and the whole history follows.
+
 ## Parity with the browser
 
 This worker replaces `app/src/lib/dsp/`, which scored takes in the browser. The
@@ -131,6 +165,8 @@ and not Kafka.
 ```
 shadowline/pitch.py     YIN pitch tracking, ported from the browser
 shadowline/compare.py   DTW and the four metrics
+shadowline/ease.py      the generous scale the learner is shown
+shadowline/rescore.py   marking older takes again from what they stored
 shadowline/words.py     did they say the line, not just the tune
 shadowline/audio.py     ffmpeg: whatever the browser recorded -> mono 8kHz
 shadowline/queue.py     claim / complete / fail, against the Postgres table

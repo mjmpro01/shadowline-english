@@ -215,7 +215,19 @@ def compare_contours(reference_contour: Contour, user_contour: Contour) -> Compa
         "Stress": stress,
         "Variation": variation,
     }
-    score = _clamp_score(
-        intonation * 0.4 + rhythm * 0.2 + stress * 0.2 + variation * 0.2
+    return Comparison(headline(scores), scores, mean_deviation, reference, user, path)
+
+
+def headline(scores: dict[str, int]) -> int:
+    """The one number, from the four. Intonation counts double: the tune of a
+    line is most of what shadowing it is for.
+
+    Its own function so a take can be marked again from the four it stored,
+    without the recording (see `rescore.py`).
+    """
+    return _clamp_score(
+        scores["Intonation"] * 0.4
+        + scores["Rhythm"] * 0.2
+        + scores["Stress"] * 0.2
+        + scores["Variation"] * 0.2
     )
-    return Comparison(score, scores, mean_deviation, reference, user, path)

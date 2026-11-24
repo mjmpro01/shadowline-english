@@ -2,7 +2,7 @@
 
 import pytest
 
-from shadowline.words import FLOOR, check, gate, normalise
+from shadowline.words import FLOOR, check, gate, normalise, recheck
 
 
 def heard(line: str) -> list[str]:
@@ -100,3 +100,68 @@ class TestGate:
     def test_an_accuracy_outside_the_range_is_clamped(self):
         assert gate(88, 2.0) == 88
         assert gate(88, -1.0) == round(88 * FLOOR)
+
+
+class TestForgiving:
+    """What a transcriber writes differently from the caption still counts."""
+
+    def test_a_long_word_a_letter_off_is_the_word(self):
+        got = check("I was walking home", heard("i was walkin home"))
+        assert got.accuracy == 1.0
+        got = check("What a beautiful colour", heard("what a beautiful color"))
+        assert got.accuracy == 1.0
+
+    def test_a_very_long_word_gets_two_letters(self):
+        assert check("unbelievable", heard("unbelieveble")).accuracy == 1.0
+
+    def test_a_short_word_has_to_be_exact(self):
+        # "for" and "four", "a" and "the": a letter is most of a short word.
+        assert dict(check("this is for you", heard("this is four you")).line)["for"] is False
+        assert dict(check("on a break", heard("on the break")).line)["a"] is False
+
+    def test_a_contraction_and_its_long_form_are_the_same_words(self):
+        assert check("It's not about winning", heard("it is not about winning")).accuracy == 1.0
+        assert check("It is not about winning", heard("it's not about winning")).accuracy == 1.0
+        assert check("I don't know", heard("i do not know")).accuracy == 1.0
+        assert check("We'll see", heard("we will see")).accuracy == 1.0
+        assert check("She can't come", heard("she cannot come")).accuracy == 1.0
+
+    def test_casual_forms_count(self):
+        assert check("I'm going to do it", heard("i'm gonna do it")).accuracy == 1.0
+        assert check("I wanna go", heard("i want to go")).accuracy == 1.0
+
+    def test_he_d_is_would_or_had(self):
+        assert check("He had gone", heard("he'd gone")).accuracy == 1.0
+
+    def test_numbers_written_either_way(self):
+        assert check("I have two cats", heard("i have 2 cats")).accuracy == 1.0
+        assert check("Give me 5 minutes", heard("give me five minutes")).accuracy == 1.0
+
+    def test_half_a_contraction_is_not_the_contraction(self):
+        got = check("I don't know", heard("i do know"))
+        assert dict(got.line)["don't"] is False
+
+    def test_a_possessive_is_not_is(self):
+        # "John's" is one word, not "John is": heard as "johns" it is a letter
+        # off a long word and counts; heard as "john is" it does not.
+        assert check("John's car", heard("johns car")).accuracy == 1.0
+
+    def test_the_line_is_still_the_caption_s_own_words(self):
+        got = check("It's gonna rain!", heard("it is going to rain"))
+        assert [text for text, _ in got.line] == ["It's", "gonna", "rain!"]
+        assert got.accuracy == 1.0
+
+
+class TestRecheck:
+    def test_a_stored_check_is_matched_again_with_today_s_rules(self):
+        stored = {
+            "accuracy": 0.6667,
+            "heard": ["it", "is", "raining"],
+            "line": [{"text": "It's", "heard": False}, {"text": "raining", "heard": True}],
+        }
+        got = recheck(stored)
+        assert got.accuracy == 1.0
+        assert [text for text, _ in got.line] == ["It's", "raining"]
+
+    def test_a_malformed_check_is_left_alone(self):
+        assert recheck({"heard": "nope"}) is None
