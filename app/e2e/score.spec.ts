@@ -298,3 +298,47 @@ test('a take still being scored does not follow the learner to the next line', a
   await expect(page.getByText('Measuring your pitch…')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Record', exact: true })).toBeEnabled()
 })
+
+/**
+ * Scoring takes a few seconds, and a muted line low on the page was the only
+ * sign of it. A popup says so the moment a take stops — the upload, then the
+ * measuring — and goes by itself when the score is in.
+ */
+test('a take shows a scoring popup until its score is in', async ({ page }) => {
+  await publishLesson(page)
+  await asLearner(page)
+  await practise(page, LINE(1))
+  // Held back a little, so the measuring step is on screen long enough to see.
+  await page.route('**/api/takes/*', async (route) => {
+    if (route.request().method() === 'GET') await new Promise((resolve) => setTimeout(resolve, 1500))
+    await route.continue()
+  })
+
+  await recordOnce(page, 'Record')
+  const popup = page.getByRole('status').filter({ hasText: 'Scoring your take…' })
+  await expect(popup).toBeVisible({ timeout: 5_000 })
+  await expect(popup).toContainText('Uploading your recording…')
+  await expect(popup.locator('li[data-state="active"]')).toHaveText('Measuring your pitch…', { timeout: 10_000 })
+  await expect(popup.locator('li[data-state="done"]')).toHaveText('Uploading your recording…')
+
+  expect(await scoreOf(page)).toBeGreaterThan(0)
+  await expect(popup).toHaveCount(0)
+})
+
+test('the scoring popup can be hidden, leaving the small line', async ({ page }) => {
+  await publishLesson(page)
+  await asLearner(page)
+  await practise(page, LINE(1))
+  await page.route('**/api/takes/*', async (route) => {
+    if (route.request().method() === 'GET') await new Promise((resolve) => setTimeout(resolve, 1500))
+    await route.continue()
+  })
+
+  await recordOnce(page, 'Record')
+  const popup = page.getByRole('status').filter({ hasText: 'Scoring your take…' })
+  await expect(popup).toBeVisible({ timeout: 5_000 })
+  await popup.getByRole('button', { name: 'Hide' }).click()
+  await expect(popup).toHaveCount(0)
+  await expect(page.getByText('Measuring your pitch…')).toBeVisible()
+  expect(await scoreOf(page)).toBeGreaterThan(0)
+})

@@ -34,7 +34,9 @@ export interface Store {
   ensureClips: (ids: string[]) => Promise<void>
   /** Whether a clip is known not to exist, as opposed to not fetched yet. */
   clipMissing: (id: string) => boolean
-  addTake: (videoId: string, audio: Blob) => Promise<Take>
+  /** `onStored` runs once the recording is uploaded and the take exists,
+   *  before its score: the moment "uploading" becomes "scoring". */
+  addTake: (videoId: string, audio: Blob, onStored?: (take: Take) => void) => Promise<Take>
   /** Throws a recording away. Nothing else keeps a copy of it. */
   deleteTake: (id: string) => Promise<void>
   toggleVocabWord: (

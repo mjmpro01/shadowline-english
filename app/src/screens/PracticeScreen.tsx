@@ -8,6 +8,7 @@ import { ClipPlayer } from '../components/ClipPlayer'
 import { DubExport } from '../components/DubExport'
 import { DubInline } from '../components/DubInline'
 import { SegmentedControl } from '../components/SegmentedControl'
+import { ScoringPopup, type ScoringStage } from '../components/ScoringPopup'
 import { Celebrate } from '../components/Celebrate'
 import type { Mood } from '../components/Mascot'
 import { ClipFace } from '../components/ClipFace'
@@ -63,6 +64,11 @@ export function PracticeScreen() {
   const [take, setTake] = useState<Take | null>(null)
   const [popup, setPopup] = useState<Popup | null>(null)
   const [analysing, setAnalysing] = useState(false)
+  // Which step of scoring the take just recorded is at, for the popup that
+  // says so; null when nothing is being scored. Hiding the popup puts the
+  // small line under the wave back instead, so there is always one sign.
+  const [scoringStage, setScoringStage] = useState<ScoringStage | null>(null)
+  const [scoringHidden, setScoringHidden] = useState(false)
   // A take that has just landed in gold, for the hero to cheer. Only ever set
   // from a recording made on this screen, so reopening an old take never
   // throws confetti at anybody.
@@ -108,8 +114,12 @@ export function PracticeScreen() {
       if (!video || !recording) return
       const mine = attempt.current
       setAnalysing(true)
+      setScoringStage('upload')
+      setScoringHidden(false)
       try {
-        const scored = await addTake(video.id, recording)
+        const scored = await addTake(video.id, recording, () => {
+          if (attempt.current === mine) setScoringStage('measure')
+        })
         // Stored either way — it is the learner's recording and it is theirs to
         // keep — but only shown while it is still the one on screen.
         if (attempt.current === mine) {
@@ -126,7 +136,10 @@ export function PracticeScreen() {
           }
         }
       } finally {
-        if (attempt.current === mine) setAnalysing(false)
+        if (attempt.current === mine) {
+          setAnalysing(false)
+          setScoringStage(null)
+        }
       }
     },
   })
@@ -197,6 +210,7 @@ export function PracticeScreen() {
     setTake(null)
     setView('original')
     setAnalysing(false)
+    setScoringStage(null)
     await recorder.start()
   }
 
@@ -206,6 +220,7 @@ export function PracticeScreen() {
     setTake(null)
     setView('original')
     setAnalysing(false)
+    setScoringStage(null)
   }
 
   const nextLine = () => {
@@ -437,7 +452,10 @@ export function PracticeScreen() {
             </div>
           )}
 
-          {(analysing || take?.status === 'pending') && (
+          {scoringStage && !scoringHidden && (
+            <ScoringPopup stage={scoringStage} onHide={() => setScoringHidden(true)} />
+          )}
+          {(analysing || take?.status === 'pending') && (scoringHidden || !scoringStage) && (
             <div style={{ fontSize: 14, textAlign: 'center', color: 'var(--color-text-muted)' }}>{t('practice.measuring')}</div>
           )}
 
