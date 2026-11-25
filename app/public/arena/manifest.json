@@ -48,6 +48,7 @@
   "sheets": {
     "character/beggar": "characters/beggar.sheet.png",
     "character/blacksmith": "characters/blacksmith.sheet.png",
+    "character/chain_whip": "characters/chain_whip.sheet.png",
     "character/fan_dancer": "characters/fan_dancer.sheet.png",
     "character/farmer": "characters/farmer.sheet.png",
     "character/fisherman": "characters/fisherman.sheet.png",
@@ -55,9 +56,14 @@
     "character/herb_girl": "characters/herb_girl.sheet.png",
     "character/porter": "characters/porter.sheet.png",
     "character/rope_dart": "characters/rope_dart.sheet.png",
+    "character/shadow_runner": "characters/shadow_runner.sheet.png",
+    "character/spear_guard": "characters/spear_guard.sheet.png",
     "character/stick_fighter": "characters/stick_fighter.sheet.png",
     "character/street_kid": "characters/street_kid.sheet.png",
-    "character/temple_monk": "characters/temple_monk.sheet.png"
+    "character/swordswoman": "characters/swordswoman.sheet.png",
+    "character/temple_monk": "characters/temple_monk.sheet.png",
+    "character/twin_sabre": "characters/twin_sabre.sheet.png",
+    "character/war_drummer": "characters/war_drummer.sheet.png"
   },
   "pixel": true
 }
