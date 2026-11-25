@@ -214,9 +214,12 @@ test('a full rage unleashes the character’s own skill', async ({ page }) => {
   const skill = page.getByRole('button', { name: /Desperate Fist/ })
   await expect(skill).toBeDisabled()
   for (let i = 0; i < 4; i++) await answer(page, true)
-  await expect(skill).toBeEnabled()
-  // The fifth turn is the porter's big attack, which only a block answers.
+  // The rage is full, but the fifth turn is the porter's big attack, which
+  // only a block answers: the skill waits for the turn after.
+  await expect(page.getByText('⚠ A big attack is coming — answer right to block it!')).toBeVisible()
+  await expect(skill).toBeDisabled()
   await answer(page, true)
+  await expect(skill).toBeEnabled()
   await skill.click()
   await expect(page.getByText('Special ready — answer right to unleash it')).toBeVisible()
   await answer(page, true)
