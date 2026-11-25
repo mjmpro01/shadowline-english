@@ -1,0 +1,66 @@
+{
+  "frame": 64,
+  "animations": {
+    "idle": {
+      "row": 0,
+      "frames": 1,
+      "fps": 1
+    },
+    "walk": {
+      "row": 0,
+      "frames": 1,
+      "fps": 1
+    },
+    "light": {
+      "row": 0,
+      "frames": 1,
+      "fps": 1
+    },
+    "heavy": {
+      "row": 0,
+      "frames": 1,
+      "fps": 1
+    },
+    "special": {
+      "row": 0,
+      "frames": 1,
+      "fps": 1
+    },
+    "block": {
+      "row": 0,
+      "frames": 1,
+      "fps": 1
+    },
+    "hit": {
+      "row": 0,
+      "frames": 1,
+      "fps": 1
+    },
+    "ko": {
+      "row": 0,
+      "frames": 1,
+      "fps": 1
+    },
+    "win": {
+      "row": 0,
+      "frames": 1,
+      "fps": 1
+    }
+  },
+  "layers": {
+    "base/a-0": "base/a-0.png",
+    "base/a-1": "base/a-1.png",
+    "base/a-2": "base/a-2.png",
+    "base/a-3": "base/a-3.png",
+    "base/b-0": "base/b-0.png",
+    "base/b-1": "base/b-1.png",
+    "base/b-2": "base/b-2.png",
+    "base/b-3": "base/b-3.png",
+    "gear/bare_feet": "gear/bare_feet.png",
+    "gear/bare_fists": "gear/bare_fists.png",
+    "gear/rags": "gear/rags.png",
+    "hair/a-0": "hair/a-0.png",
+    "hair/b-0": "hair/b-0.png"
+  },
+  "pixel": true
+}
