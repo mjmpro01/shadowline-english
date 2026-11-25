@@ -1,71 +1,7 @@
 {
   "frame": 64,
-  "animations": {
-    "idle": {
-      "row": 0,
-      "frames": 4,
-      "fps": 6,
-      "loop": true
-    },
-    "light": {
-      "row": 1,
-      "frames": 4,
-      "fps": 14,
-      "loop": false
-    },
-    "heavy": {
-      "row": 2,
-      "frames": 4,
-      "fps": 12,
-      "loop": false
-    },
-    "hit": {
-      "row": 3,
-      "frames": 2,
-      "fps": 10,
-      "loop": false
-    },
-    "ko": {
-      "row": 4,
-      "frames": 4,
-      "fps": 8,
-      "loop": false
-    },
-    "win": {
-      "row": 5,
-      "frames": 4,
-      "fps": 8,
-      "loop": true
-    }
-  },
-  "layers": {
-    "base/a-0": "base/a-0.png",
-    "base/a-1": "base/a-1.png",
-    "base/a-2": "base/a-2.png",
-    "base/a-3": "base/a-3.png",
-    "base/b-0": "base/b-0.png",
-    "base/b-1": "base/b-1.png",
-    "base/b-2": "base/b-2.png",
-    "base/b-3": "base/b-3.png",
-    "gear/bare_feet": "gear/bare_feet.png",
-    "gear/bare_fists": "gear/bare_fists.png",
-    "gear/rags": "gear/rags.png",
-    "hair/a-0": "hair/a-0.png",
-    "hair/a-1": "hair/a-1.png",
-    "hair/a-2": "hair/a-2.png",
-    "hair/a-3": "hair/a-3.png",
-    "hair/b-0": "hair/b-0.png",
-    "hair/b-1": "hair/b-1.png",
-    "hair/b-2": "hair/b-2.png",
-    "hair/b-3": "hair/b-3.png"
-  },
-  "sheets": {
-    "base/a-0": "base/a-0.sheet.png",
-    "base/a-1": "base/a-1.sheet.png",
-    "base/a-2": "base/a-2.sheet.png",
-    "base/a-3": "base/a-3.sheet.png",
-    "gear/bare_feet": "gear/bare_feet.sheet.png",
-    "gear/bare_fists": "gear/bare_fists.sheet.png"
-  },
-  "pixel": true
+  "pixel": true,
+  "animations": {},
+  "layers": {},
+  "sheets": {}
 }

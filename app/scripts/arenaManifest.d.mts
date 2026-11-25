@@ -35,8 +35,8 @@ export const FRAMES: number[]
 export const SHEET_ANIMATIONS: Record<string, AnimationRow>
 export const SHEET_COLUMNS: number
 export const SHEET_ROWS: number
-export const GEAR: string[]
-export const OPPONENTS: string[]
+export const FRAME_NAMES: Record<string, string>
+export const CHARACTERS: string[]
 export const EXPECTED: string[]
 export function ground(frame: number): number
 export function layerName(path: string): string | null

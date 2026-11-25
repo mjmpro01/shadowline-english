@@ -6,88 +6,84 @@ test.beforeEach(async ({ page }) => {
   await startFresh(page)
 })
 
-// A fighter starts as a beggar; practice pays coins; coins buy gear; gear is
-// worn and shows on the fighter, and stays on after a reload.
-test('a beggar practises, buys a hat, and wears it', async ({ page }) => {
+// A fighter starts as one of the free characters; practice pays coins; coins
+// unlock another character, who is played from then on, also after a reload.
+test('a street kid practises, unlocks the fisherman, and plays him', async ({ page }) => {
   await asLearner(page)
   await page.goto('/arena')
   const create = page.getByTestId('arena-create')
   await expect(create.getByRole('heading', { name: 'Create your fighter' })).toBeVisible()
-  await expect(create.getByText(/You start as a beggar/)).toBeVisible()
+  await expect(create.getByText(/two free characters/)).toBeVisible()
   await create.getByLabel('Fighter name').fill('Minh')
-  await create.getByRole('radio', { name: 'Female' }).check()
-  await create.getByRole('button', { name: 'Start as a beggar' }).click()
+  await create.getByRole('radio', { name: 'Street Kid' }).check()
+  await expect(create.getByText('Skill: Steady Aim')).toBeVisible()
+  await create.getByRole('button', { name: 'Enter the Arena' }).click()
 
   const arena = page.getByTestId('arena')
   await expect(arena.getByRole('heading', { name: 'Minh' })).toBeVisible()
   await expect(arena.getByText('Level 1', { exact: true })).toBeVisible()
-  const fighter = arena.getByRole('img', { name: 'Minh' })
-  await expect(fighter.locator('[data-item="rags"]')).toHaveCount(1)
+  await expect(arena.getByRole('img', { name: 'Minh' })).toHaveAttribute('data-character', 'street_kid')
   await expect(arena.getByTestId('coins')).toHaveText('0 coins')
+  await expect(arena.getByText('2 of 24 unlocked')).toBeVisible()
 
-  // Too poor for anything yet: the shop says how far off.
-  await arena.getByRole('tab', { name: 'Shop' }).click()
-  const hat = arena.getByRole('article', { name: 'Straw hat' })
-  await expect(hat.getByRole('button', { name: /Buy · 60/ })).toBeDisabled()
-  await expect(hat).toContainText('60 more coins')
+  // Too poor for anything yet: each character says how far off.
+  const fisherman = arena.getByRole('article', { name: 'Fisherman' })
+  await expect(fisherman.getByRole('button', { name: /Unlock · 150/ })).toBeDisabled()
+  await expect(fisherman).toContainText('150 more coins')
+  await expect(fisherman).toContainText('Skill: Wave Slam')
 
-  // Thirty takes' worth of practice: 60 coins, and more for the day's goal.
+  // Practice pays; from a known purse, then.
   const logged = await page.request.post(`${API_URL}/api/test/activity`, { data: { kind: 'take', times: 30 } })
   expect(logged.ok()).toBeTruthy()
   await page.reload()
   await expect(page.getByTestId('coins')).not.toHaveText('0 coins')
-  // Achievements unlocked by that pay too; from a known purse, then.
-  await page.request.post(`${API_URL}/api/test/coins`, { data: { coins: 80 } })
+  await page.request.post(`${API_URL}/api/test/coins`, { data: { coins: 200 } })
   await page.reload()
-  await expect(page.getByTestId('coins')).toHaveText('80 coins')
-  await page.getByRole('tab', { name: 'Shop' }).click()
-  const hatAgain = page.getByRole('article', { name: 'Straw hat' })
-  await hatAgain.getByRole('button', { name: /Buy · 60/ }).click()
-  await expect(page.getByTestId('arena').getByRole('status')).toHaveText('Straw hat is yours.')
-  await expect(hatAgain.getByText('Owned')).toBeVisible()
-  await expect(page.getByTestId('coins')).toHaveText('20 coins')
-
-  await page.getByRole('tab', { name: 'Bag' }).click()
-  await page.getByRole('article', { name: 'Straw hat' }).getByRole('button', { name: 'Wear' }).click()
-  await expect(page.getByRole('img', { name: 'Minh' }).locator('[data-item="straw_hat"]')).toHaveCount(1)
-  await expect(page.getByRole('article', { name: 'Straw hat' }).getByRole('button', { name: 'Take off' })).toBeVisible()
+  await expect(page.getByTestId('coins')).toHaveText('200 coins')
+  const fishermanAgain = page.getByRole('article', { name: 'Fisherman' })
+  await fishermanAgain.getByRole('button', { name: /Unlock · 150/ }).click()
+  await expect(page.getByTestId('arena').getByRole('status')).toHaveText('Fisherman unlocked.')
+  await expect(page.getByTestId('coins')).toHaveText('50 coins')
+  await fishermanAgain.getByRole('button', { name: 'Play' }).click()
+  await expect(fishermanAgain).toContainText('Playing')
+  await expect(page.getByRole('img', { name: 'Minh' })).toHaveAttribute('data-character', 'fisherman')
 
   await page.reload()
-  await expect(page.getByRole('img', { name: 'Minh' }).locator('[data-item="straw_hat"]')).toHaveCount(1)
-  await page.getByRole('tab', { name: 'Fighter' }).click()
-  await expect(page.getByTestId('arena')).toContainText('Straw hat')
+  await expect(page.getByRole('img', { name: 'Minh' })).toHaveAttribute('data-character', 'fisherman')
+  await expect(page.getByText('3 of 24 unlocked')).toBeVisible()
 })
 
-test('a rich fighter buys a blade and the look can change', async ({ page }) => {
+test('a rich fighter unlocks a legend, who hits harder, and the name can change', async ({ page }) => {
   await asLearner(page)
   await page.goto('/arena')
   await page.getByLabel('Fighter name').fill('An')
-  await page.getByRole('button', { name: 'Start as a beggar' }).click()
+  await page.getByRole('button', { name: 'Enter the Arena' }).click()
   await expect(page.getByTestId('arena')).toBeVisible()
-  const set = await page.request.post(`${API_URL}/api/test/coins`, { data: { coins: 2000 } })
+  const set = await page.request.post(`${API_URL}/api/test/coins`, { data: { coins: 4500 } })
   expect(set.ok()).toBeTruthy()
   await page.reload()
 
-  await page.getByRole('tab', { name: 'Shop' }).click()
-  await page.getByRole('article', { name: 'Twin blades' }).getByRole('button', { name: /Buy · 1500/ }).click()
+  await page.getByRole('tab', { name: 'Legendary' }).click()
+  const monk = page.getByRole('article', { name: 'Thunder Monk' })
+  await monk.getByRole('button', { name: /Unlock · 4000/ }).click()
   await expect(page.getByTestId('coins')).toHaveText('500 coins')
-  await page.getByRole('tab', { name: 'Bag' }).click()
-  await page.getByRole('article', { name: 'Twin blades' }).getByRole('button', { name: 'Wear' }).click()
-  // A beggar's 4 attack, and the blades' 7.
-  await expect(page.locator('.arena-stats div', { hasText: 'Attack' }).locator('dd')).toHaveText('11')
+  await monk.getByRole('button', { name: 'Play' }).click()
+  // Level 1's 4 attack, and a legend's 6 more.
+  await expect(page.locator('.arena-stats div', { hasText: 'Attack' }).locator('dd')).toHaveText('10')
+  await expect(page.getByTestId('arena')).toContainText('Skill: Thunder Staff')
 
-  await page.getByRole('button', { name: 'Change look' }).click()
+  await page.getByRole('button', { name: 'Rename' }).click()
   await page.getByLabel('Fighter name').fill('An the Brave')
-  await page.getByRole('button', { name: 'Save look' }).click()
+  await page.getByRole('button', { name: 'Save name' }).click()
   await expect(page.getByRole('heading', { name: 'An the Brave' })).toBeVisible()
-  await expect(page.getByRole('img', { name: 'An the Brave' }).locator('[data-item="twin_blades"]')).toHaveCount(1)
+  await expect(page.getByRole('img', { name: 'An the Brave' })).toHaveAttribute('data-character', 'thunder_monk')
 })
 
 async function beggar(page: import('@playwright/test').Page, name = 'Minh') {
   await asLearner(page)
   await page.goto('/arena')
   await page.getByLabel('Fighter name').fill(name)
-  await page.getByRole('button', { name: 'Start as a beggar' }).click()
+  await page.getByRole('button', { name: 'Enter the Arena' }).click()
   await expect(page.getByTestId('arena')).toBeVisible()
 }
 
@@ -102,7 +98,10 @@ async function answer(page: import('@playwright/test').Page, right: boolean): Pr
   if (!duel) return false
   await expect(page.getByText(`Round ${duel.turn}`, { exact: true })).toBeVisible()
   const options = page.locator('.duel-option')
-  await expect(options.first()).toBeEnabled()
+  // The last answer may still be landing: wait for the next question, or the end.
+  const ended = page.locator('.duel-outcome')
+  await expect(options.first().and(page.locator(':enabled')).or(ended)).toBeVisible()
+  if (await ended.isVisible()) return false
   const key = (await (await page.request.get(`${API_URL}/api/test/arena/duel/answer`)).json()) as { answer: string }
   const match = options.filter({ hasText: new RegExp(`^\\d${escape(key.answer)}$`) })
   if (right) await match.click()
@@ -114,13 +113,13 @@ async function answer(page: import('@playwright/test').Page, right: boolean): Pr
 // next floor open; and a duel survives a reload on the way.
 test('a beggar climbs the first floor of the tower', async ({ page }) => {
   await beggar(page)
-  const floor1 = page.getByRole('listitem', { name: 'Floor 1: Pickpocket' })
+  const floor1 = page.getByRole('listitem', { name: 'Floor 1: Porter' })
   await expect(page.getByTestId('energy')).toHaveText('Energy 5/5')
-  await expect(page.getByRole('listitem', { name: 'Floor 2: Dockhand' })).toContainText('Beat the floor below first')
+  await expect(page.getByRole('listitem', { name: 'Floor 2: Fisherman' })).toContainText('Beat the floor below first')
   await floor1.getByRole('button', { name: 'Fight' }).click()
   await page.waitForURL('**/arena/duel')
   const duel = page.getByTestId('duel')
-  await expect(duel.getByRole('meter', { name: 'Pickpocket' })).toBeVisible()
+  await expect(duel.getByRole('meter', { name: 'Porter' })).toBeVisible()
 
   await answer(page, true)
   await page.reload()
@@ -137,14 +136,14 @@ test('a beggar climbs the first floor of the tower', async ({ page }) => {
   await expect(outcome).toContainText('+20 XP')
 
   await outcome.getByRole('link', { name: 'Back to the Arena' }).click()
-  await expect(page.getByRole('listitem', { name: 'Floor 1: Pickpocket' })).toContainText('Beaten')
-  await expect(page.getByRole('listitem', { name: 'Floor 2: Dockhand' }).getByRole('button', { name: 'Fight' })).toBeVisible()
+  await expect(page.getByRole('listitem', { name: 'Floor 1: Porter' })).toContainText('Beaten')
+  await expect(page.getByRole('listitem', { name: 'Floor 2: Fisherman' }).getByRole('button', { name: 'Fight' })).toBeVisible()
   await expect(page.getByTestId('energy')).toHaveText('Energy 4/5')
 })
 
 test('wrong answers end in a knock-out, and no energy means no duel', async ({ page }) => {
   await beggar(page, 'An')
-  await page.getByRole('listitem', { name: 'Floor 1: Pickpocket' }).getByRole('button', { name: 'Fight' }).click()
+  await page.getByRole('listitem', { name: 'Floor 1: Porter' }).getByRole('button', { name: 'Fight' }).click()
   await page.waitForURL('**/arena/duel')
   for (let i = 0; i < 30; i++) {
     if (await page.getByRole('heading', { name: 'Knocked out' }).isVisible()) break
@@ -156,7 +155,7 @@ test('wrong answers end in a knock-out, and no energy means no duel', async ({ p
   await page.goto('/arena')
   await expect(page.getByTestId('energy')).toHaveText('Energy 0/5')
   await expect(page.getByText('No energy left — practise to earn more.')).toBeVisible()
-  await expect(page.getByRole('listitem', { name: 'Floor 1: Pickpocket' }).getByRole('button', { name: 'Fight' })).toBeDisabled()
+  await expect(page.getByRole('listitem', { name: 'Floor 1: Porter' }).getByRole('button', { name: 'Fight' })).toBeDisabled()
 })
 
 // Another learner's fighter as a shadow: offered as a rival, fought and beaten,
@@ -166,7 +165,7 @@ test('a learner beats another learner’s shadow and climbs the Arena board', as
   const rivalPage = await other.newPage()
   await signIn(rivalPage, 'rival@example.com')
   const made = await rivalPage.request.post(`${API_URL}/api/arena/fighter`, {
-    data: { name: 'Lan', body: 'b', skin: 2, hair: 1 },
+    data: { name: 'Lan', character: 'street_kid' },
   })
   expect(made.ok()).toBeTruthy()
   await other.close()
@@ -204,4 +203,23 @@ test('a learner beats another learner’s shadow and climbs the Arena board', as
   await expect(board).toContainText('3 points')
   // Fought today: Lan is not offered again until tomorrow.
   await expect(page.getByRole('listitem', { name: 'Lan' })).toHaveCount(0)
+})
+
+// Four right answers fill the rage: the beggar's own skill is the button, and
+// it plays as his.
+test('a full rage unleashes the character’s own skill', async ({ page }) => {
+  await beggar(page, 'Bao')
+  await page.getByRole('listitem', { name: 'Floor 1: Porter' }).getByRole('button', { name: 'Fight' }).click()
+  await page.waitForURL('**/arena/duel')
+  const skill = page.getByRole('button', { name: /Desperate Fist/ })
+  await expect(skill).toBeDisabled()
+  for (let i = 0; i < 4; i++) await answer(page, true)
+  await expect(skill).toBeEnabled()
+  // The fifth turn is the porter's big attack, which only a block answers.
+  await answer(page, true)
+  await skill.click()
+  await expect(page.getByText('Special ready — answer right to unleash it')).toBeVisible()
+  await answer(page, true)
+  await expect(page.getByRole('img', { name: 'Bao' })).toHaveAttribute('data-skill', 'crit')
+  await expect(page.getByRole('status').filter({ hasText: 'Desperate Fist!' })).toBeVisible()
 })

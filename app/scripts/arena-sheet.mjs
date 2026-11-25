@@ -1,20 +1,16 @@
 /**
- * Assembles a layer's frames into its sheet:
+ * Assembles a character's frames into its sheet:
  *
- *   npm run arena:sheet                 every layer under art/arena-frames/
- *   npm run arena:sheet -- base/a-0     just that one
+ *   npm run arena:sheet                           every character under art/arena-frames/
+ *   npm run arena:sheet -- characters/beggar      just that one
  *
  * Frames are one PNG each, the frame size square, named by move and number:
  *
- *   art/arena-frames/base/a-0/idle-1.png … idle-4.png, light-1.png …
- *   art/arena-frames/gear/rags@b/…     art/arena-frames/hair/b-2.back/…
+ *   art/arena-frames/characters/beggar/idle-1.png … idle-4.png, light-1.png …
+ *   … skill-1.png … skill-4.png (the character's own skill)
  *
- * and the sheet is written to public/arena/<layer>.sheet.png — base/a-0.sheet.png,
- * gear/rags@b.sheet.png — beside the layer's single pose, for
- * `npm run arena:manifest` to check and declare. Every
- * frame of every layer of a fighter has to be drawn on the same canvas in the
- * same pose as the body's frame with the same name; that is what keeps them in
- * step. See docs/arena-sprites.md.
+ * and the sheet is written to public/arena/characters/<id>.sheet.png, for
+ * `npm run arena:manifest` to check and declare. See docs/arena-sprites.md.
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'

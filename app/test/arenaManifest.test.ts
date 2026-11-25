@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  CHARACTERS,
   EXPECTED,
   SHEET_ANIMATIONS,
   SHEET_COLUMNS,
@@ -38,27 +39,22 @@ function fullSheet() {
 }
 
 describe('layer names', () => {
-  it('names layers after their files, opponents in the singular', () => {
-    expect(layerName('base/a-0.png')).toBe('base/a-0')
-    expect(layerName('gear/straw_hat.png')).toBe('gear/straw_hat')
-    expect(layerName('opponents/alley_boss.png')).toBe('opponent/alley_boss')
-    expect(layerName('gear/Straw Hat.png')).toBeNull()
+  it('names a character after its file, in the singular', () => {
+    expect(layerName('characters/beggar.png')).toBe('character/beggar')
+    expect(layerName('characters/Thunder Monk.png')).toBeNull()
+    // The paper doll's layers are gone.
+    expect(layerName('base/a-0.png')).toBeNull()
+    expect(layerName('gear/rags@b.png')).toBeNull()
   })
 
-  it('tells a layer’s sheet from its single pose', () => {
-    expect(parseLayer('base/a-0.png')).toEqual({ name: 'base/a-0', sheet: false })
-    expect(parseLayer('base/a-0.sheet.png')).toEqual({ name: 'base/a-0', sheet: true })
-    expect(parseLayer('gear/rags@b.back.sheet.png')).toEqual({ name: 'gear/rags@b.back', sheet: true })
+  it('tells a character’s sheet from its single pose', () => {
+    expect(parseLayer('characters/beggar.png')).toEqual({ name: 'character/beggar', sheet: false })
+    expect(parseLayer('characters/beggar.sheet.png')).toEqual({ name: 'character/beggar', sheet: true })
   })
 
-  it('knows versions per body and back parts', () => {
-    expect(layerName('gear/rags@b.png')).toBe('gear/rags@b')
-    expect(layerName('hair/b-2.back.png')).toBe('hair/b-2.back')
-    expect(layerName('gear/twin_blades@a.back.png')).toBe('gear/twin_blades@a.back')
-    // A body has no body version, hair is already per body, an opponent is whole.
-    expect(layerName('base/a-0@b.png')).toBeNull()
-    expect(layerName('hair/a-0@a.png')).toBeNull()
-    expect(layerName('opponents/mirror.back.png')).toBeNull()
+  it('knows all 24 characters', () => {
+    expect(CHARACTERS).toHaveLength(24)
+    expect(EXPECTED).toContain('character/tower_master')
   })
 })
 
@@ -81,7 +77,7 @@ describe('PNG', () => {
 
 describe('the frame grid', () => {
   it('passes a full sheet with the feet on the ground in every frame', () => {
-    expect(checkFrames('base/a-0.png', fullSheet(), 64)).toEqual([])
+    expect(checkFrames('characters/beggar.png', fullSheet(), 64)).toEqual([])
   })
 
   it('names a body frame that is missing, or whose feet are off the line', () => {
@@ -91,7 +87,7 @@ describe('the frame grid', () => {
     for (let y = 0; y < 64; y++) image.rgba.set(clear.rgba.subarray(y * 256, y * 256 + 256), ((64 + y) * image.width + 64) * 4)
     for (let y = 0; y < 64; y++) image.rgba.fill(0, ((128 + y) * image.width) * 4, ((128 + y) * image.width + 64) * 4)
     figure(image, 0, 128, ground(64) - 4)
-    const errors = checkFrames('base/a-0.png', image, 64)
+    const errors = checkFrames('characters/beggar.png', image, 64)
     expect(errors.some((e) => e.includes('light frame 2 trống'))).toBe(true)
     expect(errors.some((e) => e.includes('heavy frame 1 chân ở y=56'))).toBe(true)
   })
@@ -101,7 +97,7 @@ describe('the frame grid', () => {
     const row = SHEET_ANIMATIONS.ko.row * 64
     for (let y = 0; y < 64; y++) image.rgba.fill(0, ((row + y) * image.width + 64) * 4, ((row + y) * image.width + 128) * 4)
     figure(image, 64, row, ground(64) - 4)
-    expect(checkFrames('base/a-0.png', image, 64)).toEqual([])
+    expect(checkFrames('characters/beggar.png', image, 64)).toEqual([])
   })
 
   it('lets a win jump, but not sink', () => {
@@ -109,23 +105,27 @@ describe('the frame grid', () => {
     const row = SHEET_ANIMATIONS.win.row * 64
     for (let y = 0; y < 64; y++) image.rgba.fill(0, ((row + y) * image.width) * 4, ((row + y) * image.width + 64) * 4)
     figure(image, 0, row, ground(64) - 6)
-    expect(checkFrames('base/a-0.png', image, 64)).toEqual([])
+    expect(checkFrames('characters/beggar.png', image, 64)).toEqual([])
   })
 
-  it('refuses a frame past a row’s count, on any layer', () => {
+  it('refuses a frame past a row’s count', () => {
     const image = blank(SHEET_COLUMNS * 64, SHEET_ROWS * 64)
     figure(image, 2 * 64, SHEET_ANIMATIONS.hit.row * 64, ground(64)) // hit has 2 frames
-    expect(checkFrames('gear/rags.png', image, 64)[0]).toContain('hit có hình ở frame 3')
+    expect(checkFrames('characters/rags.png', image, 64).some((e) => e.includes('hit có hình ở frame 3'))).toBe(true)
   })
 
-  it('lets gear frames be empty: bare fists are nothing at all', () => {
-    expect(checkFrames('gear/bare_fists.png', blank(SHEET_COLUMNS * 64, SHEET_ROWS * 64), 64)).toEqual([])
+  it('lets a skill leap into the air', () => {
+    const image = fullSheet()
+    const row = SHEET_ANIMATIONS.special.row * 64
+    for (let y = 0; y < 64; y++) image.rgba.fill(0, ((row + y) * image.width) * 4, ((row + y) * image.width + 64) * 4)
+    figure(image, 0, row, ground(64) - 8)
+    expect(checkFrames('characters/beggar.png', image, 64)).toEqual([])
   })
 
   it('checks a single pose’s feet too', () => {
     const image = blank(64, 64)
     figure(image, 0, 0, 50)
-    expect(checkFrames('base/b-1.png', image, 64)[0]).toContain('tư thế chân ở y=50')
+    expect(checkFrames('characters/farmer.png', image, 64)[0]).toContain('tư thế chân ở y=50')
   })
 })
 
@@ -164,53 +164,48 @@ describe('assembling frames into a sheet', () => {
 
 describe('the manifest', () => {
   it('declares a layer’s pose and sheet side by side', () => {
-    const { manifest, errors } = buildManifest([pose('base/a-0.png'), sheet('base/a-0.sheet.png'), pose('gear/rags@a.png')])
+    const { manifest, errors } = buildManifest([pose('characters/beggar.png'), sheet('characters/beggar.sheet.png'), pose('characters/farmer.png')])
     expect(errors).toEqual([])
     expect(manifest?.frame).toBe(64)
     expect(manifest?.pixel).toBe(true)
-    expect(manifest?.layers).toEqual({ 'base/a-0': 'base/a-0.png', 'gear/rags@a': 'gear/rags@a.png' })
-    expect(manifest?.sheets).toEqual({ 'base/a-0': 'base/a-0.sheet.png' })
+    expect(manifest?.layers).toEqual({ 'character/beggar': 'characters/beggar.png', 'character/farmer': 'characters/farmer.png' })
+    expect(manifest?.sheets).toEqual({ 'character/beggar': 'characters/beggar.sheet.png' })
     expect(manifest?.animations.ko).toEqual(SHEET_ANIMATIONS.ko)
   })
 
   it('wants a sheet’s size for a .sheet file, and a pose’s for the rest', () => {
-    expect(buildManifest([pose('base/a-0.sheet.png')]).errors[0]).toContain('sheet phải là')
-    expect(buildManifest([{ ...sheet('base/a-0.png') }]).errors[0]).toContain('một tư thế phải là')
+    expect(buildManifest([pose('characters/beggar.sheet.png')]).errors[0]).toContain('sheet phải là')
+    expect(buildManifest([{ ...sheet('characters/beggar.png') }]).errors[0]).toContain('một tư thế phải là')
   })
 
   it('refuses a wrong size, and frames of two sizes together', () => {
-    expect(buildManifest([{ path: 'base/a-0.png', width: 1024, height: 1024, alpha: true }]).errors[0]).toContain('1024×1024')
-    const mixed = buildManifest([pose('base/a-0.png'), { path: 'hair/a-0.png', width: 256, height: 256, alpha: true }])
+    expect(buildManifest([{ path: 'characters/beggar.png', width: 1024, height: 1024, alpha: true }]).errors[0]).toContain('1024×1024')
+    const mixed = buildManifest([pose('characters/beggar.png'), { path: 'characters/farmer.png', width: 256, height: 256, alpha: true }])
     expect(mixed.manifest).toBeNull()
     expect(mixed.errors[0]).toContain('cùng cỡ khung')
   })
 
-  it('counts an item drawn once per body as there, and names the body missing', () => {
-    const both = buildManifest([pose('gear/rags@a.png'), pose('gear/rags@b.png')])
-    expect(both.missing).not.toContain('gear/rags')
-    const one = buildManifest([pose('gear/rags@a.png')])
-    expect(one.missing).toContain('gear/rags@b')
-    expect(one.missing).not.toContain('gear/rags')
-  })
-
-  it('says how many layers an animated body still waits for, and lists the sheets missing', () => {
-    const { warnings, missingSheets } = buildManifest([sheet('base/a-0.sheet.png'), pose('base/a-0.png'), pose('hair/a-0.png')])
-    expect(warnings.some((w) => w.includes('thân a đã có sheet'))).toBe(true)
-    expect(missingSheets).toContain('hair/a-0')
-    expect(missingSheets).not.toContain('base/a-0')
+  it('lists the characters still to draw, and those still without a sheet', () => {
+    const { missing, missingSheets, warnings } = buildManifest([sheet('characters/beggar.sheet.png'), pose('characters/farmer.png'), pose('characters/nobody.png')])
+    expect(missing).not.toContain('character/beggar')
+    expect(missing).not.toContain('character/farmer')
+    expect(missing).toContain('character/wind_sage')
+    expect(missingSheets).toContain('character/farmer')
+    expect(missingSheets).not.toContain('character/beggar')
+    expect(warnings.some((w) => w.includes('characters/nobody.png'))).toBe(true)
   })
 
   it('checks the frames of files whose pixels it is given', () => {
     const image = blank(64, 64)
     figure(image, 0, 0, 40)
-    const { errors } = buildManifest([{ ...pose('base/a-0.png'), image }])
+    const { errors } = buildManifest([{ ...pose('characters/beggar.png'), image }])
     expect(errors[0]).toContain('chân ở y=40')
   })
 
   it('warns about an opaque file and lists what is missing', () => {
-    const { warnings, missing } = buildManifest([pose('base/a-0.png', false)])
+    const { warnings, missing } = buildManifest([pose('characters/beggar.png', false)])
     expect(warnings.some((w) => w.includes('trong suốt'))).toBe(true)
     expect(missing).toHaveLength(EXPECTED.length - 1)
-    expect(EXPECTED).toHaveLength(36)
+    expect(EXPECTED).toHaveLength(24)
   })
 })
