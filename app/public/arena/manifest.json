@@ -1,7 +1,52 @@
 {
   "frame": 64,
-  "pixel": true,
-  "animations": {},
+  "animations": {
+    "idle": {
+      "row": 0,
+      "frames": 4,
+      "fps": 6,
+      "loop": true
+    },
+    "light": {
+      "row": 1,
+      "frames": 4,
+      "fps": 14,
+      "loop": false
+    },
+    "heavy": {
+      "row": 2,
+      "frames": 4,
+      "fps": 12,
+      "loop": false
+    },
+    "hit": {
+      "row": 3,
+      "frames": 2,
+      "fps": 10,
+      "loop": false
+    },
+    "ko": {
+      "row": 4,
+      "frames": 4,
+      "fps": 8,
+      "loop": false
+    },
+    "win": {
+      "row": 5,
+      "frames": 4,
+      "fps": 8,
+      "loop": true
+    },
+    "special": {
+      "row": 6,
+      "frames": 4,
+      "fps": 10,
+      "loop": false
+    }
+  },
   "layers": {},
-  "sheets": {}
+  "sheets": {
+    "character/beggar": "characters/beggar.sheet.png"
+  },
+  "pixel": true
 }
