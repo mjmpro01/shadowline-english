@@ -47,6 +47,7 @@
   "layers": {},
   "sheets": {
     "character/beggar": "characters/beggar.sheet.png",
+    "character/herb_girl": "characters/herb_girl.sheet.png",
     "character/street_kid": "characters/street_kid.sheet.png"
   },
   "pixel": true
