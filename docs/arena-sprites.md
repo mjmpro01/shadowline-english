@@ -47,7 +47,7 @@ thì là 1024 × 1536. Ô thừa ở các hàng ngắn **phải để trống**.
 | 1 | `light` | 4 | 14 | một lần | Đấm nhanh |
 | 2 | `heavy` | 4 | 12 | một lần | Đá hoặc vung vũ khí |
 | 3 | `hit` | 2 | 10 | một lần | Trúng đòn, giật lùi |
-| 4 | `ko` | 4 | 8 | một lần, giữ frame cuối | Gục, nằm xuống |
+| 4 | `ko` | 4 | 8 | một lần, giữ frame cuối | Gục, nằm xuống; đang ngã thì chân được rời đất |
 | 5 | `win` | 4 | 8 | lặp | Ăn mừng, được nhảy lên |
 
 Tổng cộng **22 frame cho mỗi lớp**. Ba động tác không có hàng riêng mượn hàng có
@@ -56,16 +56,24 @@ sẵn và chuyển động bằng CSS:
 - `special` (tuyệt chiêu) dùng `heavy`, kèm vầng sáng;
 - `block` (đỡ đòn) dùng `idle`.
 
-### Một tư thế
+### Một tư thế, sheet, hay cả hai
 
-Một lớp cũng có thể chỉ là **một khung** (64 × 64) ở tư thế đứng thủ. Khi đó app
-dùng khung ấy cho mọi động tác và tự làm chuyển động bằng CSS: lao tới, rung khi
-trúng đòn, ngã khi KO. Đây là cách các lớp hiện có đang chạy.
+Mỗi lớp có thể có:
+- **một tư thế**: `base/a-0.png`, một khung 64 × 64 ở tư thế đứng thủ. App dùng
+  khung ấy cho mọi động tác và tự làm chuyển động bằng CSS: lao tới, rung khi
+  trúng đòn, ngã khi KO;
+- **một sheet**: `base/a-0.sheet.png`, đủ 22 frame;
+- **hoặc cả hai, đặt cạnh nhau.**
 
-**Một võ sĩ chỉ hoạt hình bằng frame khi mọi lớp của họ đều là sheet.** Nếu thân
-đã là sheet mà còn một món đồ là một tư thế, võ sĩ đó vẽ tạm cho tới khi món ấy
-có sheet: chiếc mũ đứng yên trên cái đầu đang động thì không còn là đồng bộ.
-Script báo rõ những lớp nào đang kìm võ sĩ lại.
+Với mỗi võ sĩ, app chọn như sau:
+1. **Mọi lớp đều có sheet:** võ sĩ hoạt hình bằng frame.
+2. **Không thì, mọi lớp đều có một tư thế:** võ sĩ hiện bằng hình một tư thế.
+3. **Không thì:** võ sĩ được vẽ tạm.
+
+Vì vậy thêm sheet cho thân trước không làm mất hình của ai: võ sĩ vẫn hiện bằng
+hình một tư thế cho tới khi tóc và đồ của họ cũng có sheet. Chiếc mũ đứng yên
+trên một cái đầu đang động thì không còn đồng bộ, nên app không trộn hai loại.
+Script cho biết còn những lớp nào chưa có sheet.
 
 ## 3. Các lớp
 
@@ -123,8 +131,10 @@ cd app && npm run arena:sheet            # mọi lớp
 cd app && npm run arena:sheet -- base/a-0  # một lớp
 ```
 
-Lệnh này ghi sheet vào `app/public/arena/<lớp>.png`. Frame thiếu được để trống
-và có cảnh báo; frame ngoài bảng ở mục 2 bị từ chối.
+Lệnh này ghi sheet vào `app/public/arena/<lớp>.sheet.png`, cạnh hình một tư thế
+của lớp đó. Frame thiếu được để trống và có cảnh báo; frame ngoài bảng ở mục 2
+bị từ chối. Thư mục `app/art/arena-frames/` được giữ trong repo làm bản gốc để
+sửa về sau.
 
 **Thứ tự làm:** vẽ đủ 22 frame của **thân** trước, coi đó là template. Mỗi frame
 của tóc và đồ được vẽ **đè lên đúng frame cùng tên của thân**, rồi chỉ giữ lại
@@ -139,10 +149,10 @@ cd app && npm run arena:manifest
 Script đọc từng PNG, kiểm tra rồi ghi `app/public/arena/manifest.json`. Không cần
 viết tay. Các kiểm tra:
 
-- **Cỡ:** một tư thế (64 × 64 hoặc 256 × 256) hoặc sheet (256 × 384 hoặc
-  1024 × 1536), và mọi file cùng một cỡ khung.
+- **Cỡ:** một tư thế phải là 64 × 64 hoặc 256 × 256, file `.sheet.png` phải là
+  256 × 384 hoặc 1024 × 1536, và mọi file cùng một cỡ khung.
 - **Từng frame của thân và đối thủ:** đủ frame mỗi hàng, và **chân trên vạch đất
-  ở mọi frame** (±1 px; `win` được nhảy lên nhưng không được lún xuống). Thân lệch
+  ở mọi frame** (±1 px; `win` và `ko` được rời mặt đất nhưng không được lún xuống). Thân lệch
   thì mọi món đồ lệch theo, nên đây là kiểm tra quan trọng nhất.
 - **Mọi lớp:** không có hình ở ô vượt quá số frame của hàng.
 - **Trong suốt:** báo nếu file không có kênh alpha.

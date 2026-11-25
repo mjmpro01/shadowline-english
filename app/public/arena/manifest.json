@@ -59,6 +59,13 @@
     "hair/b-2": "hair/b-2.png",
     "hair/b-3": "hair/b-3.png"
   },
-  "sheets": [],
+  "sheets": {
+    "base/a-0": "base/a-0.sheet.png",
+    "base/a-1": "base/a-1.sheet.png",
+    "base/a-2": "base/a-2.sheet.png",
+    "base/a-3": "base/a-3.sheet.png",
+    "gear/bare_feet": "gear/bare_feet.sheet.png",
+    "gear/bare_fists": "gear/bare_fists.sheet.png"
+  },
   "pixel": true
 }

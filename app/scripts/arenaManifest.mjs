@@ -61,21 +61,27 @@ export const EXPECTED = [
 ]
 
 /**
- * A file's layer name, or null when the name is not one:
- *   base/a-0.png            → base/a-0
- *   hair/b-2.back.png       → hair/b-2.back    (drawn behind the body)
- *   gear/rags@b.png         → gear/rags@b      (the female body's own rags)
- *   gear/twin_blades.back.png
- *   opponents/alley_boss.png → opponent/alley_boss
+ * A file's layer, or null when the name is not one. A layer can have a single
+ * pose and a sheet of frames side by side; the sheet ends in `.sheet.png`:
+ *   base/a-0.png              → base/a-0, a pose
+ *   base/a-0.sheet.png        → base/a-0, its sheet
+ *   hair/b-2.back.png         → hair/b-2.back    (drawn behind the body)
+ *   gear/rags@b.png           → gear/rags@b      (the female body's own rags)
+ *   opponents/alley_boss.png  → opponent/alley_boss
  */
-export function layerName(path) {
-  const m = /^(base|hair|gear|opponents)\/([a-z0-9_-]+)(@[ab])?(\.back)?\.png$/.exec(path)
+export function parseLayer(path) {
+  const m = /^(base|hair|gear|opponents)\/([a-z0-9_-]+)(@[ab])?(\.back)?(\.sheet)?\.png$/.exec(path)
   if (!m) return null
-  const [, dir, id, body = '', back = ''] = m
+  const [, dir, id, body = '', back = '', sheet = ''] = m
   if (dir === 'base' && (body || back)) return null
   if ((dir === 'hair' || dir === 'opponents') && body) return null
   if (dir === 'opponents' && back) return null
-  return `${dir === 'opponents' ? 'opponent' : dir}/${id}${body}${back}`
+  return { name: `${dir === 'opponents' ? 'opponent' : dir}/${id}${body}${back}`, sheet: !!sheet }
+}
+
+/** Just the layer's name. */
+export function layerName(path) {
+  return parseLayer(path)?.name ?? null
 }
 
 // --- PNG ---------------------------------------------------------------------
@@ -219,8 +225,10 @@ export function checkFrames(path, image, frame) {
         continue
       }
       if (!body) continue
-      // A win may jump: its feet may leave the ground, never sink below it.
-      const off = name === 'win' ? bottom > floor + 1 : Math.abs(bottom - floor) > 1
+      // A win may jump and a KO falls through the air: their feet may leave
+      // the ground, never sink below it.
+      const airborne = name === 'win' || name === 'ko'
+      const off = airborne ? bottom > floor + 1 : Math.abs(bottom - floor) > 1
       if (bottom < 0) errors.push(`${path}: ${where} trống`)
       else if (off) errors.push(`${path}: ${where} chân ở y=${bottom}, phải ở y=${floor} (±1)`)
     }
@@ -265,35 +273,38 @@ export function assembleSheet(frames, frame) {
 /**
  * @param files {path, width, height, alpha, image?}[] relative to public/arena;
  *   `image` (decoded pixels) lets the frames be checked
- * @returns {{manifest: object|null, errors: string[], warnings: string[], missing: string[], frame: number|null, sheets: number}}
+ * @returns {{manifest: object|null, errors: string[], warnings: string[], missing: string[], missingSheets: string[], frame: number|null, sheets: number}}
  */
 export function buildManifest(files) {
   const errors = []
   const warnings = []
   const layers = {}
-  const sheets = []
+  const sheets = {}
   const sizes = new Map()
   for (const f of [...files].sort((a, b) => a.path.localeCompare(b.path))) {
-    const name = layerName(f.path)
-    if (!name) {
+    const parsed = parseLayer(f.path)
+    if (!parsed) {
       warnings.push(`${f.path}: không phải tên lớp nào, bỏ qua`)
       continue
     }
+    const { name, sheet } = parsed
     const plain = name.replace(/@[ab]/, '').replace(/\.back$/, '')
     if (name.startsWith('opponent/') ? !OPPONENTS.includes(name.slice(9)) : !EXPECTED.includes(plain)) {
       warnings.push(`${f.path}: không có trong danh mục, vẫn khai báo`)
     }
-    const frame = FRAMES.find((n) => (f.width === n && f.height === n) || (f.width === SHEET_COLUMNS * n && f.height === SHEET_ROWS * n))
+    const frame = FRAMES.find((n) =>
+      sheet ? f.width === SHEET_COLUMNS * n && f.height === SHEET_ROWS * n : f.width === n && f.height === n,
+    )
     if (!frame) {
-      const sizesText = FRAMES.map((n) => `${n}×${n} (một tư thế) hoặc ${SHEET_COLUMNS * n}×${SHEET_ROWS * n} (sheet)`).join(', ')
-      errors.push(`${f.path}: ${f.width}×${f.height}, cần ${sizesText}`)
+      const wanted = FRAMES.map((n) => (sheet ? `${SHEET_COLUMNS * n}×${SHEET_ROWS * n}` : `${n}×${n}`)).join(' hoặc ')
+      errors.push(`${f.path}: ${f.width}×${f.height}, ${sheet ? 'sheet' : 'một tư thế'} phải là ${wanted}`)
       continue
     }
     if (!f.alpha) warnings.push(`${f.path}: không có kênh trong suốt (alpha), nền sẽ che các lớp dưới`)
     if (f.image) errors.push(...checkFrames(f.path, f.image, frame))
     sizes.set(frame, [...(sizes.get(frame) ?? []), f.path])
-    layers[name] = f.path
-    if (f.width !== frame) sheets.push(name)
+    if (sheet) sheets[name] = f.path
+    else layers[name] = f.path
   }
   if (sizes.size > 1) {
     const listed = [...sizes].map(([n, paths]) => `${paths.length} file khung ${n} px (vd ${paths[0]})`)
@@ -301,33 +312,35 @@ export function buildManifest(files) {
   }
 
   // A gear item is there when drawn once for both, or once for each body.
-  const there = (name) =>
-    name in layers || (name.startsWith('gear/') && BODIES.every((b) => `${name}@${b}` in layers))
-  const missing = []
-  for (const name of EXPECTED) {
-    if (there(name)) continue
-    if (name.startsWith('gear/') && BODIES.some((b) => `${name}@${b}` in layers)) {
-      missing.push(...BODIES.filter((b) => !(`${name}@${b}` in layers)).map((b) => `${name}@${b}`))
-    } else missing.push(name)
+  const missingFrom = (have) => {
+    const missing = []
+    for (const name of EXPECTED) {
+      if (name in have || (name.startsWith('gear/') && BODIES.every((b) => `${name}@${b}` in have))) continue
+      if (name.startsWith('gear/') && BODIES.some((b) => `${name}@${b}` in have)) {
+        missing.push(...BODIES.filter((b) => !(`${name}@${b}` in have)).map((b) => `${name}@${b}`))
+      } else missing.push(name)
+    }
+    return missing
   }
+  const all = { ...layers, ...sheets }
+  const missing = missingFrom(all)
+  const missingSheets = missingFrom(sheets)
 
-  // Half a fighter in frames is a fighter drawn still: say which layers hold
-  // an animated body back.
-  const animated = new Set(sheets)
+  // A body that moves while its hair and clothes do not yet is drawn still:
+  // say which layers it waits for.
   for (const b of BODIES) {
-    if (!FOUR.some((n) => animated.has(`base/${b}-${n}`))) continue
-    const still = Object.keys(layers).filter(
-      (name) => !animated.has(name) && (name.startsWith(`hair/${b}-`) || (name.startsWith('gear/') && !name.includes(`@${b === 'a' ? 'b' : 'a'}`))),
-    )
-    if (still.length) warnings.push(`thân ${b} đã có sheet, nhưng ${still.join(', ')} vẫn là một tư thế: võ sĩ dùng chúng vẫn vẽ tạm cho tới khi có sheet`)
+    if (!FOUR.some((n) => `base/${b}-${n}` in sheets)) continue
+    const waiting = missingSheets.filter((name) => name.startsWith(`hair/${b}-`) || (name.startsWith('gear/') && !name.endsWith(`@${b === 'a' ? 'b' : 'a'}`)))
+    if (waiting.length) warnings.push(`thân ${b} đã có sheet, nhưng ${waiting.length} lớp tóc/đồ chưa có, nên võ sĩ vẫn hiện bằng hình một tư thế cho tới khi đủ`)
   }
 
-  if (errors.length || Object.keys(layers).length === 0) {
-    return { manifest: null, errors, warnings, missing, frame: null, sheets: sheets.length }
+  const count = Object.keys(all).length
+  if (errors.length || count === 0) {
+    return { manifest: null, errors, warnings, missing, missingSheets, frame: null, sheets: Object.keys(sheets).length }
   }
   const frame = [...sizes.keys()][0]
   const manifest = { frame, animations: SHEET_ANIMATIONS, layers, sheets }
   // Pixel art is drawn small and enlarged with hard edges, not smoothed.
   if (frame === 64) manifest.pixel = true
-  return { manifest, errors, warnings, missing, frame, sheets: sheets.length }
+  return { manifest, errors, warnings, missing, missingSheets, frame, sheets: Object.keys(sheets).length }
 }

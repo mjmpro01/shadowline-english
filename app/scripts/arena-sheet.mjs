@@ -9,8 +9,9 @@
  *   art/arena-frames/base/a-0/idle-1.png … idle-4.png, light-1.png …
  *   art/arena-frames/gear/rags@b/…     art/arena-frames/hair/b-2.back/…
  *
- * and the sheet is written to public/arena/<layer>.png — base/a-0.png,
- * gear/rags@b.png — for `npm run arena:manifest` to check and declare. Every
+ * and the sheet is written to public/arena/<layer>.sheet.png — base/a-0.sheet.png,
+ * gear/rags@b.sheet.png — beside the layer's single pose, for
+ * `npm run arena:manifest` to check and declare. Every
  * frame of every layer of a fighter has to be drawn on the same canvas in the
  * same pose as the body's frame with the same name; that is what keeps them in
  * step. See docs/arena-sprites.md.
@@ -76,7 +77,7 @@ for (const layer of layers) {
     failed = true
     continue
   }
-  const target = join(OUT, `${layer}.png`)
+  const target = join(OUT, `${layer}.sheet.png`)
   mkdirSync(dirname(target), { recursive: true })
   writeFileSync(target, encodePng(sheet.width, sheet.height, sheet.rgba))
   console.log(`✓ ${target}: ${frames.length} frame, ${sheet.width}×${sheet.height}`)

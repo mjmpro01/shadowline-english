@@ -43,16 +43,33 @@ describe('a fighter’s layers', () => {
     ])
   })
 
-  it('animates only when every layer is a sheet, and waits while they are mixed', () => {
+  it('animates from the sheets when every layer has one', () => {
     const layers = named('base/b-2', 'gear/rags', 'hair/b-1')
-    const all = stackFor(look, ['rags'], { layers, sheets: ['base/b-2', 'gear/rags', 'hair/b-1'] })
-    expect(all).toMatchObject({ complete: true, sheet: true })
-    const mixed = stackFor(look, ['rags'], { layers, sheets: ['base/b-2'] })
-    expect(mixed).toMatchObject({ complete: false, sheet: false })
+    const sheets = Object.fromEntries(Object.keys(layers).map((n) => [n, `${n}.sheet.png`]))
+    const stack = stackFor(look, ['rags'], { layers, sheets })
+    expect(stack).toMatchObject({ complete: true, sheet: true })
+    expect(stack.files).toEqual(['base/b-2.sheet.png', 'gear/rags.sheet.png', 'hair/b-1.sheet.png'])
   })
 
-  it('takes a whole-character sheet when there is one', () => {
-    expect(wholeStack('opponent/alley_boss', { layers: named('opponent/alley_boss') })?.layers).toEqual(['opponent/alley_boss'])
+  it('keeps the poses while only some layers have sheets', () => {
+    // The body moves, the hair does not yet: the fighter stays a still drawing
+    // rather than losing the art, or wearing hair that floats off a moving head.
+    const layers = named('base/b-2', 'gear/rags', 'hair/b-1')
+    const stack = stackFor(look, ['rags'], { layers, sheets: { 'base/b-2': 'base/b-2.sheet.png' } })
+    expect(stack).toMatchObject({ complete: true, sheet: false })
+    expect(stack.files).toEqual(['base/b-2.png', 'gear/rags.png', 'hair/b-1.png'])
+  })
+
+  it('animates a fighter who only has sheets', () => {
+    const sheets = named('base/b-2', 'gear/rags', 'hair/b-1')
+    expect(stackFor(look, ['rags'], { layers: {}, sheets })).toMatchObject({ complete: true, sheet: true })
+  })
+
+  it('takes a whole-character drawing when there is one, its sheet first', () => {
+    expect(wholeStack('opponent/alley_boss', { layers: named('opponent/alley_boss') })).toMatchObject({ sheet: false })
+    expect(
+      wholeStack('opponent/alley_boss', { layers: named('opponent/alley_boss'), sheets: { 'opponent/alley_boss': 'x.sheet.png' } }),
+    ).toMatchObject({ sheet: true, files: ['x.sheet.png'] })
     expect(wholeStack('opponent/alley_boss', { layers: {} })).toBeNull()
   })
 })

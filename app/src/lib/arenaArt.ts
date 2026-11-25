@@ -6,10 +6,11 @@
  * frame-synchronised: every layer of a fighter is drawn on the same canvas, in
  * the same pose, with the same frames in the same cells of its sheet, so one
  * clock can step them all together and a sword is always in the hand that
- * holds it. A layer is either one pose or a whole sheet; a fighter is drawn
- * from the art only when all of its layers are there and all of the same kind,
- * and by FighterSprite's own stand-in otherwise, so the Arena works before any
- * art arrives and each piece can land on its own.
+ * holds it. A layer may have one pose, a whole sheet, or both: a fighter is
+ * animated from the sheets when every one of their layers has one, drawn from
+ * the poses when every layer has one of those, and by FighterSprite's own
+ * stand-in otherwise — so the Arena works before any art arrives, and a sheet
+ * landing for one layer never takes the art away from anybody.
  */
 
 export type Animation = 'idle' | 'walk' | 'light' | 'heavy' | 'special' | 'block' | 'hit' | 'ko' | 'win'
@@ -54,10 +55,10 @@ export interface ArtManifest {
   pixel?: boolean
   animations: Partial<Record<Animation, AnimSpec>>
   /** A layer's name ("base/a-1", "hair/a-2", "gear/straw_hat@b",
-   *  "hair/b-2.back") to its file. */
+   *  "hair/b-2.back") to its single pose. */
   layers: Record<string, string>
-  /** The layers that are whole sheets; every other layer is one pose. */
-  sheets?: string[]
+  /** A layer's name to its sheet of frames, for the layers that have one. */
+  sheets?: Record<string, string>
 }
 
 /** Put on every art URL, so a new drawing is fetched on the next deploy. */
@@ -82,11 +83,15 @@ export function loadArt(): Promise<ArtManifest | null> {
 export interface Stack {
   /** Layer names, bottom first. */
   layers: string[]
-  /** Every layer the fighter needs is there, and all are of one kind. */
+  /** Their files, in the same order: all sheets, or all poses. */
+  files: string[]
+  /** Every layer the fighter needs is there in one kind. */
   complete: boolean
-  /** All of them are sheets, so the fighter is animated frame by frame. */
+  /** They are sheets, so the fighter is animated frame by frame. */
   sheet: boolean
 }
+
+type Art = Pick<ArtManifest, 'layers' | 'sheets'>
 
 /**
  * The layers a fighter is drawn from, bottom first.
@@ -104,33 +109,38 @@ export interface Stack {
 export function stackFor(
   look: { body: string; skin: number; hair: number },
   gear: string[],
-  manifest: Pick<ArtManifest, 'layers' | 'sheets'> | null,
+  manifest: Art | null,
 ): Stack {
-  const has = (name: string) => !!manifest && name in manifest.layers
+  // Sheets first: a fighter whose every layer moves is drawn moving.
+  return build(look, gear, manifest?.sheets ?? {}, true) ?? build(look, gear, manifest?.layers ?? {}, false) ?? {
+    layers: [],
+    files: [],
+    complete: false,
+    sheet: false,
+  }
+}
+
+/** The fighter from one kind of file, or null when a layer it needs has none. */
+function build(look: { body: string; skin: number; hair: number }, gear: string[], files: Record<string, string>, sheet: boolean): Stack | null {
+  const has = (name: string) => name in files
   const base = `base/${look.body}-${look.skin}`
   const hair = `hair/${look.body}-${look.hair}`
   const worn = gear.map((id) => (has(`gear/${id}@${look.body}`) ? `gear/${id}@${look.body}` : `gear/${id}`))
   const required = [base, ...worn, hair]
+  if (!required.every(has)) return null
   const backs = [hair, ...worn].map((name) => `${name}.back`).filter(has)
   const layers = [...backs, base, ...worn, hair]
-  return judge(layers, required, manifest)
+  return { layers, files: layers.map((name) => files[name]), complete: true, sheet }
 }
 
-/** A whole-character sheet ("opponent/{id}"), when there is one. */
-export function wholeStack(name: string, manifest: Pick<ArtManifest, 'layers' | 'sheets'> | null): Stack | null {
-  if (!manifest || !(name in manifest.layers)) return null
-  return judge([name], [name], manifest)
-}
-
-function judge(layers: string[], required: string[], manifest: Pick<ArtManifest, 'layers' | 'sheets'> | null): Stack {
-  if (!manifest || !required.every((name) => name in manifest.layers)) {
-    return { layers, complete: false, sheet: false }
-  }
-  const sheets = new Set(manifest.sheets ?? [])
-  const kinds = new Set(layers.map((name) => sheets.has(name)))
-  // A posed hat on an animated body would sit still while the head moves:
-  // half a fighter in sync is not in sync, so it waits for the rest.
-  return { layers, complete: kinds.size === 1, sheet: kinds.has(true) && kinds.size === 1 }
+/** A whole-character drawing ("opponent/{id}"), when there is one: its sheet,
+ *  else its pose. */
+export function wholeStack(name: string, manifest: Art | null): Stack | null {
+  const sheet = manifest?.sheets?.[name]
+  if (sheet) return { layers: [name], files: [sheet], complete: true, sheet: true }
+  const pose = manifest?.layers[name]
+  if (pose) return { layers: [name], files: [pose], complete: true, sheet: false }
+  return null
 }
 
 /** The frames a move is drawn from: its own row, or the row it borrows. */
