@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { optionKey, percent, pickLetter, pickTile, spelled, timeShare } from '../src/lib/duel'
+import { daysToEarn, optionKey, percent, pickLetter, pickTile, spelled, swing, timeShare } from '../src/lib/duel'
 
 describe('a duel on screen', () => {
   it('counts the time down from the whole to nothing', () => {
@@ -32,5 +32,19 @@ describe('a duel on screen', () => {
     expect(percent(-3, 38)).toBe(0)
     expect(percent(50, 38)).toBe(100)
     expect(percent(1, 0)).toBe(0)
+  })
+
+  it('says how hard an answer hit for how quick it was, like the server', () => {
+    expect(swing(100)).toBe(1.6)
+    expect(swing(50)).toBe(1.1)
+    expect(swing(0)).toBe(0.6)
+    expect(swing(140)).toBe(1.6)
+  })
+
+  it('says how many days of practice a character is away', () => {
+    expect(daysToEarn(0, 50)).toBe(0)
+    expect(daysToEarn(150, 50)).toBe(3)
+    // Nothing earned lately: the daily goal's 20 coins a day.
+    expect(daysToEarn(150, 0)).toBe(8)
   })
 })

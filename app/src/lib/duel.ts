@@ -41,3 +41,17 @@ export function percent(value: number, max: number): number {
   if (max <= 0) return 0
   return Math.round(Math.min(1, Math.max(0, value / max)) * 100)
 }
+
+/** How hard a right answer hits for the share of the time it left, 0–100:
+ *  the server's 1.6 at once down to 0.6 at the buzzer, to one decimal. */
+export function swing(speed: number): number {
+  const used = 1 - Math.min(100, Math.max(0, speed)) / 100
+  return Math.round((1.6 - used) * 10) / 10
+}
+
+/** Days of practice to earn `short` coins at a learner's rate, counting at
+ *  least the daily goal's 20 a day; 0 when nothing is short. */
+export function daysToEarn(short: number, perDay: number): number {
+  if (short <= 0) return 0
+  return Math.ceil(short / Math.max(20, perDay))
+}

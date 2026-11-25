@@ -540,6 +540,8 @@ export interface Fighter {
 
 export interface ArenaState {
   coins: number
+  /** What the learner earns a day lately, to say how far a character is. */
+  coinsPerDay: number
   fighter: Fighter | null
   stats: FighterStats
   owned: string[]
@@ -633,6 +635,8 @@ export interface Duel {
   wrong: number
   coins: number
   xp: number
+  /** A boss's first-clear bonus, paid besides `coins`. */
+  bonus: number
   levelUp: boolean
   firstClear: boolean
   words: string[]
@@ -665,6 +669,10 @@ export interface DuelTurn {
   /** A hit taken for nothing: the opponent was stunned. */
   shielded?: boolean
   focus?: number
+  /** A right answer the opponent still hit back: it came late. */
+  countered?: boolean
+  /** The share of the time left when the answer came, 0–100. */
+  speed: number
 }
 
 /** A milestone reached: "takes.50" is the takes track's target of 50. */
