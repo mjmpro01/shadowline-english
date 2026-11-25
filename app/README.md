@@ -52,11 +52,12 @@ Progress's place in the tab bar; Progress is reached from Profile there. The
 green plank and its badge are the selected state, applied to whichever place
 you are actually in.
 
-The Arena (`src/screens/ArenaScreen.tsx`) is a fighter who starts as a beggar,
-coins earned by practising, a shop and a bag; the server decides every outcome.
-Fighters are drawn by `components/FighterSprite.tsx` from the artist's sheets in
-`public/arena/` (format: `../docs/arena-sprites.md`); until a fighter's every
-layer is there, it is drawn in SVG from the same choices.
+The Arena (`src/screens/ArenaScreen.tsx`) is a fighter who starts as one of two
+free characters, coins earned by practising, and 22 more characters to unlock;
+the server decides every outcome. Fighters are drawn by
+`components/FighterSprite.tsx` from each character's whole sheet in
+`public/arena/characters/` (format: `../docs/arena-sprites.md`); until a
+character's art is there, it is drawn in SVG in their colours.
 
 Clips are curated, not collected: learners practise what is in the library and
 cannot import or upload anything themselves. `/admin` holds the clip studio,

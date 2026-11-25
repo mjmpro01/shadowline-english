@@ -132,13 +132,15 @@ export interface Repository {
 
   /** The learner's coins, today's, and where the latest came from. */
   wallet(): Promise<Wallet>
-  /** The learner's fighter, gear and the shop. */
+  /** The learner's fighter, the characters they own, and the roster. */
   arena(): Promise<ArenaState>
-  createFighter(look: FighterLook): Promise<ArenaState>
-  updateFighter(look: FighterLook): Promise<ArenaState>
-  buyGear(item: string): Promise<ArenaState>
-  /** Wears a piece of gear, or with `null` takes off what is in the slot. */
-  equip(item: string | null, slot?: GearSlot): Promise<ArenaState>
+  /** Makes the fighter, as one of the free characters. */
+  createFighter(name: string, character: string): Promise<ArenaState>
+  renameFighter(name: string): Promise<ArenaState>
+  /** Buys a character with coins; it is kept. */
+  buyCharacter(id: string): Promise<ArenaState>
+  /** Plays a character already owned. */
+  selectCharacter(id: string): Promise<ArenaState>
   /** The tower's floors, the fighter's energy and level, and a duel under way. */
   tower(): Promise<Tower>
   /** The duel under way, or null. */
@@ -497,11 +499,10 @@ export interface Wallet {
   recent: { kind: string; item: string; amount: number; at: string }[]
 }
 
-export const GEAR_SLOTS = ['head', 'body', 'hands', 'weapon', 'feet', 'charm'] as const
-export type GearSlot = (typeof GEAR_SLOTS)[number]
-export type Rarity = 'common' | 'rare' | 'epic' | 'legendary'
+export type Tier = 'common' | 'rare' | 'epic' | 'legendary'
+export type SkillKind = 'crit' | 'combo' | 'drain' | 'heal' | 'stun' | 'focus'
 
-export interface GearStats {
+export interface FighterStats {
   atk: number
   def: number
   hp: number
@@ -511,24 +512,28 @@ export interface GearStats {
   rage: number
 }
 
-export interface GearItem {
+/** What a fighter is drawn from: one of the Arena's characters. */
+export interface CharacterLook {
   id: string
-  slot: GearSlot
+  female: boolean
+  /** The stand-in's two colours, until the character's art arrives. */
+  palette: [string, string]
+  weapon: { name: { en: string; vi: string }; kind: string }
+}
+
+/** One of the characters a learner can play. */
+export interface Character extends CharacterLook {
   name: { en: string; vi: string }
-  rarity: Rarity
+  tier: Tier
+  /** In coins; 0 for the two a fighter can start as. */
   price: number
-  stats: GearStats
-  starter: boolean
+  skill: { kind: SkillKind; name: { en: string; vi: string } }
 }
 
-export interface FighterLook {
+export interface Fighter {
   name: string
-  body: 'a' | 'b'
-  skin: number
-  hair: number
-}
-
-export interface Fighter extends FighterLook {
+  /** The character played now. */
+  character: string
   level: number
   xp: number
 }
@@ -536,29 +541,26 @@ export interface Fighter extends FighterLook {
 export interface ArenaState {
   coins: number
   fighter: Fighter | null
-  stats: GearStats
-  /** Slot to the item worn there. */
-  equipped: Partial<Record<GearSlot, string>>
+  stats: FighterStats
   owned: string[]
-  shop: (GearItem & { owned: boolean })[]
+  /** Every character, with what it adds to the fighter's stats. */
+  roster: (Character & { owned: boolean; bonus: FighterStats })[]
 }
 
-/** One floor's fighter. Their look is drawn like a learner's. */
+/** One floor's fighter: one of the characters a learner can play. */
 export interface Opponent {
   floor: number
   id: string
   name: { en: string; vi: string }
   boss: boolean
-  look: FighterLook
-  equipped: Partial<Record<GearSlot, string>>
-  /** Drawn as the learner themselves. */
+  character: Character
+  /** Drawn as the learner's own character. */
   mirror?: boolean
   atk: number
   def: number
   hp: number
   coins: number
   xp: number
-  drop?: string
   /** A shadow's level and rating; a sparring bot is one from the tower. */
   level?: number
   rating?: number
@@ -568,8 +570,7 @@ export interface Opponent {
 export interface Rival {
   id: string
   name: string
-  look: FighterLook
-  equipped: Partial<Record<GearSlot, string>>
+  character: Character
   level: number
   rating: number
   bot: boolean
@@ -578,7 +579,7 @@ export interface Rival {
 export interface ArenaBoard {
   week: string
   daysLeft: number
-  rows: { rank: number; userId: string; name: string; look: FighterLook; points: number; wins: number; rating: number; isYou: boolean }[]
+  rows: { rank: number; userId: string; name: string; character: string; points: number; wins: number; rating: number; isYou: boolean }[]
   you: { rank: number; points: number; wins: number; rating: number } | null
   lastWeek: { place: number; name: string; points: number; isYou: boolean }[]
   prizes: number[]
@@ -632,13 +633,17 @@ export interface Duel {
   wrong: number
   coins: number
   xp: number
-  drop: string
   levelUp: boolean
   firstClear: boolean
   words: string[]
   kind: 'tower' | 'pvp'
   /** What a duel against a shadow did to the learner's rating. */
   ratingDelta: number
+  /** The learner's skill this duel; hits a stun still shrugs off; questions
+   *  after this one a focus skill still lengthens. */
+  skill: SkillKind | ''
+  shield: number
+  focus: number
 }
 
 export type DuelMove = 'light' | 'heavy' | 'special' | 'block' | 'hit'
@@ -653,6 +658,13 @@ export interface DuelTurn {
   late: boolean
   answer: string
   entry: { word: string; ipa: string; meaning: string }
+  /** What a skill did besides the hit. */
+  skill?: SkillKind
+  healed?: number
+  shield: number
+  /** A hit taken for nothing: the opponent was stunned. */
+  shielded?: boolean
+  focus?: number
 }
 
 /** A milestone reached: "takes.50" is the takes track's target of 50. */
@@ -952,20 +964,20 @@ class ApiRepository implements Repository {
     return api.get<ArenaState>('/api/arena')
   }
 
-  createFighter(look: FighterLook) {
-    return api.send<ArenaState>('POST', '/api/arena/fighter', look)
+  createFighter(name: string, character: string) {
+    return api.send<ArenaState>('POST', '/api/arena/fighter', { name, character })
   }
 
-  updateFighter(look: FighterLook) {
-    return api.send<ArenaState>('PUT', '/api/arena/fighter', look)
+  renameFighter(name: string) {
+    return api.send<ArenaState>('PUT', '/api/arena/fighter', { name })
   }
 
-  buyGear(item: string) {
-    return api.send<ArenaState>('POST', '/api/arena/buy', { item })
+  buyCharacter(id: string) {
+    return api.send<ArenaState>('POST', '/api/arena/characters/buy', { character: id })
   }
 
-  equip(item: string | null, slot?: GearSlot) {
-    return api.send<ArenaState>('POST', '/api/arena/equip', item ? { item } : { item: null, slot })
+  selectCharacter(id: string) {
+    return api.send<ArenaState>('POST', '/api/arena/characters/select', { character: id })
   }
 
   tower() {

@@ -10,7 +10,8 @@ import (
 	"github.com/shadowline/server/internal/store"
 )
 
-// The Arena: a learner's fighter, the shop and their gear, and their coins.
+// The Arena: a learner's fighter, the characters they own and can buy, and
+// their coins.
 
 // arenaRefusal answers a refusal the Arena gives with a code the app can say
 // in the learner's language; anything else is failErr's.
@@ -25,7 +26,7 @@ func (s *Server) arenaRefusal(w http.ResponseWriter, err error, action string) {
 		{store.ErrFighterTaken, http.StatusConflict, "arena.exists"},
 		{store.ErrOwned, http.StatusConflict, "arena.owned"},
 		{store.ErrNotOwned, http.StatusConflict, "arena.notOwned"},
-		{store.ErrBareBody, http.StatusConflict, "arena.bare"},
+		{store.ErrNotStarter, http.StatusBadRequest, "arena.invalid"},
 		{store.ErrNotEnoughCoins, http.StatusConflict, "arena.notEnoughCoins"},
 	}
 	for _, r := range refusals {
@@ -47,73 +48,65 @@ func (s *Server) handleArena(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, state)
 }
 
+// handleCreateFighter makes the learner's fighter: a name, and which of the
+// free characters they start as.
 func (s *Server) handleCreateFighter(w http.ResponseWriter, r *http.Request) {
-	s.saveFighter(w, r, true)
-}
-
-func (s *Server) handleUpdateFighter(w http.ResponseWriter, r *http.Request) {
-	s.saveFighter(w, r, false)
-}
-
-func (s *Server) saveFighter(w http.ResponseWriter, r *http.Request, create bool) {
-	u, _ := auth.UserFrom(r.Context())
-	var look arena.Look
-	if err := decodeJSON(r, &look); err != nil {
-		fail(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	var err error
-	if create {
-		err = s.Store.CreateFighter(r.Context(), u.ID, look)
-	} else {
-		err = s.Store.UpdateFighter(r.Context(), u.ID, look)
-	}
-	if err != nil {
-		s.arenaRefusal(w, err, "save fighter")
-		return
-	}
-	s.handleArena(w, r)
-}
-
-func (s *Server) handleArenaBuy(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.UserFrom(r.Context())
 	var body struct {
-		Item string `json:"item"`
+		Name      string `json:"name"`
+		Character string `json:"character"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		fail(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if err := s.Store.Buy(r.Context(), u.ID, body.Item); err != nil {
-		s.arenaRefusal(w, err, "buy")
+	if err := s.Store.CreateFighter(r.Context(), u.ID, body.Name, body.Character); err != nil {
+		s.arenaRefusal(w, err, "create fighter")
 		return
 	}
 	s.handleArena(w, r)
 }
 
-// handleArenaEquip puts on a piece of gear, or with no item takes off what is
-// in the slot.
-func (s *Server) handleArenaEquip(w http.ResponseWriter, r *http.Request) {
+// handleRenameFighter changes the fighter's name.
+func (s *Server) handleRenameFighter(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.UserFrom(r.Context())
 	var body struct {
-		Item *string `json:"item"`
-		Slot string  `json:"slot"`
+		Name string `json:"name"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		fail(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	var err error
-	if body.Item != nil {
-		err = s.Store.Equip(r.Context(), u.ID, *body.Item)
-	} else {
-		err = s.Store.Unequip(r.Context(), u.ID, body.Slot)
-	}
-	if err != nil {
-		s.arenaRefusal(w, err, "equip")
+	if err := s.Store.RenameFighter(r.Context(), u.ID, body.Name); err != nil {
+		s.arenaRefusal(w, err, "rename fighter")
 		return
 	}
 	s.handleArena(w, r)
+}
+
+// handleCharacter buys a character, or plays one already owned.
+func (s *Server) handleCharacter(buy bool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		u, _ := auth.UserFrom(r.Context())
+		var body struct {
+			Character string `json:"character"`
+		}
+		if err := decodeJSON(r, &body); err != nil {
+			fail(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		var err error
+		if buy {
+			err = s.Store.BuyCharacter(r.Context(), u.ID, body.Character)
+		} else {
+			err = s.Store.SelectCharacter(r.Context(), u.ID, body.Character)
+		}
+		if err != nil {
+			s.arenaRefusal(w, err, "character")
+			return
+		}
+		s.handleArena(w, r)
+	}
 }
 
 func (s *Server) handleWallet(w http.ResponseWriter, r *http.Request) {

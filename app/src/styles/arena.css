@@ -50,23 +50,6 @@
   font-weight: 700;
 }
 
-.arena-slots {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: var(--space-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.arena-slots li {
-  display: grid;
-  gap: 2px;
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  border: 1px solid var(--color-divider);
-}
-
 .arena-items {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -93,6 +76,27 @@
 }
 .arena-rarity {
   color: var(--rarity);
+}
+
+/* A character in the roster: their figure beside who they are. */
+.arena-character {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+}
+.arena-character[data-playing] {
+  box-shadow: 0 0 0 2px var(--rarity);
+}
+.arena-tier[data-tier='rare'] {
+  color: #3f7fd0;
+}
+.arena-tier[data-tier='epic'] {
+  color: #8f5bd6;
+}
+.arena-tier[data-tier='legendary'] {
+  color: #e08a1e;
+}
+.arena-skill strong {
+  font-size: 0.95em;
 }
 
 .arena-soon {
@@ -204,11 +208,62 @@
 .fighter[data-animation='hit'] .fighter-stack[data-sheet],
 .fighter[data-animation='ko'] .fighter-stack[data-sheet],
 .fighter[data-animation='win'] .fighter-stack[data-sheet],
+.fighter[data-animation='special'] .fighter-stack[data-sheet],
 .fighter[data-animation='idle'] .fighter-stack[data-sheet] {
   animation: none;
 }
+
+/* A skill's glow, in the colour of what it does, over the character's own
+   frames (or the stand-in's lunge). */
+.skill-burst {
+  position: absolute;
+  inset: 8% 4% 2%;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, var(--skill-glow, #ffd34d) 0, transparent 68%);
+  opacity: 0;
+  animation: skill-burst 0.9s ease-out;
+}
+.fighter[data-skill='crit'] {
+  --skill-glow: rgb(255 120 40 / 0.85);
+}
+.fighter[data-skill='combo'] {
+  --skill-glow: rgb(255 220 90 / 0.85);
+}
+.fighter[data-skill='drain'] {
+  --skill-glow: rgb(220 40 60 / 0.8);
+}
+.fighter[data-skill='heal'] {
+  --skill-glow: rgb(80 210 120 / 0.85);
+}
+.fighter[data-skill='stun'] {
+  --skill-glow: rgb(250 230 80 / 0.85);
+}
+.fighter[data-skill='focus'] {
+  --skill-glow: rgb(80 160 255 / 0.85);
+}
+/* It travels with the lunge of doll-special. */
+@keyframes skill-burst {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  30% {
+    opacity: 1;
+    transform: translateX(25%) scale(0.9);
+  }
+  60% {
+    opacity: 0.9;
+    transform: translateX(60%) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(30%) scale(1.25);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
-  .fighter-doll {
+  .fighter-doll,
+  .skill-burst {
     animation: none !important;
   }
 }
@@ -362,6 +417,10 @@
 }
 .duel-pop-hurt {
   color: #b3261e;
+}
+.duel-pop-heal {
+  top: 24%;
+  color: #1f9d55;
 }
 @keyframes duel-pop {
   from {
@@ -619,11 +678,11 @@
 @keyframes doll-special {
   20% {
     transform: scale(1.1);
-    filter: drop-shadow(0 0 12px #ff9a3c);
+    filter: drop-shadow(0 0 12px var(--skill-glow, #ff9a3c));
   }
   60% {
     transform: translateX(60%) scale(1.15);
-    filter: drop-shadow(0 0 18px #ff5a3c);
+    filter: drop-shadow(0 0 18px var(--skill-glow, #ff5a3c));
   }
 }
 @keyframes doll-block {

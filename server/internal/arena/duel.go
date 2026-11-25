@@ -22,7 +22,7 @@ const (
 	Grace = 1500 * time.Millisecond
 	// RageFull is when the special can be used.
 	RageFull = 100
-	// RageBase is rage for a right answer, before gear; ComboBonus more for
+	// RageBase is rage for a right answer, before the character; ComboBonus more for
 	// the third right in a row and every one after.
 	RageBase   = 20
 	ComboBonus = 10
@@ -31,6 +31,10 @@ const (
 	EnergyMax       = 5
 	EnergyEvery     = time.Hour
 	PointsPerEnergy = 10
+	// FocusSeconds is the time a focus skill adds to each of the next
+	// FocusTurns questions.
+	FocusSeconds = 4
+	FocusTurns   = 3
 )
 
 // Moves an answer turns into.
@@ -44,9 +48,12 @@ const (
 
 // AnswerSeconds is the time a question gives: the fighter's time, less the
 // opponent's, and more for a scramble; never under MinSeconds. A blockable
-// attack gives less: it has to be quick.
-func AnswerSeconds(fighterTime int, o Opponent, kind string, block bool) int {
+// attack gives less: it has to be quick. focused adds a focus skill's seconds.
+func AnswerSeconds(fighterTime int, o Opponent, kind string, block, focused bool) int {
 	s := max(MinSeconds, fighterTime-o.TimeDelta)
+	if focused {
+		s += FocusSeconds
+	}
 	if kind == AskScramble {
 		s += ScrambleExtra
 	}
@@ -75,6 +82,13 @@ type Fight struct {
 	Allowed   time.Duration
 	Right     bool
 	OppHP, HP int
+	// The fighter's skill and their character's tier, and their health when
+	// full, which a heal never goes past.
+	Skill string
+	Tier  int
+	MaxHP int
+	// Shield is hits still to be shrugged off, from a stun.
+	Shield int
 }
 
 // Result is what an answer did.
@@ -86,13 +100,47 @@ type Result struct {
 	Combo int    `json:"combo"`
 	HP    int    `json:"hp"`
 	OppHP int    `json:"oppHp"`
+	// What a skill did besides the hit: its kind, the health it gave back,
+	// a hit it left the opponent unable to land, the questions with more time.
+	Skill  string `json:"skill,omitempty"`
+	Healed int    `json:"healed,omitempty"`
+	Shield int    `json:"shield"`
+	// Shielded is a hit taken for nothing: the opponent was stunned.
+	Shielded bool `json:"shielded,omitempty"`
+	Focus    int  `json:"focus,omitempty"`
+}
+
+// times is power at a multiple, rounded.
+func times(power int, by float64) int { return int(math.Round(float64(power) * by)) }
+
+// skill is what a skill does: the damage, the health back, a stun, focus.
+// Each tier above common makes it 10% stronger.
+func skill(f Fight) (dealt, healed, shield, focus int) {
+	p := 1 + 0.1*float64(f.Tier)
+	switch f.Skill {
+	case SkillCrit:
+		return hit(times(f.Atk, 3.5*p), f.OppDef), 0, 0, 0
+	case SkillCombo:
+		return hit(times(f.Atk, 2*p), f.OppDef) + hit(times(f.Atk, 1.5*p), f.OppDef), 0, 0, 0
+	case SkillDrain:
+		d := hit(times(f.Atk, 2.5*p), f.OppDef)
+		return d, d / 2, 0, 0
+	case SkillHeal:
+		return hit(times(f.Atk, 2*p), f.OppDef), times(max(f.MaxHP, f.HP), 0.3*p), 0, 0
+	case SkillStun:
+		return hit(times(f.Atk, 2*p), f.OppDef), 0, 1, 0
+	case SkillFocus:
+		return hit(times(f.Atk, 2.5*p), f.OppDef), 0, 0, FocusTurns
+	}
+	// A duel from before characters had skills.
+	return hit(f.Atk*3, f.OppDef), 0, 0, 0
 }
 
 func hit(power, def int) int { return max(1, power-def) }
 
 // Resolve is what one answer does.
 func Resolve(f Fight) Result {
-	r := Result{Rage: f.Rage, Combo: f.Combo, HP: f.HP, OppHP: f.OppHP}
+	r := Result{Rage: f.Rage, Combo: f.Combo, HP: f.HP, OppHP: f.OppHP, Shield: f.Shield}
 	switch {
 	case f.Block && f.Right:
 		r.Move = MoveBlock
@@ -104,7 +152,10 @@ func Resolve(f Fight) Result {
 		r.Combo = 0
 	case f.Right && f.Special && f.Rage >= RageFull:
 		r.Move = MoveSpecial
-		r.Dealt = hit(f.Atk*3, f.OppDef)
+		var shield int
+		r.Dealt, r.Healed, shield, r.Focus = skill(f)
+		r.Shield = max(r.Shield, shield)
+		r.Skill = f.Skill
 		r.Combo++
 	case f.Right && f.Allowed > 0 && float64(f.Elapsed) <= HeavyWithin*float64(f.Allowed):
 		r.Move = MoveHeavy
@@ -132,8 +183,17 @@ func Resolve(f Fight) Result {
 		// Armed and missed: half of it goes.
 		r.Rage = RageFull / 2
 	}
+	if r.Taken > 0 && r.Shield > 0 {
+		// Stunned: the opponent's hit does not land.
+		r.Taken, r.Shielded = 0, true
+		r.Shield--
+	}
 	r.OppHP = max(0, f.OppHP-r.Dealt)
-	r.HP = max(0, f.HP-r.Taken)
+	r.HP = max(0, f.HP-r.Taken+r.Healed)
+	if f.MaxHP > 0 {
+		r.HP = min(r.HP, f.MaxHP)
+		r.Healed = min(r.Healed, max(0, f.MaxHP-(f.HP-r.Taken)))
+	}
 	return r
 }
 

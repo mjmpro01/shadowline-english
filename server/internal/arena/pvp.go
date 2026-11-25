@@ -6,7 +6,7 @@ import (
 )
 
 // Duels against shadows: another learner's fighter, as strong as their level
-// and gear make them, played by the machine. Nobody has to be there at the
+// and character make them, played by the machine. Nobody has to be there at the
 // same time. A win or a loss moves the attacker's rating; the defender, who
 // was not playing, keeps theirs.
 
@@ -36,18 +36,12 @@ func PvPCoins(level, opponentLevel int) int {
 	return 15 + 5*max(0, opponentLevel-level)
 }
 
-// Shadow is a learner's fighter as an opponent: their stats in their gear,
-// questions as hard as their rating says.
-func Shadow(id string, name string, look Look, equipped map[string]string, level, rating int) Opponent {
-	var worn []Item
-	for _, itemID := range equipped {
-		if it, ok := ItemByID(itemID); ok {
-			worn = append(worn, it)
-		}
-	}
-	stats := StatsOf(level, worn)
+// Shadow is a learner's fighter as an opponent: their stats as the character
+// they play, questions as hard as their rating says.
+func Shadow(id string, name string, c Character, level, rating int) Opponent {
+	stats := StatsOf(level, c)
 	o := Opponent{
-		ID: id, Name: Text{En: name, Vi: name}, Look: look, Equipped: equipped,
+		ID: id, Name: Text{En: name, Vi: name}, Character: c,
 		Atk: stats.Atk, Def: stats.Def, HP: stats.HP,
 		TimeDelta: 1, Telegraph: 4,
 		Level: max(1, level), Rating: rating,
@@ -79,6 +73,5 @@ func Bot(floor int) (Opponent, bool) {
 	o.ID = fmt.Sprintf("bot:%d", floor)
 	o.Bot, o.Boss = true, false
 	o.Level, o.Rating = floor, 900+25*floor
-	o.Drop, o.DropChance = "", 0
 	return o, true
 }

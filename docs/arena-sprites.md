@@ -1,187 +1,113 @@
-# Hình cho Đấu trường: sprite đồng bộ theo frame
+# Hình cho Đấu trường: nhân vật vẽ nguyên con
 
-Tài liệu này dành cho người vẽ (hoặc tạo) hình võ sĩ cho Đấu trường. App vẫn chạy
-khi chưa có hình nào, vì võ sĩ được vẽ tạm bằng SVG. Khi các file dưới đây có
-mặt, app tự dùng hình thật thay cho hình tạm.
+Tài liệu này dành cho người vẽ (hoặc tạo) hình nhân vật cho Đấu trường. App vẫn
+chạy khi chưa có hình nào, vì nhân vật được vẽ tạm bằng SVG theo màu và kiểu vũ
+khí của họ. Khi có file của nhân vật nào, app tự dùng hình thật cho nhân vật đó.
 
 Nhân vật, trang phục và phong cách phải là **của riêng Shadowline**: không lấy
 nhân vật, hình, tên hay logo của game khác.
 
-Tạo hình bằng AI? Xem [`arena-sprite-prompts.md`](arena-sprite-prompts.md): bộ
-prompt cho từng lớp, từng frame, và cách làm để các lớp khớp nhau.
+Tạo hình bằng AI? Xem [`arena-character-prompts.md`](arena-character-prompts.md):
+prompt cho 24 nhân vật và khung mẫu
+[`arena/character-template.png`](arena/character-template.png).
 
-## 0. Ý tưởng: paper doll đồng bộ theo frame
+## 1. Mỗi nhân vật là một hình nguyên con
 
-Võ sĩ được ghép từ nhiều **lớp** chồng lên nhau: thân, các món đồ đang mặc, tóc.
-Mọi lớp của một võ sĩ tuân theo cùng ba thứ:
+Có 24 nhân vật, 4 bậc × 6 (xem `server/internal/arena/characters.go`). Mỗi
+người được vẽ **nguyên con, cầm sẵn vũ khí**, trong một sheet. Không có lớp tóc,
+áo hay đồ chồng lên nhau.
 
-1. **Cùng một canvas**, cùng góc nhìn (3/4, quay mặt sang phải) và cùng điểm đặt
-   chân.
-2. **Cùng tư thế ở mỗi frame.** Frame `light-2` của chiếc găng được vẽ đúng lên
-   bàn tay của frame `light-2` của thân.
-3. **Cùng thứ tự frame ở cùng ô của sheet.**
+- Khung **64 × 64 px, pixel art**, PNG nền trong suốt. App phóng to bằng pixel
+  vuông sắc nét. (Khung 256 × 256 cho hình vẽ thường vẫn được nhận, nhưng mọi
+  file phải cùng một cỡ.)
+- **Chân chạm đất ở y = 60**, giữa người ở **x = 32**.
+- Nhân vật **quay mặt sang phải**. App tự lật khi cần quay trái.
+- Đứng thẳng, nhân vật cao khoảng 48–52 px, để chừa chỗ cho vũ khí và hiệu ứng.
+  Không có gì được ra ngoài khung.
 
-App chỉ có **một đồng hồ cho mỗi võ sĩ**, và mọi lớp cùng hiện đúng một số frame
-tại cùng một lúc. Nhờ vậy thay đồ thì linh hoạt mà animation không bao giờ lệch:
-thanh kiếm luôn nằm trong bàn tay đang cầm nó.
-
-## 1. Khung hình
-
-- Có hai cỡ khung, PNG nền trong suốt:
-  - **64 × 64 px, pixel art** (khuyên dùng). App phóng to bằng pixel vuông sắc
-    nét. **Chân chạm đất ở y = 60**, giữa người ở **x = 32**.
-  - **256 × 256 px**, hình vẽ thường. Chân ở **y = 240**, giữa người ở
-    **x = 128**.
-- Mọi file phải cùng một cỡ khung.
-- Võ sĩ **quay mặt sang phải**. App tự lật khi cần quay trái.
-
-## 2. Sheet: 6 hàng động tác, mỗi hàng tối đa 4 frame
+## 2. Sheet: 7 hàng động tác, mỗi hàng tối đa 4 frame
 
 Mỗi hàng là một động tác, mỗi cột là một frame, theo đúng thứ tự dưới đây. Một
-sheet khung 64 rộng **256 px** (4 frame) và cao **384 px** (6 hàng); khung 256
-thì là 1024 × 1536. Ô thừa ở các hàng ngắn **phải để trống**.
+sheet khung 64 rộng **256 px** và cao **448 px**. Ô thừa ở các hàng ngắn **phải
+để trống**.
 
-| Hàng | Động tác | Frame | fps | Chạy | Ghi chú |
-| --- | --- | --- | --- | --- | --- |
-| 0 | `idle` | 4 | 6 | lặp | Đứng thủ, thở |
-| 1 | `light` | 4 | 14 | một lần | Đấm nhanh |
-| 2 | `heavy` | 4 | 12 | một lần | Đá hoặc vung vũ khí |
-| 3 | `hit` | 2 | 10 | một lần | Trúng đòn, giật lùi |
-| 4 | `ko` | 4 | 8 | một lần, giữ frame cuối | Gục, nằm xuống; đang ngã thì chân được rời đất |
-| 5 | `win` | 4 | 8 | lặp | Ăn mừng, được nhảy lên |
+| Hàng | Động tác | Tên frame | Frame | fps | Chạy | Ghi chú |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 | `idle` | `idle-1..4` | 4 | 6 | lặp | Đứng thủ, thở |
+| 1 | `light` | `light-1..4` | 4 | 14 | một lần | Đòn nhanh |
+| 2 | `heavy` | `heavy-1..4` | 4 | 12 | một lần | Đòn mạnh |
+| 3 | `hit` | `hit-1..2` | 2 | 10 | một lần | Trúng đòn, giật lùi |
+| 4 | `ko` | `ko-1..4` | 4 | 8 | một lần, giữ frame cuối | Gục, nằm xuống; đang ngã thì chân được rời đất |
+| 5 | `win` | `win-1..4` | 4 | 8 | lặp | Ăn mừng, được nhảy lên |
+| 6 | `special` | `skill-1..4` | 4 | 10 | một lần | **Tuyệt chiêu riêng** của nhân vật; được rời đất |
 
-Tổng cộng **22 frame cho mỗi lớp**. Ba động tác không có hàng riêng mượn hàng có
-sẵn và chuyển động bằng CSS:
-- `walk` dùng `idle`;
-- `special` (tuyệt chiêu) dùng `heavy`, kèm vầng sáng;
-- `block` (đỡ đòn) dùng `idle`.
+Tổng cộng **26 frame mỗi nhân vật**. `walk` (bước) và `block` (đỡ đòn) không có
+hàng riêng: chúng mượn `idle` và chuyển động bằng CSS. Lúc tung tuyệt chiêu, app
+còn thêm một quầng sáng theo màu của loại tuyệt chiêu (chí mạng cam, hồi máu
+xanh lá, hút máu đỏ, choáng vàng, tập trung xanh dương).
 
 ### Một tư thế, sheet, hay cả hai
 
-Mỗi lớp có thể có:
-- **một tư thế**: `base/a-0.png`, một khung 64 × 64 ở tư thế đứng thủ. App dùng
-  khung ấy cho mọi động tác và tự làm chuyển động bằng CSS: lao tới, rung khi
-  trúng đòn, ngã khi KO;
-- **một sheet**: `base/a-0.sheet.png`, đủ 22 frame;
-- **hoặc cả hai, đặt cạnh nhau.**
+Mỗi nhân vật có thể có:
+- **một tư thế**: `characters/{mã}.png`, một khung đứng thủ. App dùng khung ấy
+  cho mọi động tác và tự làm chuyển động bằng CSS;
+- **một sheet**: `characters/{mã}.sheet.png`, đủ 26 frame, hoạt hình từng frame;
+- **hoặc cả hai, đặt cạnh nhau**: sheet được ưu tiên.
 
-Với mỗi võ sĩ, app chọn như sau:
-1. **Mọi lớp đều có sheet:** võ sĩ hoạt hình bằng frame.
-2. **Không thì, mọi lớp đều có một tư thế:** võ sĩ hiện bằng hình một tư thế.
-3. **Không thì:** võ sĩ được vẽ tạm.
+## 3. Làm sheet từ từng frame
 
-Vì vậy thêm sheet cho thân trước không làm mất hình của ai: võ sĩ vẫn hiện bằng
-hình một tư thế cho tới khi tóc và đồ của họ cũng có sheet. Chiếc mũ đứng yên
-trên một cái đầu đang động thì không còn đồng bộ, nên app không trộn hai loại.
-Script cho biết còn những lớp nào chưa có sheet.
-
-## 3. Các lớp
-
-Thứ tự vẽ, từ dưới lên:
-
-1. **Lớp sau** (nếu có): tóc rồi đồ, tên kết thúc bằng `.back`. Đây là tóc dài
-   buông sau vai, áo choàng, lưỡi kiếm ở tay phía xa, những thứ phải nằm *sau*
-   thân.
-2. `base/{dáng}-{màu da}.png`: thân người trần. Dáng `a` là **nam**, `b` là
-   **nữ**; màu da `0`–`3`. Tổng cộng 8 file.
-3. Đồ đang mặc, theo thứ tự `feet`, `body`, `hands`, `head`, `weapon`, `charm`:
-   `gear/{mã}.png`.
-4. `hair/{dáng}-{kiểu}.png`: tóc trên cùng. 2 dáng × 4 kiểu, tổng cộng 8 file.
-
-### Bản riêng cho từng dáng
-
-Thân nam và thân nữ là hai tư thế khác nhau, nên một món đồ có thể có:
-- **một bản chung**: `gear/rags.png`;
-- **hoặc một bản cho từng dáng**: `gear/rags@a.png` (nam) và `gear/rags@b.png`
-  (nữ).
-
-Bản riêng của dáng được ưu tiên. Một món **chỉ có bản `@a`** thì võ sĩ nữ mặc nó
-vẫn vẽ tạm cho tới khi có `@b`. Lớp sau cũng theo quy tắc này:
-`gear/twin_blades@b.back.png`.
-
-### Mã các món
-
-Xem `server/internal/arena/catalog.go`.
-
-| Ô | Mã |
-| --- | --- |
-| Áo | `rags` (đồ ăn mày), `patched_tunic`, `leather_vest`, `scale_mail` |
-| Tay | `bare_fists` (tay không), `cloth_wraps`, `leather_gloves`, `iron_knuckles` |
-| Chân | `bare_feet` (chân đất), `straw_sandals`, `swift_boots` |
-| Đầu | `straw_hat`, `leather_cap`, `iron_helm` |
-| Vũ khí | `walking_stick`, `bo_staff`, `twin_blades` |
-| Bùa | `lucky_coin`, `jade_charm`, `phoenix_feather` |
-
-`bare_fists` và `bare_feet` là PNG trong suốt hoàn toàn, cùng cỡ với thân.
-
-## 4. Làm sheet từ từng frame
-
-Vẽ (hoặc tạo) từng frame thành một PNG riêng, đặt theo lớp và tên động tác:
+Cắt (hoặc vẽ) từng frame thành một PNG riêng, đặt theo nhân vật và tên frame:
 
 ```
-app/art/arena-frames/base/a-0/idle-1.png … idle-4.png, light-1.png … win-4.png
-app/art/arena-frames/gear/rags@b/idle-1.png …
-app/art/arena-frames/hair/b-2.back/idle-1.png …
+app/art/arena-frames/characters/beggar/idle-1.png … win-4.png, skill-1.png … skill-4.png
 ```
 
 rồi ghép:
 
 ```sh
-cd app && npm run arena:sheet            # mọi lớp
-cd app && npm run arena:sheet -- base/a-0  # một lớp
+cd app && npm run arena:sheet                          # mọi nhân vật
+cd app && npm run arena:sheet -- characters/beggar     # một nhân vật
 ```
 
-Lệnh này ghi sheet vào `app/public/arena/<lớp>.sheet.png`, cạnh hình một tư thế
-của lớp đó. Frame thiếu được để trống và có cảnh báo; frame ngoài bảng ở mục 2
-bị từ chối. Thư mục `app/art/arena-frames/` được giữ trong repo làm bản gốc để
-sửa về sau.
+Lệnh này ghi `app/public/arena/characters/{mã}.sheet.png`. Frame thiếu được để
+trống và có cảnh báo; frame ngoài bảng ở mục 2 bị từ chối. Thư mục
+`app/art/arena-frames/` được giữ trong repo làm bản gốc để sửa về sau.
 
-**Thứ tự làm:** vẽ đủ 22 frame của **thân** trước, coi đó là template. Mỗi frame
-của tóc và đồ được vẽ **đè lên đúng frame cùng tên của thân**, rồi chỉ giữ lại
-phần món đó. Vì vậy chúng tự khớp.
+Ảnh do AI tạo trên khung mẫu 26 ô thì gửi cho Claude: Claude cắt nền, đưa về
+cùng tỉ lệ, căn chân lên vạch đất, ghép sheet và kiểm tra.
 
-## 5. Khai báo và kiểm tra
+## 4. Khai báo và kiểm tra
 
 ```sh
 cd app && npm run arena:manifest
 ```
 
-Script đọc từng PNG, kiểm tra rồi ghi `app/public/arena/manifest.json`. Không cần
-viết tay. Các kiểm tra:
+Script đọc từng PNG trong `public/arena/characters/`, kiểm tra rồi ghi
+`app/public/arena/manifest.json`. Không cần viết tay. Các kiểm tra:
 
-- **Cỡ:** một tư thế phải là 64 × 64 hoặc 256 × 256, file `.sheet.png` phải là
-  256 × 384 hoặc 1024 × 1536, và mọi file cùng một cỡ khung.
-- **Từng frame của thân và đối thủ:** đủ frame mỗi hàng, và **chân trên vạch đất
-  ở mọi frame** (±1 px; `win` và `ko` được rời mặt đất nhưng không được lún xuống). Thân lệch
-  thì mọi món đồ lệch theo, nên đây là kiểm tra quan trọng nhất.
-- **Mọi lớp:** không có hình ở ô vượt quá số frame của hàng.
+- **Cỡ:** một tư thế phải là 64 × 64 (hoặc 256 × 256), sheet phải là 256 × 448
+  (hoặc 1024 × 1792), và mọi file cùng một cỡ khung.
+- **Từng frame:** đủ frame mỗi hàng, không có hình ở ô thừa, và **chân trên vạch
+  đất** (±1 px; `ko`, `win` và `special` được rời mặt đất nhưng không được lún
+  xuống).
 - **Trong suốt:** báo nếu file không có kênh alpha.
-- **Còn thiếu:** liệt kê lớp còn thiếu, và những lớp một tư thế đang kìm một thân
-  đã có sheet.
+- **Còn thiếu:** liệt kê nhân vật chưa có hình, và nhân vật chưa có sheet.
 
 Lỗi được ghi kèm tên file, động tác và số frame, ví dụ
-`base/a-0.png: heavy frame 3 chân ở y=56, phải ở y=60 (±1)`. Khi còn lỗi,
-manifest không được ghi.
+`characters/beggar.sheet.png: heavy frame 3 chân ở y=56, phải ở y=60 (±1)`. Khi
+còn lỗi, manifest không được ghi.
 
-## 6. Đối thủ (tháp đấu chữ)
+## 5. Đối thủ
 
-Mười lăm đối thủ của tháp được ghép **từ chính các lớp ở trên**: mỗi người có
-dáng, màu da, kiểu tóc và bộ đồ lấy trong danh mục (xem
-`server/internal/arena/tower.go`). Khi các lớp ấy đã có hình thì đối thủ cũng có
-hình. Tầng 13 ("Bóng gương") luôn vẽ giống người chơi.
+Mười lăm đối thủ của tháp là **chính các nhân vật này** (xem
+`server/internal/arena/tower.go`), nên khi một nhân vật có hình thì đối thủ ấy
+cũng có. Tầng 13 ("Bóng gương") luôn vẽ giống nhân vật người chơi đang dùng.
+Bóng của người học khác vẽ theo nhân vật của họ.
 
-Muốn một đối thủ có hình riêng hoàn toàn (thường là trùm ở tầng 5, 10, 15), nộp
-`opponents/{mã}.png`: một tư thế hoặc một sheet 6 hàng, kiểm tra như một thân.
-Mã các đối thủ:
-- `pickpocket`, `dockhand`, `market_bully`, `stick_fighter`, `alley_boss`;
-- `novice`, `wandering_monk`, `fan_dancer`, `iron_guard`, `iron_general`;
-- `wind_walker`, `jade_duelist`, `mirror`, `thunder_fist`, `tower_master`.
+## 6. Gợi ý khi vẽ
 
-## 7. Gợi ý khi vẽ
-
-- Giữ chân trên vạch đất ở mọi frame. Đòn đánh có thể vươn ra trước, KO nằm
-  xuống đất, nhưng không được ra ngoài khung.
-- Đồ ăn mày (`rags`) nên trông thật nghèo: vá víu, rách gấu. Đồ hiếm và huyền
-  thoại nên nổi bật về màu.
+- Giữ nhân vật cùng cỡ ở mọi frame, chân trên vạch đất. Đòn đánh có thể vươn ra
+  trước, KO nằm xuống đất, nhưng không được ra ngoài khung.
+- Bậc càng cao càng nổi bật về màu và hiệu ứng: Thường giản dị, Huyền thoại rực rỡ.
 - Tối ưu PNG (pngquant/oxipng) trước khi nộp. Script đọc được PNG 8-bit kiểu
   bảng màu của pngquant.

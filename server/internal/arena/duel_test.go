@@ -18,18 +18,11 @@ func TestTheTowerClimbs(t *testing.T) {
 		if o.Boss != (o.Floor%5 == 0) {
 			t.Errorf("floor %d: boss %v", o.Floor, o.Boss)
 		}
-		if _, err := (Look{Name: o.Name.En, Body: o.Look.Body, Skin: o.Look.Skin, Hair: o.Look.Hair}).Clean(); err != nil {
-			t.Errorf("%s: look %v", o.ID, err)
+		if c, ok := CharacterByID(o.ID); o.Mirror == ok || (ok && o.Character.ID != c.ID) {
+			t.Errorf("%s is drawn as %q", o.ID, o.Character.ID)
 		}
-		for slot, id := range o.Equipped {
-			if it, ok := ItemByID(id); !ok || it.Slot != slot {
-				t.Errorf("%s wears %s in %s", o.ID, id, slot)
-			}
-		}
-		if o.Drop != "" {
-			if it, ok := ItemByID(o.Drop); !ok || it.Starter || o.DropChance <= 0 {
-				t.Errorf("%s drops %q", o.ID, o.Drop)
-			}
+		if o.Boss && TierRank(o.Character.Tier) < TierRank(Rare) {
+			t.Errorf("boss %s is only %s", o.ID, o.Character.Tier)
 		}
 		if i > 0 && !o.Boss && !Tower[i-1].Boss && (o.HP <= Tower[i-1].HP || o.Atk < Tower[i-1].Atk) {
 			t.Errorf("floor %d is not harder than %d", o.Floor, o.Floor-1)
@@ -101,16 +94,16 @@ func TestRageFillsWithRightAnswersAndIsSpentOnTheSpecial(t *testing.T) {
 
 func TestTimeToAnswerAndTheBigAttack(t *testing.T) {
 	o, _ := Floor(8) // TimeDelta 2
-	if got := AnswerSeconds(10, o, AskMeaning, false); got != 8 {
+	if got := AnswerSeconds(10, o, AskMeaning, false, false); got != 8 {
 		t.Fatalf("got %d", got)
 	}
-	if got := AnswerSeconds(10, o, AskScramble, false); got != 14 {
+	if got := AnswerSeconds(10, o, AskScramble, false, false); got != 14 {
 		t.Fatalf("scramble %d", got)
 	}
-	if got := AnswerSeconds(3, o, AskMeaning, false); got != MinSeconds {
+	if got := AnswerSeconds(3, o, AskMeaning, false, false); got != MinSeconds {
 		t.Fatalf("floor %d", got)
 	}
-	if got := AnswerSeconds(10, o, AskListen, true); got != 5 {
+	if got := AnswerSeconds(10, o, AskListen, true, false); got != 5 {
 		t.Fatalf("block %d", got)
 	}
 	if IsTelegraph(4, o) || !IsTelegraph(5, o) || !IsTelegraph(10, o) {
@@ -148,5 +141,73 @@ func TestExperienceRaisesTheLevel(t *testing.T) {
 	}
 	if l, x := AddXP(1, 0, 100+200+50); l != 3 || x != 50 {
 		t.Fatalf("%d %d", l, x)
+	}
+}
+
+func TestEachSkillDoesItsOwnThing(t *testing.T) {
+	armed := Fight{Atk: 10, Def: 2, OppAtk: 8, OppDef: 3, HP: 30, MaxHP: 60, OppHP: 100, Rage: RageFull,
+		Special: true, Right: true, Allowed: 10 * time.Second, Elapsed: 2 * time.Second}
+	cases := []struct {
+		skill             string
+		tier              int
+		dealt, healed, hp int
+		shield, focus     int
+	}{
+		{SkillCrit, 0, 35 - 3, 0, 30, 0, 0},
+		{SkillCombo, 0, (20 - 3) + (15 - 3), 0, 30, 0, 0},
+		{SkillDrain, 0, 25 - 3, 11, 41, 0, 0},
+		{SkillHeal, 0, 20 - 3, 18, 48, 0, 0},
+		{SkillStun, 0, 20 - 3, 0, 30, 1, 0},
+		{SkillFocus, 0, 25 - 3, 0, 30, 0, FocusTurns},
+		// Stronger up the tiers: a legendary crit is 30% harder.
+		{SkillCrit, 3, 46 - 3, 0, 30, 0, 0},
+		{"", 0, 30 - 3, 0, 30, 0, 0},
+	}
+	for _, c := range cases {
+		f := armed
+		f.Skill, f.Tier = c.skill, c.tier
+		r := Resolve(f)
+		if r.Move != MoveSpecial || r.Dealt != c.dealt || r.Healed != c.healed || r.HP != c.hp ||
+			r.Shield != c.shield || r.Focus != c.focus || r.Rage != 0 || r.Skill != c.skill {
+			t.Errorf("%s tier %d: %+v", c.skill, c.tier, r)
+		}
+	}
+}
+
+func TestAHealNeverGoesPastFullHealth(t *testing.T) {
+	r := Resolve(Fight{Atk: 10, OppHP: 100, HP: 55, MaxHP: 60, Rage: RageFull, Special: true, Right: true, Skill: SkillHeal})
+	if r.HP != 60 || r.Healed != 5 {
+		t.Fatalf("%+v", r)
+	}
+}
+
+func TestAStunShrugsOffTheNextHitOnly(t *testing.T) {
+	wrong := Fight{Atk: 10, Def: 2, OppAtk: 8, OppDef: 3, HP: 30, OppHP: 50, Shield: 1}
+	r := Resolve(wrong)
+	if r.Move != MoveHit || r.Taken != 0 || !r.Shielded || r.Shield != 0 || r.HP != 30 {
+		t.Fatalf("stunned: %+v", r)
+	}
+	// A right answer keeps it for later.
+	right := wrong
+	right.Right = true
+	if r := Resolve(right); r.Shield != 1 || r.Shielded {
+		t.Fatalf("kept: %+v", r)
+	}
+	// Missing a block while stunned costs nothing either.
+	block := wrong
+	block.Block = true
+	if r := Resolve(block); r.Taken != 0 || !r.Shielded {
+		t.Fatalf("block: %+v", r)
+	}
+	wrong.Shield = 0
+	if r := Resolve(wrong); r.Taken != 6 || r.Shielded {
+		t.Fatalf("not stunned: %+v", r)
+	}
+}
+
+func TestFocusGivesMoreTime(t *testing.T) {
+	o, _ := Floor(1)
+	if AnswerSeconds(10, o, AskMeaning, false, true) != AnswerSeconds(10, o, AskMeaning, false, false)+FocusSeconds {
+		t.Fatal("focus adds seconds")
 	}
 }

@@ -116,10 +116,9 @@ export function DuelScreen() {
   if (!duel || !arena?.fighter) return <div className="card-meta" aria-busy="true" />
 
   const me = arena.fighter
+  const mine = arena.roster.find((c) => c.id === me.character) ?? arena.roster[0]
   const o = duel.opponent
-  const oppLook = o.mirror ? me : o.look
-  const oppGear = o.mirror ? arena.equipped : o.equipped
-  const names = new Map(arena.shop.map((it) => [it.id, it.name[lang]]))
+  const theirs = o.mirror ? mine : o.character
 
   return (
     <div className="duel" data-testid="duel">
@@ -156,19 +155,16 @@ export function DuelScreen() {
 
       <div className="duel-stage">
         <div className="duel-fighter" key={`me-${moves.key}`}>
-          <FighterSprite body={me.body} skin={me.skin} hair={me.hair} equipped={arena.equipped} animation={moves.me} label={me.name} size={200} />
+          <FighterSprite character={mine} animation={moves.me} skill={turn?.skill} label={me.name} size={200} />
           {turn && moves.key > 0 && turn.taken > 0 && <span className="duel-pop duel-pop-hurt">−{turn.taken}</span>}
+          {turn && moves.key > 0 && (turn.healed ?? 0) > 0 && <span className="duel-pop duel-pop-heal">+{turn.healed}</span>}
         </div>
         <div className="duel-fighter" key={`opp-${moves.key}`}>
           <FighterSprite
-            body={oppLook.body}
-            skin={oppLook.skin}
-            hair={oppLook.hair}
-            equipped={oppGear}
+            character={theirs}
             animation={moves.opp}
             facing="left"
             label={o.name[lang]}
-            sheet={o.mirror ? undefined : `opponent/${o.id}`}
             size={o.boss ? 230 : 200}
           />
           {turn && moves.key > 0 && turn.dealt > 0 && <span className="duel-pop">−{turn.dealt}</span>}
@@ -179,8 +175,18 @@ export function DuelScreen() {
         <section className="card elev-sm duel-panel" aria-live="polite">
           {turn && (
             <div className="duel-verdict" data-right={turn.right} role="status">
-              <strong>{turn.late ? t('arena.duel.late') : t(`arena.duel.move.${turn.move}`)}</strong>
+              <strong>
+                {turn.late
+                  ? t('arena.duel.late')
+                  : turn.move === 'special' && turn.skill
+                    ? `${mine.skill.name[lang]}!`
+                    : t(`arena.duel.move.${turn.move}`)}
+              </strong>
               {!turn.right && <span>{t('arena.duel.wasAnswer', turn.answer)}</span>}
+              {(turn.healed ?? 0) > 0 && <span>{t('arena.duel.healed', turn.healed ?? 0)}</span>}
+              {turn.move === 'special' && turn.skill === 'stun' && <span>{t('arena.duel.stunned')}</span>}
+              {turn.shielded && <span>{t('arena.duel.shielded')}</span>}
+              {(turn.focus ?? 0) > 0 && <span>{t('arena.duel.focused', turn.focus ?? 0)}</span>}
             </div>
           )}
           {duel.block && <div className="duel-telegraph">{t('arena.duel.telegraph')}</div>}
@@ -199,10 +205,10 @@ export function DuelScreen() {
             <button
               type="button"
               className="btn btn-primary duel-special"
-              disabled={duel.rage < 100 || busy || armed}
+              disabled={duel.rage < 100 || busy || armed || duel.block}
               onClick={() => setArmed(true)}
             >
-              🔥 {t('arena.duel.special')}
+              🔥 {mine.skill.name[lang]}
             </button>
             <button
               type="button"
@@ -219,7 +225,6 @@ export function DuelScreen() {
       ) : (
         <Outcome
           duel={duel}
-          itemName={(id) => names.get(id) ?? id}
           onDuel={(next) => {
             setTurn(null)
             setArmed(false)
@@ -250,7 +255,7 @@ function HealthBar({ name, hp, max, side, boss }: { name: string; hp: number; ma
   )
 }
 
-function Outcome({ duel, itemName, onDuel }: { duel: Duel; itemName: (id: string) => string; onDuel: (d: Duel) => void }) {
+function Outcome({ duel, onDuel }: { duel: Duel; onDuel: (d: Duel) => void }) {
   const { t } = useI18n()
   const [note, setNote] = useState<string | null>(null)
   const won = duel.state === 'won'
@@ -271,7 +276,6 @@ function Outcome({ duel, itemName, onDuel }: { duel: Duel; itemName: (id: string
           {duel.kind === 'pvp' && <RatingChange delta={duel.ratingDelta} />}
           {duel.firstClear && <div className="card-meta">{t('arena.duel.firstClear')}</div>}
           {duel.levelUp && <div className="duel-levelup">⭐ {t('arena.duel.levelUp')}</div>}
-          {duel.drop && <div>🎁 {t('arena.duel.drop', itemName(duel.drop))}</div>}
         </div>
       ) : (
         <>

@@ -10,112 +10,123 @@ import (
 	"github.com/shadowline/server/internal/store"
 )
 
-// The Arena: a fighter made once, dressed as a beggar; gear bought with coins
-// earned by practising, owned once, worn in its slot.
+// The Arena: a fighter made once, as one of the free characters; more
+// characters bought with coins earned by practising, owned once, played one
+// at a time.
 
 type arenaJSON struct {
 	Coins   int `json:"coins"`
 	Fighter *struct {
-		Name  string `json:"name"`
-		Body  string `json:"body"`
-		Skin  int    `json:"skin"`
-		Hair  int    `json:"hair"`
-		Level int    `json:"level"`
+		Name      string `json:"name"`
+		Character string `json:"character"`
+		Level     int    `json:"level"`
 	} `json:"fighter"`
 	Stats struct {
 		Atk int `json:"atk"`
 		Def int `json:"def"`
 		HP  int `json:"hp"`
 	} `json:"stats"`
-	Equipped map[string]string `json:"equipped"`
-	Owned    []string          `json:"owned"`
-	Shop     []struct {
+	Owned  []string `json:"owned"`
+	Roster []struct {
 		ID    string `json:"id"`
-		Slot  string `json:"slot"`
+		Tier  string `json:"tier"`
 		Price int    `json:"price"`
 		Owned bool   `json:"owned"`
-	} `json:"shop"`
+		Skill struct {
+			Kind string `json:"kind"`
+		} `json:"skill"`
+	} `json:"roster"`
 }
 
-var beggar = map[string]any{"name": "Minh", "body": "a", "skin": 1, "hair": 2}
+var beggar = map[string]any{"name": "Minh", "character": "beggar"}
 
-func TestAFighterStartsAsABeggar(t *testing.T) {
+func TestAFighterStartsAsAFreeCharacter(t *testing.T) {
 	h := newHarness(t)
 	c := h.login("fighter@example.com")
 
 	got := expect[arenaJSON](t, c.json("GET", "/api/arena", nil), http.StatusOK)
-	if got.Fighter != nil || got.Coins != 0 || len(got.Shop) == 0 {
+	if got.Fighter != nil || got.Coins != 0 || len(got.Roster) != 24 {
 		t.Fatalf("before a fighter: %+v", got)
 	}
-	expectCode(t, c.json("POST", "/api/arena/fighter", map[string]any{"name": "M", "body": "a", "skin": 0, "hair": 0}),
+	expectCode(t, c.json("POST", "/api/arena/fighter", map[string]any{"name": "M", "character": "beggar"}),
 		http.StatusBadRequest, "arena.invalid")
-	got = expect[arenaJSON](t, c.json("POST", "/api/arena/fighter", beggar), http.StatusOK)
-	if got.Fighter == nil || got.Fighter.Name != "Minh" || got.Fighter.Level != 1 ||
-		got.Equipped["body"] != "rags" || got.Equipped["hands"] != "bare_fists" || got.Equipped["feet"] != "bare_feet" ||
-		got.Equipped["weapon"] != "" || len(got.Owned) != 3 {
-		t.Fatalf("a beggar: %+v", got)
+	// Only the free characters to start with.
+	expectCode(t, c.json("POST", "/api/arena/fighter", map[string]any{"name": "Minh", "character": "thunder_monk"}),
+		http.StatusBadRequest, "arena.invalid")
+	got = expect[arenaJSON](t, c.json("POST", "/api/arena/fighter", map[string]any{"name": "Minh", "character": "street_kid"}), http.StatusOK)
+	if got.Fighter == nil || got.Fighter.Name != "Minh" || got.Fighter.Character != "street_kid" || got.Fighter.Level != 1 ||
+		len(got.Owned) != 2 {
+		t.Fatalf("a new fighter: %+v", got)
 	}
 	expectCode(t, c.json("POST", "/api/arena/fighter", beggar), http.StatusConflict, "arena.exists")
 
-	changed := map[string]any{"name": "Minh Anh", "body": "b", "skin": 3, "hair": 0}
-	if got = expect[arenaJSON](t, c.json("PUT", "/api/arena/fighter", changed), http.StatusOK); got.Fighter.Body != "b" || got.Fighter.Name != "Minh Anh" {
-		t.Fatalf("a new look: %+v", got.Fighter)
+	if got = expect[arenaJSON](t, c.json("PUT", "/api/arena/fighter", map[string]any{"name": "Minh Anh"}), http.StatusOK); got.Fighter.Name != "Minh Anh" {
+		t.Fatalf("renamed: %+v", got.Fighter)
 	}
 	other := h.login("other@example.com")
-	expectCode(t, other.json("PUT", "/api/arena/fighter", changed), http.StatusConflict, "arena.noFighter")
+	expectCode(t, other.json("PUT", "/api/arena/fighter", map[string]any{"name": "Lan"}), http.StatusConflict, "arena.noFighter")
 	if theirs := expect[arenaJSON](t, other.json("GET", "/api/arena", nil), http.StatusOK); theirs.Fighter != nil {
 		t.Fatalf("somebody else's fighter: %+v", theirs)
 	}
 }
 
-func TestGearIsBoughtWithCoinsOnceAndWorn(t *testing.T) {
+func TestCharactersAreBoughtWithCoinsOnceAndPlayed(t *testing.T) {
 	h := newHarness(t)
 	c := h.login("buyer@example.com")
 	id := h.userID(t, "buyer@example.com")
-	expectCode(t, c.json("POST", "/api/arena/buy", map[string]any{"item": "straw_hat"}), http.StatusConflict, "arena.noFighter")
+	buy := func(character string) *http.Response {
+		return c.json("POST", "/api/arena/characters/buy", map[string]any{"character": character})
+	}
+	expectCode(t, buy("fisherman"), http.StatusConflict, "arena.noFighter")
 	expectStatus(t, c.json("POST", "/api/arena/fighter", beggar), http.StatusOK)
 
-	expectCode(t, c.json("POST", "/api/arena/buy", map[string]any{"item": "straw_hat"}), http.StatusConflict, "arena.notEnoughCoins")
-	// Thirty takes: sixty coins, a straw hat's worth.
-	h.learn(t, id, store.ActTake, 30, time.Now())
-	if got := h.coins(t, id); got != 60+store.GoalCoins {
+	expectCode(t, buy("fisherman"), http.StatusConflict, "arena.notEnoughCoins")
+	// Seventy-five takes: 150 coins, a fisherman's worth.
+	h.learn(t, id, store.ActTake, 75, time.Now())
+	if got := h.coins(t, id); got != 150+store.GoalCoins {
 		t.Fatalf("coins from practice: %d", got)
 	}
-	expectStatus(t, c.json("POST", "/api/arena/buy", map[string]any{"item": "nothing"}), http.StatusNotFound)
-	expectStatus(t, c.json("POST", "/api/arena/buy", map[string]any{"item": "rags"}), http.StatusNotFound)
+	expectStatus(t, buy("nobody"), http.StatusNotFound)
+	expectCode(t, buy("street_kid"), http.StatusConflict, "arena.owned")
 
 	// Tapped four times at once: bought once, paid once.
 	var wg sync.WaitGroup
 	for range 4 {
 		wg.Go(func() {
-			resp := c.json("POST", "/api/arena/buy", map[string]any{"item": "straw_hat"})
+			resp := buy("fisherman")
 			resp.Body.Close()
 		})
 	}
 	wg.Wait()
 	got := expect[arenaJSON](t, c.json("GET", "/api/arena", nil), http.StatusOK)
-	if got.Coins != store.GoalCoins || got.Equipped["head"] != "" {
+	if got.Coins != store.GoalCoins || got.Fighter.Character != "beggar" || len(got.Owned) != 3 {
 		t.Fatalf("after buying: %+v", got)
 	}
-	expectCode(t, c.json("POST", "/api/arena/buy", map[string]any{"item": "straw_hat"}), http.StatusConflict, "arena.owned")
+	expectCode(t, buy("fisherman"), http.StatusConflict, "arena.owned")
 	var spent int
 	if err := h.pool.QueryRow(context.Background(), `
-		select count(*) from coin_events where user_id = $1 and kind = 'buy'`, id).Scan(&spent); err != nil || spent != 1 {
+		select count(*) from coin_events where user_id = $1 and kind = 'buy' and item = 'fisherman'`, id).Scan(&spent); err != nil || spent != 1 {
 		t.Fatalf("%d purchases (%v)", spent, err)
 	}
 
-	expectCode(t, c.json("POST", "/api/arena/equip", map[string]any{"item": "iron_helm"}), http.StatusConflict, "arena.notOwned")
-	got = expect[arenaJSON](t, c.json("POST", "/api/arena/equip", map[string]any{"item": "straw_hat"}), http.StatusOK)
-	if got.Equipped["head"] != "straw_hat" || got.Stats.Def != 0+1 {
-		t.Fatalf("wearing it: %+v", got)
+	pick := func(character string) *http.Response {
+		return c.json("POST", "/api/arena/characters/select", map[string]any{"character": character})
 	}
-	got = expect[arenaJSON](t, c.json("POST", "/api/arena/equip", map[string]any{"slot": "head"}), http.StatusOK)
-	if got.Equipped["head"] != "" {
-		t.Fatalf("taken off: %+v", got.Equipped)
+	expectCode(t, pick("thunder_monk"), http.StatusConflict, "arena.notOwned")
+	expectStatus(t, pick("nobody"), http.StatusNotFound)
+	got = expect[arenaJSON](t, pick("fisherman"), http.StatusOK)
+	if got.Fighter.Character != "fisherman" {
+		t.Fatalf("playing: %+v", got.Fighter)
 	}
-	// The rags cannot come off; a better body goes over them instead.
-	expectCode(t, c.json("POST", "/api/arena/equip", map[string]any{"slot": "body"}), http.StatusConflict, "arena.bare")
-	expectStatus(t, c.json("POST", "/api/arena/equip", map[string]any{"slot": "elbow"}), http.StatusNotFound)
+
+	// A rare character is stronger than a common one.
+	expectStatus(t, c.json("POST", "/api/test/coins", map[string]any{"coins": 700}), http.StatusNoContent)
+	expectStatus(t, buy("stick_fighter"), http.StatusOK)
+	before := got.Stats
+	got = expect[arenaJSON](t, pick("stick_fighter"), http.StatusOK)
+	if got.Stats.Atk != before.Atk+2 || got.Stats.Def != before.Def+1 || got.Stats.HP != before.HP+10 || got.Coins != 0 {
+		t.Fatalf("rare: %+v then %+v", before, got.Stats)
+	}
 }
 
 func TestTheWalletSaysWhereCoinsCameFrom(t *testing.T) {

@@ -190,7 +190,7 @@ buộc hai ngôn ngữ có cùng khoá.
 | `/library/:videoId` | Phân tích chi tiết một bản ghi |
 | `/library/:videoId/dub` | Nghe bản lồng tiếng (giọng mình trên hình clip) |
 | `/vocabulary`, `/vocabulary/practice` | Từ vựng đã lưu, ôn bằng thẻ (lặp lại ngắt quãng) |
-| `/arena` | Đấu trường: tạo võ sĩ (khởi đầu là kẻ ăn mày), xu kiếm từ luyện tập, cửa hàng và túi đồ (xem 12.7) |
+| `/arena` | Đấu trường: tạo võ sĩ (khởi đầu là một trong hai nhân vật miễn phí), xu kiếm từ luyện tập, mở khóa và chọn nhân vật trong 24 người (xem 12.7) |
 | `/progress` | Tiến độ theo thời gian, câu yếu nhất (trên điện thoại, vào từ Hồ sơ vì ô Arena thay chỗ nó) |
 | `/guide` | Hướng dẫn sử dụng |
 | `/profile` | Hồ sơ, ngôn ngữ, giao diện sáng/tối, xuất dữ liệu, xoá tài khoản |
@@ -259,7 +259,7 @@ API.
 | Hồ sơ | `GET /profile`, `PATCH /profile`, `PUT /profile/avatar` |
 | Tài khoản | `GET /account/export`, `POST /account/password`, `DELETE /account` |
 | Gia sư | `GET /tutor`, `POST /tutor/chat` (stream), `GET /tutor/conversations`, `GET/DELETE /tutor/conversations/{id}` |
-| Arena | `GET /arena` (võ sĩ, xu, chỉ số, đồ, cửa hàng), `POST /arena/fighter` (tạo), `PUT /arena/fighter` (đổi ngoại hình), `POST /arena/buy {item}`, `POST /arena/equip {item}` hoặc `{slot, item: null}` để tháo; `GET /wallet`. Từ chối có mã: 409 `arena.notEnoughCoins`, `arena.owned`, `arena.notOwned`, `arena.noFighter`, `arena.exists`, `arena.bare`; 400 `arena.invalid` |
+| Arena | `GET /arena` (võ sĩ, xu, chỉ số, nhân vật đã có, danh sách 24 nhân vật), `POST /arena/fighter {name, character}` (tạo, với một nhân vật miễn phí), `PUT /arena/fighter {name}` (đổi tên), `POST /arena/characters/buy {character}`, `POST /arena/characters/select {character}`; `GET /wallet`. Từ chối có mã: 409 `arena.notEnoughCoins`, `arena.owned`, `arena.notOwned`, `arena.noFighter`, `arena.exists`; 400 `arena.invalid` |
 | Khác | `GET /leaderboard`, `GET /banners` |
 
 **Quản trị (`/api/admin`, cần quyền admin)**
@@ -502,9 +502,8 @@ Giới hạn mặc định:
 | --- | --- |
 | `wallets` | Số xu của mỗi người học (`coins` ≥ 0) |
 | `coin_events` | Sổ xu: mỗi lần vào (`practice`, `goal`, `weekly`, `achievement`, `migrated`) và ra (`buy`), kèm `item` và `amount` |
-| `fighters` | Võ sĩ: `name`, `body` (`a`/`b`), `skin`, `hair` (0–3), `level`, `xp`, năng lượng (`energy` + `energy_at`, hồi theo giờ), tầng cao nhất đã mở (`floor`) |
-| `fighter_gear` | Đồ đã có |
-| `fighter_equipped` | Đồ đang mặc, một món mỗi ô (`slot`) |
+| `fighters` | Võ sĩ: `name`, nhân vật đang dùng (`character`), `level`, `xp`, năng lượng (`energy` + `energy_at`, hồi theo giờ), tầng cao nhất đã mở (`floor`) |
+| `fighter_characters` | Nhân vật đã có (hai nhân vật miễn phí có sẵn) |
 | `duels` | Một dòng mỗi trận đấu chữ: tầng, máu hai bên, chỉ số võ sĩ chụp lúc vào trận, nộ, combo, lượt, câu hỏi đang hỏi (`question`, kèm `q_word`/`q_answer` — đáp án không gửi về trình duyệt), `q_block` (đòn mạnh cần đỡ), hạn trả lời, các từ đã hỏi/đã ôn, kết quả (xu, EXP, đồ rơi, lên cấp, lần đầu thắng). Tối đa một trận `active` mỗi người |
 | `duel_clears` | Tầng đã thắng và lần đầu thắng lúc nào |
 | `arena_week_points` | Mỗi người mỗi tuần: số trận thắng bóng và điểm (3 điểm một trận, 4 nếu đối thủ xếp hạng cao hơn) |
@@ -544,6 +543,7 @@ Giới hạn mặc định:
 | `00028_hammer_soil` | `game_plots.level` cho phép tới 4 (đất làm bằng búa của Bram) |
 | `00029_townsfolk` | `game_friendship` (thị trấn Echo, 7.6) |
 | `00044_pvp` | `fighters.rating`, `pvp_wins`, `pvp_losses`; `duels.kind`, `opponent` (bản chụp đối thủ), `opponent_user`, `rating_delta`; `arena_week_points`, `arena_awards`, `arena_settled` |
+| `00046_characters` | `fighters.character`, `fighter_characters`; hoàn xu đồ đã mua (`coin_events.kind = 'refund'`); bỏ `fighter_gear`, `fighter_equipped`, `body/skin/hair`; `duels.skill`, `tier`, `shield`, `focus` |
 | `00045_scoring_version` | `takes.scoring_version`: quy tắc chấm nào đã cho điểm lần ghi này; worker chấm lại lần ghi cũ từ dữ liệu đã lưu khi hàng đợi trống |
 | `00043_duels` | `duels`, `duel_clears`; `fighters.energy`, `energy_at`, `floor` |
 | `00042_arena` | Arena mới: `wallets`, `coin_events`, `fighters`, `fighter_gear`, `fighter_equipped`; vàng cũ thành xu; xoá mọi bảng `game_*` (giữ `word_ranks`) |
@@ -823,37 +823,42 @@ Server giữ toàn bộ trạng thái và quyết định mọi kết quả; tr�
    tập trả 1 xu, cộng trong cùng transaction với `LogActivity`; đạt mục tiêu
    ngày (+20), huy hiệu tuần (100/60/40) và thành tích (20/50/100/200) cũng trả
    xu, cho mọi người học, không cần đã mở Arena.
-2. **Võ sĩ** (`fighters`) tạo một lần, khởi đầu là kẻ ăn mày: `rags`,
-   `bare_fists`, `bare_feet` được tặng và mặc sẵn. Đổi ngoại hình miễn phí.
-3. **Trang bị**: danh mục nằm trong code (`internal/arena/catalog.go`): 6 ô
-   (`head`, `body`, `hands`, `weapon`, `feet`, `charm`), độ hiếm, giá, chỉ số
-   (`atk`, `def`, `hp`, `time`, `rage`). Mua là một transaction: khoá theo người
-   học, thêm `fighter_gear` rồi trừ xu; thiếu xu thì không có gì xảy ra. Chỉ số
-   võ sĩ = chỉ số theo cấp + đồ đang mặc.
-4. **Hình**: `FighterSprite` chồng các lớp sprite của họa sĩ theo
-   `/arena/manifest.json` (xem `docs/arena-sprites.md`); lớp nào chưa có thì cả
-   võ sĩ được vẽ tạm bằng SVG từ cùng lựa chọn, nên đồ mua vẫn hiện trên người.
+2. **Võ sĩ** (`fighters`) tạo một lần, với tên và một trong hai nhân vật miễn
+   phí (`beggar`, `street_kid`); cả hai được tặng sẵn. Đổi tên miễn phí.
+3. **Nhân vật**: 24 người, danh mục nằm trong code
+   (`internal/arena/characters.go`, luật ở `catalog.go`): 4 bậc × 6, mỗi người
+   một vũ khí, một tuyệt chiêu và giá. Mỗi bậc có đủ 6 loại tuyệt chiêu (chí
+   mạng, liên hoàn, hút máu, hồi máu, choáng, tập trung). Mua là một
+   transaction: khoá theo người học, thêm `fighter_characters` rồi trừ xu;
+   nhân vật đã mua giữ mãi và đổi qua lại tự do. Chỉ số võ sĩ = chỉ số theo cấp
+   + phần cộng của bậc nhân vật đang dùng.
+4. **Hình**: mỗi nhân vật là một hình vẽ nguyên con
+   (`/arena/characters/{id}.sheet.png`, 7 hàng, hàng cuối là tuyệt chiêu), khai
+   báo trong `/arena/manifest.json` (xem `docs/arena-sprites.md`); chưa có hình
+   thì `FighterSprite` vẽ tạm bằng SVG theo màu và kiểu vũ khí của nhân vật.
 5. **Đấu chữ (PvE)**: tháp 15 tầng (`internal/arena/tower.go`), mỗi tầng một võ
-   sĩ máy mặc đồ trong danh mục, cứ 5 tầng một trùm. Luật nằm trong
+   trong 24 nhân vật, cứ 5 tầng một trùm. Luật nằm trong
    `internal/arena/duel.go` (thuần, có test):
-   - thời gian trả lời = `time` của võ sĩ (10 + đồ) trừ của đối thủ, tối thiểu 5 giây;
+   - thời gian trả lời = `time` của võ sĩ (10 + bậc nhân vật) trừ của đối thủ, tối thiểu 5 giây;
    - đúng trong 40% thời gian đầu là đòn nặng, đúng sau đó là đòn nhẹ; sai hoặc
      trễ (quá hạn + 1,5 giây) thì bị đánh;
-   - đúng tăng nộ, đủ 100 thì tung tuyệt chiêu (gấp 3);
+   - đúng tăng nộ, đủ 100 thì tung tuyệt chiêu của nhân vật; bậc càng cao tuyệt
+     chiêu càng mạnh (+10% mỗi bậc). Choáng làm đòn kế tiếp của đối thủ vô hại,
+     tập trung thêm 4 giây cho 3 câu kế tiếp (`duels.shield`, `focus`);
    - cứ vài lượt đối thủ báo đòn mạnh: một câu nghe nhanh, đúng thì đỡ được;
    - năng lượng: tối đa 5, hồi 1 mỗi giờ, cứ 10 điểm luyện tập trong ngày được 1;
      mỗi trận tốn 1;
-   - thắng: xu của tầng (gấp đôi lần đầu, mở tầng tiếp), EXP, có thể rơi đồ;
+   - thắng: xu của tầng (gấp đôi lần đầu, mở tầng tiếp), EXP;
      thua: không mất gì thêm.
 6. **Đấu với bóng (PvP bất đồng bộ)**: "bóng" là võ sĩ của người học khác, mạnh
-   đúng theo cấp và đồ của họ (`arena.Shadow`), do máy điều khiển, nên không cần
+   đúng theo cấp và nhân vật của họ (`arena.Shadow`), do máy điều khiển, nên không cần
    hai người cùng online. Mỗi lần mời ba đối thủ có điểm xếp hạng gần nhất (bỏ qua
    người đã đấu trong 24 giờ), thiếu thì bù bằng bot luyện tập lấy từ tháp. Kết
    quả đổi điểm của người tấn công theo Elo (K = 32, thấp nhất 100); người bị
    đấu không bị trừ vì họ không chơi. Thắng được xu, EXP và điểm tuần; bảng Đấu
    trường tuần chốt như bảng luyện tập tuần (khi đọc bảng và trong mỗi vòng
    notifier), top 3 nhận 150/90/60 xu. Mỗi trận giữ bản chụp đối thủ lúc vào
-   trận (`duels.opponent`), nên đồ của họ đổi giữa trận cũng không ảnh hưởng.
+   trận (`duels.opponent`), nên họ đổi nhân vật giữa trận cũng không ảnh hưởng.
 7. **Câu hỏi** (`internal/arena/questions.go`: nghĩa, nghe, xếp chữ, IPA) lấy từ
    của chính người học trước (đến hạn ôn trước), thiếu thì lấy từ phổ biến trong
    dải của tầng (`word_ranks` + `glosses`); mỗi câu cập nhật lịch ôn của từ như

@@ -105,17 +105,17 @@ func TestBeatingAShadowMovesTheRatingAndCountsOnTheBoard(t *testing.T) {
 	h := newHarness(t)
 	a, ida := h.fighter(t, "attacker@example.com")
 	b, idb := h.fighter(t, "defender@example.com")
-	expectStatus(t, b.json("POST", "/api/test/coins", map[string]any{"coins": 500}), http.StatusNoContent)
-	expectStatus(t, b.json("POST", "/api/arena/buy", map[string]any{"item": "bo_staff"}), http.StatusOK)
-	expectStatus(t, b.json("POST", "/api/arena/equip", map[string]any{"item": "bo_staff"}), http.StatusOK)
+	expectStatus(t, b.json("POST", "/api/test/coins", map[string]any{"coins": 700}), http.StatusNoContent)
+	expectStatus(t, b.json("POST", "/api/arena/characters/buy", map[string]any{"character": "stick_fighter"}), http.StatusOK)
+	expectStatus(t, b.json("POST", "/api/arena/characters/select", map[string]any{"character": "stick_fighter"}), http.StatusOK)
 	before := h.coins(t, ida)
 
 	d := h.startPvP(t, a, idb.String())
-	if d.Kind != "pvp" || d.Opponent.ID != idb.String() || d.Opponent.Atk != arena.Base(1).Atk+4 || d.Opponent.Rating != arena.StartRating {
+	if d.Kind != "pvp" || d.Opponent.ID != idb.String() || d.Opponent.Atk != arena.Base(1).Atk+2 || d.Opponent.Character.ID != "stick_fighter" || d.Opponent.Rating != arena.StartRating {
 		t.Fatalf("the shadow: %+v", d)
 	}
-	// Their gear changing mid-duel changes nothing: the shadow was kept as fought.
-	expectStatus(t, b.json("POST", "/api/arena/equip", map[string]any{"slot": "weapon"}), http.StatusOK)
+	// Their character changing mid-duel changes nothing: the shadow was kept as fought.
+	expectStatus(t, b.json("POST", "/api/arena/characters/select", map[string]any{"character": "beggar"}), http.StatusOK)
 	back := expect[struct {
 		Duel duelJSON `json:"duel"`
 	}](t, a.json("GET", "/api/arena/duel", nil), http.StatusOK).Duel
@@ -209,11 +209,28 @@ func TestAnOldTowerDuelIsReadByItsFloor(t *testing.T) {
 	d := expect[struct {
 		Duel duelJSON `json:"duel"`
 	}](t, c.json("GET", "/api/arena/duel", nil), http.StatusOK).Duel
-	if d.Kind != "tower" || d.Opponent.ID != "pickpocket" {
+	if d.Kind != "tower" || d.Opponent.ID != "porter" {
 		t.Fatalf("an old duel: %+v", d)
 	}
 	_, d = h.answer(t, c, d, h.key(t, id))
 	if d.State != "active" && d.State != "won" {
 		t.Fatalf("played on: %+v", d)
+	}
+}
+
+func TestADuelKeptBeforeCharactersIsDrawnAsTheFloor(t *testing.T) {
+	h := newHarness(t)
+	c, id := h.fighter(t, "older@example.com")
+	h.startDuel(t, c, 1)
+	if _, err := h.pool.Exec(context.Background(), `
+		update duels set floor = 2, opponent = opponent - 'character' || '{"look": {"body": "b"}, "equipped": {}}'
+		where user_id = $1`, id); err != nil {
+		t.Fatal(err)
+	}
+	d := expect[struct {
+		Duel duelJSON `json:"duel"`
+	}](t, c.json("GET", "/api/arena/duel", nil), http.StatusOK).Duel
+	if d.Opponent.Character.ID != "fisherman" {
+		t.Fatalf("an old duel: %+v", d.Opponent)
 	}
 }

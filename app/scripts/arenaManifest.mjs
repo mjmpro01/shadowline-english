@@ -1,6 +1,6 @@
 /**
  * The pure half of `npm run arena:manifest` and `npm run arena:sheet`: reading
- * and writing PNGs, checking that every layer keeps to the shared frame grid,
+ * and writing PNGs, checking that every character's frames keep to the grid,
  * and writing the manifest FighterSprite reads. See docs/arena-sprites.md.
  *
  * No dependencies: a PNG is a zlib stream of filtered rows, and node:zlib is
@@ -14,8 +14,9 @@ export const FRAMES = [64, 256]
 
 /**
  * The rows of a sheet, top to bottom; columns are frames. Kept identical to
- * SHEET in app/src/lib/arenaArt.ts. walk, special and block have no row: they
- * borrow idle and heavy and move by CSS.
+ * SHEET in app/src/lib/arenaArt.ts. walk and block have no row: they borrow
+ * idle and move by CSS. `special` is the character's own skill, drawn as the
+ * frames `skill-1` … `skill-4`.
  */
 export const SHEET_ANIMATIONS = {
   idle: { row: 0, frames: 4, fps: 6, loop: true },
@@ -24,7 +25,10 @@ export const SHEET_ANIMATIONS = {
   hit: { row: 3, frames: 2, fps: 10, loop: false },
   ko: { row: 4, frames: 4, fps: 8, loop: false },
   win: { row: 5, frames: 4, fps: 8, loop: true },
+  special: { row: 6, frames: 4, fps: 10, loop: false },
 }
+/** A frame file's move name, where it differs from the row's. */
+export const FRAME_NAMES = { skill: 'special' }
 const ROWS = Object.entries(SHEET_ANIMATIONS)
 export const SHEET_COLUMNS = Math.max(...ROWS.map(([, a]) => a.frames))
 export const SHEET_ROWS = ROWS.length
@@ -32,51 +36,28 @@ export const SHEET_ROWS = ROWS.length
 /** Where the feet stand in a frame: y = 60 of 64, 240 of 256. */
 export const ground = (frame) => Math.round((frame * 60) / 64)
 
-const BODIES = ['a', 'b']
-const FOUR = [0, 1, 2, 3]
-
-/** The gear ids of server/internal/arena/catalog.go. */
-export const GEAR = [
-  'rags', 'patched_tunic', 'leather_vest', 'scale_mail',
-  'bare_fists', 'cloth_wraps', 'leather_gloves', 'iron_knuckles',
-  'bare_feet', 'straw_sandals', 'swift_boots',
-  'straw_hat', 'leather_cap', 'iron_helm',
-  'walking_stick', 'bo_staff', 'twin_blades',
-  'lucky_coin', 'jade_charm', 'phoenix_feather',
+/** The characters of server/internal/arena/characters.go. */
+export const CHARACTERS = [
+  'beggar', 'street_kid', 'fisherman', 'farmer', 'porter', 'herb_girl',
+  'stick_fighter', 'temple_monk', 'fan_dancer', 'forest_archer', 'blacksmith', 'rope_dart',
+  'swordswoman', 'spear_guard', 'twin_sabre', 'chain_whip', 'war_drummer', 'shadow_runner',
+  'thunder_monk', 'phoenix_archer', 'jade_general', 'wind_sage', 'dragon_dancer', 'tower_master',
 ]
 
-/** The tower's opponents (server/internal/arena/tower.go); each is optional. */
-export const OPPONENTS = [
-  'pickpocket', 'dockhand', 'market_bully', 'stick_fighter', 'alley_boss',
-  'novice', 'wandering_monk', 'fan_dancer', 'iron_guard', 'iron_general',
-  'wind_walker', 'jade_duelist', 'mirror', 'thunder_fist', 'tower_master',
-]
-
-/** Every front layer a complete set has. A gear item counts as there when it
- *  is drawn once for both bodies, or once for each. */
-export const EXPECTED = [
-  ...BODIES.flatMap((b) => FOUR.map((n) => `base/${b}-${n}`)),
-  ...BODIES.flatMap((b) => FOUR.map((n) => `hair/${b}-${n}`)),
-  ...GEAR.map((id) => `gear/${id}`),
-]
+/** Every layer a complete set has: one whole drawing per character. */
+export const EXPECTED = CHARACTERS.map((id) => `character/${id}`)
 
 /**
- * A file's layer, or null when the name is not one. A layer can have a single
- * pose and a sheet of frames side by side; the sheet ends in `.sheet.png`:
- *   base/a-0.png              → base/a-0, a pose
- *   base/a-0.sheet.png        → base/a-0, its sheet
- *   hair/b-2.back.png         → hair/b-2.back    (drawn behind the body)
- *   gear/rags@b.png           → gear/rags@b      (the female body's own rags)
- *   opponents/alley_boss.png  → opponent/alley_boss
+ * A file's layer, or null when the name is not one. A character can have a
+ * single pose and a sheet of frames side by side; the sheet ends in
+ * `.sheet.png`:
+ *   characters/beggar.png        → character/beggar, a pose
+ *   characters/beggar.sheet.png  → character/beggar, its sheet
  */
 export function parseLayer(path) {
-  const m = /^(base|hair|gear|opponents)\/([a-z0-9_-]+)(@[ab])?(\.back)?(\.sheet)?\.png$/.exec(path)
+  const m = /^characters\/([a-z0-9_]+)(\.sheet)?\.png$/.exec(path)
   if (!m) return null
-  const [, dir, id, body = '', back = '', sheet = ''] = m
-  if (dir === 'base' && (body || back)) return null
-  if ((dir === 'hair' || dir === 'opponents') && body) return null
-  if (dir === 'opponents' && back) return null
-  return { name: `${dir === 'opponents' ? 'opponent' : dir}/${id}${body}${back}`, sheet: !!sheet }
+  return { name: `character/${m[1]}`, sheet: !!m[2] }
 }
 
 /** Just the layer's name. */
@@ -205,14 +186,12 @@ function lowest(image, left, top, size) {
 }
 
 /**
- * Whether a layer keeps to the frame grid. For a sheet: no frame drawn past a
- * row's count. For a body (a base, or an opponent drawn whole): every frame
- * drawn, and the feet on the ground line in each one — the line every other
- * layer is drawn against, so a body that drifts takes its gear with it.
+ * Whether a character keeps to the frame grid: no frame drawn past a row's
+ * count, every frame drawn, and the feet on the ground line in each one, so
+ * the fighter does not bob up and down between frames.
  */
 export function checkFrames(path, image, frame) {
   const errors = []
-  const body = /^(base|opponents)\//.test(path)
   const sheet = image.width !== frame
   const cells = sheet ? ROWS : [['pose', { row: 0, frames: 1 }]]
   const floor = ground(frame)
@@ -224,10 +203,9 @@ export function checkFrames(path, image, frame) {
         if (bottom >= 0) errors.push(`${path}: ${name} có hình ở frame ${col + 1}, hàng này chỉ có ${frames} frame`)
         continue
       }
-      if (!body) continue
-      // A win may jump and a KO falls through the air: their feet may leave
-      // the ground, never sink below it.
-      const airborne = name === 'win' || name === 'ko'
+      // A win may jump, a KO falls through the air and a skill may leap:
+      // their feet may leave the ground, never sink below it.
+      const airborne = name === 'win' || name === 'ko' || name === 'special'
       const off = airborne ? bottom > floor + 1 : Math.abs(bottom - floor) > 1
       if (bottom < 0) errors.push(`${path}: ${where} trống`)
       else if (off) errors.push(`${path}: ${where} chân ở y=${bottom}, phải ở y=${floor} (±1)`)
@@ -248,7 +226,8 @@ export function assembleSheet(frames, frame) {
   const height = SHEET_ROWS * frame
   const rgba = new Uint8Array(width * height * 4)
   const seen = new Set()
-  for (const { animation, index, image } of frames) {
+  for (const { animation: named, index, image } of frames) {
+    const animation = FRAME_NAMES[named] ?? named
     const spec = SHEET_ANIMATIONS[animation]
     if (!spec) { errors.push(`${animation}-${index}: không có động tác "${animation}"`); continue }
     if (index < 1 || index > spec.frames) { errors.push(`${animation}-${index}: ${animation} chỉ có ${spec.frames} frame`); continue }
@@ -262,8 +241,9 @@ export function assembleSheet(frames, frame) {
       rgba.set(image.rgba.subarray(from, from + frame * 4), ((spec.row * frame + y) * width + (index - 1) * frame) * 4)
     }
   }
+  const fileName = (row) => Object.keys(FRAME_NAMES).find((k) => FRAME_NAMES[k] === row) ?? row
   for (const [name, { frames: count }] of ROWS) {
-    for (let i = 1; i <= count; i++) if (!seen.has(`${name}-${i}`)) warnings.push(`thiếu ${name}-${i}, để trống`)
+    for (let i = 1; i <= count; i++) if (!seen.has(`${name}-${i}`)) warnings.push(`thiếu ${fileName(name)}-${i}, để trống`)
   }
   return { width, height, rgba, errors, warnings }
 }
@@ -288,10 +268,7 @@ export function buildManifest(files) {
       continue
     }
     const { name, sheet } = parsed
-    const plain = name.replace(/@[ab]/, '').replace(/\.back$/, '')
-    if (name.startsWith('opponent/') ? !OPPONENTS.includes(name.slice(9)) : !EXPECTED.includes(plain)) {
-      warnings.push(`${f.path}: không có trong danh mục, vẫn khai báo`)
-    }
+    if (!EXPECTED.includes(name)) warnings.push(`${f.path}: không có trong danh sách nhân vật, vẫn khai báo`)
     const frame = FRAMES.find((n) =>
       sheet ? f.width === SHEET_COLUMNS * n && f.height === SHEET_ROWS * n : f.width === n && f.height === n,
     )
@@ -300,7 +277,7 @@ export function buildManifest(files) {
       errors.push(`${f.path}: ${f.width}×${f.height}, ${sheet ? 'sheet' : 'một tư thế'} phải là ${wanted}`)
       continue
     }
-    if (!f.alpha) warnings.push(`${f.path}: không có kênh trong suốt (alpha), nền sẽ che các lớp dưới`)
+    if (!f.alpha) warnings.push(`${f.path}: không có kênh trong suốt (alpha), nền sẽ hiện thành khối`)
     if (f.image) errors.push(...checkFrames(f.path, f.image, frame))
     sizes.set(frame, [...(sizes.get(frame) ?? []), f.path])
     if (sheet) sheets[name] = f.path
@@ -311,28 +288,9 @@ export function buildManifest(files) {
     errors.push(`Trộn cỡ khung: ${listed.join(', ')}. Mọi file phải cùng cỡ khung.`)
   }
 
-  // A gear item is there when drawn once for both, or once for each body.
-  const missingFrom = (have) => {
-    const missing = []
-    for (const name of EXPECTED) {
-      if (name in have || (name.startsWith('gear/') && BODIES.every((b) => `${name}@${b}` in have))) continue
-      if (name.startsWith('gear/') && BODIES.some((b) => `${name}@${b}` in have)) {
-        missing.push(...BODIES.filter((b) => !(`${name}@${b}` in have)).map((b) => `${name}@${b}`))
-      } else missing.push(name)
-    }
-    return missing
-  }
   const all = { ...layers, ...sheets }
-  const missing = missingFrom(all)
-  const missingSheets = missingFrom(sheets)
-
-  // A body that moves while its hair and clothes do not yet is drawn still:
-  // say which layers it waits for.
-  for (const b of BODIES) {
-    if (!FOUR.some((n) => `base/${b}-${n}` in sheets)) continue
-    const waiting = missingSheets.filter((name) => name.startsWith(`hair/${b}-`) || (name.startsWith('gear/') && !name.endsWith(`@${b === 'a' ? 'b' : 'a'}`)))
-    if (waiting.length) warnings.push(`thân ${b} đã có sheet, nhưng ${waiting.length} lớp tóc/đồ chưa có, nên võ sĩ vẫn hiện bằng hình một tư thế cho tới khi đủ`)
-  }
+  const missing = EXPECTED.filter((name) => !(name in all))
+  const missingSheets = EXPECTED.filter((name) => !(name in sheets))
 
   const count = Object.keys(all).length
   if (errors.length || count === 0) {

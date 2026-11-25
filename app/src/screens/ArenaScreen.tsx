@@ -4,52 +4,30 @@ import { FighterSprite } from '../components/FighterSprite'
 import { useI18n } from '../i18n'
 import { explain } from '../lib/errors'
 import { useRemote } from '../lib/remote'
-import {
-  GEAR_SLOTS,
-  repository,
-  type ArenaState,
-  type Fighter,
-  type FighterLook,
-  type GearItem,
-  type GearSlot,
-  type GearStats,
-} from '../repository'
+import { repository, type ArenaState, type Character, type Fighter, type FighterStats, type Tier } from '../repository'
 import '../styles/arena.css'
 
-type Tab = 'fighter' | 'shop' | 'bag'
+const TIERS: Tier[] = ['common', 'rare', 'epic', 'legendary']
 
 /**
- * The Arena: a fighter who starts as a beggar, coins earned by practising,
- * and a shop to spend them in. Duels come next.
+ * The Arena: a fighter who starts as one of two free characters, coins earned
+ * by practising, and 22 more characters to unlock with them, each with their
+ * own weapon and skill; then the tower, shadows to fight, and the week's board.
  */
 export function ArenaScreen() {
   const { t } = useI18n()
   const remote = useRemote('', () => repository.arena())
   // What the server answered last, once anything has been done here.
   const [state, setState] = useState<ArenaState | null>(null)
-  const [tab, setTab] = useState<Tab>('fighter')
-  const [editing, setEditing] = useState(false)
   const current = state ?? (remote.state === 'ready' ? remote.value : null)
 
   if (remote.state === 'error' && !state) {
     return <div className="card-meta">{t('arena.loadFailed')}</div>
   }
   if (!current) return <div className="card-meta" aria-busy="true" />
-
-  if (!current.fighter || editing) {
-    return (
-      <CharacterCreator
-        existing={current.fighter}
-        equipped={current.equipped}
-        onDone={(next) => {
-          setState(next)
-          setEditing(false)
-        }}
-        onCancel={current.fighter ? () => setEditing(false) : undefined}
-      />
-    )
-  }
+  if (!current.fighter) return <CharacterCreator state={current} onDone={setState} />
   const fighter = current.fighter
+  const playing = characterOf(current, fighter.character)
 
   return (
     <div className="stack gap-6 arena" data-testid="arena">
@@ -61,52 +39,19 @@ export function ArenaScreen() {
         <Purse coins={current.coins} />
       </div>
 
-      <section className="card elev-sm arena-stage">
-        <FighterSprite
-          body={fighter.body}
-          skin={fighter.skin}
-          hair={fighter.hair}
-          equipped={current.equipped}
-          label={fighter.name}
-        />
-        <div className="stack gap-2" style={{ minWidth: 0 }}>
-          <div className="row gap-2 wrap" style={{ alignItems: 'baseline' }}>
-            <h2 className="arena-name">{fighter.name}</h2>
-            <span className="tag tag-neutral">{t('arena.level', fighter.level)}</span>
-          </div>
-          <StatList stats={current.stats} />
-          <div>
-            <button type="button" className="btn btn-ghost" onClick={() => setEditing(true)}>
-              {t('arena.editLook')}
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <div className="board-tabs" role="tablist" aria-label={t('arena.title')}>
-        {(['fighter', 'shop', 'bag'] as const).map((one) => (
-          <button
-            key={one}
-            type="button"
-            role="tab"
-            aria-selected={tab === one}
-            className="board-tab"
-            onClick={() => setTab(one)}
-          >
-            {t(`arena.tab.${one}`)}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'fighter' && <Equipped state={current} />}
-      {tab === 'shop' && <Shop state={current} onChange={setState} />}
-      {tab === 'bag' && <Bag state={current} onChange={setState} />}
+      <FighterCard state={current} fighter={fighter} playing={playing} onChange={setState} />
+      <Roster state={current} onChange={setState} />
 
       <PvPSection />
       <ArenaBoardSection />
-      <TowerSection fighter={fighter} equipped={current.equipped} />
+      <TowerSection playing={playing} />
     </div>
   )
+}
+
+/** The character a fighter plays, from the roster. */
+function characterOf(state: ArenaState, id: string): Character {
+  return state.roster.find((c) => c.id === id) ?? state.roster[0]
 }
 
 function Purse({ coins }: { coins: number }) {
@@ -123,7 +68,7 @@ function Purse({ coins }: { coins: number }) {
   )
 }
 
-function StatList({ stats }: { stats: GearStats }) {
+function StatList({ stats }: { stats: FighterStats }) {
   const { t } = useI18n()
   const rows: [string, string][] = [
     [t('arena.stat.hp'), String(stats.hp)],
@@ -144,8 +89,8 @@ function StatList({ stats }: { stats: GearStats }) {
   )
 }
 
-/** A piece of gear's stats, the ones it has. */
-function Bonuses({ stats }: { stats: GearStats }) {
+/** What a character adds to a fighter's own stats, the ones it adds. */
+function Bonuses({ stats }: { stats: FighterStats }) {
   const { t } = useI18n()
   const parts = [
     stats.atk && `${t('arena.stat.atk')} +${stats.atk}`,
@@ -154,38 +99,22 @@ function Bonuses({ stats }: { stats: GearStats }) {
     stats.time && `${t('arena.stat.time')} +${t('arena.seconds', stats.time)}`,
     stats.rage && `${t('arena.stat.rage')} +${stats.rage}`,
   ].filter(Boolean)
-  return <div className="card-meta">{parts.join(' · ')}</div>
+  return parts.length ? <div className="card-meta">{parts.join(' · ')}</div> : null
 }
 
-function itemsById(state: ArenaState): Map<string, GearItem> {
-  return new Map(state.shop.map((it) => [it.id, it]))
-}
-
-function Equipped({ state }: { state: ArenaState }) {
+/** A character's weapon and skill, as one says them. */
+function SkillLine({ character }: { character: Character }) {
   const { t, locale } = useI18n()
-  const items = itemsById(state)
+  const lang = locale === 'vi' ? 'vi' : 'en'
   return (
-    <ul className="arena-slots">
-      {GEAR_SLOTS.map((slot) => {
-        const id = state.equipped[slot]
-        const item = id ? items.get(id) : undefined
-        return (
-          <li key={slot}>
-            <span className="card-kicker">{t(`arena.slot.${slot}`)}</span>
-            <span>{item ? item.name[locale === 'vi' ? 'vi' : 'en'] : id ? starterName(id, t) : t('arena.slot.empty')}</span>
-          </li>
-        )
-      })}
-    </ul>
+    <div className="stack gap-1">
+      <span className="card-meta">{t('arena.weapon', character.weapon.name[lang])}</span>
+      <span className="arena-skill" data-skill={character.skill.kind}>
+        <strong>{t('arena.skill', character.skill.name[lang])}</strong>{' '}
+        <span className="card-meta">{t(`arena.skill.${character.skill.kind}`)}</span>
+      </span>
+    </div>
   )
-}
-
-/** The beggar's kit is not in the shop, so its names live here. */
-function starterName(id: string, t: ReturnType<typeof useI18n>['t']): string {
-  if (id === 'rags') return t('arena.starter.rags')
-  if (id === 'bare_fists') return t('arena.starter.fists')
-  if (id === 'bare_feet') return t('arena.starter.feet')
-  return id
 }
 
 function useAct(onChange: (s: ArenaState) => void) {
@@ -207,142 +136,186 @@ function useAct(onChange: (s: ArenaState) => void) {
   return { busy, note, act }
 }
 
-function Shop({ state, onChange }: { state: ArenaState; onChange: (s: ArenaState) => void }) {
+/** The fighter as they stand: the character played, their stats and skill. */
+function FighterCard({
+  state,
+  fighter,
+  playing,
+  onChange,
+}: {
+  state: ArenaState
+  fighter: Fighter
+  playing: Character
+  onChange: (s: ArenaState) => void
+}) {
   const { t, locale } = useI18n()
-  const { busy, note, act } = useAct(onChange)
   const lang = locale === 'vi' ? 'vi' : 'en'
+  const [renaming, setRenaming] = useState(false)
+  const [name, setName] = useState(fighter.name)
+  const { busy, note, act } = useAct((next) => {
+    onChange(next)
+    setRenaming(false)
+  })
   return (
-    <div className="stack gap-3">
-      <div className="card-meta">{t('arena.coinsHow')}</div>
+    <section className="card elev-sm arena-stage">
+      <FighterSprite character={playing} label={fighter.name} />
+      <div className="stack gap-2" style={{ minWidth: 0 }}>
+        {renaming ? (
+          <form
+            className="row gap-2 wrap"
+            onSubmit={(e) => {
+              e.preventDefault()
+              void act('rename', () => repository.renameFighter(name))
+            }}
+          >
+            <input
+              className="input"
+              aria-label={t('arena.create.name')}
+              value={name}
+              maxLength={20}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+            <button type="submit" className="btn btn-primary" disabled={busy !== null}>
+              {t('arena.rename.save')}
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => setRenaming(false)}>
+              {t('arena.cancel')}
+            </button>
+          </form>
+        ) : (
+          <div className="row gap-2 wrap" style={{ alignItems: 'baseline' }}>
+            <h2 className="arena-name">{fighter.name}</h2>
+            <span className="tag tag-neutral">{t('arena.level', fighter.level)}</span>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setRenaming(true)}>
+              {t('arena.rename')}
+            </button>
+          </div>
+        )}
+        <div className="row gap-2 wrap" style={{ alignItems: 'baseline' }}>
+          <strong>{playing.name[lang]}</strong>
+          <span className="tag tag-neutral arena-tier" data-tier={playing.tier}>
+            {t(`arena.tier.${playing.tier}`)}
+          </span>
+        </div>
+        <SkillLine character={playing} />
+        <StatList stats={state.stats} />
+        {note && (
+          <div className="card-meta" role="alert">
+            {note}
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
+/** Every character, by tier: unlock one with coins, or play one owned. */
+function Roster({ state, onChange }: { state: ArenaState; onChange: (s: ArenaState) => void }) {
+  const { t, locale } = useI18n()
+  const lang = locale === 'vi' ? 'vi' : 'en'
+  const playing = state.fighter?.character
+  const [tier, setTier] = useState<Tier>(() => characterOf(state, playing ?? '').tier)
+  const { busy, note, act } = useAct(onChange)
+  const owned = state.roster.filter((c) => c.owned).length
+  return (
+    <section className="stack gap-3" aria-labelledby="roster-title">
+      <div className="row between wrap gap-2">
+        <div>
+          <h2 id="roster-title" style={{ margin: 0 }}>
+            {t('arena.roster.title')}
+          </h2>
+          <div className="card-meta">{t('arena.roster.intro')}</div>
+        </div>
+        <span className="tag tag-neutral">{t('arena.roster.count', owned, state.roster.length)}</span>
+      </div>
+      <div className="board-tabs" role="tablist" aria-label={t('arena.roster.title')}>
+        {TIERS.map((one) => (
+          <button
+            key={one}
+            type="button"
+            role="tab"
+            aria-selected={tier === one}
+            className="board-tab"
+            onClick={() => setTier(one)}
+          >
+            {t(`arena.tier.${one}`)}
+          </button>
+        ))}
+      </div>
       {note && (
         <div className="card-meta" role="status">
           {note}
         </div>
       )}
-      {GEAR_SLOTS.map((slot) => {
-        const items = state.shop.filter((it) => it.slot === slot)
-        if (items.length === 0) return null
-        return (
-          <section key={slot} aria-label={t(`arena.slot.${slot}`)}>
-            <h2 className="card-kicker">{t(`arena.slot.${slot}`)}</h2>
-            <div className="arena-items">
-              {items.map((it) => {
-                const short = it.price - state.coins
-                return (
-                  <article key={it.id} className="card elev-sm arena-item" data-rarity={it.rarity} aria-label={it.name[lang]}>
-                    <div className="row between gap-2">
-                      <strong>{it.name[lang]}</strong>
-                      <span className="tag tag-neutral arena-rarity">{t(`arena.rarity.${it.rarity}`)}</span>
-                    </div>
-                    <Bonuses stats={it.stats} />
-                    {it.owned ? (
-                      <span className="tag tag-neutral">{t('arena.owned')}</span>
-                    ) : (
+      <div className="arena-items" role="tabpanel">
+        {state.roster
+          .filter((c) => c.tier === tier)
+          .map((c) => {
+            const short = c.price - state.coins
+            const name = c.name[lang]
+            return (
+              <article
+                key={c.id}
+                className="card elev-sm arena-item arena-character"
+                data-rarity={c.tier}
+                data-playing={c.id === playing || undefined}
+                aria-label={name}
+              >
+                <FighterSprite character={c} size={96} label={name} />
+                <div className="stack gap-1" style={{ minWidth: 0 }}>
+                  <strong>{name}</strong>
+                  <SkillLine character={c} />
+                  <Bonuses stats={c.bonus} />
+                  {c.id === playing ? (
+                    <span className="tag tag-neutral">✓ {t('arena.playing')}</span>
+                  ) : c.owned ? (
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      disabled={busy !== null}
+                      onClick={() => void act(c.id, () => repository.selectCharacter(c.id), t('arena.selected', name))}
+                    >
+                      {t('arena.select')}
+                    </button>
+                  ) : (
+                    <>
                       <button
                         type="button"
                         className="btn btn-primary"
                         disabled={short > 0 || busy !== null}
-                        title={short > 0 ? t('arena.short', short) : undefined}
-                        onClick={() => void act(it.id, () => repository.buyGear(it.id), t('arena.bought', it.name[lang]))}
+                        onClick={() => void act(c.id, () => repository.buyCharacter(c.id), t('arena.bought', name))}
                       >
-                        🪙 {t('arena.buy', it.price)}
+                        🪙 {t('arena.buy', c.price)}
                       </button>
-                    )}
-                    {!it.owned && short > 0 && <div className="card-meta">{t('arena.short', short)}</div>}
-                  </article>
-                )
-              })}
-            </div>
-          </section>
-        )
-      })}
-    </div>
-  )
-}
-
-function Bag({ state, onChange }: { state: ArenaState; onChange: (s: ArenaState) => void }) {
-  const { t, locale } = useI18n()
-  const { busy, note, act } = useAct(onChange)
-  const lang = locale === 'vi' ? 'vi' : 'en'
-  const items = itemsById(state)
-  const owned = state.owned.map((id) => items.get(id)).filter((it): it is GearItem & { owned: boolean } => !!it)
-  return (
-    <div className="stack gap-3">
-      {note && (
-        <div className="card-meta" role="status">
-          {note}
-        </div>
-      )}
-      {owned.length === 0 ? (
-        <div className="card-meta">{t('arena.coinsHow')}</div>
-      ) : (
-        <div className="arena-items">
-          {owned.map((it) => {
-            const wearing = state.equipped[it.slot] === it.id
-            return (
-              <article key={it.id} className="card elev-sm arena-item" data-rarity={it.rarity} aria-label={it.name[lang]}>
-                <div className="row between gap-2">
-                  <strong>{it.name[lang]}</strong>
-                  <span className="card-kicker">{t(`arena.slot.${it.slot}`)}</span>
+                      {short > 0 && <div className="card-meta">{t('arena.short', short)}</div>}
+                    </>
+                  )}
                 </div>
-                <Bonuses stats={it.stats} />
-                {wearing ? (
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    disabled={busy !== null}
-                    onClick={() => void act(it.id, () => repository.equip(null, it.slot as GearSlot))}
-                  >
-                    {t('arena.unequip')}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    disabled={busy !== null}
-                    onClick={() => void act(it.id, () => repository.equip(it.id))}
-                  >
-                    {t('arena.equip')}
-                  </button>
-                )}
               </article>
             )
           })}
-        </div>
-      )}
-    </div>
+      </div>
+    </section>
   )
 }
 
-function CharacterCreator({
-  existing,
-  equipped,
-  onDone,
-  onCancel,
-}: {
-  existing: FighterLook | null
-  equipped: ArenaState['equipped']
-  onDone: (s: ArenaState) => void
-  onCancel?: () => void
-}) {
-  const { t } = useI18n()
-  // Only the look: the fighter's level and experience are not the creator's
-  // to send, and the server refuses fields it does not take.
-  const [look, setLook] = useState<FighterLook>(
-    existing
-      ? { name: existing.name, body: existing.body, skin: existing.skin, hair: existing.hair }
-      : { name: '', body: 'a', skin: 1, hair: 0 },
-  )
+/** A new fighter: a name, and which of the two free characters to start as. */
+function CharacterCreator({ state, onDone }: { state: ArenaState; onDone: (s: ArenaState) => void }) {
+  const { t, locale } = useI18n()
+  const lang = locale === 'vi' ? 'vi' : 'en'
+  const starters = state.roster.filter((c) => c.price === 0)
+  const [name, setName] = useState('')
+  const [pick, setPick] = useState(starters[0]?.id ?? 'beggar')
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
-  // A new fighter is shown in the beggar's kit they will start in.
-  const wearing = existing ? equipped : { body: 'rags', hands: 'bare_fists', feet: 'bare_feet' }
+  const chosen = starters.find((c) => c.id === pick) ?? starters[0]
 
   const submit = async () => {
     setBusy(true)
     setNote(null)
     try {
-      onDone(existing ? await repository.updateFighter(look) : await repository.createFighter(look))
+      onDone(await repository.createFighter(name, pick))
     } catch (err) {
       setNote(explain(err, t, t('error.server')))
     } finally {
@@ -350,26 +323,14 @@ function CharacterCreator({
     }
   }
 
-  const choice = (label: string, count: number, value: number, set: (n: number) => void, swatch?: string[]) => (
-    <fieldset className="arena-choice">
-      <legend>{label}</legend>
-      {Array.from({ length: count }, (_, i) => (
-        <label key={i} className="arena-swatch" style={swatch ? { background: swatch[i] } : undefined}>
-          <input type="radio" name={label} checked={value === i} onChange={() => set(i)} />
-          <span className={swatch ? 'sr-only' : undefined}>{t('arena.create.option', i + 1)}</span>
-        </label>
-      ))}
-    </fieldset>
-  )
-
   return (
     <div className="stack gap-6 arena" data-testid="arena-create">
       <div>
         <h1 style={{ marginBottom: 2 }}>{t('arena.create.title')}</h1>
-        {!existing && <div className="card-meta">{t('arena.create.story')}</div>}
+        <div className="card-meta">{t('arena.create.story')}</div>
       </div>
       <section className="card elev-sm arena-stage">
-        <FighterSprite body={look.body} skin={look.skin} hair={look.hair} equipped={wearing} label={look.name || t('arena.create.title')} />
+        {chosen && <FighterSprite character={chosen} label={name || chosen.name[lang]} />}
         <form
           className="stack gap-3"
           onSubmit={(e) => {
@@ -379,39 +340,27 @@ function CharacterCreator({
         >
           <label className="stack gap-1">
             <span className="card-kicker">{t('arena.create.name')}</span>
-            <input
-              className="input"
-              value={look.name}
-              maxLength={20}
-              onChange={(e) => setLook({ ...look, name: e.target.value })}
-              required
-            />
+            <input className="input" value={name} maxLength={20} onChange={(e) => setName(e.target.value)} required />
           </label>
           <fieldset className="arena-choice">
-            <legend>{t('arena.create.body')}</legend>
-            {(['a', 'b'] as const).map((b) => (
-              <label key={b} className="arena-swatch arena-swatch-wide">
-                <input type="radio" name="body" checked={look.body === b} onChange={() => setLook({ ...look, body: b })} />
-                <span>{b === 'a' ? t('arena.create.bodyA') : t('arena.create.bodyB')}</span>
+            <legend>{t('arena.create.pick')}</legend>
+            {starters.map((c) => (
+              <label key={c.id} className="arena-swatch arena-swatch-wide">
+                <input type="radio" name="starter" checked={pick === c.id} onChange={() => setPick(c.id)} />
+                <span>{c.name[lang]}</span>
               </label>
             ))}
           </fieldset>
-          {choice(t('arena.create.skin'), 4, look.skin, (n) => setLook({ ...look, skin: n }), ['#f3d2b3', '#dcae86', '#b07a50', '#7a4e2e'])}
-          {choice(t('arena.create.hair'), 4, look.hair, (n) => setLook({ ...look, hair: n }))}
+          {chosen && <SkillLine character={chosen} />}
           {note && (
             <div className="card-meta" role="alert">
               {note}
             </div>
           )}
-          <div className="row gap-2 wrap">
+          <div>
             <button type="submit" className="btn btn-primary" disabled={busy}>
-              {existing ? t('arena.create.save') : t('arena.create.go')}
+              {t('arena.create.go')}
             </button>
-            {onCancel && (
-              <button type="button" className="btn btn-ghost" onClick={onCancel}>
-                {t('arena.cancel')}
-              </button>
-            )}
           </div>
         </form>
       </section>
@@ -420,7 +369,7 @@ function CharacterCreator({
 }
 
 /** The tower: energy, the fighter's level, and a floor at a time to fight. */
-function TowerSection({ fighter, equipped }: { fighter: Fighter; equipped: ArenaState['equipped'] }) {
+function TowerSection({ playing }: { playing: Character }) {
   const { t, locale } = useI18n()
   const navigate = useNavigate()
   const lang = locale === 'vi' ? 'vi' : 'en'
@@ -478,7 +427,6 @@ function TowerSection({ fighter, equipped }: { fighter: Fighter; equipped: Arena
       )}
       <ol className="arena-floors">
         {tower.floors.map((f) => {
-          const look = f.mirror ? fighter : f.look
           return (
             <li
               key={f.floor}
@@ -487,16 +435,7 @@ function TowerSection({ fighter, equipped }: { fighter: Fighter; equipped: Arena
               data-locked={f.locked || undefined}
               aria-label={`${t('arena.tower.floor', f.floor)}: ${f.name[lang]}`}
             >
-              <FighterSprite
-                body={look.body}
-                skin={look.skin}
-                hair={look.hair}
-                equipped={f.mirror ? equipped : f.equipped}
-                facing="left"
-                size={72}
-                sheet={f.mirror ? undefined : `opponent/${f.id}`}
-                animation="idle"
-              />
+              <FighterSprite character={f.mirror ? playing : f.character} facing="left" size={72} animation="idle" />
               <div className="stack gap-1" style={{ minWidth: 0 }}>
                 <span className="card-kicker">
                   {t('arena.tower.floor', f.floor)}
@@ -576,14 +515,7 @@ function PvPSection() {
         <ul className="arena-rivals">
           {rivals.value.map((r) => (
             <li key={r.id} className="card elev-sm arena-rival" aria-label={r.name}>
-              <FighterSprite
-                body={r.look.body}
-                skin={r.look.skin}
-                hair={r.look.hair}
-                equipped={r.equipped}
-                facing="left"
-                size={84}
-              />
+              <FighterSprite character={r.character} facing="left" size={84} />
               <div className="stack gap-1" style={{ minWidth: 0 }}>
                 <strong>{r.name}</strong>
                 <span className="card-meta">
