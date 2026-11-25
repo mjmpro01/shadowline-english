@@ -31,29 +31,12 @@ var ArenaWeekGold = [3]int{150, 90, 60}
 
 // Rival is someone to fight: a learner's shadow, or a sparring bot.
 type Rival struct {
-	ID       string            `json:"id"`
-	Name     string            `json:"name"`
-	Look     arena.Look        `json:"look"`
-	Equipped map[string]string `json:"equipped"`
-	Level    int               `json:"level"`
-	Rating   int               `json:"rating"`
-	Bot      bool              `json:"bot"`
-}
-
-func equippedOf(ctx context.Context, q interface {
-	Query(context.Context, string, ...any) (pgx.Rows, error)
-}, user uuid.UUID) (map[string]string, error) {
-	rows, err := q.Query(ctx, `select slot, item from fighter_equipped where user_id = $1`, user)
-	if err != nil {
-		return nil, err
-	}
-	out := map[string]string{}
-	var slot, item string
-	_, err = pgx.ForEachRow(rows, []any{&slot, &item}, func() error {
-		out[slot] = item
-		return nil
-	})
-	return out, err
+	ID        string          `json:"id"`
+	Name      string          `json:"name"`
+	Character arena.Character `json:"character"`
+	Level     int             `json:"level"`
+	Rating    int             `json:"rating"`
+	Bot       bool            `json:"bot"`
 }
 
 // Rivals is who a learner can fight now: the learners rated nearest them who
@@ -68,7 +51,7 @@ func (s *Store) Rivals(ctx context.Context, user uuid.UUID, now time.Time) ([]Ri
 		return nil, err
 	}
 	rows, err := s.pool.Query(ctx, `
-		select f.user_id, f.name, f.body, f.skin, f.hair, f.level, f.rating
+		select f.user_id, f.name, f.character, f.level, f.rating
 		from fighters f
 		where f.user_id <> $1
 		  and not exists (
@@ -83,22 +66,15 @@ func (s *Store) Rivals(ctx context.Context, user uuid.UUID, now time.Time) ([]Ri
 		id uuid.UUID
 		r  Rival
 	}
-	var learners []found
+	out := []Rival{}
 	var f found
-	if _, err := pgx.ForEachRow(rows, []any{&f.id, &f.r.Name, &f.r.Look.Body, &f.r.Look.Skin, &f.r.Look.Hair, &f.r.Level, &f.r.Rating}, func() error {
-		learners = append(learners, f)
+	var character string
+	if _, err := pgx.ForEachRow(rows, []any{&f.id, &f.r.Name, &character, &f.r.Level, &f.r.Rating}, func() error {
+		f.r.ID, f.r.Character = f.id.String(), characterOf(character)
+		out = append(out, f.r)
 		return nil
 	}); err != nil {
 		return nil, err
-	}
-	out := []Rival{}
-	for _, l := range learners {
-		eq, err := equippedOf(ctx, s.pool, l.id)
-		if err != nil {
-			return nil, err
-		}
-		l.r.ID, l.r.Equipped, l.r.Look.Name = l.id.String(), eq, l.r.Name
-		out = append(out, l.r)
 	}
 	// Bots make up the rest: a floor below, level with, and above the learner.
 	seen := map[int]bool{}
@@ -112,7 +88,7 @@ func (s *Store) Rivals(ctx context.Context, user uuid.UUID, now time.Time) ([]Ri
 		}
 		seen[floor] = true
 		b, _ := arena.Bot(floor)
-		out = append(out, Rival{ID: b.ID, Name: b.Name.Vi, Look: b.Look, Equipped: b.Equipped, Level: b.Level, Rating: b.Rating, Bot: true})
+		out = append(out, Rival{ID: b.ID, Name: b.Name.Vi, Character: b.Character, Level: b.Level, Rating: b.Rating, Bot: true})
 	}
 	return out, nil
 }
@@ -138,23 +114,17 @@ func rivalOpponent(ctx context.Context, tx pgx.Tx, user uuid.UUID, rival string)
 	if id == user {
 		return arena.Opponent{}, nil, ErrPvPSelf
 	}
-	var name string
-	var look arena.Look
+	var name, character string
 	var level, rating int
-	err = tx.QueryRow(ctx, `select name, body, skin, hair, level, rating from fighters where user_id = $1`, id).
-		Scan(&name, &look.Body, &look.Skin, &look.Hair, &level, &rating)
+	err = tx.QueryRow(ctx, `select name, character, level, rating from fighters where user_id = $1`, id).
+		Scan(&name, &character, &level, &rating)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return arena.Opponent{}, nil, ErrNotFound
 	}
 	if err != nil {
 		return arena.Opponent{}, nil, err
 	}
-	eq, err := equippedOf(ctx, tx, id)
-	if err != nil {
-		return arena.Opponent{}, nil, err
-	}
-	look.Name = name
-	return arena.Shadow(id.String(), name, look, eq, level, rating), &id, nil
+	return arena.Shadow(id.String(), name, characterOf(character), level, rating), &id, nil
 }
 
 // StartPvP starts a duel against a rival's shadow, for a unit of energy, or
@@ -225,14 +195,14 @@ func (s *Store) pvpFinish(ctx context.Context, tx pgx.Tx, user uuid.UUID, d *due
 
 // ArenaRow is one fighter on the week's Arena board.
 type ArenaRow struct {
-	Rank   int        `json:"rank"`
-	UserID uuid.UUID  `json:"userId"`
-	Name   string     `json:"name"`
-	Look   arena.Look `json:"look"`
-	Points int        `json:"points"`
-	Wins   int        `json:"wins"`
-	Rating int        `json:"rating"`
-	IsYou  bool       `json:"isYou"`
+	Rank      int       `json:"rank"`
+	UserID    uuid.UUID `json:"userId"`
+	Name      string    `json:"name"`
+	Character string    `json:"character"`
+	Points    int       `json:"points"`
+	Wins      int       `json:"wins"`
+	Rating    int       `json:"rating"`
+	IsYou     bool      `json:"isYou"`
 }
 
 // ArenaBoardView is the week's Arena board.
@@ -247,7 +217,7 @@ type ArenaBoardView struct {
 
 const rankedArenaWeek = `
 	select (row_number() over (order by p.points desc, p.wins desc, f.rating desc, p.user_id))::int as rank,
-	       p.user_id, f.name, f.body, f.skin, f.hair, p.points, p.wins, f.rating
+	       p.user_id, f.name, f.character, p.points, p.wins, f.rating
 	from arena_week_points p join fighters f on f.user_id = p.user_id
 	where p.week = $1::date and p.points > 0`
 
@@ -265,10 +235,9 @@ func (s *Store) ArenaBoard(ctx context.Context, viewer uuid.UUID, limit int, now
 		return out, err
 	}
 	var r ArenaRow
-	if _, err := pgx.ForEachRow(rows, []any{&r.Rank, &r.UserID, &r.Name, &r.Look.Body, &r.Look.Skin, &r.Look.Hair, &r.Points, &r.Wins, &r.Rating}, func() error {
+	if _, err := pgx.ForEachRow(rows, []any{&r.Rank, &r.UserID, &r.Name, &r.Character, &r.Points, &r.Wins, &r.Rating}, func() error {
 		row := r
 		row.IsYou = row.UserID == viewer
-		row.Look.Name = row.Name
 		if row.Rank <= limit {
 			out.Rows = append(out.Rows, row)
 		} else {

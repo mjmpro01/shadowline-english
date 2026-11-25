@@ -15,24 +15,25 @@ func TestEloMovesRatingsByHowLikelyTheResultWas(t *testing.T) {
 	}
 }
 
-func TestAShadowIsAsStrongAsTheirGear(t *testing.T) {
-	look := Look{Body: "b", Skin: 1, Hair: 2}
-	o := Shadow("u1", "Lan", look, map[string]string{"weapon": "bo_staff", "body": "leather_vest"}, 3, 1050)
+func TestAShadowIsAsStrongAsTheirCharacter(t *testing.T) {
+	archer, _ := CharacterByID("forest_archer")
+	o := Shadow("u1", "Lan", archer, 3, 1050)
 	base := Base(3)
-	if o.Atk != base.Atk+4 || o.Def != base.Def+3 || o.HP != base.HP+10 || o.Level != 3 || o.Rating != 1050 || o.Name.Vi != "Lan" {
+	if o.Atk != base.Atk+2 || o.Def != base.Def+1 || o.HP != base.HP+10 || o.Level != 3 || o.Rating != 1050 ||
+		o.Name.Vi != "Lan" || o.Character.ID != "forest_archer" {
 		t.Fatalf("%+v", o)
 	}
 	if len(o.Kinds) != 2 || o.Telegraph != 4 {
 		t.Fatalf("a new learner's questions: %+v", o)
 	}
-	if hard := Shadow("u2", "Bao", look, nil, 1, 1400); len(hard.Kinds) != 4 || hard.RankLo != 2000 {
+	if hard := Shadow("u2", "Bao", archer, 1, 1400); len(hard.Kinds) != 4 || hard.RankLo != 2000 {
 		t.Fatalf("a strong learner's questions: %+v", hard)
 	}
 }
 
 func TestBotsAndRewards(t *testing.T) {
 	b, ok := Bot(BotFloor(2, 1))
-	if !ok || !b.Bot || b.ID != "bot:3" || b.Rating != 975 || b.Drop != "" || b.Boss {
+	if !ok || !b.Bot || b.ID != "bot:3" || b.Rating != 975 || b.Character.ID != "farmer" || b.Boss {
 		t.Fatalf("%+v", b)
 	}
 	if BotFloor(20, 1) != len(Tower) || BotFloor(1, -1) != 1 {

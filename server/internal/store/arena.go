@@ -11,7 +11,8 @@ import (
 	"github.com/shadowline/server/internal/arena"
 )
 
-// The Arena: a learner's fighter, the gear they own and wear, and the shop.
+// The Arena: a learner's fighter, the characters they own and the one they
+// play, and the roster to buy more from.
 
 // Refusals the Arena can give.
 var (
@@ -19,42 +20,44 @@ var (
 	ErrFighterTaken = errors.New("a fighter is already made")
 	ErrOwned        = errors.New("already owned")
 	ErrNotOwned     = errors.New("not owned")
-	ErrBareBody     = errors.New("a fighter always wears something")
+	ErrNotStarter   = errors.New("a fighter starts as one of the free characters")
 )
 
 // Fighter is a learner's fighter.
 type Fighter struct {
-	arena.Look
-	Level int `json:"level"`
-	XP    int `json:"xp"`
+	Name      string `json:"name"`
+	Character string `json:"character"`
+	Level     int    `json:"level"`
+	XP        int    `json:"xp"`
 }
 
-// ShopItem is a piece of gear as the shop shows it to one learner.
-type ShopItem struct {
-	arena.Item
+// RosterEntry is a character as the roster shows it to one learner.
+type RosterEntry struct {
+	arena.Character
 	Owned bool `json:"owned"`
+	// Bonus is what playing them adds to the fighter's own stats.
+	Bonus arena.Stats `json:"bonus"`
 }
 
 // ArenaState is everything the Arena screen shows.
 type ArenaState struct {
-	Coins    int               `json:"coins"`
-	Fighter  *Fighter          `json:"fighter"`
-	Stats    arena.Stats       `json:"stats"`
-	Equipped map[string]string `json:"equipped"`
-	Owned    []string          `json:"owned"`
-	Shop     []ShopItem        `json:"shop"`
+	Coins   int           `json:"coins"`
+	Fighter *Fighter      `json:"fighter"`
+	Stats   arena.Stats   `json:"stats"`
+	Owned   []string      `json:"owned"`
+	Roster  []RosterEntry `json:"roster"`
 }
 
 // ArenaOf is a learner's Arena.
 func (s *Store) ArenaOf(ctx context.Context, user uuid.UUID) (ArenaState, error) {
-	out := ArenaState{Equipped: map[string]string{}, Owned: []string{}, Shop: []ShopItem{}}
+	out := ArenaState{Owned: []string{}, Roster: []RosterEntry{}}
 	var err error
 	if out.Coins, err = s.Coins(ctx, user); err != nil {
 		return out, err
 	}
 	var f Fighter
-	err = s.pool.QueryRow(ctx, `select name, body, skin, hair, level, xp from fighters where user_id = $1`, user).
-		Scan(&f.Name, &f.Body, &f.Skin, &f.Hair, &f.Level, &f.XP)
+	err = s.pool.QueryRow(ctx, `select name, character, level, xp from fighters where user_id = $1`, user).
+		Scan(&f.Name, &f.Character, &f.Level, &f.XP)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 	case err != nil:
@@ -63,7 +66,7 @@ func (s *Store) ArenaOf(ctx context.Context, user uuid.UUID) (ArenaState, error)
 		out.Fighter = &f
 	}
 
-	rows, err := s.pool.Query(ctx, `select item from fighter_gear where user_id = $1 order by owned_at, item`, user)
+	rows, err := s.pool.Query(ctx, `select character from fighter_characters where user_id = $1 order by owned_at, character`, user)
 	if err != nil {
 		return out, err
 	}
@@ -74,58 +77,49 @@ func (s *Store) ArenaOf(ctx context.Context, user uuid.UUID) (ArenaState, error)
 	for _, id := range out.Owned {
 		owned[id] = true
 	}
-	rows, err = s.pool.Query(ctx, `select slot, item from fighter_equipped where user_id = $1`, user)
-	if err != nil {
-		return out, err
-	}
-	var slot, item string
-	var worn []arena.Item
-	if _, err := pgx.ForEachRow(rows, []any{&slot, &item}, func() error {
-		out.Equipped[slot] = item
-		if it, ok := arena.ItemByID(item); ok {
-			worn = append(worn, it)
-		}
-		return nil
-	}); err != nil {
-		return out, err
-	}
-	level := 1
+	level, playing := 1, characterOf("")
 	if out.Fighter != nil {
-		level = out.Fighter.Level
+		level, playing = out.Fighter.Level, characterOf(out.Fighter.Character)
 	}
-	out.Stats = arena.StatsOf(level, worn)
-	for _, it := range arena.Items {
-		if !it.Starter {
-			out.Shop = append(out.Shop, ShopItem{Item: it, Owned: owned[it.ID]})
-		}
+	out.Stats = arena.StatsOf(level, playing)
+	for _, c := range arena.Characters {
+		out.Roster = append(out.Roster, RosterEntry{Character: c, Owned: owned[c.ID] || c.Starter(), Bonus: c.Bonus()})
 	}
 	return out, nil
 }
 
-// CreateFighter makes a learner's fighter, dressed in the beggar's kit.
-func (s *Store) CreateFighter(ctx context.Context, user uuid.UUID, look arena.Look) error {
-	look, err := look.Clean()
+// characterOf is a character by id, or the beggar for one that is gone.
+func characterOf(id string) arena.Character {
+	if c, ok := arena.CharacterByID(id); ok {
+		return c
+	}
+	c, _ := arena.CharacterByID("beggar")
+	return c
+}
+
+// CreateFighter makes a learner's fighter, playing one of the free
+// characters; they own both.
+func (s *Store) CreateFighter(ctx context.Context, user uuid.UUID, name, character string) error {
+	name, err := arena.CleanName(name)
 	if err != nil {
 		return err
 	}
+	if c, ok := arena.CharacterByID(character); !ok || !c.Starter() {
+		return ErrNotStarter
+	}
 	return s.inTx(ctx, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, `
-			insert into fighters (user_id, name, body, skin, hair) values ($1, $2, $3, $4, $5)`,
-			user, look.Name, look.Body, look.Skin, look.Hair); err != nil {
+			insert into fighters (user_id, name, character) values ($1, $2, $3)`,
+			user, name, character); err != nil {
 			var pg *pgconn.PgError
 			if errors.As(err, &pg) && pg.Code == "23505" {
 				return ErrFighterTaken
 			}
 			return err
 		}
-		for _, it := range arena.Starters() {
+		for _, c := range arena.Starters() {
 			if _, err := tx.Exec(ctx, `
-				insert into fighter_gear (user_id, item) values ($1, $2) on conflict do nothing`, user, it.ID); err != nil {
-				return err
-			}
-			if _, err := tx.Exec(ctx, `
-				insert into fighter_equipped (user_id, slot, item) values ($1, $2, $3)
-				on conflict (user_id, slot) do update set item = excluded.item`, user, it.Slot, it.ID); err != nil {
+				insert into fighter_characters (user_id, character) values ($1, $2) on conflict do nothing`, user, c.ID); err != nil {
 				return err
 			}
 		}
@@ -133,15 +127,13 @@ func (s *Store) CreateFighter(ctx context.Context, user uuid.UUID, look arena.Lo
 	})
 }
 
-// UpdateFighter changes how a learner's fighter looks. It costs nothing.
-func (s *Store) UpdateFighter(ctx context.Context, user uuid.UUID, look arena.Look) error {
-	look, err := look.Clean()
+// RenameFighter changes a fighter's name. It costs nothing.
+func (s *Store) RenameFighter(ctx context.Context, user uuid.UUID, name string) error {
+	name, err := arena.CleanName(name)
 	if err != nil {
 		return err
 	}
-	tag, err := s.pool.Exec(ctx, `
-		update fighters set name = $2, body = $3, skin = $4, hair = $5 where user_id = $1`,
-		user, look.Name, look.Body, look.Skin, look.Hair)
+	tag, err := s.pool.Exec(ctx, `update fighters set name = $2 where user_id = $1`, user, name)
 	if err == nil && tag.RowsAffected() == 0 {
 		return ErrNoFighter
 	}
@@ -159,12 +151,12 @@ func hasFighter(ctx context.Context, tx pgx.Tx, user uuid.UUID) error {
 	return nil
 }
 
-// Buy pays for a piece of gear out of the learner's coins. ErrNotFound for gear
-// that does not exist or is not sold, ErrOwned, ErrNoFighter or
+// BuyCharacter pays for a character out of the learner's coins; they keep it.
+// ErrNotFound for a character there is not, ErrOwned, ErrNoFighter or
 // ErrNotEnoughCoins when it cannot be bought.
-func (s *Store) Buy(ctx context.Context, user uuid.UUID, id string) error {
-	it, ok := arena.ItemByID(id)
-	if !ok || it.Starter {
+func (s *Store) BuyCharacter(ctx context.Context, user uuid.UUID, id string) error {
+	c, ok := arena.CharacterByID(id)
+	if !ok {
 		return ErrNotFound
 	}
 	return s.inTx(ctx, func(tx pgx.Tx) error {
@@ -175,21 +167,20 @@ func (s *Store) Buy(ctx context.Context, user uuid.UUID, id string) error {
 		if err := hasFighter(ctx, tx, user); err != nil {
 			return err
 		}
-		tag, err := tx.Exec(ctx, `insert into fighter_gear (user_id, item) values ($1, $2) on conflict do nothing`, user, id)
+		tag, err := tx.Exec(ctx, `insert into fighter_characters (user_id, character) values ($1, $2) on conflict do nothing`, user, id)
 		if err != nil {
 			return err
 		}
 		if tag.RowsAffected() == 0 {
 			return ErrOwned
 		}
-		return debit(ctx, tx, user, "buy", id, it.Price)
+		return debit(ctx, tx, user, "buy", id, c.Price)
 	})
 }
 
-// Equip puts on a piece of gear the learner owns, in its slot.
-func (s *Store) Equip(ctx context.Context, user uuid.UUID, id string) error {
-	it, ok := arena.ItemByID(id)
-	if !ok {
+// SelectCharacter plays a character the learner owns from the next duel on.
+func (s *Store) SelectCharacter(ctx context.Context, user uuid.UUID, id string) error {
+	if _, ok := arena.CharacterByID(id); !ok {
 		return ErrNotFound
 	}
 	return s.inTx(ctx, func(tx pgx.Tx) error {
@@ -197,50 +188,14 @@ func (s *Store) Equip(ctx context.Context, user uuid.UUID, id string) error {
 			return err
 		}
 		var owned bool
-		if err := tx.QueryRow(ctx, `select exists (select 1 from fighter_gear where user_id = $1 and item = $2)`, user, id).Scan(&owned); err != nil {
+		if err := tx.QueryRow(ctx, `
+			select exists (select 1 from fighter_characters where user_id = $1 and character = $2)`, user, id).Scan(&owned); err != nil {
 			return err
 		}
 		if !owned {
 			return ErrNotOwned
 		}
-		_, err := tx.Exec(ctx, `
-			insert into fighter_equipped (user_id, slot, item) values ($1, $2, $3)
-			on conflict (user_id, slot) do update set item = excluded.item`, user, it.Slot, id)
-		return err
-	})
-}
-
-// Unequip takes off what is worn in a slot. The body slot cannot be bare: the
-// rags go back on instead, and taking the rags off is refused.
-func (s *Store) Unequip(ctx context.Context, user uuid.UUID, slot string) error {
-	valid := false
-	for _, s := range arena.Slots {
-		valid = valid || s == slot
-	}
-	if !valid {
-		return ErrNotFound
-	}
-	return s.inTx(ctx, func(tx pgx.Tx) error {
-		if err := hasFighter(ctx, tx, user); err != nil {
-			return err
-		}
-		// Each starting slot falls back to the beggar's kit rather than empty.
-		for _, it := range arena.Starters() {
-			if it.Slot != slot {
-				continue
-			}
-			var worn string
-			err := tx.QueryRow(ctx, `select item from fighter_equipped where user_id = $1 and slot = $2`, user, slot).Scan(&worn)
-			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-				return err
-			}
-			if worn == it.ID {
-				return ErrBareBody
-			}
-			_, err = tx.Exec(ctx, `update fighter_equipped set item = $3 where user_id = $1 and slot = $2`, user, slot, it.ID)
-			return err
-		}
-		_, err := tx.Exec(ctx, `delete from fighter_equipped where user_id = $1 and slot = $2`, user, slot)
+		_, err := tx.Exec(ctx, `update fighters set character = $2 where user_id = $1`, user, id)
 		return err
 	})
 }

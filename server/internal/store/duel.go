@@ -55,7 +55,6 @@ type DuelView struct {
 	// What a win paid.
 	Coins      int      `json:"coins"`
 	XP         int      `json:"xp"`
-	Drop       string   `json:"drop"`
 	LevelUp    bool     `json:"levelUp"`
 	FirstClear bool     `json:"firstClear"`
 	Words      []string `json:"words"`
@@ -63,6 +62,11 @@ type DuelView struct {
 	// to the learner's rating.
 	Kind        string `json:"kind"`
 	RatingDelta int    `json:"ratingDelta"`
+	// The learner's skill in this duel; Shield is hits a stun still shrugs
+	// off, Focus the questions after this one a focus skill still lengthens.
+	Skill  string `json:"skill"`
+	Shield int    `json:"shield"`
+	Focus  int    `json:"focus"`
 }
 
 // DuelTurn is what one answer did.
@@ -87,45 +91,47 @@ type duelRow struct {
 	issuedAt, deadline      time.Time
 	asked, reviewed         []string
 	right, wrong, coins, xp int
-	drop                    string
 	levelUp, firstClear     bool
 	kind                    string
 	opponent                arena.Opponent
 	opponentUser            *uuid.UUID
 	ratingDelta             int
+	skill                   string
+	tier, shield, focus     int
 }
 
 // opponentSnap is an opponent as kept with a duel: every number the rules
 // read, which the browser is not sent.
 type opponentSnap struct {
 	arena.Opponent
-	TimeDelta, Telegraph       int
-	Kinds                      []string
-	RankLo, RankHi, DropChance int
+	TimeDelta, Telegraph int
+	Kinds                []string
+	RankLo, RankHi       int
 }
 
 func snapOf(o arena.Opponent) opponentSnap {
-	return opponentSnap{o, o.TimeDelta, o.Telegraph, o.Kinds, o.RankLo, o.RankHi, o.DropChance}
+	return opponentSnap{o, o.TimeDelta, o.Telegraph, o.Kinds, o.RankLo, o.RankHi}
 }
 
 func (s opponentSnap) opponent() arena.Opponent {
 	o := s.Opponent
-	o.TimeDelta, o.Telegraph, o.Kinds, o.RankLo, o.RankHi, o.DropChance = s.TimeDelta, s.Telegraph, s.Kinds, s.RankLo, s.RankHi, s.DropChance
+	o.TimeDelta, o.Telegraph, o.Kinds, o.RankLo, o.RankHi = s.TimeDelta, s.Telegraph, s.Kinds, s.RankLo, s.RankHi
 	return o
 }
 
 const duelColumns = `id, floor, state, hp, hp_max, atk, def, answer_time, rage_stat, opp_hp, opp_max,
 	rage, combo, turn, question, q_word, q_answer, q_block, issued_at, deadline, asked, reviewed,
-	right_count, wrong_count, coins, xp, drop_item, level_up, first_clear,
-	kind, opponent, opponent_user, rating_delta`
+	right_count, wrong_count, coins, xp, level_up, first_clear,
+	kind, opponent, opponent_user, rating_delta, skill, tier, shield, focus`
 
 func scanDuel(row pgx.Row) (duelRow, error) {
 	var d duelRow
 	var raw, opp []byte
 	err := row.Scan(&d.id, &d.floor, &d.state, &d.hp, &d.hpMax, &d.atk, &d.def, &d.answerTime, &d.rageStat,
 		&d.oppHP, &d.oppMax, &d.rage, &d.combo, &d.turn, &raw, &d.question.Word, &d.question.Answer, &d.block,
-		&d.issuedAt, &d.deadline, &d.asked, &d.reviewed, &d.right, &d.wrong, &d.coins, &d.xp, &d.drop,
-		&d.levelUp, &d.firstClear, &d.kind, &opp, &d.opponentUser, &d.ratingDelta)
+		&d.issuedAt, &d.deadline, &d.asked, &d.reviewed, &d.right, &d.wrong, &d.coins, &d.xp,
+		&d.levelUp, &d.firstClear, &d.kind, &opp, &d.opponentUser, &d.ratingDelta,
+		&d.skill, &d.tier, &d.shield, &d.focus)
 	if err != nil {
 		return d, err
 	}
@@ -135,6 +141,15 @@ func scanDuel(row pgx.Row) (duelRow, error) {
 			return d, err
 		}
 		d.opponent = snap.opponent()
+		if d.opponent.Character.ID == "" {
+			// Kept before opponents were characters: drawn as the floor's, or
+			// a shadow as the beggar.
+			floor, _ := arena.Floor(d.floor)
+			d.opponent.Character = floor.Character
+			if d.kind == "pvp" {
+				d.opponent.Character = characterOf("")
+			}
+		}
 	} else {
 		// A tower duel from before opponents were kept with their duel.
 		d.opponent, _ = arena.Floor(d.floor)
@@ -153,8 +168,9 @@ func (d duelRow) view() DuelView {
 		HP: d.hp, HPMax: d.hpMax, OppHP: d.oppHP, OppMax: d.oppMax,
 		Rage: d.rage, Combo: d.combo, Turn: d.turn, Block: d.block,
 		Seconds: int(d.deadline.Sub(d.issuedAt).Round(time.Second) / time.Second), Deadline: d.deadline,
-		Right: d.right, Wrong: d.wrong, Coins: d.coins, XP: d.xp, Drop: d.drop,
+		Right: d.right, Wrong: d.wrong, Coins: d.coins, XP: d.xp,
 		LevelUp: d.levelUp, FirstClear: d.firstClear, Words: d.reviewed,
+		Skill: d.skill, Shield: d.shield, Focus: d.focus,
 	}
 	if v.Words == nil {
 		v.Words = []string{}
@@ -185,23 +201,13 @@ func lockFighter(ctx context.Context, tx pgx.Tx, user uuid.UUID) (fighterRow, er
 	return f, err
 }
 
-// fighterStats is a fighter's stats in the gear they wear now.
-func fighterStats(ctx context.Context, tx pgx.Tx, user uuid.UUID, level int) (arena.Stats, error) {
-	rows, err := tx.Query(ctx, `select item from fighter_equipped where user_id = $1`, user)
-	if err != nil {
-		return arena.Stats{}, err
+// fighterCharacter is the character a fighter plays now.
+func fighterCharacter(ctx context.Context, tx pgx.Tx, user uuid.UUID) (arena.Character, error) {
+	var id string
+	if err := tx.QueryRow(ctx, `select character from fighters where user_id = $1`, user).Scan(&id); err != nil {
+		return arena.Character{}, err
 	}
-	ids, err := pgx.CollectRows(rows, pgx.RowTo[string])
-	if err != nil {
-		return arena.Stats{}, err
-	}
-	var worn []arena.Item
-	for _, id := range ids {
-		if it, ok := arena.ItemByID(id); ok {
-			worn = append(worn, it)
-		}
-	}
-	return arena.StatsOf(level, worn), nil
+	return characterOf(id), nil
 }
 
 // addEnergy gives a fighter energy for practice, up to the most they can
@@ -350,10 +356,15 @@ func activeDuel(ctx context.Context, tx pgx.Tx, user uuid.UUID) (*duelRow, error
 	return &d, nil
 }
 
-// setQuestion puts the next question on a duel, with its time.
+// setQuestion puts the next question on a duel, with its time: more of it
+// while a focus skill lasts.
 func (d *duelRow) setQuestion(q arena.Question, o arena.Opponent, block bool, now time.Time) {
 	d.question, d.block, d.issuedAt = q, block, now
-	d.deadline = now.Add(time.Duration(arena.AnswerSeconds(d.answerTime, o, q.Kind, block)) * time.Second)
+	focused := d.focus > 0
+	if focused {
+		d.focus--
+	}
+	d.deadline = now.Add(time.Duration(arena.AnswerSeconds(d.answerTime, o, q.Kind, block, focused)) * time.Second)
 	d.asked = append(d.asked, q.Word)
 }
 
@@ -366,12 +377,12 @@ func saveDuel(ctx context.Context, tx pgx.Tx, d *duelRow) error {
 		update duels set state = $2, hp = $3, opp_hp = $4, rage = $5, combo = $6, turn = $7,
 		       question = $8, q_word = $9, q_answer = $10, q_block = $11, issued_at = $12, deadline = $13,
 		       asked = $14, reviewed = $15, right_count = $16, wrong_count = $17, coins = $18, xp = $19,
-		       drop_item = $20, level_up = $21, first_clear = $22, rating_delta = $23,
+		       shield = $20, level_up = $21, first_clear = $22, rating_delta = $23, focus = $24,
 		       ended_at = case when $2 = 'active' then null else now() end
 		where id = $1`,
 		d.id, d.state, d.hp, d.oppHP, d.rage, d.combo, d.turn, raw, d.question.Word, d.question.Answer,
-		d.block, d.issuedAt, d.deadline, d.asked, d.reviewed, d.right, d.wrong, d.coins, d.xp, d.drop,
-		d.levelUp, d.firstClear, d.ratingDelta)
+		d.block, d.issuedAt, d.deadline, d.asked, d.reviewed, d.right, d.wrong, d.coins, d.xp, d.shield,
+		d.levelUp, d.firstClear, d.ratingDelta, d.focus)
 	return err
 }
 
@@ -414,14 +425,16 @@ func (s *Store) openDuel(ctx context.Context, tx pgx.Tx, user uuid.UUID, f fight
 	if _, err := tx.Exec(ctx, `update fighters set energy = $2, energy_at = $3 where user_id = $1`, user, energy, at); err != nil {
 		return DuelView{}, err
 	}
-	stats, err := fighterStats(ctx, tx, user, f.level)
+	c, err := fighterCharacter(ctx, tx, user)
 	if err != nil {
 		return DuelView{}, err
 	}
+	stats := arena.StatsOf(f.level, c)
 	d := duelRow{
 		floor: floor, state: "active", hp: stats.HP, hpMax: stats.HP, atk: stats.Atk, def: stats.Def,
 		answerTime: stats.Time, rageStat: stats.Rage, oppHP: o.HP, oppMax: o.HP, turn: 1,
 		kind: kind, opponent: o, opponentUser: oppUser,
+		skill: c.Skill.Kind, tier: arena.TierRank(c.Tier),
 	}
 	q, err := duelAsk(ctx, tx, user, o, nil, 1, false, newDuelRand())
 	if err != nil {
@@ -438,10 +451,11 @@ func (s *Store) openDuel(ctx context.Context, tx pgx.Tx, user uuid.UUID, f fight
 	}
 	if err := tx.QueryRow(ctx, `
 		insert into duels (user_id, floor, hp, hp_max, atk, def, answer_time, rage_stat, opp_hp, opp_max,
-		                   question, q_word, q_answer, issued_at, deadline, asked, kind, opponent, opponent_user)
-		values ($1, $2, $3, $3, $4, $5, $6, $7, $8, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) returning id`,
+		                   question, q_word, q_answer, issued_at, deadline, asked, kind, opponent, opponent_user,
+		                   skill, tier)
+		values ($1, $2, $3, $3, $4, $5, $6, $7, $8, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19) returning id`,
 		user, floor, d.hp, d.atk, d.def, d.answerTime, d.rageStat, d.oppHP, raw, q.Word, q.Answer,
-		d.issuedAt, d.deadline, d.asked, kind, opp, oppUser).Scan(&d.id); err != nil {
+		d.issuedAt, d.deadline, d.asked, kind, opp, oppUser, d.skill, d.tier).Scan(&d.id); err != nil {
 		return DuelView{}, err
 	}
 	return d.view(), nil
@@ -501,8 +515,12 @@ func (s *Store) AnswerDuel(ctx context.Context, user uuid.UUID, id int64, turn i
 			Rage: d.rage, Combo: d.combo, Block: d.block, Special: special,
 			Elapsed: now.Sub(d.issuedAt), Allowed: d.deadline.Sub(d.issuedAt),
 			Right: out.Right, HP: d.hp, OppHP: d.oppHP,
+			Skill: d.skill, Tier: d.tier, MaxHP: d.hpMax, Shield: d.shield,
 		})
-		d.hp, d.oppHP, d.rage, d.combo = out.HP, out.OppHP, out.Rage, out.Combo
+		d.hp, d.oppHP, d.rage, d.combo, d.shield = out.HP, out.OppHP, out.Rage, out.Combo, out.Shield
+		if out.Focus > 0 {
+			d.focus = out.Focus
+		}
 		if out.Right {
 			d.right++
 		} else {
@@ -550,7 +568,7 @@ func (s *Store) AnswerDuel(ctx context.Context, user uuid.UUID, id int64, turn i
 }
 
 // win pays for a duel won: the floor's coins, twice over the first time it
-// falls, when the next floor opens; experience, and a chance of gear.
+// falls, when the next floor opens; and experience.
 func (s *Store) win(ctx context.Context, tx pgx.Tx, user uuid.UUID, d *duelRow, f fighterRow, o arena.Opponent) error {
 	d.state = "won"
 	d.coins, d.xp = o.Coins, o.XP
@@ -571,15 +589,6 @@ func (s *Store) win(ctx context.Context, tx pgx.Tx, user uuid.UUID, d *duelRow, 
 	if _, err := tx.Exec(ctx, `update fighters set level = $2, xp = $3, floor = $4 where user_id = $1`,
 		user, level, xp, f.floor); err != nil {
 		return err
-	}
-	if o.Drop != "" && newDuelRand().Intn(100) < o.DropChance {
-		tag, err := tx.Exec(ctx, `insert into fighter_gear (user_id, item) values ($1, $2) on conflict do nothing`, user, o.Drop)
-		if err != nil {
-			return err
-		}
-		if tag.RowsAffected() == 1 {
-			d.drop = o.Drop
-		}
 	}
 	return nil
 }

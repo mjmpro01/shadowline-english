@@ -37,11 +37,19 @@ type duelJSON struct {
 	Words       []string `json:"words"`
 	Kind        string   `json:"kind"`
 	RatingDelta int      `json:"ratingDelta"`
+	Skill       string   `json:"skill"`
+	Shield      int      `json:"shield"`
+	Focus       int      `json:"focus"`
+	Seconds     int      `json:"seconds"`
+	HPMax       int      `json:"hpMax"`
 	Opponent    struct {
-		ID     string `json:"id"`
-		Atk    int    `json:"atk"`
-		Rating int    `json:"rating"`
-		Bot    bool   `json:"bot"`
+		ID        string `json:"id"`
+		Character struct {
+			ID string `json:"id"`
+		} `json:"character"`
+		Atk    int  `json:"atk"`
+		Rating int  `json:"rating"`
+		Bot    bool `json:"bot"`
 		Name   struct {
 			Vi string `json:"vi"`
 		} `json:"name"`
@@ -55,6 +63,9 @@ type duelTurnJSON struct {
 	Dealt  int    `json:"dealt"`
 	Taken  int    `json:"taken"`
 	Answer string `json:"answer"`
+	Skill  string `json:"skill"`
+	Healed int    `json:"healed"`
+	Focus  int    `json:"focus"`
 }
 
 type towerJSON struct {
@@ -257,6 +268,52 @@ func TestASpecialLandsWhenRageIsFull(t *testing.T) {
 	}](t, c.json("POST", "/api/arena/duel/answer", map[string]any{"id": d.ID, "turn": d.Turn, "answer": h.key(t, id), "special": true}), http.StatusOK)
 	if got.Turn.Move != arena.MoveSpecial || got.Duel.Rage != 0 || got.Turn.Dealt < 3*4-1 {
 		t.Fatalf("special: %+v", got)
+	}
+}
+
+func TestASkillIsTheCharactersOwn(t *testing.T) {
+	h := newHarness(t)
+	c, id := h.fighter(t, "skills@example.com")
+	expectStatus(t, c.json("POST", "/api/test/coins", map[string]any{"coins": 350}), http.StatusNoContent)
+	expectStatus(t, c.json("POST", "/api/arena/characters/buy", map[string]any{"character": "herb_girl"}), http.StatusOK)
+	expectStatus(t, c.json("POST", "/api/arena/characters/select", map[string]any{"character": "herb_girl"}), http.StatusOK)
+	special := func(d duelJSON) (duelTurnJSON, duelJSON) {
+		got := expect[struct {
+			Turn duelTurnJSON `json:"turn"`
+			Duel duelJSON     `json:"duel"`
+		}](t, c.json("POST", "/api/arena/duel/answer", map[string]any{"id": d.ID, "turn": d.Turn, "answer": h.key(t, id), "special": true}), http.StatusOK)
+		return got.Turn, got.Duel
+	}
+
+	// The herb gatherer heals, never past full.
+	d := h.startDuel(t, c, 1)
+	if d.Skill != arena.SkillHeal || d.Opponent.Character.ID != "porter" {
+		t.Fatalf("the duel: %+v", d)
+	}
+	if _, err := h.pool.Exec(context.Background(), `update duels set rage = 100, hp = 10 where user_id = $1`, id); err != nil {
+		t.Fatal(err)
+	}
+	turn, after := special(d)
+	if turn.Move != arena.MoveSpecial || turn.Skill != arena.SkillHeal || turn.Healed <= 0 || after.HP != 10+turn.Healed || after.HP > after.HPMax {
+		t.Fatalf("heal: %+v %+v", turn, after)
+	}
+	expectStatus(t, c.json("POST", "/api/arena/duel/flee", nil), http.StatusNoContent)
+
+	// The street kid's focus: more time on the next three questions.
+	expectStatus(t, c.json("POST", "/api/arena/characters/select", map[string]any{"character": "street_kid"}), http.StatusOK)
+	if _, err := h.pool.Exec(context.Background(), `update fighters set energy = 5 where user_id = $1`, id); err != nil {
+		t.Fatal(err)
+	}
+	d = h.startDuel(t, c, 1)
+	if _, err := h.pool.Exec(context.Background(), `update duels set rage = 100 where user_id = $1`, id); err != nil {
+		t.Fatal(err)
+	}
+	turn, after = special(d)
+	if turn.Skill != arena.SkillFocus || after.Focus != arena.FocusTurns-1 {
+		t.Fatalf("focus: %+v %+v", turn, after)
+	}
+	if !after.Block && after.Question != nil && after.Question.Kind != arena.AskScramble && after.Seconds < 10-1+arena.FocusSeconds {
+		t.Fatalf("no more time: %+v", after)
 	}
 }
 

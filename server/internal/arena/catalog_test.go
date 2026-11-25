@@ -1,64 +1,84 @@
 package arena
 
-import "testing"
+import (
+	"os"
+	"strings"
+	"testing"
+)
 
-func TestEveryItemFitsASlotAndHasAPrice(t *testing.T) {
-	slots := map[string]bool{}
-	for _, s := range Slots {
-		slots[s] = true
+func TestTheRosterIsTwentyFourWithEverySkillInEveryTier(t *testing.T) {
+	if len(Characters) != 24 {
+		t.Fatalf("%d characters", len(Characters))
 	}
 	seen := map[string]bool{}
-	for _, it := range Items {
-		if seen[it.ID] || !slots[it.Slot] || it.Name.En == "" || it.Name.Vi == "" {
-			t.Errorf("%+v", it)
+	skills := map[string]map[string]bool{}
+	cheapest, dearest := map[string]int{}, map[string]int{}
+	for _, c := range Characters {
+		if seen[c.ID] || c.Name.En == "" || c.Name.Vi == "" || c.Weapon.Name.Vi == "" || c.Weapon.Kind == "" ||
+			c.Skill.Name.En == "" || c.Skill.Name.Vi == "" || c.Palette[0] == "" {
+			t.Errorf("%+v", c)
 		}
-		seen[it.ID] = true
-		if it.Starter != (it.Price == 0) {
-			t.Errorf("%s: the beggar's kit is free and nothing else is", it.ID)
+		seen[c.ID] = true
+		if skills[c.Tier] == nil {
+			skills[c.Tier] = map[string]bool{}
+			cheapest[c.Tier] = c.Price
 		}
-		switch it.Rarity {
-		case Common, Rare, Epic, Legendary:
-		default:
-			t.Errorf("%s: rarity %q", it.ID, it.Rarity)
+		skills[c.Tier][c.Skill.Kind] = true
+		cheapest[c.Tier] = min(cheapest[c.Tier], c.Price)
+		dearest[c.Tier] = max(dearest[c.Tier], c.Price)
+	}
+	for i, tier := range Tiers {
+		if len(skills[tier]) != len(SkillKinds) {
+			t.Errorf("%s has skills %v", tier, skills[tier])
+		}
+		if i > 0 && cheapest[tier] <= dearest[Tiers[i-1]] {
+			t.Errorf("%s is not dearer than %s", tier, Tiers[i-1])
 		}
 	}
-	if len(Starters()) != 3 {
-		t.Fatalf("the beggar's kit: %+v", Starters())
-	}
-	for _, it := range Starters() {
-		if it.Stats != (Stats{}) {
-			t.Errorf("%s: a beggar's kit adds nothing", it.ID)
-		}
+	starters := Starters()
+	if len(starters) != 2 || starters[0].ID != "beggar" || starters[1].ID != "street_kid" || starters[0].Female == starters[1].Female {
+		t.Fatalf("starters: %+v", starters)
 	}
 }
 
-func TestStatsAddUp(t *testing.T) {
-	hat, _ := ItemByID("iron_helm")
-	staff, _ := ItemByID("bo_staff")
-	got := StatsOf(2, []Item{hat, staff})
-	want := Stats{Atk: 5 + 4, Def: 1 + 4, HP: 50 + 10, Time: 10, Rage: 1}
-	if got != want {
+func TestACharacterAddsToAFightersOwnStats(t *testing.T) {
+	beggar, _ := CharacterByID("beggar")
+	if StatsOf(2, beggar) != Base(2) {
+		t.Fatal("a common character adds nothing")
+	}
+	monk, _ := CharacterByID("thunder_monk")
+	want := Stats{Atk: 5 + 6, Def: 1 + 3, HP: 50 + 30, Time: 10 + 1, Rage: 1}
+	if got := StatsOf(2, monk); got != want {
 		t.Fatalf("got %+v, want %+v", got, want)
 	}
-	if _, ok := ItemByID("nothing"); ok {
-		t.Fatal("found nothing")
+	if _, ok := CharacterByID("nobody"); ok {
+		t.Fatal("found nobody")
+	}
+	if TierRank(Legendary) != 3 || TierRank(Common) != 0 {
+		t.Fatal("tier ranks")
 	}
 }
 
-func TestAFightersLookIsChecked(t *testing.T) {
-	ok, err := Look{Name: "  Minh   Anh ", Body: "a", Skin: 3, Hair: 0}.Clean()
-	if err != nil || ok.Name != "Minh Anh" {
-		t.Fatalf("%+v %v", ok, err)
+func TestAFightersNameIsChecked(t *testing.T) {
+	if name, err := CleanName("  Minh   Anh "); err != nil || name != "Minh Anh" {
+		t.Fatalf("%q %v", name, err)
 	}
-	for _, bad := range []Look{
-		{Name: "M", Body: "a"},
-		{Name: "Twenty-one letters!!!", Body: "a"},
-		{Name: "Minh", Body: "c"},
-		{Name: "Minh", Body: "b", Skin: 4},
-		{Name: "Minh", Body: "b", Hair: -1},
-	} {
-		if _, err := bad.Clean(); err == nil {
-			t.Errorf("accepted %+v", bad)
+	for _, bad := range []string{"M", "Twenty-one letters!!!", "   "} {
+		if _, err := CleanName(bad); err == nil {
+			t.Errorf("accepted %q", bad)
+		}
+	}
+}
+
+// The art script checks the art against its own copy of the roster.
+func TestTheArtScriptKnowsEveryCharacter(t *testing.T) {
+	raw, err := os.ReadFile("../../../app/scripts/arenaManifest.mjs")
+	if err != nil {
+		t.Skip("no app beside the server")
+	}
+	for _, c := range Characters {
+		if !strings.Contains(string(raw), "'"+c.ID+"'") {
+			t.Errorf("arenaManifest.mjs does not know %s", c.ID)
 		}
 	}
 }
