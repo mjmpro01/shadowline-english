@@ -49,11 +49,14 @@
     "character/beggar": "characters/beggar.sheet.png",
     "character/blacksmith": "characters/blacksmith.sheet.png",
     "character/chain_whip": "characters/chain_whip.sheet.png",
+    "character/dragon_dancer": "characters/dragon_dancer.sheet.png",
     "character/fan_dancer": "characters/fan_dancer.sheet.png",
     "character/farmer": "characters/farmer.sheet.png",
     "character/fisherman": "characters/fisherman.sheet.png",
     "character/forest_archer": "characters/forest_archer.sheet.png",
     "character/herb_girl": "characters/herb_girl.sheet.png",
+    "character/jade_general": "characters/jade_general.sheet.png",
+    "character/phoenix_archer": "characters/phoenix_archer.sheet.png",
     "character/porter": "characters/porter.sheet.png",
     "character/rope_dart": "characters/rope_dart.sheet.png",
     "character/shadow_runner": "characters/shadow_runner.sheet.png",
@@ -62,8 +65,11 @@
     "character/street_kid": "characters/street_kid.sheet.png",
     "character/swordswoman": "characters/swordswoman.sheet.png",
     "character/temple_monk": "characters/temple_monk.sheet.png",
+    "character/thunder_monk": "characters/thunder_monk.sheet.png",
+    "character/tower_master": "characters/tower_master.sheet.png",
     "character/twin_sabre": "characters/twin_sabre.sheet.png",
-    "character/war_drummer": "characters/war_drummer.sheet.png"
+    "character/war_drummer": "characters/war_drummer.sheet.png",
+    "character/wind_sage": "characters/wind_sage.sheet.png"
   },
   "pixel": true
 }
