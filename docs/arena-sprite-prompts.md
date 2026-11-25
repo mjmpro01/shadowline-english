@@ -187,3 +187,104 @@ luôn giống người chơi.
 - [ ] Không giống nhân vật game khác.
 - [ ] Chạy `npm run arena:manifest` không báo lỗi. Script báo "khung 64 px
       (pixel art)".
+
+## 8. Hoạt hình đồng bộ theo frame (v3)
+
+Phần 1–7 làm ra **một tư thế** cho mỗi lớp. Bước tiếp theo là cho võ sĩ động
+thật: mỗi lớp có **22 frame** chia thành 6 động tác (xem
+[`arena-sprites.md`](arena-sprites.md) mục 2). Mọi lớp phải theo **cùng tư thế
+ở cùng frame**, nên thứ tự làm như sau.
+
+### Bước 1: 22 frame của thân, làm trước
+
+Thân là template cho mọi lớp còn lại. Làm cho `base/a-0` (nam) và `base/b-0`
+(nữ). Các màu da khác đổi màu từ hai bộ này.
+
+Tải ảnh thân một tư thế (`base/a-0.png` hoặc `base/b-0.png`) lên làm mẫu, rồi
+gửi lần lượt từng frame:
+
+```text
+Use the uploaded sprite as the exact reference: same character, same canvas
+size, same pixel scale, same proportions, same colours, 3/4 view facing right.
+Keep the feet on the same ground line as the reference unless the pose says
+otherwise. Draw this one frame: {POSE}. Bald head, no clothes beyond the
+reference's, no hair, transparent background, hard square pixels.
+```
+
+| Frame | `{POSE}` |
+| --- | --- |
+| `idle-1` | `relaxed guard stance, exactly as the reference` |
+| `idle-2` | `the same guard, chest risen 1 pixel as if breathing in` |
+| `idle-3` | `the same guard, exactly as idle-1` |
+| `idle-4` | `the same guard, knees bent 1 pixel lower, breathing out` |
+| `light-1` | `wind-up: front fist pulled back to the chin, weight on the back foot` |
+| `light-2` | `quick jab half extended forward at shoulder height` |
+| `light-3` | `jab fully extended, front arm straight, shoulder turned in` |
+| `light-4` | `recovering, front fist coming back towards the guard` |
+| `heavy-1` | `chamber: front knee lifted to the waist, arms in guard` |
+| `heavy-2` | `pivoting on the back foot, hips turning, kick starting` |
+| `heavy-3` | `front kick fully extended forward at waist height` |
+| `heavy-4` | `landing the kicking foot back, returning to guard` |
+| `hit-1` | `struck: head snapped back, torso leaning back, guard broken` |
+| `hit-2` | `staggering half a step back, arms low, wincing` |
+| `ko-1` | `knees buckling, arms dropping, leaning backwards` |
+| `ko-2` | `falling backwards, one foot off the ground` |
+| `ko-3` | `hitting the ground on the back, arms flung out` |
+| `ko-4` | `lying flat on the back on the ground line, eyes closed` |
+| `win-1` | `standing tall, one fist pumping down at the waist` |
+| `win-2` | `that fist raised high overhead, grinning` |
+| `win-3` | `small victory hop, both feet 4 pixels off the ground, fist up` |
+| `win-4` | `landed, fist still raised, other hand on the hip` |
+
+Lưu từng frame thành `app/art/arena-frames/base/a-0/{frame}.png`, ví dụ
+`idle-1.png`. Hoặc gửi cả loạt cho Claude cắt, căn chân và ghép.
+
+### Bước 2: tóc và đồ, đè lên từng frame của thân
+
+Với mỗi món (và mỗi kiểu tóc), lặp lại 22 lần. Tải **frame cùng tên của thân**
+lên, ví dụ `base/a-0/light-3.png`, rồi gửi:
+
+```text
+Use the uploaded sprite as the reference. Make a new image of exactly the
+same size in which ONLY {ITEM} is drawn, exactly where it sits on this
+character in this exact pose, at the same pixel scale. Everything else (body,
+skin, face, background) must be fully transparent. Same 16-bit pixel-art
+style and palette, 1-pixel dark outline, hard square pixels.
+```
+
+`{ITEM}` lấy từ bảng ở mục 4 (tóc) và mục 5 (đồ). Lưu thành
+`app/art/arena-frames/{lớp}/{frame}.png`, ví dụ `gear/rags/light-3.png`.
+
+Mỗi dáng một bản: món nào vẽ theo thân nam thì lưu vào `gear/{mã}@a/`, theo
+thân nữ thì vào `gear/{mã}@b/`. Một bản chung (`gear/{mã}/`) chỉ dùng được khi
+nó vừa cả hai thân ở mọi frame.
+
+### Bước 3: phần nằm sau thân
+
+Tóc dài, áo choàng và vũ khí ở tay phía xa phải tách làm hai: phần trước vẽ như
+bước 2, phần sau vẽ bằng prompt dưới và lưu vào lớp `.back`, ví dụ
+`hair/b-2.back/`:
+
+```text
+Same as before, but draw ONLY the part of {ITEM} that is hidden BEHIND the
+body (behind the head, shoulders or torso) in this pose. Nothing in front of
+the body.
+```
+
+### Bước 4: ghép và kiểm tra
+
+```sh
+cd app && npm run arena:sheet && npm run arena:manifest
+```
+
+Script báo từng frame sai, ví dụ chân thân lệch vạch đất hoặc hình ở ô thừa. Nó
+cũng báo những lớp còn là một tư thế đang giữ một thân đã động.
+
+**Khối lượng:** mỗi lớp 22 frame. Thứ tự nên làm:
+1. 2 thân;
+2. bộ ăn mày (`rags`), vì mọi võ sĩ mới đều mặc;
+3. 2 kiểu tóc đầu tiên;
+4. phần còn lại.
+
+Tới khi một võ sĩ có đủ sheet cho mọi lớp, họ vẫn hiện bằng hình một tư thế như
+hiện nay.

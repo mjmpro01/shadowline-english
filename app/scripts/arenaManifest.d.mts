@@ -1,28 +1,50 @@
+export interface Decoded {
+  width: number
+  height: number
+  rgba: Uint8Array
+}
 export interface ArtFile {
   path: string
   width: number
   height: number
   alpha: boolean
+  image?: Decoded
 }
 export interface AnimationRow {
   row: number
   frames: number
   fps: number
+  loop: boolean
 }
 export interface Built {
-  manifest: { frame: number; pixel?: boolean; animations: Record<string, AnimationRow>; layers: Record<string, string> } | null
+  manifest: {
+    frame: number
+    pixel?: boolean
+    animations: Record<string, AnimationRow>
+    layers: Record<string, string>
+    sheets: string[]
+  } | null
   errors: string[]
   warnings: string[]
   missing: string[]
-  mode: 'pose' | 'sheet' | null
   frame: number | null
+  sheets: number
 }
 export const FRAMES: number[]
 export const SHEET_ANIMATIONS: Record<string, AnimationRow>
-export const POSE_ANIMATIONS: Record<string, AnimationRow>
+export const SHEET_COLUMNS: number
+export const SHEET_ROWS: number
 export const GEAR: string[]
 export const OPPONENTS: string[]
 export const EXPECTED: string[]
+export function ground(frame: number): number
 export function layerName(path: string): string | null
 export function pngInfo(bytes: Uint8Array): { width: number; height: number; alpha: boolean } | null
+export function decodePng(bytes: Uint8Array): Decoded
+export function encodePng(width: number, height: number, rgba: Uint8Array): Uint8Array
+export function checkFrames(path: string, image: Decoded, frame: number): string[]
+export function assembleSheet(
+  frames: { animation: string; index: number; image: Decoded }[],
+  frame: number,
+): { width: number; height: number; rgba: Uint8Array; errors: string[]; warnings: string[] }
 export function buildManifest(files: ArtFile[]): Built

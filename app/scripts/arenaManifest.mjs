@@ -1,27 +1,36 @@
 /**
- * The pure half of `npm run arena:manifest`: from the PNGs dropped into
- * public/arena/, the manifest FighterSprite reads, and what is still missing.
- * See docs/arena-sprites.md.
+ * The pure half of `npm run arena:manifest` and `npm run arena:sheet`: reading
+ * and writing PNGs, checking that every layer keeps to the shared frame grid,
+ * and writing the manifest FighterSprite reads. See docs/arena-sprites.md.
+ *
+ * No dependencies: a PNG is a zlib stream of filtered rows, and node:zlib is
+ * all it takes to read the 8-bit kinds an image tool writes.
  */
+
+import { deflateSync, inflateSync } from 'node:zlib'
 
 /** Frame sizes accepted: 64 px pixel art (drawn crisp), or 256 px painted art. */
 export const FRAMES = [64, 256]
 
-/** The rows of a full sheet, in order, with their frame counts and speed. */
+/**
+ * The rows of a sheet, top to bottom; columns are frames. Kept identical to
+ * SHEET in app/src/lib/arenaArt.ts. walk, special and block have no row: they
+ * borrow idle and heavy and move by CSS.
+ */
 export const SHEET_ANIMATIONS = {
-  idle: { row: 0, frames: 6, fps: 8 },
-  walk: { row: 1, frames: 8, fps: 12 },
-  light: { row: 2, frames: 5, fps: 14 },
-  heavy: { row: 3, frames: 7, fps: 14 },
-  special: { row: 4, frames: 10, fps: 14 },
-  block: { row: 5, frames: 3, fps: 10 },
-  hit: { row: 6, frames: 3, fps: 12 },
-  ko: { row: 7, frames: 6, fps: 10 },
-  win: { row: 8, frames: 6, fps: 8 },
+  idle: { row: 0, frames: 4, fps: 6, loop: true },
+  light: { row: 1, frames: 4, fps: 14, loop: false },
+  heavy: { row: 2, frames: 4, fps: 12, loop: false },
+  hit: { row: 3, frames: 2, fps: 10, loop: false },
+  ko: { row: 4, frames: 4, fps: 8, loop: false },
+  win: { row: 5, frames: 4, fps: 8, loop: true },
 }
+const ROWS = Object.entries(SHEET_ANIMATIONS)
+export const SHEET_COLUMNS = Math.max(...ROWS.map(([, a]) => a.frames))
+export const SHEET_ROWS = ROWS.length
 
-/** One pose for every move: the app's CSS moves the whole fighter instead. */
-export const POSE_ANIMATIONS = Object.fromEntries(Object.keys(SHEET_ANIMATIONS).map((name) => [name, { row: 0, frames: 1, fps: 1 }]))
+/** Where the feet stand in a frame: y = 60 of 64, 240 of 256. */
+export const ground = (frame) => Math.round((frame * 60) / 64)
 
 const BODIES = ['a', 'b']
 const FOUR = [0, 1, 2, 3]
@@ -43,78 +52,282 @@ export const OPPONENTS = [
   'wind_walker', 'jade_duelist', 'mirror', 'thunder_fist', 'tower_master',
 ]
 
-/** Every layer a complete set has, by its manifest name. */
+/** Every front layer a complete set has. A gear item counts as there when it
+ *  is drawn once for both bodies, or once for each. */
 export const EXPECTED = [
   ...BODIES.flatMap((b) => FOUR.map((n) => `base/${b}-${n}`)),
   ...BODIES.flatMap((b) => FOUR.map((n) => `hair/${b}-${n}`)),
   ...GEAR.map((id) => `gear/${id}`),
 ]
 
-/** A file's manifest name: "gear/rags.png" → "gear/rags", "opponents/x.png" → "opponent/x". */
+/**
+ * A file's layer name, or null when the name is not one:
+ *   base/a-0.png            → base/a-0
+ *   hair/b-2.back.png       → hair/b-2.back    (drawn behind the body)
+ *   gear/rags@b.png         → gear/rags@b      (the female body's own rags)
+ *   gear/twin_blades.back.png
+ *   opponents/alley_boss.png → opponent/alley_boss
+ */
 export function layerName(path) {
-  const m = /^(base|hair|gear|opponents)\/([a-z0-9_-]+)\.png$/.exec(path)
+  const m = /^(base|hair|gear|opponents)\/([a-z0-9_-]+)(@[ab])?(\.back)?\.png$/.exec(path)
   if (!m) return null
-  return `${m[1] === 'opponents' ? 'opponent' : m[1]}/${m[2]}`
+  const [, dir, id, body = '', back = ''] = m
+  if (dir === 'base' && (body || back)) return null
+  if ((dir === 'hair' || dir === 'opponents') && body) return null
+  if (dir === 'opponents' && back) return null
+  return `${dir === 'opponents' ? 'opponent' : dir}/${id}${body}${back}`
 }
+
+// --- PNG ---------------------------------------------------------------------
+
+const SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
+const u32 = (b, at) => ((b[at] << 24) | (b[at + 1] << 16) | (b[at + 2] << 8) | b[at + 3]) >>> 0
 
 /** Width, height and whether it can be transparent, from a PNG's first bytes. */
 export function pngInfo(bytes) {
-  const sig = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
-  if (bytes.length < 33 || sig.some((b, i) => bytes[i] !== b)) return null
-  const u32 = (at) => ((bytes[at] << 24) | (bytes[at + 1] << 16) | (bytes[at + 2] << 8) | bytes[at + 3]) >>> 0
+  if (bytes.length < 33 || SIGNATURE.some((b, i) => bytes[i] !== b)) return null
   const colourType = bytes[25]
   // 4 and 6 carry alpha; a palette (3) may, through a tRNS chunk.
   const hasTRNS = Buffer.from(bytes).includes(Buffer.from('tRNS'))
-  return { width: u32(16), height: u32(20), alpha: colourType === 4 || colourType === 6 || hasTRNS }
+  return { width: u32(bytes, 16), height: u32(bytes, 20), alpha: colourType === 4 || colourType === 6 || hasTRNS }
+}
+
+/** A PNG's pixels as RGBA bytes. 8-bit grey, RGB, palette, grey+alpha and
+ *  RGBA, not interlaced — which is what image tools write. */
+export function decodePng(bytes) {
+  const data = Buffer.from(bytes)
+  if (SIGNATURE.some((b, i) => data[i] !== b)) throw new Error('không phải PNG')
+  let at = 8
+  let width = 0, height = 0, depth = 0, type = 0, interlace = 0
+  let palette = null, alphas = null
+  const idat = []
+  while (at < data.length) {
+    const length = u32(data, at)
+    const kind = data.toString('latin1', at + 4, at + 8)
+    const body = data.subarray(at + 8, at + 8 + length)
+    if (kind === 'IHDR') {
+      width = u32(body, 0); height = u32(body, 4); depth = body[8]; type = body[9]; interlace = body[12]
+    } else if (kind === 'PLTE') palette = body
+    else if (kind === 'tRNS') alphas = body
+    else if (kind === 'IDAT') idat.push(body)
+    else if (kind === 'IEND') break
+    at += 12 + length
+  }
+  if (depth !== 8) throw new Error(`PNG ${depth}-bit chưa hỗ trợ, cần 8-bit`)
+  if (interlace) throw new Error('PNG interlaced chưa hỗ trợ')
+  const channels = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 }[type]
+  if (!channels) throw new Error(`PNG kiểu màu ${type} chưa hỗ trợ`)
+  const raw = inflateSync(Buffer.concat(idat))
+  const stride = width * channels
+  const rows = Buffer.alloc(stride * height)
+  for (let y = 0; y < height; y++) {
+    const filter = raw[y * (stride + 1)]
+    const line = raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1))
+    for (let x = 0; x < stride; x++) {
+      const a = x >= channels ? rows[y * stride + x - channels] : 0
+      const b = y > 0 ? rows[(y - 1) * stride + x] : 0
+      const c = x >= channels && y > 0 ? rows[(y - 1) * stride + x - channels] : 0
+      let v = line[x]
+      if (filter === 1) v += a
+      else if (filter === 2) v += b
+      else if (filter === 3) v += (a + b) >> 1
+      else if (filter === 4) {
+        const p = a + b - c
+        const pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c)
+        v += pa <= pb && pa <= pc ? a : pb <= pc ? b : c
+      }
+      rows[y * stride + x] = v & 0xff
+    }
+  }
+  const rgba = new Uint8Array(width * height * 4)
+  for (let i = 0; i < width * height; i++) {
+    const o = i * 4, s = i * channels
+    if (type === 6) rgba.set(rows.subarray(s, s + 4), o)
+    else if (type === 2) { rgba.set(rows.subarray(s, s + 3), o); rgba[o + 3] = 255 }
+    else if (type === 0) { rgba[o] = rgba[o + 1] = rgba[o + 2] = rows[s]; rgba[o + 3] = 255 }
+    else if (type === 4) { rgba[o] = rgba[o + 1] = rgba[o + 2] = rows[s]; rgba[o + 3] = rows[s + 1] }
+    else {
+      const k = rows[s]
+      rgba.set(palette.subarray(k * 3, k * 3 + 3), o)
+      rgba[o + 3] = alphas && k < alphas.length ? alphas[k] : 255
+    }
+  }
+  return { width, height, rgba }
+}
+
+const CRC = Array.from({ length: 256 }, (_, n) => {
+  let c = n
+  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
+  return c >>> 0
+})
+function crc32(buf) {
+  let c = 0xffffffff
+  for (const b of buf) c = CRC[(c ^ b) & 0xff] ^ (c >>> 8)
+  return (c ^ 0xffffffff) >>> 0
+}
+function chunk(kind, body) {
+  const head = Buffer.alloc(8)
+  head.writeUInt32BE(body.length, 0)
+  head.write(kind, 4, 'latin1')
+  const tail = Buffer.alloc(4)
+  tail.writeUInt32BE(crc32(Buffer.concat([head.subarray(4), body])), 0)
+  return Buffer.concat([head, body, tail])
+}
+
+/** RGBA bytes as an 8-bit RGBA PNG. */
+export function encodePng(width, height, rgba) {
+  const ihdr = Buffer.alloc(13)
+  ihdr.writeUInt32BE(width, 0)
+  ihdr.writeUInt32BE(height, 4)
+  ihdr[8] = 8
+  ihdr[9] = 6
+  const raw = Buffer.alloc((width * 4 + 1) * height)
+  for (let y = 0; y < height; y++) Buffer.from(rgba.buffer, rgba.byteOffset + y * width * 4, width * 4).copy(raw, y * (width * 4 + 1) + 1)
+  return Buffer.concat([Buffer.from(SIGNATURE), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw, { level: 9 })), chunk('IEND', Buffer.alloc(0))])
+}
+
+// --- Frames ------------------------------------------------------------------
+
+/** The lowest opaque row of one cell, or -1 when the cell is empty. */
+function lowest(image, left, top, size) {
+  for (let y = size - 1; y >= 0; y--) {
+    for (let x = 0; x < size; x++) {
+      if (image.rgba[((top + y) * image.width + left + x) * 4 + 3] > 24) return y
+    }
+  }
+  return -1
 }
 
 /**
- * @param files {path, width, height, alpha}[] relative to public/arena
- * @returns {{manifest: object|null, errors: string[], warnings: string[], missing: string[], mode: 'pose'|'sheet'|null, frame: number|null}}
+ * Whether a layer keeps to the frame grid. For a sheet: no frame drawn past a
+ * row's count. For a body (a base, or an opponent drawn whole): every frame
+ * drawn, and the feet on the ground line in each one — the line every other
+ * layer is drawn against, so a body that drifts takes its gear with it.
+ */
+export function checkFrames(path, image, frame) {
+  const errors = []
+  const body = /^(base|opponents)\//.test(path)
+  const sheet = image.width !== frame
+  const cells = sheet ? ROWS : [['pose', { row: 0, frames: 1 }]]
+  const floor = ground(frame)
+  for (const [name, { row, frames }] of cells) {
+    for (let col = 0; col < (sheet ? SHEET_COLUMNS : 1); col++) {
+      const bottom = lowest(image, col * frame, row * frame, frame)
+      const where = sheet ? `${name} frame ${col + 1}` : 'tư thế'
+      if (col >= frames) {
+        if (bottom >= 0) errors.push(`${path}: ${name} có hình ở frame ${col + 1}, hàng này chỉ có ${frames} frame`)
+        continue
+      }
+      if (!body) continue
+      // A win may jump: its feet may leave the ground, never sink below it.
+      const off = name === 'win' ? bottom > floor + 1 : Math.abs(bottom - floor) > 1
+      if (bottom < 0) errors.push(`${path}: ${where} trống`)
+      else if (off) errors.push(`${path}: ${where} chân ở y=${bottom}, phải ở y=${floor} (±1)`)
+    }
+  }
+  return errors
+}
+
+/**
+ * Lays numbered frames out as a sheet: `frames` is [{ animation, index (1-),
+ * image }], every image one frame square. Missing frames are left empty and
+ * named in the warnings; frames that are not in the spec are refused.
+ */
+export function assembleSheet(frames, frame) {
+  const errors = []
+  const warnings = []
+  const width = SHEET_COLUMNS * frame
+  const height = SHEET_ROWS * frame
+  const rgba = new Uint8Array(width * height * 4)
+  const seen = new Set()
+  for (const { animation, index, image } of frames) {
+    const spec = SHEET_ANIMATIONS[animation]
+    if (!spec) { errors.push(`${animation}-${index}: không có động tác "${animation}"`); continue }
+    if (index < 1 || index > spec.frames) { errors.push(`${animation}-${index}: ${animation} chỉ có ${spec.frames} frame`); continue }
+    if (image.width !== frame || image.height !== frame) {
+      errors.push(`${animation}-${index}: ${image.width}×${image.height}, cần ${frame}×${frame}`)
+      continue
+    }
+    seen.add(`${animation}-${index}`)
+    for (let y = 0; y < frame; y++) {
+      const from = y * frame * 4
+      rgba.set(image.rgba.subarray(from, from + frame * 4), ((spec.row * frame + y) * width + (index - 1) * frame) * 4)
+    }
+  }
+  for (const [name, { frames: count }] of ROWS) {
+    for (let i = 1; i <= count; i++) if (!seen.has(`${name}-${i}`)) warnings.push(`thiếu ${name}-${i}, để trống`)
+  }
+  return { width, height, rgba, errors, warnings }
+}
+
+// --- Manifest ----------------------------------------------------------------
+
+/**
+ * @param files {path, width, height, alpha, image?}[] relative to public/arena;
+ *   `image` (decoded pixels) lets the frames be checked
+ * @returns {{manifest: object|null, errors: string[], warnings: string[], missing: string[], frame: number|null, sheets: number}}
  */
 export function buildManifest(files) {
   const errors = []
   const warnings = []
   const layers = {}
-  const modes = new Map()
+  const sheets = []
+  const sizes = new Map()
   for (const f of [...files].sort((a, b) => a.path.localeCompare(b.path))) {
     const name = layerName(f.path)
     if (!name) {
       warnings.push(`${f.path}: không phải tên lớp nào, bỏ qua`)
       continue
     }
-    if (name.startsWith('opponent/') ? !OPPONENTS.includes(name.slice(9)) : !EXPECTED.includes(name)) {
+    const plain = name.replace(/@[ab]/, '').replace(/\.back$/, '')
+    if (name.startsWith('opponent/') ? !OPPONENTS.includes(name.slice(9)) : !EXPECTED.includes(plain)) {
       warnings.push(`${f.path}: không có trong danh mục, vẫn khai báo`)
     }
-    let mode
-    const frame = FRAMES.find((n) => (f.width === n && f.height === n) || (f.width === 10 * n && f.height === 9 * n))
-    if (frame && f.width === frame) mode = `pose@${frame}`
-    else if (frame) mode = `sheet@${frame}`
-    else {
-      errors.push(
-        `${f.path}: ${f.width}×${f.height}, cần 64×64 hoặc 256×256 (một tư thế), hay 640×576 hoặc 2560×2304 (đủ 9 hàng động tác)`,
-      )
+    const frame = FRAMES.find((n) => (f.width === n && f.height === n) || (f.width === SHEET_COLUMNS * n && f.height === SHEET_ROWS * n))
+    if (!frame) {
+      const sizesText = FRAMES.map((n) => `${n}×${n} (một tư thế) hoặc ${SHEET_COLUMNS * n}×${SHEET_ROWS * n} (sheet)`).join(', ')
+      errors.push(`${f.path}: ${f.width}×${f.height}, cần ${sizesText}`)
       continue
     }
     if (!f.alpha) warnings.push(`${f.path}: không có kênh trong suốt (alpha), nền sẽ che các lớp dưới`)
-    modes.set(f.path, mode)
+    if (f.image) errors.push(...checkFrames(f.path, f.image, frame))
+    sizes.set(frame, [...(sizes.get(frame) ?? []), f.path])
     layers[name] = f.path
+    if (f.width !== frame) sheets.push(name)
   }
-  const kinds = new Set(modes.values())
-  if (kinds.size > 1) {
-    const example = [...kinds].map((k) => {
-      const [kind, size] = k.split('@')
-      const first = [...modes].find(([, m]) => m === k)[0]
-      return `${kind === 'pose' ? 'một tư thế' : 'sheet'} ${size} px (vd ${first})`
-    })
-    errors.push(`Trộn nhiều kiểu: ${example.join(', ')}. Mọi file phải cùng một kiểu và cùng cỡ khung.`)
+  if (sizes.size > 1) {
+    const listed = [...sizes].map(([n, paths]) => `${paths.length} file khung ${n} px (vd ${paths[0]})`)
+    errors.push(`Trộn cỡ khung: ${listed.join(', ')}. Mọi file phải cùng cỡ khung.`)
   }
-  const missing = EXPECTED.filter((name) => !(name in layers))
-  if (errors.length || kinds.size === 0) return { manifest: null, errors, warnings, missing, mode: null, frame: null }
-  const [mode, size] = [...kinds][0].split('@')
-  const frame = Number(size)
-  const manifest = { frame, animations: mode === 'pose' ? POSE_ANIMATIONS : SHEET_ANIMATIONS, layers }
+
+  // A gear item is there when drawn once for both, or once for each body.
+  const there = (name) =>
+    name in layers || (name.startsWith('gear/') && BODIES.every((b) => `${name}@${b}` in layers))
+  const missing = []
+  for (const name of EXPECTED) {
+    if (there(name)) continue
+    if (name.startsWith('gear/') && BODIES.some((b) => `${name}@${b}` in layers)) {
+      missing.push(...BODIES.filter((b) => !(`${name}@${b}` in layers)).map((b) => `${name}@${b}`))
+    } else missing.push(name)
+  }
+
+  // Half a fighter in frames is a fighter drawn still: say which layers hold
+  // an animated body back.
+  const animated = new Set(sheets)
+  for (const b of BODIES) {
+    if (!FOUR.some((n) => animated.has(`base/${b}-${n}`))) continue
+    const still = Object.keys(layers).filter(
+      (name) => !animated.has(name) && (name.startsWith(`hair/${b}-`) || (name.startsWith('gear/') && !name.includes(`@${b === 'a' ? 'b' : 'a'}`))),
+    )
+    if (still.length) warnings.push(`thân ${b} đã có sheet, nhưng ${still.join(', ')} vẫn là một tư thế: võ sĩ dùng chúng vẫn vẽ tạm cho tới khi có sheet`)
+  }
+
+  if (errors.length || Object.keys(layers).length === 0) {
+    return { manifest: null, errors, warnings, missing, frame: null, sheets: sheets.length }
+  }
+  const frame = [...sizes.keys()][0]
+  const manifest = { frame, animations: SHEET_ANIMATIONS, layers, sheets }
   // Pixel art is drawn small and enlarged with hard edges, not smoothed.
   if (frame === 64) manifest.pixel = true
-  return { manifest, errors, warnings, missing, mode, frame }
+  return { manifest, errors, warnings, missing, frame, sheets: sheets.length }
 }

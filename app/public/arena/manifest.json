@@ -3,48 +3,39 @@
   "animations": {
     "idle": {
       "row": 0,
-      "frames": 1,
-      "fps": 1
-    },
-    "walk": {
-      "row": 0,
-      "frames": 1,
-      "fps": 1
+      "frames": 4,
+      "fps": 6,
+      "loop": true
     },
     "light": {
-      "row": 0,
-      "frames": 1,
-      "fps": 1
+      "row": 1,
+      "frames": 4,
+      "fps": 14,
+      "loop": false
     },
     "heavy": {
-      "row": 0,
-      "frames": 1,
-      "fps": 1
-    },
-    "special": {
-      "row": 0,
-      "frames": 1,
-      "fps": 1
-    },
-    "block": {
-      "row": 0,
-      "frames": 1,
-      "fps": 1
+      "row": 2,
+      "frames": 4,
+      "fps": 12,
+      "loop": false
     },
     "hit": {
-      "row": 0,
-      "frames": 1,
-      "fps": 1
+      "row": 3,
+      "frames": 2,
+      "fps": 10,
+      "loop": false
     },
     "ko": {
-      "row": 0,
-      "frames": 1,
-      "fps": 1
+      "row": 4,
+      "frames": 4,
+      "fps": 8,
+      "loop": false
     },
     "win": {
-      "row": 0,
-      "frames": 1,
-      "fps": 1
+      "row": 5,
+      "frames": 4,
+      "fps": 8,
+      "loop": true
     }
   },
   "layers": {
@@ -68,5 +59,6 @@
     "hair/b-2": "hair/b-2.png",
     "hair/b-3": "hair/b-3.png"
   },
+  "sheets": [],
   "pixel": true
 }
