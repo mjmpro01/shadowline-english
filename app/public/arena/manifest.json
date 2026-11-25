@@ -60,7 +60,13 @@
     "gear/bare_fists": "gear/bare_fists.png",
     "gear/rags": "gear/rags.png",
     "hair/a-0": "hair/a-0.png",
-    "hair/b-0": "hair/b-0.png"
+    "hair/a-1": "hair/a-1.png",
+    "hair/a-2": "hair/a-2.png",
+    "hair/a-3": "hair/a-3.png",
+    "hair/b-0": "hair/b-0.png",
+    "hair/b-1": "hair/b-1.png",
+    "hair/b-2": "hair/b-2.png",
+    "hair/b-3": "hair/b-3.png"
   },
   "pixel": true
 }
