@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -41,11 +42,14 @@ type RosterEntry struct {
 
 // ArenaState is everything the Arena screen shows.
 type ArenaState struct {
-	Coins   int           `json:"coins"`
-	Fighter *Fighter      `json:"fighter"`
-	Stats   arena.Stats   `json:"stats"`
-	Owned   []string      `json:"owned"`
-	Roster  []RosterEntry `json:"roster"`
+	Coins int `json:"coins"`
+	// CoinsPerDay is what the learner earns a day lately, to say how far a
+	// character is.
+	CoinsPerDay int           `json:"coinsPerDay"`
+	Fighter     *Fighter      `json:"fighter"`
+	Stats       arena.Stats   `json:"stats"`
+	Owned       []string      `json:"owned"`
+	Roster      []RosterEntry `json:"roster"`
 }
 
 // ArenaOf is a learner's Arena.
@@ -53,6 +57,9 @@ func (s *Store) ArenaOf(ctx context.Context, user uuid.UUID) (ArenaState, error)
 	out := ArenaState{Owned: []string{}, Roster: []RosterEntry{}}
 	var err error
 	if out.Coins, err = s.Coins(ctx, user); err != nil {
+		return out, err
+	}
+	if out.CoinsPerDay, err = s.CoinsPerDay(ctx, user, time.Now()); err != nil {
 		return out, err
 	}
 	var f Fighter

@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"math"
 	"time"
 
 	"github.com/google/uuid"
@@ -96,6 +97,26 @@ func (s *Store) WalletOf(ctx context.Context, user uuid.UUID, now time.Time) (Wa
 		out.Recent = []CoinEvent{}
 	}
 	return out, err
+}
+
+// CoinsPerDay is what a learner has earned a day, on average, over the last
+// week: what they earn in the run of things, not one-off refunds. Over fewer
+// days for a learner newer than that.
+func (s *Store) CoinsPerDay(ctx context.Context, user uuid.UUID, now time.Time) (int, error) {
+	var sum int
+	var first *time.Time
+	if err := s.pool.QueryRow(ctx, `
+		select coalesce(sum(amount) filter (where at >= $2), 0)::int, min(at)
+		from coin_events
+		where user_id = $1 and amount > 0 and kind not in ('refund', 'migrated')`,
+		user, now.Add(-7*24*time.Hour)).Scan(&sum, &first); err != nil {
+		return 0, err
+	}
+	if first == nil {
+		return 0, nil
+	}
+	days := min(7, max(1, int(math.Ceil(now.Sub(*first).Hours()/24))))
+	return sum / days, nil
 }
 
 // SetCoins sets a learner's balance outright. For the end-to-end tests only.

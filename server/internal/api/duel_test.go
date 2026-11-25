@@ -37,6 +37,7 @@ type duelJSON struct {
 	Words       []string `json:"words"`
 	Kind        string   `json:"kind"`
 	RatingDelta int      `json:"ratingDelta"`
+	Bonus       int      `json:"bonus"`
 	Skill       string   `json:"skill"`
 	Shield      int      `json:"shield"`
 	Focus       int      `json:"focus"`
@@ -57,15 +58,17 @@ type duelJSON struct {
 }
 
 type duelTurnJSON struct {
-	Right  bool   `json:"right"`
-	Late   bool   `json:"late"`
-	Move   string `json:"move"`
-	Dealt  int    `json:"dealt"`
-	Taken  int    `json:"taken"`
-	Answer string `json:"answer"`
-	Skill  string `json:"skill"`
-	Healed int    `json:"healed"`
-	Focus  int    `json:"focus"`
+	Right     bool   `json:"right"`
+	Late      bool   `json:"late"`
+	Move      string `json:"move"`
+	Dealt     int    `json:"dealt"`
+	Taken     int    `json:"taken"`
+	Answer    string `json:"answer"`
+	Skill     string `json:"skill"`
+	Healed    int    `json:"healed"`
+	Focus     int    `json:"focus"`
+	Countered bool   `json:"countered"`
+	Speed     int    `json:"speed"`
 }
 
 type towerJSON struct {
@@ -353,5 +356,45 @@ func TestADuelReviewsTheLearnersOwnWords(t *testing.T) {
 	}
 	if !turn.Right || status != "known" || !due.After(time.Now()) {
 		t.Fatalf("water after the duel: %s %v (%+v)", status, due, turn)
+	}
+}
+
+func TestABossPaysABonusTheFirstTimeOnly(t *testing.T) {
+	h := newHarness(t)
+	c, id := h.fighter(t, "boss@example.com")
+	if _, err := h.pool.Exec(context.Background(), `update fighters set floor = 5 where user_id = $1`, id); err != nil {
+		t.Fatal(err)
+	}
+	before := h.coins(t, id)
+	d := h.playOut(t, c, id, h.startDuel(t, c, 5), true)
+	boss, _ := arena.Floor(5)
+	if d.State != "won" || !d.FirstClear || d.Bonus != arena.BossBonus(5) || d.Coins != 2*boss.Coins {
+		t.Fatalf("first win: %+v", d)
+	}
+	if got := h.coins(t, id); got != before+d.Coins+d.Bonus {
+		t.Fatalf("coins %d, want %d", got, before+d.Coins+d.Bonus)
+	}
+	again := h.playOut(t, c, id, h.startDuel(t, c, 5), true)
+	if again.State != "won" || again.FirstClear || again.Bonus != 0 {
+		t.Fatalf("second win: %+v", again)
+	}
+	if arena.BossBonus(4) != 0 || arena.BossBonus(10) <= arena.BossBonus(5) || arena.BossBonus(15) <= arena.BossBonus(10) {
+		t.Fatal("bonuses grow with the bosses")
+	}
+}
+
+func TestALateRightAnswerIsHitBack(t *testing.T) {
+	h := newHarness(t)
+	c, id := h.fighter(t, "late@example.com")
+	d := h.startDuel(t, c, 1)
+	// Most of the time gone, though not all of it.
+	if _, err := h.pool.Exec(context.Background(), `
+		update duels set issued_at = now() - (deadline - issued_at) * 0.9, deadline = now() + (deadline - issued_at) * 0.1
+		where user_id = $1`, id); err != nil {
+		t.Fatal(err)
+	}
+	turn, after := h.answer(t, c, d, h.key(t, id))
+	if !turn.Right || turn.Dealt == 0 || !turn.Countered || turn.Taken == 0 || after.HP != d.HP-turn.Taken || turn.Speed > 20 {
+		t.Fatalf("late: %+v %+v", turn, after)
 	}
 }

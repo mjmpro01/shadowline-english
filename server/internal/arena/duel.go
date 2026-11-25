@@ -16,8 +16,12 @@ const (
 	// ScrambleExtra is the time added for putting letters in order.
 	ScrambleExtra = 6
 	// HeavyWithin is how early, as a share of the time, a right answer has
-	// to come to land a heavy hit.
+	// to come to be drawn as a heavy hit. The damage itself falls with every
+	// second taken (see Resolve).
 	HeavyWithin = 0.4
+	// CounterAfter is the share of the time after which a right answer is
+	// hit back: the opponent had time to strike too.
+	CounterAfter = 0.3
 	// Grace is the network's share of an answer's time.
 	Grace = 1500 * time.Millisecond
 	// RageFull is when the special can be used.
@@ -108,6 +112,30 @@ type Result struct {
 	// Shielded is a hit taken for nothing: the opponent was stunned.
 	Shielded bool `json:"shielded,omitempty"`
 	Focus    int  `json:"focus,omitempty"`
+	// Countered is a right answer the opponent still hit back: it came late.
+	Countered bool `json:"countered,omitempty"`
+	// Speed is the share of the time left when the answer came, 0 to 100.
+	Speed int `json:"speed"`
+}
+
+// used is the share of the time an answer took, 0 to 1; an answer with no
+// time limit counts as instant.
+func used(f Fight) float64 {
+	if f.Allowed <= 0 {
+		return 0
+	}
+	return math.Min(1, math.Max(0, float64(f.Elapsed)/float64(f.Allowed)))
+}
+
+// Swing is how hard a right answer hits, as a multiple of attack, after a
+// share s of the time: 1.6 at once, 0.6 at the buzzer.
+func Swing(s float64) float64 { return 1.6 - s }
+
+// Counter is how hard the opponent hits back after a right answer that took
+// a share s of the time, as a multiple of their attack: nothing within the
+// first CounterAfter of it, then up to 0.7 at the buzzer.
+func Counter(s float64) float64 {
+	return 0.7 * math.Max(0, (s-CounterAfter)/(1-CounterAfter))
 }
 
 // times is power at a multiple, rounded.
@@ -116,7 +144,8 @@ func times(power int, by float64) int { return int(math.Round(float64(power) * b
 // skill is what a skill does: the damage, the health back, a stun, focus.
 // Each tier above common makes it 10% stronger.
 func skill(f Fight) (dealt, healed, shield, focus int) {
-	p := 1 + 0.1*float64(f.Tier)
+	// Stronger up the tiers, and the quicker it comes the harder it lands.
+	p := (1 + 0.1*float64(f.Tier)) * (1.3 - 0.6*used(f))
 	switch f.Skill {
 	case SkillCrit:
 		return hit(times(f.Atk, 3.5*p), f.OppDef), 0, 0, 0
@@ -141,6 +170,8 @@ func hit(power, def int) int { return max(1, power-def) }
 // Resolve is what one answer does.
 func Resolve(f Fight) Result {
 	r := Result{Rage: f.Rage, Combo: f.Combo, HP: f.HP, OppHP: f.OppHP, Shield: f.Shield}
+	s := used(f)
+	r.Speed = int(math.Round(100 * (1 - s)))
 	switch {
 	case f.Block && f.Right:
 		r.Move = MoveBlock
@@ -157,13 +188,15 @@ func Resolve(f Fight) Result {
 		r.Shield = max(r.Shield, shield)
 		r.Skill = f.Skill
 		r.Combo++
-	case f.Right && f.Allowed > 0 && float64(f.Elapsed) <= HeavyWithin*float64(f.Allowed):
-		r.Move = MoveHeavy
-		r.Dealt = hit(int(math.Round(float64(f.Atk)*1.6)), f.OppDef)
-		r.Combo++
 	case f.Right:
+		// The sooner the harder; and late enough, the opponent hits back.
 		r.Move = MoveLight
-		r.Dealt = hit(f.Atk, f.OppDef)
+		if s <= HeavyWithin {
+			r.Move = MoveHeavy
+		}
+		r.Dealt = hit(times(f.Atk, Swing(s)), f.OppDef)
+		r.Taken = max(0, times(f.OppAtk, Counter(s))-f.Def)
+		r.Countered = r.Taken > 0
 		r.Combo++
 	default:
 		r.Move = MoveHit

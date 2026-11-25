@@ -53,8 +53,10 @@ type DuelView struct {
 	Right    int       `json:"right"`
 	Wrong    int       `json:"wrong"`
 	// What a win paid.
-	Coins      int      `json:"coins"`
-	XP         int      `json:"xp"`
+	Coins int `json:"coins"`
+	XP    int `json:"xp"`
+	// Bonus is a boss's first-clear bonus, paid besides Coins.
+	Bonus      int      `json:"bonus"`
 	LevelUp    bool     `json:"levelUp"`
 	FirstClear bool     `json:"firstClear"`
 	Words      []string `json:"words"`
@@ -91,6 +93,7 @@ type duelRow struct {
 	issuedAt, deadline      time.Time
 	asked, reviewed         []string
 	right, wrong, coins, xp int
+	bonus                   int
 	levelUp, firstClear     bool
 	kind                    string
 	opponent                arena.Opponent
@@ -122,7 +125,7 @@ func (s opponentSnap) opponent() arena.Opponent {
 const duelColumns = `id, floor, state, hp, hp_max, atk, def, answer_time, rage_stat, opp_hp, opp_max,
 	rage, combo, turn, question, q_word, q_answer, q_block, issued_at, deadline, asked, reviewed,
 	right_count, wrong_count, coins, xp, level_up, first_clear,
-	kind, opponent, opponent_user, rating_delta, skill, tier, shield, focus`
+	kind, opponent, opponent_user, rating_delta, skill, tier, shield, focus, bonus`
 
 func scanDuel(row pgx.Row) (duelRow, error) {
 	var d duelRow
@@ -131,7 +134,7 @@ func scanDuel(row pgx.Row) (duelRow, error) {
 		&d.oppHP, &d.oppMax, &d.rage, &d.combo, &d.turn, &raw, &d.question.Word, &d.question.Answer, &d.block,
 		&d.issuedAt, &d.deadline, &d.asked, &d.reviewed, &d.right, &d.wrong, &d.coins, &d.xp,
 		&d.levelUp, &d.firstClear, &d.kind, &opp, &d.opponentUser, &d.ratingDelta,
-		&d.skill, &d.tier, &d.shield, &d.focus)
+		&d.skill, &d.tier, &d.shield, &d.focus, &d.bonus)
 	if err != nil {
 		return d, err
 	}
@@ -168,7 +171,7 @@ func (d duelRow) view() DuelView {
 		HP: d.hp, HPMax: d.hpMax, OppHP: d.oppHP, OppMax: d.oppMax,
 		Rage: d.rage, Combo: d.combo, Turn: d.turn, Block: d.block,
 		Seconds: int(d.deadline.Sub(d.issuedAt).Round(time.Second) / time.Second), Deadline: d.deadline,
-		Right: d.right, Wrong: d.wrong, Coins: d.coins, XP: d.xp,
+		Right: d.right, Wrong: d.wrong, Coins: d.coins, XP: d.xp, Bonus: d.bonus,
 		LevelUp: d.levelUp, FirstClear: d.firstClear, Words: d.reviewed,
 		Skill: d.skill, Shield: d.shield, Focus: d.focus,
 	}
@@ -377,12 +380,12 @@ func saveDuel(ctx context.Context, tx pgx.Tx, d *duelRow) error {
 		update duels set state = $2, hp = $3, opp_hp = $4, rage = $5, combo = $6, turn = $7,
 		       question = $8, q_word = $9, q_answer = $10, q_block = $11, issued_at = $12, deadline = $13,
 		       asked = $14, reviewed = $15, right_count = $16, wrong_count = $17, coins = $18, xp = $19,
-		       shield = $20, level_up = $21, first_clear = $22, rating_delta = $23, focus = $24,
+		       shield = $20, level_up = $21, first_clear = $22, rating_delta = $23, focus = $24, bonus = $25,
 		       ended_at = case when $2 = 'active' then null else now() end
 		where id = $1`,
 		d.id, d.state, d.hp, d.oppHP, d.rage, d.combo, d.turn, raw, d.question.Word, d.question.Answer,
 		d.block, d.issuedAt, d.deadline, d.asked, d.reviewed, d.right, d.wrong, d.coins, d.xp, d.shield,
-		d.levelUp, d.firstClear, d.ratingDelta, d.focus)
+		d.levelUp, d.firstClear, d.ratingDelta, d.focus, d.bonus)
 	return err
 }
 
@@ -568,7 +571,8 @@ func (s *Store) AnswerDuel(ctx context.Context, user uuid.UUID, id int64, turn i
 }
 
 // win pays for a duel won: the floor's coins, twice over the first time it
-// falls, when the next floor opens; and experience.
+// falls, when the next floor opens, and a boss's bonus then too; and
+// experience.
 func (s *Store) win(ctx context.Context, tx pgx.Tx, user uuid.UUID, d *duelRow, f fighterRow, o arena.Opponent) error {
 	d.state = "won"
 	d.coins, d.xp = o.Coins, o.XP
@@ -583,6 +587,13 @@ func (s *Store) win(ctx context.Context, tx pgx.Tx, user uuid.UUID, d *duelRow, 
 	}
 	if err := credit(ctx, tx, user, "duel", o.ID, d.coins); err != nil {
 		return err
+	}
+	if d.firstClear && d.kind != "pvp" {
+		if d.bonus = arena.BossBonus(d.floor); d.bonus > 0 {
+			if err := credit(ctx, tx, user, "boss", o.ID, d.bonus); err != nil {
+				return err
+			}
+		}
 	}
 	level, xp := arena.AddXP(f.level, f.xp, d.xp)
 	d.levelUp = level > f.level
