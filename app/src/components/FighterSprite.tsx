@@ -80,7 +80,7 @@ export function FighterSprite(props: SpriteProps) {
           // A new move starts its frames from the first, on every layer at once.
           key={animation}
           manifest={art}
-          files={stack.layers.map((name) => art.layers[name])}
+          files={stack.files}
           spec={stack.sheet ? animationOf(art, animation) : null}
           size={size}
         />

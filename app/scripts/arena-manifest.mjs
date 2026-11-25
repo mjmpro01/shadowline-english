@@ -36,7 +36,7 @@ for (const dir of ['base', 'hair', 'gear', 'opponents']) {
   }
 }
 
-const { manifest, errors, warnings, missing, frame, sheets } = buildManifest(files)
+const { manifest, errors, warnings, missing, missingSheets, frame, sheets } = buildManifest(files)
 for (const w of warnings) console.warn(`! ${w}`)
 for (const e of errors) console.error(`✗ ${e}`)
 if (errors.length) {
@@ -48,13 +48,15 @@ if (!manifest) {
   process.exit(process.exitCode ?? 0)
 }
 writeFileSync(join(ROOT, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n')
-const count = Object.keys(manifest.layers).length
-console.log(
-  `✓ ${ROOT}/manifest.json: ${count} lớp (${sheets} sheet, ${count - sheets} một tư thế), khung ${frame} px${manifest.pixel ? ' (pixel art)' : ''}.`,
-)
+const poses = Object.keys(manifest.layers).length
+console.log(`✓ ${ROOT}/manifest.json: ${poses} lớp một tư thế, ${sheets} sheet động, khung ${frame} px${manifest.pixel ? ' (pixel art)' : ''}.`)
 if (missing.length) {
   console.log(`Còn thiếu ${missing.length} lớp (võ sĩ nào cần lớp thiếu sẽ vẫn vẽ tạm):`)
   console.log('  ' + missing.join(', '))
 } else {
-  console.log('Đủ bộ: mọi thân, tóc và trang bị đã có hình.')
+  console.log('Đủ bộ hình: mọi thân, tóc và trang bị đã có hình.')
+}
+if (sheets > 0) {
+  console.log(`Còn ${missingSheets.length} lớp chưa có sheet động:`)
+  console.log('  ' + missingSheets.join(', '))
 }

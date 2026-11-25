@@ -11,6 +11,7 @@ import {
   encodePng,
   ground,
   layerName,
+  parseLayer,
   pngInfo,
 } from '../scripts/arenaManifest.mjs'
 
@@ -42,6 +43,12 @@ describe('layer names', () => {
     expect(layerName('gear/straw_hat.png')).toBe('gear/straw_hat')
     expect(layerName('opponents/alley_boss.png')).toBe('opponent/alley_boss')
     expect(layerName('gear/Straw Hat.png')).toBeNull()
+  })
+
+  it('tells a layer’s sheet from its single pose', () => {
+    expect(parseLayer('base/a-0.png')).toEqual({ name: 'base/a-0', sheet: false })
+    expect(parseLayer('base/a-0.sheet.png')).toEqual({ name: 'base/a-0', sheet: true })
+    expect(parseLayer('gear/rags@b.back.sheet.png')).toEqual({ name: 'gear/rags@b.back', sheet: true })
   })
 
   it('knows versions per body and back parts', () => {
@@ -87,6 +94,14 @@ describe('the frame grid', () => {
     const errors = checkFrames('base/a-0.png', image, 64)
     expect(errors.some((e) => e.includes('light frame 2 trống'))).toBe(true)
     expect(errors.some((e) => e.includes('heavy frame 1 chân ở y=56'))).toBe(true)
+  })
+
+  it('lets a KO fall through the air', () => {
+    const image = fullSheet()
+    const row = SHEET_ANIMATIONS.ko.row * 64
+    for (let y = 0; y < 64; y++) image.rgba.fill(0, ((row + y) * image.width + 64) * 4, ((row + y) * image.width + 128) * 4)
+    figure(image, 64, row, ground(64) - 4)
+    expect(checkFrames('base/a-0.png', image, 64)).toEqual([])
   })
 
   it('lets a win jump, but not sink', () => {
@@ -148,14 +163,19 @@ describe('assembling frames into a sheet', () => {
 })
 
 describe('the manifest', () => {
-  it('declares poses and sheets side by side, and says which are sheets', () => {
-    const { manifest, errors } = buildManifest([pose('base/a-0.png'), sheet('base/b-0.png'), pose('gear/rags@a.png')])
+  it('declares a layer’s pose and sheet side by side', () => {
+    const { manifest, errors } = buildManifest([pose('base/a-0.png'), sheet('base/a-0.sheet.png'), pose('gear/rags@a.png')])
     expect(errors).toEqual([])
     expect(manifest?.frame).toBe(64)
     expect(manifest?.pixel).toBe(true)
-    expect(manifest?.sheets).toEqual(['base/b-0'])
-    expect(manifest?.layers['gear/rags@a']).toBe('gear/rags@a.png')
+    expect(manifest?.layers).toEqual({ 'base/a-0': 'base/a-0.png', 'gear/rags@a': 'gear/rags@a.png' })
+    expect(manifest?.sheets).toEqual({ 'base/a-0': 'base/a-0.sheet.png' })
     expect(manifest?.animations.ko).toEqual(SHEET_ANIMATIONS.ko)
+  })
+
+  it('wants a sheet’s size for a .sheet file, and a pose’s for the rest', () => {
+    expect(buildManifest([pose('base/a-0.sheet.png')]).errors[0]).toContain('sheet phải là')
+    expect(buildManifest([{ ...sheet('base/a-0.png') }]).errors[0]).toContain('một tư thế phải là')
   })
 
   it('refuses a wrong size, and frames of two sizes together', () => {
@@ -173,9 +193,11 @@ describe('the manifest', () => {
     expect(one.missing).not.toContain('gear/rags')
   })
 
-  it('warns when an animated body still has posed layers for it', () => {
-    const { warnings } = buildManifest([sheet('base/a-0.png'), pose('hair/a-0.png')])
-    expect(warnings.some((w) => w.includes('hair/a-0') && w.includes('một tư thế'))).toBe(true)
+  it('says how many layers an animated body still waits for, and lists the sheets missing', () => {
+    const { warnings, missingSheets } = buildManifest([sheet('base/a-0.sheet.png'), pose('base/a-0.png'), pose('hair/a-0.png')])
+    expect(warnings.some((w) => w.includes('thân a đã có sheet'))).toBe(true)
+    expect(missingSheets).toContain('hair/a-0')
+    expect(missingSheets).not.toContain('base/a-0')
   })
 
   it('checks the frames of files whose pixels it is given', () => {

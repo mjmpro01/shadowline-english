@@ -22,11 +22,12 @@ export interface Built {
     pixel?: boolean
     animations: Record<string, AnimationRow>
     layers: Record<string, string>
-    sheets: string[]
+    sheets: Record<string, string>
   } | null
   errors: string[]
   warnings: string[]
   missing: string[]
+  missingSheets: string[]
   frame: number | null
   sheets: number
 }
@@ -39,6 +40,7 @@ export const OPPONENTS: string[]
 export const EXPECTED: string[]
 export function ground(frame: number): number
 export function layerName(path: string): string | null
+export function parseLayer(path: string): { name: string; sheet: boolean } | null
 export function pngInfo(bytes: Uint8Array): { width: number; height: number; alpha: boolean } | null
 export function decodePng(bytes: Uint8Array): Decoded
 export function encodePng(width: number, height: number, rgba: Uint8Array): Uint8Array
