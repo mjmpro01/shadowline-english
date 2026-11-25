@@ -1,5 +1,16 @@
-import { useEffect, useState, type CSSProperties } from 'react'
-import { artURL, layersFor, loadArt, type Animation, type ArtManifest } from '../lib/arenaArt'
+import { useEffect, useState } from 'react'
+import {
+  SHEET,
+  animationOf,
+  artURL,
+  frameAt,
+  loadArt,
+  stackFor,
+  wholeStack,
+  type AnimSpec,
+  type Animation,
+  type ArtManifest,
+} from '../lib/arenaArt'
 import type { GearSlot } from '../repository'
 
 /** The order gear is drawn in, under the hair: feet first, the charm last. */
@@ -7,6 +18,10 @@ const DRAW_ORDER: GearSlot[] = ['feet', 'body', 'hands', 'head', 'weapon', 'char
 
 const SKINS = ['#f3d2b3', '#dcae86', '#b07a50', '#7a4e2e']
 const HAIRS = ['#2b1d14', '#6b3f1d', '#c99a3b', '#9a9aa3']
+
+/** A sheet's size in frames: as wide as its longest row, as tall as its rows. */
+const SHEET_COLUMNS = Math.max(...Object.values(SHEET).map((a) => a.frames))
+const SHEET_ROWS = Math.max(...Object.values(SHEET).map((a) => a.row + 1))
 
 export interface SpriteProps {
   body: 'a' | 'b'
@@ -24,12 +39,13 @@ export interface SpriteProps {
 }
 
 /**
- * A fighter: the artist's sheets stacked layer on layer when every one of them
- * is there, otherwise a figure drawn here from the same choices, so the gear
- * a learner buys shows on them either way.
+ * A fighter: the artist's layers stacked one on another when every one of
+ * them is there, otherwise a figure drawn here from the same choices, so the
+ * gear a learner buys shows on them either way.
  */
 export function FighterSprite(props: SpriteProps) {
   const { size = 220, facing = 'right', label } = props
+  const animation = props.animation ?? 'idle'
   const [art, setArt] = useState<ArtManifest | null>(null)
   useEffect(() => {
     let alive = true
@@ -40,16 +56,16 @@ export function FighterSprite(props: SpriteProps) {
   }, [])
 
   const gear = DRAW_ORDER.map((slot) => props.equipped[slot]).filter((id): id is string => !!id)
-  const layers = layersFor(props.body, props.skin, props.hair, gear)
-  const whole = props.sheet && art?.layers[props.sheet]
-  const sheets = whole ? [whole] : art ? layers.map((l) => art.layers[l]) : []
-  const drawn = art != null && sheets.every(Boolean)
+  const stack =
+    (props.sheet ? wholeStack(props.sheet, art) : null) ??
+    stackFor({ body: props.body, skin: props.skin, hair: props.hair }, gear, art)
+  const drawn = art != null && stack.complete
 
   return (
     <div
       className="fighter"
       data-facing={facing}
-      data-animation={props.animation ?? 'idle'}
+      data-animation={animation}
       data-body={props.body}
       style={{ width: size, height: size }}
       role="img"
@@ -60,7 +76,14 @@ export function FighterSprite(props: SpriteProps) {
         <span key={id} data-item={id} hidden />
       ))}
       {drawn ? (
-        <SheetLayers manifest={art} sheets={sheets as string[]} animation={props.animation ?? 'idle'} size={size} />
+        <ArtLayers
+          // A new move starts its frames from the first, on every layer at once.
+          key={animation}
+          manifest={art}
+          files={stack.layers.map((name) => art.layers[name])}
+          spec={stack.sheet ? animationOf(art, animation) : null}
+          size={size}
+        />
       ) : (
         <PaperDoll {...props} />
       )}
@@ -68,27 +91,75 @@ export function FighterSprite(props: SpriteProps) {
   )
 }
 
-function SheetLayers({ manifest, sheets, animation, size }: { manifest: ArtManifest; sheets: string[]; animation: Animation; size: number }) {
-  const anim = manifest.animations[animation] ?? manifest.animations.idle ?? { row: 0, frames: 1, fps: 1 }
-  const scale = size / manifest.frame
+/** Whether the viewer has asked for less motion: then a move shows its first frame. */
+function prefersStill(): boolean {
+  return typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+}
+
+/**
+ * The frame every layer is on. One clock for the whole fighter, started when
+ * the move starts: layers never step on their own, so they cannot drift apart,
+ * and a move that plays once stops on its last frame.
+ */
+function useFrame(spec: AnimSpec | null): number {
+  const [frame, setFrame] = useState(0)
+  // Primitives, not the object: a new object every render would restart the
+  // clock on every frame it sets.
+  const frames = spec?.frames ?? 1
+  const fps = spec?.fps ?? 1
+  const loop = spec?.loop !== false
+  useEffect(() => {
+    if (frames <= 1 || prefersStill()) return
+    const started = performance.now()
+    const tick = window.setInterval(() => {
+      const next = frameAt(performance.now() - started, { frames, fps, loop })
+      setFrame(next)
+      if (!loop && next >= frames - 1) window.clearInterval(tick)
+    }, 1000 / fps / 2)
+    return () => window.clearInterval(tick)
+  }, [frames, fps, loop])
+  return frame
+}
+
+function ArtLayers({
+  manifest,
+  files,
+  spec,
+  size,
+}: {
+  manifest: ArtManifest
+  files: string[]
+  /** The move's frames, for a fighter drawn from sheets; null for one pose. */
+  spec: Required<AnimSpec> | null
+  size: number
+}) {
+  const frame = useFrame(spec)
+  const cell = size
+  // A sheet is a grid of cells the size of the fighter; one pose is one cell.
+  const columns = spec ? SHEET_COLUMNS : 1
+  const rows = spec ? SHEET_ROWS : 1
+  const x = spec ? -frame * cell : 0
+  const y = spec ? -spec.row * cell : 0
   // One box for every layer, so the moves in arena.css (the lunge, the hit,
-  // the fall) carry the whole drawn fighter, as they carry the stand-in.
+  // the fall) carry the whole drawn fighter, as they carry the stand-in. A
+  // fighter drawn from sheets says so, and keeps only the motions for moves
+  // it has no frames of.
   return (
-    <div className={`fighter-doll fighter-stack${manifest.pixel ? ' fighter-pixel' : ''}`} aria-hidden="true">
-      {sheets.map((sheet, i) => (
+    <div
+      className={`fighter-doll fighter-stack${manifest.pixel ? ' fighter-pixel' : ''}`}
+      data-sheet={spec ? '' : undefined}
+      data-frame={frame}
+      aria-hidden="true"
+    >
+      {files.map((file, i) => (
         <span
           key={i}
           className="fighter-sheet"
-          style={
-            {
-              backgroundImage: `url(${artURL(sheet)})`,
-              '--frames': anim.frames,
-              '--row': anim.row,
-              '--rows': Math.max(...Object.values(manifest.animations).map((a) => (a?.row ?? 0) + 1)),
-              '--duration': `${(anim.frames / anim.fps).toFixed(2)}s`,
-              '--frame': `${manifest.frame * scale}px`,
-            } as CSSProperties
-          }
+          style={{
+            backgroundImage: `url(${artURL(file)})`,
+            backgroundSize: `${columns * cell}px ${rows * cell}px`,
+            backgroundPosition: `${x}px ${y}px`,
+          }}
         />
       ))}
     </div>

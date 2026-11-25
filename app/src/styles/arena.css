@@ -182,8 +182,8 @@
   }
 }
 
-/* The artist's sheets: rows are animations, columns their frames. A single
-   pose is a sheet of one frame, and moves by the doll's keyframes alone. */
+/* The artist's layers. Each is positioned on the frame the fighter's one clock
+   is on (FighterSprite), so every layer shows the same frame at once. */
 .fighter-stack {
   position: relative;
   transform-origin: 50% 94%;
@@ -192,25 +192,23 @@
   position: absolute;
   inset: 0;
   background-repeat: no-repeat;
-  background-size: auto calc(var(--rows) * var(--frame));
-  background-position-y: calc(var(--row) * var(--frame) * -1);
   image-rendering: auto;
-  animation: fighter-sheet var(--duration) steps(var(--frames)) infinite;
 }
 .fighter-pixel .fighter-sheet {
   image-rendering: pixelated;
 }
-@keyframes fighter-sheet {
-  from {
-    background-position-x: 0;
-  }
-  to {
-    background-position-x: calc(var(--frames) * var(--frame) * -1);
-  }
+/* A fighter drawn from sheets has frames for these moves, so the stand-in's
+   CSS motion would do them twice — a KO that falls, then falls again. */
+.fighter[data-animation='light'] .fighter-stack[data-sheet],
+.fighter[data-animation='heavy'] .fighter-stack[data-sheet],
+.fighter[data-animation='hit'] .fighter-stack[data-sheet],
+.fighter[data-animation='ko'] .fighter-stack[data-sheet],
+.fighter[data-animation='win'] .fighter-stack[data-sheet],
+.fighter[data-animation='idle'] .fighter-stack[data-sheet] {
+  animation: none;
 }
 @media (prefers-reduced-motion: reduce) {
-  .fighter-doll,
-  .fighter-sheet {
+  .fighter-doll {
     animation: none !important;
   }
 }

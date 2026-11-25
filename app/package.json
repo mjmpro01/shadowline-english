@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "arena:manifest": "node scripts/arena-manifest.mjs"
+    "arena:manifest": "node scripts/arena-manifest.mjs",
+    "arena:sheet": "node scripts/arena-sheet.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",
