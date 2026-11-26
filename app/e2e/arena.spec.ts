@@ -191,6 +191,9 @@ test('a learner beats another learner’s shadow and climbs the Arena board', as
   await lan.getByRole('button', { name: 'Fight' }).click()
   await page.waitForURL('**/arena/duel')
   await expect(page.getByRole('meter', { name: 'Lan’s shadow' })).toBeVisible()
+  // Duels against other learners are fought in the ring.
+  await expect(page.locator('.duel-stage')).toHaveAttribute('data-stage', 'arena')
+  await expect(page.locator('.duel-stage')).toHaveAttribute('data-art', '')
 
   const sound = page.getByRole('button', { name: 'Sound on' })
   await sound.click()
