@@ -85,6 +85,20 @@ var Tower = func() []Opponent {
 	return out
 }()
 
+// BossBonus is what beating a boss's floor pays the first time, on top of its
+// coins: a big step towards the next character.
+func BossBonus(floor int) int {
+	switch floor {
+	case 5:
+		return 300
+	case 10:
+		return 800
+	case 15:
+		return 1500
+	}
+	return 0
+}
+
 // Floor is the opponent on floor n, counted from 1.
 func Floor(n int) (Opponent, bool) {
 	if n < 1 || n > len(Tower) {

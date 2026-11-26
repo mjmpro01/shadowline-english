@@ -57,6 +57,22 @@ export interface ArtManifest {
   layers: Record<string, string>
   /** A character's layer name to its sheet of frames, for those that have one. */
   sheets?: Record<string, string>
+  /** A duel background's id ("market") to its file, for those drawn. */
+  stages?: Record<string, string>
+}
+
+/** The duel backgrounds. Kept identical to STAGES in scripts/arenaManifest.mjs. */
+export const STAGES = ['market', 'temple', 'tower', 'arena'] as const
+export type Stage = (typeof STAGES)[number]
+
+/** Where a duel is fought: the riverside market for floors 1–5, the mountain
+ *  temple for 6–10, the tower's top for 11–15, and the ring for a duel against
+ *  another learner. */
+export function stageFor(kind: 'tower' | 'pvp', floor: number): Stage {
+  if (kind === 'pvp') return 'arena'
+  if (floor <= 5) return 'market'
+  if (floor <= 10) return 'temple'
+  return 'tower'
 }
 
 /** Put on every art URL, so a new drawing is fetched on the next deploy. */

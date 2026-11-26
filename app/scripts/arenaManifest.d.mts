@@ -23,11 +23,13 @@ export interface Built {
     animations: Record<string, AnimationRow>
     layers: Record<string, string>
     sheets: Record<string, string>
+    stages: Record<string, string>
   } | null
   errors: string[]
   warnings: string[]
   missing: string[]
   missingSheets: string[]
+  missingStages: string[]
   frame: number | null
   sheets: number
 }
@@ -38,6 +40,10 @@ export const SHEET_ROWS: number
 export const FRAME_NAMES: Record<string, string>
 export const CHARACTERS: string[]
 export const EXPECTED: string[]
+export const STAGES: string[]
+export const STAGE_WIDTH: number
+export const STAGE_RATIO: number
+export function parseStage(path: string): string | null
 export function ground(frame: number): number
 export function layerName(path: string): string | null
 export function parseLayer(path: string): { name: string; sheet: boolean } | null

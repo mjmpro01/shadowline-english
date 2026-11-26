@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SHEET, animationOf, characterStack, frameAt, wholeStack } from '../src/lib/arenaArt'
+import { SHEET, animationOf, characterStack, frameAt, stageFor, wholeStack } from '../src/lib/arenaArt'
 
 const named = (...names: string[]) => Object.fromEntries(names.map((n) => [n, `${n}.png`]))
 
@@ -46,5 +46,14 @@ describe('the frame clock', () => {
     expect(animationOf(manifest, 'special')).toEqual(SHEET.special)
     expect(SHEET.special.row).toBe(6)
     expect(animationOf(manifest, 'ko')).toEqual(SHEET.ko)
+  })
+})
+
+describe('where a duel is fought', () => {
+  it('moves up the tower five floors at a time', () => {
+    expect([1, 5, 6, 10, 11, 15].map((f) => stageFor('tower', f))).toEqual(['market', 'market', 'temple', 'temple', 'tower', 'tower'])
+  })
+  it('is the ring against another learner, whatever the floor', () => {
+    expect(stageFor('pvp', 1)).toBe('arena')
   })
 })

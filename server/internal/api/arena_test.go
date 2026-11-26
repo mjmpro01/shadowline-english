@@ -15,8 +15,9 @@ import (
 // at a time.
 
 type arenaJSON struct {
-	Coins   int `json:"coins"`
-	Fighter *struct {
+	Coins       int `json:"coins"`
+	CoinsPerDay int `json:"coinsPerDay"`
+	Fighter     *struct {
 		Name      string `json:"name"`
 		Character string `json:"character"`
 		Level     int    `json:"level"`
@@ -85,6 +86,10 @@ func TestCharactersAreBoughtWithCoinsOnceAndPlayed(t *testing.T) {
 	h.learn(t, id, store.ActTake, 75, time.Now())
 	if got := h.coins(t, id); got != 150+store.GoalCoins {
 		t.Fatalf("coins from practice: %d", got)
+	}
+	// A first day of practice: all of it is the day's rate.
+	if got := expect[arenaJSON](t, c.json("GET", "/api/arena", nil), http.StatusOK); got.CoinsPerDay != 150+store.GoalCoins {
+		t.Fatalf("coins a day: %d", got.CoinsPerDay)
 	}
 	expectStatus(t, buy("nobody"), http.StatusNotFound)
 	expectCode(t, buy("street_kid"), http.StatusConflict, "arena.owned")

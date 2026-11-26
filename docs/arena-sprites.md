@@ -104,6 +104,26 @@ Mười lăm đối thủ của tháp là **chính các nhân vật này** (xem
 cũng có. Tầng 13 ("Bóng gương") luôn vẽ giống nhân vật người chơi đang dùng.
 Bóng của người học khác vẽ theo nhân vật của họ.
 
+## 5b. Nền trận đấu
+
+Mỗi chặng tháp có một nền riêng, và đấu với người có sàn đấu riêng:
+
+| Nền | File | Dùng cho |
+| --- | --- | --- |
+| Chợ ven sông | `public/arena/stages/market.png` | tầng 1–5 |
+| Đền trên núi | `public/arena/stages/temple.png` | tầng 6–10 |
+| Đỉnh tháp | `public/arena/stages/tower.png` | tầng 11–15 |
+| Sàn đấu | `public/arena/stages/arena.png` | đấu với bóng người khác |
+
+- Ảnh rộng gấp **3 lần** cao, ít nhất **384×128** (ảnh tạo ra ~2000×667 được
+  thu về 384×128, 32 màu, để hợp với nhân vật pixel). Ảnh gốc để ở
+  `art/arena-stages/`.
+- Dải đất phẳng ở ~20% dưới cùng: chân võ sĩ đứng trên đó. Không người, không chữ.
+- Trang tự phủ một lớp mờ nhẹ để võ sĩ nổi lên; tầng trùm (5, 10, 15) tối hơn.
+  Điện thoại cắt bớt hai bên.
+- Chạy `npm run arena:manifest`: nền sai tỉ lệ là lỗi; nền chưa có chỉ được liệt
+  kê, trận đó dùng nền mặc định.
+
 ## 6. Gợi ý khi vẽ
 
 - Giữ nhân vật cùng cỡ ở mọi frame, chân trên vạch đất. Đòn đánh có thể vươn ra

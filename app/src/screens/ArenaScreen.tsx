@@ -1,7 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Dialog } from '../components/Dialog'
 import { FighterSprite } from '../components/FighterSprite'
+import { UnlockCelebration } from '../components/UnlockCelebration'
 import { useI18n } from '../i18n'
+import type { Animation } from '../lib/arenaArt'
+import { daysToEarn } from '../lib/duel'
 import { explain } from '../lib/errors'
 import { useRemote } from '../lib/remote'
 import { repository, type ArenaState, type Character, type Fighter, type FighterStats, type Tier } from '../repository'
@@ -121,14 +125,17 @@ function useAct(onChange: (s: ArenaState) => void) {
   const { t } = useI18n()
   const [busy, setBusy] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
-  const act = async (key: string, run: () => Promise<ArenaState>, done?: string) => {
+  /** Runs an action; whether it worked. */
+  const act = async (key: string, run: () => Promise<ArenaState>, done?: string): Promise<boolean> => {
     setBusy(key)
     setNote(null)
     try {
       onChange(await run())
       if (done) setNote(done)
+      return true
     } catch (err) {
       setNote(explain(err, t, t('error.server')))
+      return false
     } finally {
       setBusy(null)
     }
@@ -216,8 +223,46 @@ function Roster({ state, onChange }: { state: ArenaState; onChange: (s: ArenaSta
   const lang = locale === 'vi' ? 'vi' : 'en'
   const playing = state.fighter?.character
   const [tier, setTier] = useState<Tier>(() => characterOf(state, playing ?? '').tier)
+  const [previewing, setPreviewing] = useState<string | null>(null)
+  const [unlocked, setUnlocked] = useState<string | null>(null)
   const { busy, note, act } = useAct(onChange)
   const owned = state.roster.filter((c) => c.owned).length
+  const byId = (id: string | null) => state.roster.find((c) => c.id === id)
+
+  const buy = async (c: Character) => {
+    if (await act(c.id, () => repository.buyCharacter(c.id), t('arena.bought', c.name[lang]))) {
+      setPreviewing(null)
+      setUnlocked(c.id)
+    }
+  }
+  const select = (c: Character) => act(c.id, () => repository.selectCharacter(c.id), t('arena.selected', c.name[lang]))
+
+  /** What a card or the preview offers: play, unlock, or nothing to do. */
+  const action = (c: ArenaState['roster'][number]) => {
+    const short = c.price - state.coins
+    if (c.id === playing) return <span className="tag tag-neutral">✓ {t('arena.playing')}</span>
+    if (c.owned)
+      return (
+        <button type="button" className="btn btn-secondary" disabled={busy !== null} onClick={() => void select(c)}>
+          {t('arena.select')}
+        </button>
+      )
+    return (
+      <>
+        <button type="button" className="btn btn-primary" disabled={short > 0 || busy !== null} onClick={() => void buy(c)}>
+          🪙 {t('arena.buy', c.price)}
+        </button>
+        {short > 0 && (
+          <div className="card-meta">
+            {t('arena.short', short)} · {t('arena.days', daysToEarn(short, state.coinsPerDay))}
+          </div>
+        )}
+      </>
+    )
+  }
+
+  const shown = byId(previewing)
+  const celebrated = byId(unlocked)
   return (
     <section className="stack gap-3" aria-labelledby="roster-title">
       <div className="row between wrap gap-2">
@@ -252,7 +297,6 @@ function Roster({ state, onChange }: { state: ArenaState; onChange: (s: ArenaSta
         {state.roster
           .filter((c) => c.tier === tier)
           .map((c) => {
-            const short = c.price - state.coins
             const name = c.name[lang]
             return (
               <article
@@ -262,41 +306,143 @@ function Roster({ state, onChange }: { state: ArenaState; onChange: (s: ArenaSta
                 data-playing={c.id === playing || undefined}
                 aria-label={name}
               >
-                <FighterSprite character={c} size={96} label={name} />
+                <button
+                  type="button"
+                  className="arena-character-look"
+                  onClick={() => setPreviewing(c.id)}
+                  aria-label={`${t('arena.preview')}: ${name}`}
+                >
+                  <FighterSprite character={c} size={96} />
+                </button>
                 <div className="stack gap-1" style={{ minWidth: 0 }}>
-                  <strong>{name}</strong>
+                  <div className="row between gap-2" style={{ alignItems: 'baseline' }}>
+                    <strong>{name}</strong>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setPreviewing(c.id)}>
+                      {t('arena.preview')}
+                    </button>
+                  </div>
                   <SkillLine character={c} />
                   <Bonuses stats={c.bonus} />
-                  {c.id === playing ? (
-                    <span className="tag tag-neutral">✓ {t('arena.playing')}</span>
-                  ) : c.owned ? (
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      disabled={busy !== null}
-                      onClick={() => void act(c.id, () => repository.selectCharacter(c.id), t('arena.selected', name))}
-                    >
-                      {t('arena.select')}
-                    </button>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        className="btn btn-primary"
-                        disabled={short > 0 || busy !== null}
-                        onClick={() => void act(c.id, () => repository.buyCharacter(c.id), t('arena.bought', name))}
-                      >
-                        🪙 {t('arena.buy', c.price)}
-                      </button>
-                      {short > 0 && <div className="card-meta">{t('arena.short', short)}</div>}
-                    </>
-                  )}
+                  {action(c)}
                 </div>
               </article>
             )
           })}
       </div>
+      {shown && (
+        <CharacterPreview state={state} character={shown} onClose={() => setPreviewing(null)}>
+          {action(shown)}
+        </CharacterPreview>
+      )}
+      {celebrated && (
+        <UnlockCelebration
+          character={celebrated}
+          onClose={() => setUnlocked(null)}
+          onPlay={() => {
+            setUnlocked(null)
+            void select(celebrated)
+          }}
+        />
+      )}
     </section>
+  )
+}
+
+const PREVIEW_MOVES = ['idle', 'light', 'heavy', 'special', 'win'] as const satisfies readonly Animation[]
+
+/** A character up close: their moves, their skill, and what they would do
+ *  for the fighter's stats compared with the character played now. */
+function CharacterPreview({
+  state,
+  character,
+  onClose,
+  children,
+}: {
+  state: ArenaState
+  character: ArenaState['roster'][number]
+  onClose: () => void
+  children: ReactNode
+}) {
+  const { t, locale } = useI18n()
+  const lang = locale === 'vi' ? 'vi' : 'en'
+  const [move, setMove] = useState(0)
+  const [auto, setAuto] = useState(true)
+  useEffect(() => {
+    if (!auto) return
+    const timer = window.setInterval(() => setMove((m) => (m + 1) % PREVIEW_MOVES.length), 1300)
+    return () => window.clearInterval(timer)
+  }, [auto])
+  const current = state.roster.find((c) => c.id === state.fighter?.character) ?? character
+  const keys: (keyof FighterStats)[] = ['hp', 'atk', 'def', 'time', 'rage']
+  const name = character.name[lang]
+  return (
+    <Dialog
+      title={t('arena.preview.title', name)}
+      onClose={onClose}
+      className="arena-preview"
+      actions={
+        <button type="button" className="btn btn-ghost" onClick={onClose}>
+          {t('arena.preview.close')}
+        </button>
+      }
+    >
+      <div className="arena-preview-stage" data-rarity={character.tier}>
+        <FighterSprite
+          key={move}
+          character={character}
+          animation={PREVIEW_MOVES[move]}
+          skill={character.skill.kind}
+          size={180}
+          label={name}
+        />
+      </div>
+      <div className="row gap-1 wrap" role="group" aria-label={t('arena.preview.moves')}>
+        {PREVIEW_MOVES.map((m, i) => (
+          <button
+            key={m}
+            type="button"
+            className={`btn btn-sm ${i === move ? 'btn-secondary' : 'btn-ghost'}`}
+            aria-pressed={i === move}
+            onClick={() => {
+              setAuto(false)
+              setMove(i)
+            }}
+          >
+            {t(`arena.preview.move.${m}`)}
+          </button>
+        ))}
+      </div>
+      <span className="tag tag-neutral arena-tier" data-tier={character.tier} style={{ alignSelf: 'flex-start' }}>
+        {t(`arena.tier.${character.tier}`)}
+      </span>
+      <SkillLine character={character} />
+      <div className="stack gap-1">
+        <span className="card-kicker">{t('arena.preview.compare')}</span>
+        <dl className="arena-stats arena-compare">
+          {keys.map((k) => {
+            const now = state.stats[k]
+            const then = now - current.bonus[k] + character.bonus[k]
+            const diff = then - now
+            return (
+              <div key={k}>
+                <dt>{t(`arena.stat.${k}`)}</dt>
+                <dd className="mono">
+                  {now} → {then}
+                  {diff !== 0 && (
+                    <span data-up={diff > 0}>
+                      {' '}
+                      ({diff > 0 ? '+' : ''}
+                      {diff})
+                    </span>
+                  )}
+                </dd>
+              </div>
+            )
+          })}
+        </dl>
+      </div>
+      <div className="stack gap-1">{children}</div>
+    </Dialog>
   )
 }
 

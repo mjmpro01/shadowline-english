@@ -42,6 +42,11 @@ test('a street kid practises, unlocks the fisherman, and plays him', async ({ pa
   await expect(page.getByTestId('coins')).toHaveText('200 coins')
   const fishermanAgain = page.getByRole('article', { name: 'Fisherman' })
   await fishermanAgain.getByRole('button', { name: /Unlock · 150/ }).click()
+  // The moment it is theirs: a celebration, to play it at once or later.
+  const unlocked = page.getByRole('dialog', { name: 'Fisherman unlocked!' })
+  await expect(unlocked).toBeVisible()
+  await unlocked.getByRole('button', { name: 'Later' }).click()
+  await expect(unlocked).toHaveCount(0)
   await expect(page.getByTestId('arena').getByRole('status')).toHaveText('Fisherman unlocked.')
   await expect(page.getByTestId('coins')).toHaveText('50 coins')
   await fishermanAgain.getByRole('button', { name: 'Play' }).click()
@@ -67,7 +72,8 @@ test('a rich fighter unlocks a legend, who hits harder, and the name can change'
   const monk = page.getByRole('article', { name: 'Thunder Monk' })
   await monk.getByRole('button', { name: /Unlock · 4000/ }).click()
   await expect(page.getByTestId('coins')).toHaveText('500 coins')
-  await monk.getByRole('button', { name: 'Play' }).click()
+  await page.getByRole('dialog', { name: 'Thunder Monk unlocked!' }).getByRole('button', { name: 'Play now' }).click()
+  await expect(monk).toContainText('Playing')
   // Level 1's 4 attack, and a legend's 6 more.
   await expect(page.locator('.arena-stats div', { hasText: 'Attack' }).locator('dd')).toHaveText('10')
   await expect(page.getByTestId('arena')).toContainText('Skill: Thunder Staff')
@@ -120,6 +126,11 @@ test('a beggar climbs the first floor of the tower', async ({ page }) => {
   await page.waitForURL('**/arena/duel')
   const duel = page.getByTestId('duel')
   await expect(duel.getByRole('meter', { name: 'Porter' })).toBeVisible()
+  // Floors 1–5 are fought in the riverside market, drawn behind the fighters.
+  const stage = duel.locator('.duel-stage')
+  await expect(stage).toHaveAttribute('data-stage', 'market')
+  await expect(stage).toHaveAttribute('data-art', '')
+  expect(await stage.evaluate((el) => getComputedStyle(el).backgroundImage)).toContain('stages/market.png')
 
   await answer(page, true)
   await page.reload()
@@ -225,4 +236,37 @@ test('a full rage unleashes the character’s own skill', async ({ page }) => {
   await answer(page, true)
   await expect(page.getByRole('img', { name: 'Bao' })).toHaveAttribute('data-skill', 'crit')
   await expect(page.getByRole('status').filter({ hasText: 'Desperate Fist!' })).toBeVisible()
+})
+
+// A character up close before buying: their moves, what they would change,
+// and how far off they are.
+test('a character can be previewed, with what it would change', async ({ page }) => {
+  await beggar(page, 'Chi')
+  const fisherman = page.getByRole('article', { name: 'Fisherman' })
+  await expect(fisherman).toContainText('days of practice')
+  await fisherman.getByRole('button', { name: 'See', exact: true }).click()
+  const preview = page.getByRole('dialog', { name: 'Fisherman' })
+  await expect(preview).toBeVisible()
+  await expect(preview.getByRole('group', { name: 'Moves' }).getByRole('button')).toHaveCount(5)
+  await preview.getByRole('button', { name: 'Skill' }).click()
+  await expect(preview.getByRole('img', { name: 'Fisherman' })).toHaveAttribute('data-animation', 'special')
+  await expect(preview).toContainText('Attack')
+  await expect(preview.getByRole('button', { name: /Unlock · 150/ })).toBeDisabled()
+  await page.keyboard.press('Escape')
+  await expect(preview).toHaveCount(0)
+})
+
+// Right, but late: the blow is weaker, and the opponent hits back.
+test('a late right answer is hit back', async ({ page }) => {
+  await beggar(page, 'Dung')
+  await page.getByRole('listitem', { name: 'Floor 1: Porter' }).getByRole('button', { name: 'Fight' }).click()
+  await page.waitForURL('**/arena/duel')
+  await expect(page.locator('.duel-option').first()).toBeEnabled()
+  const res = await page.request.get(`${API_URL}/api/arena/duel`)
+  const { duel } = (await res.json()) as { duel: { seconds: number } }
+  await page.waitForTimeout(duel.seconds * 800)
+  await answer(page, true)
+  const verdict = page.getByRole('status').filter({ hasText: /Slow ×/ })
+  await expect(verdict).toBeVisible()
+  await expect(verdict).toContainText('Hit back −')
 })

@@ -776,3 +776,209 @@
 .duel-rating[data-up='false'] {
   color: #c62828;
 }
+
+/* --- A character up close, and unlocked -------------------------------------- */
+.arena-character-look {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+}
+.arena-character-look:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+.arena-preview {
+  max-width: 440px;
+}
+.arena-preview-stage {
+  display: grid;
+  place-items: center;
+  min-height: 200px;
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(to top, color-mix(in srgb, var(--rarity, #9aa0a6) 30%, transparent) 0 12%, transparent 12%),
+    radial-gradient(ellipse at 50% 35%, color-mix(in srgb, var(--rarity, #9aa0a6) 22%, var(--color-surface)), var(--color-surface) 70%);
+}
+.arena-preview-stage[data-rarity='common'] {
+  --rarity: #9aa0a6;
+}
+.arena-preview-stage[data-rarity='rare'] {
+  --rarity: #3f7fd0;
+}
+.arena-preview-stage[data-rarity='epic'] {
+  --rarity: #8f5bd6;
+}
+.arena-preview-stage[data-rarity='legendary'] {
+  --rarity: #e08a1e;
+}
+.arena-compare dd [data-up='true'] {
+  color: var(--color-success, #1f9d55);
+}
+.arena-compare dd [data-up='false'] {
+  color: var(--color-danger, #b3261e);
+}
+
+.unlock-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--tier) 45%, rgb(10 10 20 / 0.75)), rgb(10 10 20 / 0.85) 70%);
+}
+.unlock-confetti {
+  z-index: 61;
+}
+.unlock-card {
+  position: relative;
+  z-index: 62;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  width: min(380px, 100%);
+  padding: 24px 20px 20px;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: 0 0 0 3px var(--tier), 0 20px 60px rgb(0 0 0 / 0.4);
+  text-align: center;
+  overflow: hidden;
+  animation: unlock-pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.unlock-card > * {
+  position: relative;
+}
+.unlock-rays {
+  position: absolute !important;
+  inset: -40%;
+  background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--tier) 30%, transparent) 0 10deg, transparent 10deg 20deg);
+  animation: unlock-spin 12s linear infinite;
+  opacity: 0.6;
+}
+.unlock-tier {
+  color: var(--tier);
+  letter-spacing: 0.12em;
+}
+.unlock-title {
+  margin: 0;
+  font-size: 1.4rem;
+}
+@keyframes unlock-pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+}
+@keyframes unlock-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* --- A duel's weight: the stage shakes, a flash, a critical number ------------ */
+.duel-stage[data-shake='light'] {
+  animation: duel-shake 0.22s linear;
+}
+.duel-stage[data-shake='strong'] {
+  animation: duel-shake-strong 0.35s linear;
+}
+@keyframes duel-shake {
+  25% {
+    transform: translate(-3px, 1px);
+  }
+  50% {
+    transform: translate(3px, -1px);
+  }
+  75% {
+    transform: translate(-2px, 0);
+  }
+}
+@keyframes duel-shake-strong {
+  20% {
+    transform: translate(-7px, 2px);
+  }
+  40% {
+    transform: translate(6px, -3px);
+  }
+  60% {
+    transform: translate(-5px, 2px);
+  }
+  80% {
+    transform: translate(3px, -1px);
+  }
+}
+.duel-stage {
+  position: relative;
+}
+/* The floor's backdrop, drawn crisp like the fighters, under a veil that keeps
+   them readable: lighter low down where they stand. A boss fight is darker. */
+.duel-stage[data-art] {
+  isolation: isolate;
+  background: var(--stage) center bottom / cover no-repeat;
+  image-rendering: pixelated;
+}
+.duel-stage[data-art]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  backdrop-filter: saturate(0.8);
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-surface) 10%, transparent),
+    color-mix(in srgb, var(--color-surface) 22%, transparent) 70%,
+    color-mix(in srgb, var(--color-surface) 8%, transparent)
+  );
+}
+.duel-stage[data-art][data-boss]::before {
+  backdrop-filter: saturate(0.7) brightness(0.72);
+  background: radial-gradient(ellipse at 50% 70%, transparent 30%, rgb(20 8 24 / 0.45));
+}
+.duel-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--flash, #fff);
+  animation: duel-flash 0.35s ease-out both;
+}
+@keyframes duel-flash {
+  from {
+    opacity: 0.75;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.duel-pop-crit {
+  font-size: 46px;
+  color: #ff8a00;
+}
+.duel-pop-crit small {
+  display: block;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+}
+.duel-pop-late {
+  animation-delay: 0.35s;
+}
+.duel-speed[data-fast='true'] {
+  color: var(--color-success, #1f9d55);
+}
+.duel-speed[data-fast='false'] {
+  color: var(--color-warning, #b26a00);
+}
+@media (prefers-reduced-motion: reduce) {
+  .duel-stage[data-shake],
+  .duel-flash,
+  .unlock-rays,
+  .unlock-card {
+    animation: none !important;
+  }
+  .unlock-rays,
+  .unlock-confetti {
+    display: none;
+  }
+}

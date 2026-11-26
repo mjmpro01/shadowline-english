@@ -71,5 +71,8 @@
     "character/war_drummer": "characters/war_drummer.sheet.png",
     "character/wind_sage": "characters/wind_sage.sheet.png"
   },
+  "stages": {
+    "market": "stages/market.png"
+  },
   "pixel": true
 }

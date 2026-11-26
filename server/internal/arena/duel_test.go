@@ -1,6 +1,7 @@
 package arena
 
 import (
+	"math"
 	"testing"
 	"time"
 )
@@ -48,11 +49,15 @@ func TestAnAnswerHitsAsHardAsItIsQuick(t *testing.T) {
 		dealt int
 		taken int
 	}{
-		{"quick and right", func(f *Fight) { f.Right, f.Elapsed = true, 3*time.Second }, MoveHeavy, 16 - 3, 0},
-		{"slow and right", func(f *Fight) { f.Right, f.Elapsed = true, 7*time.Second }, MoveLight, 10 - 3, 0},
+		// The sooner, the harder: 1.6× at once, 0.6× at the buzzer.
+		{"at once", func(f *Fight) { f.Right = true }, MoveHeavy, 16 - 3, 0},
+		{"quick and right", func(f *Fight) { f.Right, f.Elapsed = true, 3*time.Second }, MoveHeavy, 13 - 3, 0},
+		// Late enough and they hit back: 0.4 of their 8, less defence.
+		{"slow and right", func(f *Fight) { f.Right, f.Elapsed = true, 7*time.Second }, MoveLight, 9 - 3, 3 - 2},
+		{"right at the buzzer", func(f *Fight) { f.Right, f.Elapsed = true, 10*time.Second }, MoveLight, 6 - 3, 6 - 2},
 		{"wrong", func(f *Fight) {}, MoveHit, 0, 8 - 2},
 		{"a special, armed and full", func(f *Fight) { f.Right, f.Special, f.Rage, f.Elapsed = true, true, 100, 8*time.Second }, MoveSpecial, 30 - 3, 0},
-		{"a special, not full", func(f *Fight) { f.Right, f.Special, f.Rage, f.Elapsed = true, true, 60, 8*time.Second }, MoveLight, 7, 0},
+		{"a special, not full", func(f *Fight) { f.Right, f.Special, f.Rage, f.Elapsed = true, true, 60, 8*time.Second }, MoveLight, 8 - 3, 4 - 2},
 		{"a big attack blocked", func(f *Fight) { f.Block, f.Right = true, true }, MoveBlock, 7, 0},
 		{"a big attack missed", func(f *Fight) { f.Block = true }, MoveHit, 0, 14 - 2},
 		{"armour never makes a hit nothing", func(f *Fight) { f.Def = 50 }, MoveHit, 0, 1},
@@ -146,7 +151,8 @@ func TestExperienceRaisesTheLevel(t *testing.T) {
 
 func TestEachSkillDoesItsOwnThing(t *testing.T) {
 	armed := Fight{Atk: 10, Def: 2, OppAtk: 8, OppDef: 3, HP: 30, MaxHP: 60, OppHP: 100, Rage: RageFull,
-		Special: true, Right: true, Allowed: 10 * time.Second, Elapsed: 2 * time.Second}
+		// Halfway through the time, where a skill hits at its plain strength.
+		Special: true, Right: true, Allowed: 10 * time.Second, Elapsed: 5 * time.Second}
 	cases := []struct {
 		skill             string
 		tier              int
@@ -209,5 +215,43 @@ func TestFocusGivesMoreTime(t *testing.T) {
 	o, _ := Floor(1)
 	if AnswerSeconds(10, o, AskMeaning, false, true) != AnswerSeconds(10, o, AskMeaning, false, false)+FocusSeconds {
 		t.Fatal("focus adds seconds")
+	}
+}
+
+func TestTheLaterTheAnswerTheLessItHitsAndTheMoreItIsHitBack(t *testing.T) {
+	base := Fight{Atk: 20, OppAtk: 20, HP: 100, OppHP: 100, Right: true, Allowed: 10 * time.Second}
+	last := Result{Dealt: 1 << 30}
+	for e := 0; e <= 10; e++ {
+		f := base
+		f.Elapsed = time.Duration(e) * time.Second
+		r := Resolve(f)
+		if r.Dealt > last.Dealt || r.Taken < last.Taken {
+			t.Fatalf("at %ds: %+v after %+v", e, r, last)
+		}
+		if (e <= 3) != (r.Taken == 0) || r.Countered != (r.Taken > 0) || r.Speed != 100-10*e {
+			t.Fatalf("at %ds: %+v", e, r)
+		}
+		last = r
+	}
+	if Swing(0) != 1.6 || math.Abs(Swing(1)-0.6) > 1e-9 || Counter(0.3) != 0 || math.Abs(Counter(1)-0.7) > 1e-9 {
+		t.Fatal("the curves")
+	}
+}
+
+func TestASkillLandsHarderTheSoonerItComes(t *testing.T) {
+	f := Fight{Atk: 10, OppHP: 100, HP: 50, MaxHP: 50, Rage: RageFull, Special: true, Right: true, Skill: SkillCrit, Allowed: 10 * time.Second}
+	quick := Resolve(f)
+	f.Elapsed = 10 * time.Second
+	slow := Resolve(f)
+	// 3.5 × 1.3 at once, 3.5 × 0.7 at the buzzer; and a skill is never hit back.
+	if quick.Dealt != 46 || slow.Dealt != 25 || quick.Taken != 0 || slow.Taken != 0 {
+		t.Fatalf("quick %+v, slow %+v", quick, slow)
+	}
+}
+
+func TestAStunShrugsOffACounterToo(t *testing.T) {
+	r := Resolve(Fight{Atk: 10, OppAtk: 20, HP: 50, OppHP: 50, Right: true, Shield: 1, Allowed: 10 * time.Second, Elapsed: 10 * time.Second})
+	if r.Taken != 0 || !r.Shielded || r.Shield != 0 || r.HP != 50 {
+		t.Fatalf("%+v", r)
 	}
 }
