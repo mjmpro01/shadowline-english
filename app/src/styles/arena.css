@@ -912,6 +912,31 @@
 .duel-stage {
   position: relative;
 }
+/* The floor's backdrop, drawn crisp like the fighters, under a veil that keeps
+   them readable: lighter low down where they stand. A boss fight is darker. */
+.duel-stage[data-art] {
+  isolation: isolate;
+  background: var(--stage) center bottom / cover no-repeat;
+  image-rendering: pixelated;
+}
+.duel-stage[data-art]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  backdrop-filter: saturate(0.8);
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-surface) 10%, transparent),
+    color-mix(in srgb, var(--color-surface) 22%, transparent) 70%,
+    color-mix(in srgb, var(--color-surface) 8%, transparent)
+  );
+}
+.duel-stage[data-art][data-boss]::before {
+  backdrop-filter: saturate(0.7) brightness(0.72);
+  background: radial-gradient(ellipse at 50% 70%, transparent 30%, rgb(20 8 24 / 0.45));
+}
 .duel-flash {
   position: absolute;
   inset: 0;

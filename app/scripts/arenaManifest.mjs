@@ -60,6 +60,20 @@ export function parseLayer(path) {
   return { name: `character/${m[1]}`, sheet: !!m[2] }
 }
 
+/** The duel backgrounds: the tower's three stretches of five floors, and the
+ *  ring of the duels against other learners. Kept identical to STAGES in
+ *  app/src/lib/arenaArt.ts. */
+export const STAGES = ['market', 'temple', 'tower', 'arena']
+/** The smallest width a stage is drawn from, and its shape, width to height. */
+export const STAGE_WIDTH = 384
+export const STAGE_RATIO = 3
+
+/** A stage's id from its file (`stages/market.png` → market), or null. */
+export function parseStage(path) {
+  const m = /^stages\/([a-z0-9_]+)\.png$/.exec(path)
+  return m ? m[1] : null
+}
+
 /** Just the layer's name. */
 export function layerName(path) {
   return parseLayer(path)?.name ?? null
@@ -261,7 +275,16 @@ export function buildManifest(files) {
   const layers = {}
   const sheets = {}
   const sizes = new Map()
+  const stages = {}
   for (const f of [...files].sort((a, b) => a.path.localeCompare(b.path))) {
+    const stage = parseStage(f.path)
+    if (stage) {
+      if (!STAGES.includes(stage)) warnings.push(`${f.path}: không phải nền nào (${STAGES.join(', ')}), bỏ qua`)
+      else if (f.width !== f.height * STAGE_RATIO || f.width < STAGE_WIDTH)
+        errors.push(`${f.path}: ${f.width}×${f.height}, nền phải rộng gấp ${STAGE_RATIO} lần cao và rộng ít nhất ${STAGE_WIDTH} px`)
+      else stages[stage] = f.path
+      continue
+    }
     const parsed = parseLayer(f.path)
     if (!parsed) {
       warnings.push(`${f.path}: không phải tên lớp nào, bỏ qua`)
@@ -291,14 +314,15 @@ export function buildManifest(files) {
   const all = { ...layers, ...sheets }
   const missing = EXPECTED.filter((name) => !(name in all))
   const missingSheets = EXPECTED.filter((name) => !(name in sheets))
+  const missingStages = STAGES.filter((id) => !(id in stages))
 
   const count = Object.keys(all).length
   if (errors.length || count === 0) {
-    return { manifest: null, errors, warnings, missing, missingSheets, frame: null, sheets: Object.keys(sheets).length }
+    return { manifest: null, errors, warnings, missing, missingSheets, missingStages, frame: null, sheets: Object.keys(sheets).length }
   }
   const frame = [...sizes.keys()][0]
-  const manifest = { frame, animations: SHEET_ANIMATIONS, layers, sheets }
+  const manifest = { frame, animations: SHEET_ANIMATIONS, layers, sheets, stages }
   // Pixel art is drawn small and enlarged with hard edges, not smoothed.
   if (frame === 64) manifest.pixel = true
-  return { manifest, errors, warnings, missing, missingSheets, frame, sheets: Object.keys(sheets).length }
+  return { manifest, errors, warnings, missing, missingSheets, missingStages, frame, sheets: Object.keys(sheets).length }
 }

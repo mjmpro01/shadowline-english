@@ -5,6 +5,7 @@ import {
   SHEET_ANIMATIONS,
   SHEET_COLUMNS,
   SHEET_ROWS,
+  STAGES,
   assembleSheet,
   buildManifest,
   checkFrames,
@@ -13,6 +14,7 @@ import {
   ground,
   layerName,
   parseLayer,
+  parseStage,
   pngInfo,
 } from '../scripts/arenaManifest.mjs'
 
@@ -207,5 +209,33 @@ describe('the manifest', () => {
     expect(warnings.some((w) => w.includes('trong suốt'))).toBe(true)
     expect(missing).toHaveLength(EXPECTED.length - 1)
     expect(EXPECTED).toHaveLength(24)
+  })
+})
+
+describe('the duel backgrounds', () => {
+  const stage = (path: string, width = 384, height = 128) => ({ path, width, height, alpha: false })
+
+  it('names a stage after its file', () => {
+    expect(parseStage('stages/market.png')).toBe('market')
+    expect(parseStage('characters/market.png')).toBeNull()
+    expect(STAGES).toEqual(['market', 'temple', 'tower', 'arena'])
+  })
+
+  it('declares a stage beside the characters, with no alpha needed', () => {
+    const { manifest, errors, warnings } = buildManifest([pose('characters/beggar.png'), stage('stages/market.png')])
+    expect(errors).toEqual([])
+    expect(manifest?.stages).toEqual({ market: 'stages/market.png' })
+    expect(warnings.some((w) => w.includes('stages/'))).toBe(false)
+  })
+
+  it('refuses a stage that is not 3:1, or too small to draw', () => {
+    expect(buildManifest([pose('characters/beggar.png'), stage('stages/market.png', 256, 128)]).errors[0]).toContain('gấp 3')
+    expect(buildManifest([pose('characters/beggar.png'), stage('stages/market.png', 192, 64)]).errors[0]).toContain('ít nhất 384')
+  })
+
+  it('lists the stages still to draw, and skips one that is not a stage', () => {
+    const { missingStages, warnings } = buildManifest([pose('characters/beggar.png'), stage('stages/market.png'), stage('stages/moon.png')])
+    expect(missingStages).toEqual(['temple', 'tower', 'arena'])
+    expect(warnings.some((w) => w.includes('stages/moon.png'))).toBe(true)
   })
 })

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { FighterSprite } from '../components/FighterSprite'
 import { QuestionBody } from '../components/QuestionBody'
 import { useI18n } from '../i18n'
-import type { Animation } from '../lib/arenaArt'
+import { artURL, loadArt, stageFor, type Animation, type ArtManifest } from '../lib/arenaArt'
 import { percent, swing, timeShare } from '../lib/duel'
 import { play, setSoundOn, soundOn, unlockSound, type Sfx } from '../lib/sfx'
 import { explain } from '../lib/errors'
@@ -51,11 +51,13 @@ export function DuelScreen() {
   const [note, setNote] = useState<string | null>(null)
   const [share, setShare] = useState(1)
   const [sound, setSound] = useState(soundOn)
+  const [art, setArt] = useState<ArtManifest | null>(null)
   const timedOut = useRef<number | null>(null)
   const lastTick = useRef<number | null>(null)
 
   useEffect(() => {
     let alive = true
+    void loadArt().then((m) => alive && setArt(m))
     void Promise.all([repository.arena(), repository.duel()])
       .then(([a, d]) => {
         if (!alive) return
@@ -158,6 +160,8 @@ export function DuelScreen() {
   const mine = arena.roster.find((c) => c.id === me.character) ?? arena.roster[0]
   const o = duel.opponent
   const theirs = o.mirror ? mine : o.character
+  const stage = stageFor(duel.kind, duel.floor)
+  const stageArt = art?.stages?.[stage]
 
   return (
     <div className="duel" data-testid="duel">
@@ -192,7 +196,15 @@ export function DuelScreen() {
         />
       </div>
 
-      <div className="duel-stage" data-shake={impact.shake} key={`stage-${impact.key}`}>
+      <div
+        className="duel-stage"
+        data-stage={stage}
+        data-art={stageArt ? '' : undefined}
+        data-boss={o.boss ? '' : undefined}
+        style={stageArt ? ({ '--stage': `url("${artURL(stageArt)}")` } as CSSProperties) : undefined}
+        data-shake={impact.shake}
+        key={`stage-${impact.key}`}
+      >
         {impact.flash && <span className="duel-flash" style={{ '--flash': impact.flash } as CSSProperties} aria-hidden="true" />}
         <div className="duel-fighter" key={`me-${moves.key}`}>
           <FighterSprite character={mine} animation={moves.me} skill={turn?.skill} label={me.name} size={200} />

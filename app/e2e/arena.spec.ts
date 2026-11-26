@@ -126,6 +126,11 @@ test('a beggar climbs the first floor of the tower', async ({ page }) => {
   await page.waitForURL('**/arena/duel')
   const duel = page.getByTestId('duel')
   await expect(duel.getByRole('meter', { name: 'Porter' })).toBeVisible()
+  // Floors 1–5 are fought in the riverside market, drawn behind the fighters.
+  const stage = duel.locator('.duel-stage')
+  await expect(stage).toHaveAttribute('data-stage', 'market')
+  await expect(stage).toHaveAttribute('data-art', '')
+  expect(await stage.evaluate((el) => getComputedStyle(el).backgroundImage)).toContain('stages/market.png')
 
   await answer(page, true)
   await page.reload()
