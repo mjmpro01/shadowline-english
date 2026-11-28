@@ -556,6 +556,7 @@ export const en = {
   'practice.rerecord': 'Re-record',
   'practice.stop': 'Stop',
   'practice.waitingForScore': 'Waiting for the last take to be scored',
+  'practice.backToEpisode': 'Back to the episode',
   'practice.nextLine': 'Next line',
   'practice.dubReview': 'Dub review',
   'practice.viewDub': 'My dub',
@@ -894,7 +895,7 @@ export const en = {
   'guide.tierGold': (name: string) => `${name}: 75 and up`,
   'guide.next.title': 'Move on',
   'guide.next.body':
-    'A clip can have several lines — the counter at the top says which one you are on. Press Next line for the next.',
+    'A clip can have several lines — the counter at the top says which one you are on. Press Next line for the next, also when it is the next clip of the episode.',
   'guide.moreTitle': 'Once you have practised',
   'guide.words.title': 'Your words',
   'guide.words.body':

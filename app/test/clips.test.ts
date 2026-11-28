@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { episodeProgress, firstToPractise, parseCategories } from '../src/lib/clips'
+import { episodeProgress, firstToPractise, nextClipAfter, parseCategories } from '../src/lib/clips'
 import type { Video } from '../src/data/types'
 
 const clip = (overrides: Partial<Video>): Video => ({
@@ -81,5 +81,21 @@ describe('the first line a new learner is sent to', () => {
   it('is still some clip when none can be scored, and none when there are none', () => {
     expect(firstToPractise([starter])?.id).toBe('starter')
     expect(firstToPractise([])).toBeUndefined()
+  })
+})
+
+describe('the clip after this one', () => {
+  const clips = [
+    { id: 'c', startSeconds: 20 },
+    { id: 'a', startSeconds: 0 },
+    { id: 'b', startSeconds: 10 },
+  ]
+  it('is the next one in the order the episode is spoken', () => {
+    expect(nextClipAfter(clips, 'a')?.id).toBe('b')
+    expect(nextClipAfter(clips, 'b')?.id).toBe('c')
+  })
+  it('is nothing after the last clip, or for a clip not in the episode', () => {
+    expect(nextClipAfter(clips, 'c')).toBeNull()
+    expect(nextClipAfter(clips, 'zz')).toBeNull()
   })
 })

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useClip } from '../lib/useClip'
 import { CaptionLine } from '../components/CaptionLine'
 import { heardCount, heardIn } from '../lib/words'
@@ -36,6 +36,9 @@ import { useRecorder } from '../lib/useRecorder'
 import { usePlayhead } from '../lib/usePlayhead'
 import { normalizeWord } from '../lib/text'
 import { useApp } from '../store/context'
+import { useRemote } from '../lib/remote'
+import { nextClipAfter } from '../lib/clips'
+import { repository } from '../repository'
 import { explain, takeProblem } from '../lib/errors'
 
 const POPUP_LABEL = {
@@ -54,11 +57,19 @@ interface Popup {
   statusLabel: string
 }
 
+/** Practice, started afresh for each clip: going on to the next clip changes
+ *  only the address, and without the key the last clip's take, levels and
+ *  line would stay on screen over the new one. */
 export function PracticeScreen() {
+  const { videoId } = useParams()
+  return <Practice key={videoId} />
+}
+
+function Practice() {
   const { videoId } = useParams()
   const navigate = useNavigate()
   const t = useT()
-  const { data, state, addTake, toggleVocabWord } = useApp()
+  const { data, state, addTake, toggleVocabWord, ensureClips } = useApp()
 
   const [lineIndex, setLineIndex] = useState(0)
   const [take, setTake] = useState<Take | null>(null)
@@ -99,6 +110,14 @@ export function PracticeScreen() {
   const attempt = useRef(0)
 
   const { clip: video, loading: clipLoading } = useClip(videoId)
+  // The episode this clip is in, for the clip that comes after it.
+  const episode = useRemote(video?.episodeId ?? '', (id) => (id ? repository.episode(id) : Promise.resolve(null)))
+  const nextClip =
+    video && episode.state === 'ready' && episode.value ? nextClipAfter(episode.value.clips, video.id) : null
+  // Asked for now, so the next clip opens without a wait.
+  useEffect(() => {
+    if (nextClip) void ensureClips([nextClip.id])
+  }, [nextClip, ensureClips])
   // Match the clip's own length so a one-second line does not wait out a song.
   // Floor at half a second so a zero/missing duration still stops itself.
   const recordLimit = Math.min(
@@ -227,6 +246,15 @@ export function PracticeScreen() {
     setLineIndex((i) => Math.min(i + 1, video.captions.length - 1))
     resetMic()
     setPopup(null)
+  }
+  // What "next" is from here: another line of this clip, the next clip of the
+  // episode, or, after the last one, back to the episode's list.
+  const moreLines = lineIndex < video.captions.length - 1
+  const episodeDone = !moreLines && !nextClip && episode.state === 'ready' && !!episode.value
+  const goNext = () => {
+    if (moreLines) nextLine()
+    else if (nextClip) navigate(`/library/${nextClip.id}/practice`)
+    else if (episodeDone && video.episodeId) navigate(`/library/e/${video.episodeId}`)
   }
 
   return (
@@ -547,10 +575,10 @@ export function PracticeScreen() {
             <button
               type="button"
               className="btn btn-secondary btn-block"
-              disabled={!take || lineIndex >= video.captions.length - 1}
-              onClick={nextLine}
+              disabled={!take || !(moreLines || nextClip || episodeDone)}
+              onClick={goNext}
             >
-              {t('practice.nextLine')}
+              {episodeDone ? t('practice.backToEpisode') : t('practice.nextLine')}
             </button>
             <button
               type="button"

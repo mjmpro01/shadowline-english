@@ -33,16 +33,23 @@ test('a first take unlocks an achievement, celebrated once', async ({ page }) =>
   await expect(toast).toContainText('New achievement')
   await expect(toast).toContainText('First take')
   await toast.getByRole('button', { name: 'Close' }).click()
-  await expect(toast).toHaveCount(0)
 
   // One, or two: on the generous scale the same take can also be the first
   // to score 90 or more, which is a milestone of its own. It unlocks once the
-  // score lands, so it is celebrated on the next screen — once, like the first.
+  // score lands: if that was before the first was closed, it is celebrated
+  // straight after it; otherwise on the next screen. Either way, once.
+  let second = false
+  const next = toast.filter({ hasText: 'scoring 90+' })
+  if (await next.waitFor({ timeout: 1500 }).then(() => true, () => false)) {
+    await toast.getByRole('button', { name: 'Close' }).click()
+    second = true
+  }
+  await expect(toast).toHaveCount(0)
   await page.reload()
   await page.goto('/profile')
   await expect(card).toContainText(/[12] of/)
   await expect(card).toContainText('First take')
-  if (/2 of/.test((await card.textContent()) ?? '')) {
+  if (!second && /2 of/.test((await card.textContent()) ?? '')) {
     await expect(toast).toContainText('scoring 90+')
     await toast.getByRole('button', { name: 'Close' }).click()
     await expect(toast).toHaveCount(0)
