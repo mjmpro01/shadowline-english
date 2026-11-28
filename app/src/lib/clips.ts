@@ -38,6 +38,19 @@ export function episodeProgress(
 }
 
 /**
+ * The clip after this one in its episode, in the order the episode is spoken;
+ * null for the last one, or for a clip not in the list.
+ *
+ * Clips are cut one line each, so on Practice "the next line" is usually the
+ * next clip rather than another line inside this one.
+ */
+export function nextClipAfter<T extends { id: string; startSeconds: number }>(clips: T[], id: string): T | null {
+  const ordered = [...clips].sort((a, b) => a.startSeconds - b.startSeconds)
+  const at = ordered.findIndex((clip) => clip.id === id)
+  return at < 0 ? null : (ordered[at + 1] ?? null)
+}
+
+/**
  * What an unnamed clip is called: "Clip 1", "Clip 2", and so on.
  *
  * "Clip" rather than "take" or "line", both of which already mean something

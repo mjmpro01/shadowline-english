@@ -575,6 +575,7 @@ export const vi: Messages = {
   'practice.rerecord': 'Ghi lại',
   'practice.stop': 'Dừng',
   'practice.waitingForScore': 'Đang chờ chấm điểm bản ghi trước',
+  'practice.backToEpisode': 'Về danh sách câu của tập',
   'practice.nextLine': 'Câu tiếp theo',
   'practice.dubReview': 'Xem lồng tiếng',
   'practice.viewDub': 'Lồng tiếng của tôi',
@@ -889,7 +890,7 @@ export const vi: Messages = {
   'guide.tierGold': (name: string) => `${name}: từ 75 trở lên`,
   'guide.next.title': 'Sang câu tiếp',
   'guide.next.body':
-    'Một clip có thể có nhiều câu — góc trên cho biết bạn đang ở câu nào. Bấm Câu tiếp theo để sang câu sau.',
+    'Một clip có thể có nhiều câu — góc trên cho biết bạn đang ở câu nào. Bấm Câu tiếp theo để sang câu sau, kể cả câu ở clip kế tiếp của tập.',
   'guide.moreTitle': 'Khi đã luyện rồi',
   'guide.words.title': 'Từ vựng của bạn',
   'guide.words.body':

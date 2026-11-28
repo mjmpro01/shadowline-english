@@ -6,16 +6,48 @@ test.beforeEach(async ({ page }) => {
   await startFresh(page)
 })
 
-async function practiseFirstLine(page: import('@playwright/test').Page): Promise<void> {
+async function practiseFirstLine(page: import('@playwright/test').Page, line = 1): Promise<void> {
+  await page.goto('/library')
+  await page.getByLabel('Search the library').fill(`Shadow this line ${line}`)
+  await page.getByRole('button', { name: 'Practice', exact: true }).first().click()
+  await page.waitForURL('**/practice')
+  await recordATake(page)
+}
+
+async function recordATake(page: import('@playwright/test').Page): Promise<void> {
+  await page.getByRole('button', { name: 'Record', exact: true }).click()
+  await page.waitForTimeout(2600)
+  await page.getByRole('button', { name: 'Stop' }).click()
+  await expect(page.getByRole('button', { name: 'Re-record', exact: true })).toBeVisible({ timeout: 20_000 })
+}
+
+// Clips are one line each: once a take is in, "Next line" goes on to the next
+// clip of the episode, fresh, and after the last one back to the episode.
+test('next line goes on to the next clip, and the last one back to the episode', async ({ page }) => {
+  await publishLesson(page)
+  await asLearner(page)
   await page.goto('/library')
   await page.getByLabel('Search the library').fill('Shadow this line 1')
   await page.getByRole('button', { name: 'Practice', exact: true }).first().click()
   await page.waitForURL('**/practice')
-  await page.getByRole('button', { name: 'Record', exact: true }).click()
-  await page.waitForTimeout(2600)
-  await page.getByRole('button', { name: 'Stop' }).click()
-  await expect(page.getByRole('button', { name: 'Record', exact: true })).toBeVisible({ timeout: 20_000 })
-}
+  const next = page.getByRole('button', { name: 'Next line', exact: true })
+  await expect(next).toBeDisabled()
+  await recordATake(page)
+  await expect(next).toBeEnabled()
+
+  const first = page.url()
+  await next.click()
+  await expect(page).not.toHaveURL(first)
+  await expect(page).toHaveURL(/\/practice$/)
+  await expect(page.locator('[data-tour="caption"]')).toContainText(/Shadow\s*this\s*line\s*2/)
+  // A fresh start on the new clip: no take, so nothing to go on to yet.
+  await expect(page.getByRole('button', { name: 'Record', exact: true })).toBeVisible()
+  await expect(next).toBeDisabled()
+
+  await practiseFirstLine(page, 4)
+  await page.getByRole('button', { name: 'Back to the episode', exact: true }).click()
+  await page.waitForURL('**/library/e/**')
+})
 
 // One line into an episode, the dashboard offers the next one.
 test('the dashboard picks up where the learner left off', async ({ page }) => {
